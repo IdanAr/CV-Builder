@@ -117,7 +117,7 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
           </Link>
           <button
             onClick={handleDownload}
-            className="rounded-md border border-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-500 transition hover:bg-indigo-50"
+            className="rounded-md border border-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50"
             title="Download as JSON"
           >
             ↓ JSON
@@ -125,7 +125,7 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
           <button
             onClick={handleDuplicate}
             disabled={duplicating}
-            className="rounded-md border border-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-500 transition hover:bg-indigo-50 disabled:opacity-50"
+            className="rounded-md border border-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50"
             title="Duplicate"
           >
             {duplicating ? '…' : '⧉'}
@@ -142,7 +142,7 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
               </button>
               <button
                 onClick={() => setConfirmingDelete(false)}
-                className="rounded-md border border-indigo-100 px-2 py-1.5 text-xs font-medium text-indigo-500 transition hover:bg-indigo-50"
+                className="rounded-md border border-indigo-100 px-2 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50"
               >
                 Cancel
               </button>
