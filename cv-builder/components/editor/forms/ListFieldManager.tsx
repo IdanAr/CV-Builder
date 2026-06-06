@@ -20,7 +20,7 @@ export function ListFieldManager<T>({
   return (
     <div className="space-y-3">
       {items.map((item, i) => (
-        <div key={i} className="border border-gray-100 rounded-lg p-3 bg-gray-50">
+        <div key={i} className="border border-indigo-100 rounded-lg p-3 bg-white/60 backdrop-blur-sm">
           {renderItem(item, i, (v) => update(i, v), () => remove(i))}
         </div>
       ))}

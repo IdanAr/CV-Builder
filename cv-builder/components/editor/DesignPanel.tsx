@@ -34,11 +34,11 @@ export function DesignPanel() {
               className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors ${
                 meta.templateId === t.id
                   ? 'border-indigo-500 bg-indigo-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                  : 'border-indigo-100 hover:border-indigo-300'
               }`}
             >
               <div className="font-medium text-sm">{t.label}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{t.desc}</div>
+              <div className="text-xs text-indigo-400 mt-0.5">{t.desc}</div>
             </button>
           ))}
         </div>
@@ -56,7 +56,7 @@ export function DesignPanel() {
               className={`flex-1 py-2 text-sm rounded-lg border transition-colors ${
                 meta.layout === layout
                   ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-medium'
-                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                  : 'border-indigo-100 text-indigo-500 hover:border-indigo-300'
               }`}
             >
               {layout === 'single-column' ? 'Single column' : 'Two columns'}
@@ -118,7 +118,7 @@ export function DesignPanel() {
           value={meta.pageMargins}
           onChange={(e) => setMeta({ pageMargins: parseFloat(e.target.value) })}
           className="w-full accent-indigo-600" />
-        <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+        <div className="flex justify-between text-xs text-indigo-300 mt-0.5">
           <span>0.5&quot; (min)</span><span>1.5&quot;</span>
         </div>
       </div>
@@ -132,7 +132,7 @@ export function DesignPanel() {
           value={meta.lineSpacing}
           onChange={(e) => setMeta({ lineSpacing: parseFloat(e.target.value) })}
           className="w-full accent-indigo-600" />
-        <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+        <div className="flex justify-between text-xs text-indigo-300 mt-0.5">
           <span>1.00</span><span>1.15</span>
         </div>
       </div>

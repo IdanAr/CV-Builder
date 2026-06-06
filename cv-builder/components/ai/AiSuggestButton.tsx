@@ -123,7 +123,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
             </button>
             <button
               onClick={() => setResult(null)}
-              className="rounded px-3 py-1 text-xs text-gray-500 transition-colors hover:text-gray-700"
+              className="rounded px-3 py-1 text-xs text-indigo-500 transition-colors hover:text-indigo-700"
             >
               Dismiss
             </button>

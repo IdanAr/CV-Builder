@@ -85,7 +85,7 @@ export default function UploadCVButton() {
         </span>
         <div className="flex gap-1">
           <span className="h-2 w-2 rounded-full bg-indigo-600" />
-          <span className={`h-2 w-2 rounded-full ${phase === 'extracting' ? 'bg-indigo-600' : 'bg-gray-200'}`} />
+          <span className={`h-2 w-2 rounded-full ${phase === 'extracting' ? 'bg-indigo-600' : 'bg-indigo-100'}`} />
         </div>
       </div>
     )

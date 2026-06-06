@@ -76,13 +76,13 @@ export function AtsScorePanel() {
       {result && (
         <div className="space-y-4">
           <div className="rounded-xl border border-white/30 bg-white/60 backdrop-blur-xl p-6 text-center shadow-lg">
-            <p className="text-sm text-gray-500 mb-1">ATS Score</p>
+            <p className="text-sm text-indigo-400 mb-1">ATS Score</p>
             <p className={`text-6xl font-bold ${
               result.total >= 70 ? 'text-green-600' : result.total >= 40 ? 'text-yellow-500' : 'text-red-500'
             }`}>
               {result.total}
             </p>
-            <p className="text-sm text-gray-400 mt-1">out of 100</p>
+            <p className="text-sm text-indigo-300 mt-1">out of 100</p>
           </div>
 
           <div className="rounded-xl border border-white/30 bg-white/60 backdrop-blur-xl p-4 shadow-lg space-y-3">
