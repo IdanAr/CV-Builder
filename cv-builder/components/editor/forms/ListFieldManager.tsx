@@ -25,7 +25,7 @@ export function ListFieldManager<T>({
         </div>
       ))}
       <button type="button" onClick={add}
-        className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+        className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
         + {addLabel}
       </button>
     </div>
