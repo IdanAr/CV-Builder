@@ -1,0 +1,139 @@
+'use client'
+
+import { useState } from 'react'
+import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
+import type { AtsScoreResult } from '@/lib/ats/scorer'
+
+const VECTOR_LABELS: { key: keyof AtsScoreResult['breakdown']; label: string; max: number }[] = [
+  { key: 'format', label: 'Format & Structure', max: 25 },
+  { key: 'keywordDensity', label: 'Keyword Coverage', max: 35 },
+  { key: 'keywordPlacement', label: 'Keyword Placement', max: 25 },
+  { key: 'metrics', label: 'Metric Presence', max: 15 },
+]
+
+function ScoreBar({ value, max }: { value: number; max: number }) {
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0
+  return (
+    <div className="h-2 w-full rounded-full bg-indigo-100">
+      <div
+        className={`h-2 rounded-full transition-all duration-300 ${
+          pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-yellow-500' : 'bg-red-400'
+        }`}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  )
+}
+
+export function AtsScorePanel() {
+  const resumeId = useResumeEditorStore((s) => s.resumeId)
+  const [jobDescription, setJobDescription] = useState('')
+  const [result, setResult] = useState<AtsScoreResult | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleAnalyze() {
+    if (!resumeId || !jobDescription.trim()) return
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/resumes/${resumeId}/ats-score`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobDescription }),
+      })
+      if (!res.ok) throw new Error('Analysis failed')
+      setResult(await res.json())
+    } catch {
+      setError('Analysis failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="p-6 max-w-2xl mx-auto space-y-6">
+      <div>
+        <label className="block text-sm font-medium text-indigo-700 mb-1">
+          Paste job description
+        </label>
+        <textarea
+          value={jobDescription}
+          onChange={(e) => setJobDescription(e.target.value)}
+          placeholder="Paste the full job description here to see how well your CV matches…"
+          className="w-full h-40 rounded-lg border border-indigo-200 bg-white/70 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <button
+          onClick={handleAnalyze}
+          disabled={loading || !jobDescription.trim()}
+          className="mt-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+        >
+          {loading ? 'Analyzing…' : 'Analyze'}
+        </button>
+        {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+      </div>
+
+      {result && (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-white/30 bg-white/60 backdrop-blur-xl p-6 text-center shadow-lg">
+            <p className="text-sm text-gray-500 mb-1">ATS Score</p>
+            <p className={`text-6xl font-bold ${
+              result.total >= 70 ? 'text-green-600' : result.total >= 40 ? 'text-yellow-500' : 'text-red-500'
+            }`}>
+              {result.total}
+            </p>
+            <p className="text-sm text-gray-400 mt-1">out of 100</p>
+          </div>
+
+          <div className="rounded-xl border border-white/30 bg-white/60 backdrop-blur-xl p-4 shadow-lg space-y-3">
+            <p className="text-sm font-semibold text-indigo-900">Score Breakdown</p>
+            {VECTOR_LABELS.map(({ key, label, max }) => (
+              <div key={key}>
+                <div className="flex justify-between text-xs text-indigo-600 mb-1">
+                  <span>{label}</span>
+                  <span className="font-medium">{result.breakdown[key]} / {max}</span>
+                </div>
+                <ScoreBar value={result.breakdown[key]} max={max} />
+              </div>
+            ))}
+          </div>
+
+          {result.missingKeywords.length > 0 && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm">
+              <p className="text-sm font-semibold text-red-700 mb-2">
+                Missing Keywords ({result.missingKeywords.length})
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {result.missingKeywords.slice(0, 40).map((kw) => (
+                  <span key={kw} className="inline-block rounded bg-red-100 px-2 py-0.5 text-xs text-red-700">
+                    {kw}
+                  </span>
+                ))}
+                {result.missingKeywords.length > 40 && (
+                  <span className="text-xs text-red-500 self-center">
+                    +{result.missingKeywords.length - 40} more
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {result.matchedKeywords.length > 0 && (
+            <div className="rounded-xl border border-green-200 bg-green-50 p-4 shadow-sm">
+              <p className="text-sm font-semibold text-green-700 mb-2">
+                Matched Keywords ({result.matchedKeywords.length})
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {result.matchedKeywords.slice(0, 40).map((kw) => (
+                  <span key={kw} className="inline-block rounded bg-green-100 px-2 py-0.5 text-xs text-green-700">
+                    {kw}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
