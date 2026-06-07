@@ -1,5 +1,11 @@
 import type { CSSProperties } from 'react'
 import type { CustomSection } from '@/lib/schemas/resume.zod'
+import { richTextToHtml } from '@/lib/rich-text'
+
+function rt(text: string | undefined | null): React.ReactNode {
+  if (!text) return null
+  return <span dangerouslySetInnerHTML={{ __html: richTextToHtml(text) }} />
+}
 
 interface RenderStyles {
   sectionTitle: CSSProperties
@@ -39,11 +45,11 @@ export function renderCustomSection(
             </div>
           )}
           {enabledFields.includes('summary') && item.summary && (
-            <div style={{ fontSize: '10pt', marginTop: '3px' }}>{item.summary}</div>
+            <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(item.summary)}</div>
           )}
           {enabledFields.includes('highlights') && (item.highlights ?? []).length > 0 && (
             <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
-              {(item.highlights ?? []).map((h, hi) => <li key={hi}>{h}</li>)}
+              {(item.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
             </ul>
           )}
           {enabledFields.includes('keywords') && (item.keywords ?? []).length > 0 && (

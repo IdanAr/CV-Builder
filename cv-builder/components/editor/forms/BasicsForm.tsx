@@ -3,6 +3,7 @@
 
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { AiSuggestButton } from '@/components/ai/AiSuggestButton'
+import { RichTextField } from './RichTextField'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type Basics = NonNullable<ResumeData['basics']>
@@ -84,9 +85,12 @@ export function BasicsForm() {
             onAccept={(v) => set('summary', v)}
           />
         </div>
-        <textarea value={basics.summary ?? ''} onChange={(e) => set('summary', e.target.value)}
-          placeholder="Brief professional summary..." rows={4}
-          className="w-full border border-indigo-200 rounded-lg px-3 py-1.5 text-sm bg-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y" />
+        <RichTextField
+          value={basics.summary ?? ''}
+          onChange={(v) => set('summary', v)}
+          placeholder="Brief professional summary..."
+          rows={4}
+        />
       </div>
     </div>
   )

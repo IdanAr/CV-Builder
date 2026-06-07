@@ -2,6 +2,12 @@
 
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { renderCustomSection } from './renderCustomSection'
+import { richTextToHtml } from '@/lib/rich-text'
+
+function rt(text: string | undefined | null): React.ReactNode {
+  if (!text) return null
+  return <span dangerouslySetInnerHTML={{ __html: richTextToHtml(text) }} />
+}
 
 export interface TemplateProps {
   data: ResumeData
@@ -61,10 +67,10 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
                   </span>
                 </div>
                 <div style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{job.position}</div>
-                {job.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{job.summary}</div>}
+                {job.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(job.summary)}</div>}
                 {(job.highlights ?? []).length > 0 && (
                   <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
-                    {(job.highlights ?? []).map((h, hi) => <li key={hi}>{h}</li>)}
+                    {(job.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
               </div>
@@ -145,7 +151,12 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
                   </span>
                 </div>
                 <div style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{v.position}</div>
-                {v.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{v.summary}</div>}
+                {v.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(v.summary)}</div>}
+                {(v.highlights ?? []).length > 0 && (
+                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                    {(v.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
+                  </ul>
+                )}
               </div>
             ))}
           </div>
@@ -184,7 +195,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
       <div style={page}>
         {header}
         {basics.summary && (
-          <div style={{ fontSize: '10pt', fontStyle: 'italic', marginBottom: '12px' }}>{basics.summary}</div>
+          <div style={{ fontSize: '10pt', fontStyle: 'italic', marginBottom: '12px' }}>{rt(basics.summary)}</div>
         )}
         <div style={{ display: 'flex', gap: '24px' }}>
           <div style={{ flex: '0 0 58%' }}>{leftSections.map(renderSection)}</div>
@@ -200,7 +211,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
       {basics.summary && (
         <div>
           <div style={sectionTitle}>Summary</div>
-          <div style={{ fontSize: '10pt' }}>{basics.summary}</div>
+          <div style={{ fontSize: '10pt' }}>{rt(basics.summary)}</div>
         </div>
       )}
       {sectionOrder.map(renderSection)}

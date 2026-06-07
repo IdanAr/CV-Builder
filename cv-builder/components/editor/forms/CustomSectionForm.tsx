@@ -3,6 +3,7 @@
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { MonthYearPicker } from './MonthYearPicker'
+import { RichTextField } from './RichTextField'
 import { CUSTOM_SECTION_FIELDS } from '@/lib/schemas/resume.zod'
 import type { CustomSection, CustomSectionItem, CustomSectionFieldType } from '@/lib/schemas/resume.zod'
 
@@ -61,26 +62,33 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
       )}
 
       {enabledFields.includes('summary') && (
-        <textarea value={item.summary ?? ''} onChange={(e) => set('summary', e.target.value)}
-          placeholder="Description..." rows={2}
-          className={`${inputClass} resize-y`} />
+        <RichTextField
+          value={item.summary ?? ''}
+          onChange={(v) => set('summary', v)}
+          placeholder="Description..."
+          rows={2}
+        />
       )}
 
       {enabledFields.includes('highlights') && (
         <div className="space-y-1">
           <div className="text-xs text-indigo-500 font-medium">Bullets</div>
           {(item.highlights ?? []).map((h, i) => (
-            <div key={i} className="flex gap-2">
-              <input type="text" value={h}
-                onChange={(e) => {
+            <div key={i} className="flex gap-2 items-start">
+              <RichTextField
+                value={h}
+                onChange={(v) => {
                   const next = [...(item.highlights ?? [])]
-                  next[i] = e.target.value
+                  next[i] = v
                   setArr('highlights', next)
                 }}
-                placeholder="Bullet point..." className={`${inputClass} flex-1`} />
+                placeholder="Bullet point..."
+                rows={1}
+                className="flex-1"
+              />
               <button type="button"
                 onClick={() => setArr('highlights', (item.highlights ?? []).filter((_, idx) => idx !== i))}
-                className="text-gray-400 hover:text-red-500 text-sm">✕</button>
+                className="text-gray-400 hover:text-red-500 text-sm mt-6">✕</button>
             </div>
           ))}
           <button type="button"

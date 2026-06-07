@@ -2,6 +2,7 @@
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { MonthYearPicker } from './MonthYearPicker'
+import { RichTextField } from './RichTextField'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type Item = NonNullable<ResumeData['volunteer']>[number]
@@ -35,17 +36,25 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
         <MonthYearPicker value={item.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
         <MonthYearPicker value={item.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
       </div>
-      <textarea value={item.summary ?? ''} onChange={(e) => set('summary', e.target.value)}
-        placeholder="Summary..." rows={2}
-        className="w-full border border-indigo-200 rounded-lg px-2 py-1 text-sm bg-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y" />
+      <RichTextField
+        value={item.summary ?? ''}
+        onChange={(v) => set('summary', v)}
+        placeholder="Summary..."
+        rows={2}
+      />
       <div className="space-y-1">
         <label className="block text-xs font-medium text-indigo-600">Highlights</label>
         {(item.highlights ?? []).map((h, i) => (
-          <div key={i} className="flex gap-1">
-            <input type="text" value={h} onChange={(e) => updateH(i, e.target.value)}
-              placeholder="Achievement..." className={`${inputClass} flex-1`} />
+          <div key={i} className="flex gap-1 items-start">
+            <RichTextField
+              value={h}
+              onChange={(v) => updateH(i, v)}
+              placeholder="Achievement..."
+              rows={1}
+              className="flex-1"
+            />
             <button type="button" onClick={() => removeH(i)} aria-label="Remove highlight"
-              className="text-gray-400 hover:text-red-500 text-xs px-1">✕</button>
+              className="text-gray-400 hover:text-red-500 text-xs px-1 mt-6">✕</button>
           </div>
         ))}
         <button type="button" onClick={addH} className="text-xs text-indigo-600 hover:text-indigo-800">

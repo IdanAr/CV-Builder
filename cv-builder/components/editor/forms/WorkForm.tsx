@@ -5,6 +5,7 @@ import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { AiSuggestButton } from '@/components/ai/AiSuggestButton'
 import { MonthYearPicker } from './MonthYearPicker'
+import { RichTextField } from './RichTextField'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type WorkItem = NonNullable<ResumeData['work']>[number]
@@ -53,15 +54,23 @@ function WorkItemForm({
         <MonthYearPicker value={item.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
         <MonthYearPicker value={item.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
       </div>
-      <textarea value={item.summary ?? ''} onChange={(e) => set('summary', e.target.value)}
-        placeholder="Role summary..." rows={2}
-        className="w-full border border-indigo-200 rounded-lg px-2 py-1 text-sm bg-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y" />
+      <RichTextField
+        value={item.summary ?? ''}
+        onChange={(v) => set('summary', v)}
+        placeholder="Role summary..."
+        rows={2}
+      />
       <div className="space-y-1">
         <label className="block text-xs font-medium text-indigo-600">Bullet points</label>
         {(item.highlights ?? []).map((h, i) => (
-          <div key={i} className="flex gap-1 items-center">
-            <input type="text" value={h} onChange={(e) => updateHighlight(i, e.target.value)}
-              placeholder="Achieved X by doing Y, resulting in Z" className={`${inputClass} flex-1`} />
+          <div key={i} className="flex gap-1 items-start">
+            <RichTextField
+              value={h}
+              onChange={(v) => updateHighlight(i, v)}
+              placeholder="Achieved X by doing Y, resulting in Z"
+              rows={1}
+              className="flex-1"
+            />
             <AiSuggestButton
               resumeId={resumeId}
               currentValue={h}
@@ -69,7 +78,7 @@ function WorkItemForm({
               onAccept={(v) => updateHighlight(i, v)}
             />
             <button type="button" onClick={() => removeHighlight(i)} aria-label="Remove highlight"
-              className="text-gray-400 hover:text-red-500 text-xs px-1">✕</button>
+              className="text-gray-400 hover:text-red-500 text-xs px-1 mt-6">✕</button>
           </div>
         ))}
         <button type="button" onClick={addHighlight}

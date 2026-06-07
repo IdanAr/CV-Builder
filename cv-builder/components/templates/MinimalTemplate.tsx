@@ -1,6 +1,12 @@
 'use client'
 import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
+import { richTextToHtml } from '@/lib/rich-text'
+
+function rt(text: string | undefined | null): React.ReactNode {
+  if (!text) return null
+  return <span dangerouslySetInnerHTML={{ __html: richTextToHtml(text) }} />
+}
 
 const ALL_SECTIONS = ['work', 'education', 'skills', 'volunteer', 'languages']
 
@@ -55,10 +61,10 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
                   </span>
                 </div>
                 <div style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{job.position}</div>
-                {job.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{job.summary}</div>}
+                {job.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(job.summary)}</div>}
                 {(job.highlights ?? []).length > 0 && (
                   <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
-                    {(job.highlights ?? []).map((h, hi) => <li key={hi}>{h}</li>)}
+                    {(job.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
               </div>
@@ -139,7 +145,12 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
                   </span>
                 </div>
                 <div style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{v.position}</div>
-                {v.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{v.summary}</div>}
+                {v.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(v.summary)}</div>}
+                {(v.highlights ?? []).length > 0 && (
+                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                    {(v.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
+                  </ul>
+                )}
               </div>
             ))}
           </div>
@@ -170,7 +181,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
           })()}
         </div>
       </div>
-      {basics.summary && <div style={{ fontSize: '10pt', color: '#444', marginBottom: '16px' }}>{basics.summary}</div>}
+      {basics.summary && <div style={{ fontSize: '10pt', color: '#444', marginBottom: '16px' }}>{rt(basics.summary)}</div>}
       {sectionOrder.map(renderSection)}
     </div>
   )
