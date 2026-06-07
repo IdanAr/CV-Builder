@@ -1,0 +1,108 @@
+<h2>Phase 1 — What You'll See in the Browser</h2>
+<p class="subtitle">Section 4 of 4 — two screens, then we write the spec</p>
+
+<div class="section">
+  <div class="split">
+
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div class="mockup">
+        <div class="mockup-header">Screen 1 — Sign-in page (/signin)</div>
+        <div class="mockup-body">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 24px 16px; font-size: 13px;">
+            <div style="font-size: 22px; font-weight: bold; letter-spacing: -0.5px;">CV Builder</div>
+            <div style="color: #888; font-size: 12px;">Sign in to continue</div>
+            <div style="width: 100%; max-width: 240px; display: flex; flex-direction: column; gap: 10px;">
+              <button class="mock-button" style="display:flex; align-items:center; justify-content:center; gap:8px; background: #fff; color: #222; border: 1px solid #ddd; padding: 10px; border-radius: 6px; font-size: 13px; cursor: default;">
+                <span style="font-size:15px;">G</span> Continue with Google
+              </button>
+              <button class="mock-button" style="display:flex; align-items:center; justify-content:center; gap:8px; background: #24292e; color: #fff; padding: 10px; border-radius: 6px; font-size: 13px; cursor: default;">
+                <span style="font-size:15px;">⌥</span> Continue with GitHub
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size: 12px; color: #888; line-height: 1.6; padding: 0 4px;">
+        Unauthenticated visits to <code>/dashboard</code> or <code>/api/resumes</code> are redirected here by <code>middleware.ts</code> before any page or handler runs.
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div class="mockup">
+        <div class="mockup-header">Screen 2 — Dashboard (/dashboard)</div>
+        <div class="mockup-body">
+          <div style="font-size: 13px; padding: 8px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <div style="font-weight: bold; font-size: 15px;">My CVs</div>
+              <button class="mock-button" style="padding: 6px 14px; font-size: 12px; border-radius: 6px;">+ New CV</button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-weight: bold;">Software Engineer — Google</div>
+                  <div style="color: #888; font-size: 11px;">Updated 2 hours ago</div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <button class="mock-button" style="padding: 4px 10px; font-size: 11px; border-radius: 4px;">Open</button>
+                  <button class="mock-button" style="padding: 4px 10px; font-size: 11px; border-radius: 4px; color: #ef4444; border-color: #ef4444;">Delete</button>
+                </div>
+              </div>
+
+              <div style="border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-weight: bold;">Product Manager — Startup</div>
+                  <div style="color: #888; font-size: 11px;">Updated yesterday</div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <button class="mock-button" style="padding: 4px 10px; font-size: 11px; border-radius: 4px;">Open</button>
+                  <button class="mock-button" style="padding: 4px 10px; font-size: 11px; border-radius: 4px; color: #ef4444; border-color: #ef4444;">Delete</button>
+                </div>
+              </div>
+
+              <div style="border: 1px dashed var(--border); border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; justify-content: center; color: #555; font-size: 12px;">
+                + Create your first CV
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <div style="font-size: 12px; color: #888; line-height: 1.6; padding: 0 4px;">
+        "Open" navigates to <code>/dashboard/resumes/[id]</code> — a placeholder page in Phase 1. The full editor is Phase 2.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <h3>Phase 1 success criteria</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+    <div style="padding: 10px 12px; background: var(--card-bg, #1e1e2e); border-radius: 6px; border-left: 3px solid #22c55e; line-height: 1.5;">Sign in with Google or GitHub, session persists across refreshes</div>
+    <div style="padding: 10px 12px; background: var(--card-bg, #1e1e2e); border-radius: 6px; border-left: 3px solid #22c55e; line-height: 1.5;">Create a new CV — stored in MongoDB with full JSON Resume skeleton + default meta</div>
+    <div style="padding: 10px 12px; background: var(--card-bg, #1e1e2e); border-radius: 6px; border-left: 3px solid #22c55e; line-height: 1.5;">List, fetch, patch, and delete resumes via REST API with correct auth scoping</div>
+    <div style="padding: 10px 12px; background: var(--card-bg, #1e1e2e); border-radius: 6px; border-left: 3px solid #22c55e; line-height: 1.5;">Zod rejects invalid payloads with structured errors; valid data round-trips without loss</div>
+    <div style="padding: 10px 12px; background: var(--card-bg, #1e1e2e); border-radius: 6px; border-left: 3px solid #22c55e; line-height: 1.5;">Unauthenticated requests to any dashboard or API route are blocked at middleware</div>
+    <div style="padding: 10px 12px; background: var(--card-bg, #1e1e2e); border-radius: 6px; border-left: 3px solid #22c55e; line-height: 1.5;">Dashboard lists the user's CVs with create and delete working end-to-end</div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>Design approved — write the spec</h3>
+      <p>Save to docs/superpowers/specs/ and move to implementation planning</p>
+    </div>
+  </div>
+  <div class="option" data-choice="change" onclick="toggleSelect(this)">
+    <div class="letter">↩</div>
+    <div class="content">
+      <h3>I want to change something</h3>
+      <p>Tell me in the terminal what to adjust</p>
+    </div>
+  </div>
+</div>

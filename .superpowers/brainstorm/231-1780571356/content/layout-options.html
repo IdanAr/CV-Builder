@@ -1,0 +1,173 @@
+<h2>Editor Layout Options</h2>
+<p class="subtitle">All three keep Edit, Design, and Preview visible simultaneously. Pick the structure that feels right.</p>
+
+<div class="cards">
+
+  <!-- Option A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8fafc;padding:12px;border-bottom:1px solid #e2e8f0">
+      <div style="display:flex;gap:6px;height:160px;font-size:10px">
+        <!-- Left: Edit -->
+        <div style="width:38%;background:#fff;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden">
+          <div style="background:#1e293b;color:#fff;padding:4px 6px;font-size:9px;font-weight:600">✏️ EDIT</div>
+          <div style="padding:6px;display:flex;flex-direction:column;gap:3px">
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:3px;padding:3px 5px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:9px;font-weight:600">▸ Work Experience</span>
+              <span style="color:#94a3b8;font-size:9px">↑↓</span>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:3px;padding:3px 5px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:9px;font-weight:600">▸ Education</span>
+              <span style="color:#94a3b8;font-size:9px">↑↓</span>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:3px;padding:3px 5px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:9px;font-weight:600">▸ Skills</span>
+              <span style="color:#94a3b8;font-size:9px">↑↓</span>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:3px;padding:3px 5px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:9px;font-weight:600">▸ Certifications</span>
+              <span style="color:#94a3b8;font-size:9px">↑↓</span>
+            </div>
+          </div>
+        </div>
+        <!-- Center: Preview -->
+        <div style="flex:1;background:#fff;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden">
+          <div style="background:#0f172a;color:#fff;padding:4px 6px;font-size:9px;font-weight:600">👁 PREVIEW</div>
+          <div style="padding:8px;display:flex;flex-direction:column;gap:2px">
+            <div style="height:8px;background:#334155;border-radius:2px;width:60%;margin:0 auto 4px"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:80%"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:90%"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:70%"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:85%"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:60%"></div>
+          </div>
+        </div>
+        <!-- Right: Design -->
+        <div style="width:28%;background:#fff;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden">
+          <div style="background:#7c3aed;color:#fff;padding:4px 6px;font-size:9px;font-weight:600">🎨 DESIGN</div>
+          <div style="padding:6px;display:flex;flex-direction:column;gap:4px">
+            <div style="font-size:8px;color:#64748b;font-weight:600">TEMPLATE</div>
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:2px;padding:2px 4px;font-size:8px">Classic ●</div>
+            <div style="font-size:8px;color:#64748b;font-weight:600">FONT</div>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:2px;padding:2px 4px;font-size:8px">Calibri ▾</div>
+            <div style="font-size:8px;color:#64748b;font-weight:600">COLOR</div>
+            <div style="display:flex;gap:3px;align-items:center"><div style="width:12px;height:12px;background:#0066cc;border-radius:2px"></div><div style="font-size:8px">#0066cc</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Three Panels</h3>
+      <p>Edit · Preview · Design always visible side by side. Section ↑↓ arrows live on each accordion row in Edit. Maximum information density.</p>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8fafc;padding:12px;border-bottom:1px solid #e2e8f0">
+      <div style="display:flex;gap:6px;height:160px;font-size:10px">
+        <!-- Left: Edit with Design collapsed at top -->
+        <div style="width:42%;background:#fff;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden">
+          <div style="background:#1e293b;color:#fff;padding:4px 6px;font-size:9px;font-weight:600;display:flex;justify-content:space-between">
+            <span>✏️ EDIT</span>
+            <span style="background:#7c3aed;border-radius:2px;padding:0 4px;font-size:8px">🎨 Design ▾</span>
+          </div>
+          <!-- Collapsed Design strip -->
+          <div style="background:#faf5ff;border-bottom:1px solid #e9d5ff;padding:3px 6px;display:flex;gap:6px;align-items:center">
+            <span style="font-size:8px;color:#7c3aed">Classic</span>
+            <span style="font-size:8px;color:#7c3aed">Calibri</span>
+            <div style="width:8px;height:8px;background:#0066cc;border-radius:50%"></div>
+            <span style="font-size:8px;color:#94a3b8">margins 1.0"</span>
+          </div>
+          <div style="padding:6px;display:flex;flex-direction:column;gap:3px">
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:3px;padding:3px 5px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:9px;font-weight:600">▸ Work Experience</span>
+              <span style="color:#94a3b8;font-size:9px">↑↓</span>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:3px;padding:3px 5px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:9px;font-weight:600">▸ Education</span>
+              <span style="color:#94a3b8;font-size:9px">↑↓</span>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:3px;padding:3px 5px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:9px;font-weight:600">▸ Skills</span>
+              <span style="color:#94a3b8;font-size:9px">↑↓</span>
+            </div>
+          </div>
+        </div>
+        <!-- Right: Preview -->
+        <div style="flex:1;background:#fff;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden">
+          <div style="background:#0f172a;color:#fff;padding:4px 6px;font-size:9px;font-weight:600">👁 LIVE PREVIEW</div>
+          <div style="padding:8px;display:flex;flex-direction:column;gap:2px">
+            <div style="height:8px;background:#334155;border-radius:2px;width:60%;margin:0 auto 4px"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:80%"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:90%"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:70%"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:85%"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:60%"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:75%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Two Panels + Design Strip</h3>
+      <p>Edit (left) and Preview (right) split the screen. A compact Design strip above the accordion shows key settings inline — click to expand the full panel. Preview gets more space.</p>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8fafc;padding:12px;border-bottom:1px solid #e2e8f0">
+      <div style="display:flex;gap:6px;height:160px;font-size:10px">
+        <!-- Left: Tabs Edit/Design -->
+        <div style="width:42%;background:#fff;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden">
+          <div style="display:flex;border-bottom:1px solid #e2e8f0">
+            <div style="padding:4px 8px;font-size:9px;font-weight:600;background:#1e293b;color:#fff;border-right:1px solid #334155">✏️ Edit</div>
+            <div style="padding:4px 8px;font-size:9px;font-weight:600;background:#f8fafc;color:#64748b;border-right:1px solid #e2e8f0">🎨 Design</div>
+            <div style="padding:4px 8px;font-size:9px;font-weight:600;background:#f8fafc;color:#64748b">📊 ATS</div>
+          </div>
+          <div style="padding:6px;display:flex;flex-direction:column;gap:3px">
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:3px;padding:3px 5px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:9px;font-weight:600">▸ Work Experience</span>
+              <span style="color:#94a3b8;font-size:9px">↑↓</span>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:3px;padding:3px 5px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:9px;font-weight:600">▸ Education</span>
+              <span style="color:#94a3b8;font-size:9px">↑↓</span>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:3px;padding:3px 5px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:9px;font-weight:600">▸ Skills</span>
+              <span style="color:#94a3b8;font-size:9px">↑↓</span>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:3px;padding:3px 5px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:9px;font-weight:600">▸ Projects</span>
+              <span style="color:#94a3b8;font-size:9px">↑↓</span>
+            </div>
+          </div>
+        </div>
+        <!-- Right: Preview always -->
+        <div style="flex:1;background:#fff;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden">
+          <div style="background:#0f172a;color:#fff;padding:4px 6px;font-size:9px;font-weight:600">👁 LIVE PREVIEW — always visible</div>
+          <div style="padding:8px;display:flex;flex-direction:column;gap:2px">
+            <div style="height:8px;background:#334155;border-radius:2px;width:60%;margin:0 auto 4px"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:80%"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:90%"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:70%"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:85%"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:60%"></div>
+            <div style="height:4px;background:#e2e8f0;border-radius:2px;width:75%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Left Tabs + Persistent Preview</h3>
+      <p>Left panel switches between Edit / Design / ATS tabs. Right panel is always live preview. Switching to Design immediately shows its effect. Cleanest information hierarchy.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px">In all options, ↑↓ arrows appear on each accordion section header in Edit for reordering.</p>

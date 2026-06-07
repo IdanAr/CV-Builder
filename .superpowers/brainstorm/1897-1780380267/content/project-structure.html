@@ -1,0 +1,108 @@
+<h2>Phase 1 — Project Structure & Architecture</h2>
+<p class="subtitle">Section 1 of 4 — does this layout make sense before we continue?</p>
+
+<div class="section">
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">File Structure</div>
+      <div class="mockup-body">
+        <div style="font-family: monospace; font-size: 13px; line-height: 1.8; color: var(--text);">
+          <div style="color: var(--accent); font-weight: bold;">cv-builder/</div>
+          <div style="padding-left: 16px;">
+            <div style="color: var(--accent);">app/</div>
+            <div style="padding-left: 16px;">
+              <div style="color: #888;">(auth)/signin/page.tsx</div>
+              <div style="color: #888;">(dashboard)/dashboard/page.tsx</div>
+              <div style="color: var(--accent);">api/</div>
+              <div style="padding-left: 16px;">
+                <div style="color: #888;">auth/[...nextauth]/route.ts</div>
+                <div style="color: var(--highlight, #7c3aed);">resumes/route.ts</div>
+                <div style="color: var(--highlight, #7c3aed);">resumes/[id]/route.ts</div>
+              </div>
+              <div style="color: #888;">layout.tsx</div>
+              <div style="color: #888;">page.tsx</div>
+            </div>
+            <div style="color: var(--accent);">lib/</div>
+            <div style="padding-left: 16px;">
+              <div style="color: #888;">auth.ts <span style="color:#888;font-size:11px;">← NextAuth config</span></div>
+              <div style="color: #888;">db.ts <span style="color:#888;font-size:11px;">← MongoDB connection</span></div>
+              <div style="color: var(--accent);">schemas/</div>
+              <div style="padding-left: 16px;">
+                <div style="color: var(--highlight, #7c3aed);">resume.zod.ts <span style="color:#888;font-size:11px;">← Zod + TS types</span></div>
+                <div style="color: #888;">user.zod.ts</div>
+              </div>
+            </div>
+            <div style="color: var(--accent);">models/</div>
+            <div style="padding-left: 16px;">
+              <div style="color: #888;">Resume.ts <span style="color:#888;font-size:11px;">← Mongoose model</span></div>
+              <div style="color: #888;">User.ts</div>
+            </div>
+            <div style="color: #888;">middleware.ts <span style="color:#888;font-size:11px;">← auth protection</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mockup">
+      <div class="mockup-header">Data Flow</div>
+      <div class="mockup-body">
+        <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
+
+          <div style="background: var(--card-bg, #1e1e2e); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center;">
+            <div style="font-weight: bold;">Browser / Client</div>
+            <div style="color: #888; font-size: 11px;">React component</div>
+          </div>
+
+          <div style="text-align: center; color: #888;">↓ fetch /api/resumes</div>
+
+          <div style="background: var(--card-bg, #1e1e2e); border: 1px solid #7c3aed; border-radius: 8px; padding: 12px; text-align: center;">
+            <div style="font-weight: bold; color: #7c3aed;">REST Route Handler</div>
+            <div style="color: #888; font-size: 11px;">app/api/resumes/route.ts</div>
+          </div>
+
+          <div style="text-align: center; color: #888;">↓ validate</div>
+
+          <div style="background: var(--card-bg, #1e1e2e); border: 1px solid #7c3aed; border-radius: 8px; padding: 12px; text-align: center;">
+            <div style="font-weight: bold; color: #7c3aed;">Zod Schema</div>
+            <div style="color: #888; font-size: 11px;">lib/schemas/resume.zod.ts</div>
+          </div>
+
+          <div style="text-align: center; color: #888;">↓ write/read</div>
+
+          <div style="background: var(--card-bg, #1e1e2e); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center;">
+            <div style="font-weight: bold;">Mongoose Model</div>
+            <div style="color: #888; font-size: 11px;">models/Resume.ts → MongoDB Atlas</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Key architectural decisions baked in</h3>
+  <ul style="line-height: 2; color: var(--text);">
+    <li><strong>Route groups</strong> — <code>(auth)</code> and <code>(dashboard)</code> share separate layouts; no auth layout leaks into the dashboard shell</li>
+    <li><strong>Zod is the single validation point</strong> — Mongoose schemas are derived from Zod, not the other way around. Types flow from Zod → TypeScript → Mongoose.</li>
+    <li><strong>Middleware guards all dashboard + API routes</strong> — unauthenticated requests are redirected at the edge before any handler runs</li>
+    <li><strong>MongoDB connection pooled in <code>lib/db.ts</code></strong> — singleton pattern to survive serverless cold starts across route calls</li>
+  </ul>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="yes" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>Looks good — continue to Section 2</h3>
+      <p>Data models (Resume document shape + User model)</p>
+    </div>
+  </div>
+  <div class="option" data-choice="change" onclick="toggleSelect(this)">
+    <div class="letter">↩</div>
+    <div class="content">
+      <h3>I want to change something</h3>
+      <p>Tell me in the terminal what to adjust</p>
+    </div>
+  </div>
+</div>

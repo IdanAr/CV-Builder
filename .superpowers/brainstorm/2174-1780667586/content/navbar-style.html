@@ -1,0 +1,90 @@
+<h2>Which navbar style for the dashboard &amp; editor?</h2>
+<p class="subtitle">The sign-in page already uses the floating glassmorphic pill. What about the app pages?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Same floating pill everywhere</h3>
+      <p>Consistent with the sign-in page. The glassmorphic rounded pill navbar floats above the plasma background on the dashboard and editor too.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Full-width glassmorphic bar for app pages</h3>
+      <p>Sign-in keeps the pill. Dashboard and editor use a full-width frosted glass top bar — more practical for showing the CV title, back button, and export actions in the editor.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:1.5rem">
+  <div class="split">
+
+    <!-- Option A: floating pill everywhere -->
+    <div class="mockup">
+      <div class="mockup-header">A — Floating pill on dashboard</div>
+      <div class="mockup-body" style="padding:0;overflow:hidden;border-radius:8px">
+        <div style="background:linear-gradient(135deg,#4338ca 0%,#7c3aed 50%,#6366f1 100%);min-height:160px;position:relative;padding:.6rem">
+          <div style="position:absolute;inset:0;background:repeating-conic-gradient(from 0deg at 40% 50%, rgba(99,102,241,.3) 0deg, rgba(167,139,250,.15) 60deg, rgba(99,102,241,.3) 120deg);opacity:.5"></div>
+          <!-- Floating pill -->
+          <div style="position:relative;background:rgba(255,255,255,0.6);backdrop-filter:blur(10px);border-radius:30px;padding:.3rem .75rem;display:flex;align-items:center;justify-content:space-between;border:1px solid rgba(255,255,255,0.3);margin-bottom:.8rem">
+            <div style="font-size:.6rem;font-weight:800;background:linear-gradient(90deg,#4f46e5,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent">CV Builder</div>
+            <div style="display:flex;gap:.4rem;align-items:center">
+              <div style="font-size:.45rem;color:#4b5563;font-weight:500">idan@gmail.com</div>
+              <div style="background:#4f46e5;color:white;border-radius:12px;padding:.2rem .45rem;font-size:.45rem;font-weight:600">+ New CV</div>
+            </div>
+          </div>
+          <!-- Page content below -->
+          <div style="position:relative">
+            <div style="font-size:.65rem;font-weight:800;color:white;margin-bottom:.5rem;text-shadow:0 1px 4px rgba(0,0,0,.2)">My CVs</div>
+            <div style="background:rgba(255,255,255,0.65);backdrop-filter:blur(8px);border-radius:8px;padding:.4rem .6rem;margin-bottom:.3rem;border:1px solid rgba(255,255,255,0.3)">
+              <div style="font-size:.55rem;font-weight:700;color:#1e1b4b">My Resume — Software Engineer</div>
+              <div style="font-size:.45rem;color:#6b7280;margin:.1rem 0 .3rem">classic · 6 sections</div>
+              <div style="display:flex;gap:.25rem">
+                <div style="border:1px solid #c7d2fe;color:#4f46e5;border-radius:4px;padding:.12rem .35rem;font-size:.4rem;font-weight:600">Open</div>
+                <div style="border:1px solid rgba(255,255,255,0.4);color:#6b7280;border-radius:4px;padding:.12rem .35rem;font-size:.4rem">↓ JSON</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Option B: full-width bar -->
+    <div class="mockup">
+      <div class="mockup-header">B — Full-width glass bar on dashboard &amp; editor</div>
+      <div class="mockup-body" style="padding:0;overflow:hidden;border-radius:8px">
+        <div style="background:linear-gradient(135deg,#4338ca 0%,#7c3aed 50%,#6366f1 100%);min-height:160px;position:relative">
+          <div style="position:absolute;inset:0;background:repeating-conic-gradient(from 0deg at 40% 50%, rgba(99,102,241,.3) 0deg, rgba(167,139,250,.15) 60deg, rgba(99,102,241,.3) 120deg);opacity:.5"></div>
+          <!-- Full-width glass bar -->
+          <div style="position:relative;background:rgba(255,255,255,0.55);backdrop-filter:blur(12px);padding:.35rem 1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.3)">
+            <div style="font-size:.6rem;font-weight:800;background:linear-gradient(90deg,#4f46e5,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent">CV Builder</div>
+            <div style="display:flex;gap:.4rem;align-items:center">
+              <div style="font-size:.45rem;color:#4b5563;font-weight:500">idan@gmail.com</div>
+              <div style="background:#4f46e5;color:white;border-radius:6px;padding:.2rem .45rem;font-size:.45rem;font-weight:600">+ New CV</div>
+            </div>
+          </div>
+          <!-- Page content below -->
+          <div style="position:relative;padding:.6rem">
+            <div style="font-size:.65rem;font-weight:800;color:white;margin-bottom:.5rem;text-shadow:0 1px 4px rgba(0,0,0,.2)">My CVs</div>
+            <div style="background:rgba(255,255,255,0.65);backdrop-filter:blur(8px);border-radius:8px;padding:.4rem .6rem;margin-bottom:.3rem;border:1px solid rgba(255,255,255,0.3)">
+              <div style="font-size:.55rem;font-weight:700;color:#1e1b4b">My Resume — Software Engineer</div>
+              <div style="font-size:.45rem;color:#6b7280;margin:.1rem 0 .3rem">classic · 6 sections</div>
+              <div style="display:flex;gap:.25rem">
+                <div style="border:1px solid #c7d2fe;color:#4f46e5;border-radius:4px;padding:.12rem .35rem;font-size:.4rem;font-weight:600">Open</div>
+                <div style="border:1px solid rgba(255,255,255,0.4);color:#6b7280;border-radius:4px;padding:.12rem .35rem;font-size:.4rem">↓ JSON</div>
+              </div>
+            </div>
+          </div>
+          <!-- Editor preview inset -->
+          <div style="position:relative;margin:0 .6rem .6rem;background:rgba(255,255,255,0.55);backdrop-filter:blur(8px);border-radius:6px;padding:.3rem .5rem;border:1px solid rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:.45rem;color:#4b5563">← My CVs &nbsp;<span style="color:#1e1b4b;font-weight:600">My Resume</span></div>
+            <div style="background:#4f46e5;color:white;border-radius:4px;padding:.15rem .4rem;font-size:.4rem;font-weight:600">Export PDF</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
