@@ -118,8 +118,14 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
       )}
 
       {enabledFields.includes('level') && (
-        <input type="text" value={item.level ?? ''} onChange={(e) => set('level', e.target.value)}
-          placeholder="Level (e.g. Beginner, Advanced)" className={inputClass} />
+        <select value={item.level ?? ''} onChange={(e) => set('level', e.target.value)}
+          className={inputClass}>
+          <option value="">Select level…</option>
+          <option value="Expert">Expert</option>
+          <option value="Advanced">Advanced</option>
+          <option value="Intermediate">Intermediate</option>
+          <option value="Beginner">Beginner</option>
+        </select>
       )}
     </div>
   )

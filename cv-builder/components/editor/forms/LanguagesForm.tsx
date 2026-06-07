@@ -13,8 +13,16 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
     <div className="flex gap-2 items-center">
       <input type="text" value={item.language ?? ''} onChange={(e) => set('language', e.target.value)}
         placeholder="Language" className={`${inputClass} flex-1`} />
-      <input type="text" value={item.fluency ?? ''} onChange={(e) => set('fluency', e.target.value)}
-        placeholder="Fluency (Native)" className={`${inputClass} flex-1`} />
+      <select value={item.fluency ?? ''} onChange={(e) => set('fluency', e.target.value)}
+        className={`${inputClass} flex-1`}>
+        <option value="">Select fluency…</option>
+        <option value="Native">Native</option>
+        <option value="Fluent">Fluent</option>
+        <option value="Advanced">Advanced</option>
+        <option value="Intermediate">Intermediate</option>
+        <option value="Elementary">Elementary</option>
+        <option value="Conversational">Conversational</option>
+      </select>
       <button type="button" onClick={onRemove} aria-label="Remove language"
         className="text-gray-400 hover:text-red-500 text-sm">✕</button>
     </div>

@@ -27,8 +27,14 @@ function SkillItemForm({ item, onUpdate, onRemove }: { item: SkillItem; onUpdate
         <div className="grid grid-cols-2 gap-2 flex-1">
           <input type="text" value={item.name ?? ''} onChange={(e) => set('name', e.target.value)}
             placeholder="Skill name" className={inputClass} />
-          <input type="text" value={item.level ?? ''} onChange={(e) => set('level', e.target.value)}
-            placeholder="Level (Expert)" className={inputClass} />
+          <select value={item.level ?? ''} onChange={(e) => set('level', e.target.value)}
+            className={inputClass}>
+            <option value="">Select level…</option>
+            <option value="Expert">Expert</option>
+            <option value="Advanced">Advanced</option>
+            <option value="Intermediate">Intermediate</option>
+            <option value="Beginner">Beginner</option>
+          </select>
         </div>
         <button type="button" onClick={onRemove} aria-label="Remove skill"
           className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
