@@ -16,7 +16,7 @@ const FIELD_LABELS: Record<CustomSectionFieldType, string> = {
 }
 
 const inputClass =
-  'w-full border border-indigo-200 rounded-lg px-2 py-1 text-sm bg-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+  'w-full border border-indigo-200 rounded-lg px-2 py-1 text-sm bg-white/70 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
 
 function createEmptyItem(): CustomSectionItem {
   return { id: crypto.randomUUID() }

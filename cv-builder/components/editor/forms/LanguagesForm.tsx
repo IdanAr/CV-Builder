@@ -5,7 +5,7 @@ import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type Item = NonNullable<ResumeData['languages']>[number]
 const createEmpty = (): Item => ({ language: '', fluency: '' })
-const inputClass = 'w-full border border-indigo-200 rounded-lg px-2 py-1 text-sm bg-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+const inputClass = 'w-full border border-indigo-200 rounded-lg px-2 py-1 text-sm bg-white/70 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
 
 function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item) => void; onRemove: () => void }) {
   const set = (f: keyof Item, v: string) => onUpdate({ ...item, [f]: v })
