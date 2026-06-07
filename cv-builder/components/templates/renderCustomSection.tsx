@@ -33,7 +33,9 @@ export function renderCustomSection(
           )}
           {enabledFields.includes('url') && item.url && (
             <div style={{ fontSize: '9pt', color: '#666' }}>
-              <a href={item.url}>{item.url}</a>
+              <a href={/^https?:\/\//i.test(item.url) ? item.url : `https://${item.url}`}
+                 target="_blank" rel="noopener noreferrer"
+                 style={{ color: '#0066cc' }}>{item.url}</a>
             </div>
           )}
           {enabledFields.includes('summary') && item.summary && (

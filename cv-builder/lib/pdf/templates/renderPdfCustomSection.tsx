@@ -1,6 +1,7 @@
 import React from 'react'
-import { View, Text } from '@react-pdf/renderer'
+import { View, Text, Link } from '@react-pdf/renderer'
 import type { CustomSection } from '@/lib/schemas/resume.zod'
+import { ensureHttps } from './pdf-utils'
 
 interface PdfCustomSectionStyles {
   sectionTitle: object
@@ -36,7 +37,9 @@ export function renderPdfCustomSection(
             <Text style={styles.accent}>{item.subtitle}</Text>
           ) : null}
           {enabledFields.includes('url') && item.url ? (
-            <Text style={styles.small}>{item.url}</Text>
+            <Link src={ensureHttps(item.url)}>
+              <Text style={styles.small}>{item.url}</Text>
+            </Link>
           ) : null}
           {enabledFields.includes('summary') && item.summary ? (
             <Text style={styles.body}>{item.summary}</Text>

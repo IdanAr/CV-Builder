@@ -1,5 +1,5 @@
 import {
-  Document, Paragraph, TextRun,
+  Document, Paragraph, TextRun, ExternalHyperlink,
   AlignmentType, BorderStyle, convertInchesToTwip,
 } from 'docx'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
@@ -93,11 +93,29 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
       spacing: { after: 40 },
     }))
   }
-  const contactParts = [basics.email, basics.phone,
-    [basics.location?.city, basics.location?.region].filter(Boolean).join(', ')].filter(Boolean)
-  if (contactParts.length) {
+  const ensureHttps = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`
+  const sep = () => new TextRun({ text: ' · ', font: bodyFont, size: 20, color: '555555' })
+  const contactRuns: (TextRun | ExternalHyperlink)[] = []
+  if (basics.email) {
+    if (contactRuns.length) contactRuns.push(sep())
+    contactRuns.push(new ExternalHyperlink({ children: [new TextRun({ text: basics.email, font: bodyFont, size: 20, color: '0563C1', underline: {} })], link: `mailto:${basics.email}` }))
+  }
+  if (basics.phone) {
+    if (contactRuns.length) contactRuns.push(sep())
+    contactRuns.push(new TextRun({ text: basics.phone, font: bodyFont, size: 20, color: '555555' }))
+  }
+  if (basics.url) {
+    if (contactRuns.length) contactRuns.push(sep())
+    contactRuns.push(new ExternalHyperlink({ children: [new TextRun({ text: basics.url, font: bodyFont, size: 20, color: '0563C1', underline: {} })], link: ensureHttps(basics.url) }))
+  }
+  const contactLocation = [basics.location?.city, basics.location?.region].filter(Boolean).join(', ')
+  if (contactLocation) {
+    if (contactRuns.length) contactRuns.push(sep())
+    contactRuns.push(new TextRun({ text: contactLocation, font: bodyFont, size: 20, color: '555555' }))
+  }
+  if (contactRuns.length) {
     children.push(new Paragraph({
-      children: [new TextRun({ text: contactParts.join(' · '), font: bodyFont, size: 20, color: '555555' })],
+      children: contactRuns,
       alignment: AlignmentType.CENTER,
       spacing: { after: 120 },
     }))
@@ -135,7 +153,10 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
           children.push(new Paragraph({ children: [new TextRun({ text: item.subtitle, font: bodyFont, size: 21, color: '0066cc' })], spacing: { after: 40 } }))
         }
         if (cs.enabledFields.includes('url') && item.url) {
-          children.push(new Paragraph({ children: [new TextRun({ text: item.url, font: bodyFont, size: 18, color: '666666' })], spacing: { after: 20 } }))
+          children.push(new Paragraph({
+            children: [new ExternalHyperlink({ children: [new TextRun({ text: item.url, font: bodyFont, size: 18, color: '0563C1', underline: {} })], link: ensureHttps(item.url) })],
+            spacing: { after: 20 },
+          }))
         }
         if (cs.enabledFields.includes('summary') && item.summary) {
           children.push(new Paragraph({ children: [new TextRun({ text: item.summary, font: bodyFont, size: 20 })], spacing: { after: 40 } }))

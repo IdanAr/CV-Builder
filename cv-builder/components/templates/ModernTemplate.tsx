@@ -167,7 +167,16 @@ export function ModernTemplate({ data, meta }: TemplateProps) {
           <div style={{ fontFamily: `${meta.headerFontFamily}, Arial, sans-serif`, fontSize: '22pt', fontWeight: 700 }}>{basics.name}</div>
           {basics.label && <div style={{ fontSize: '12pt', opacity: 0.85, marginTop: '2px' }}>{basics.label}</div>}
           <div style={{ fontSize: '10pt', opacity: 0.75, marginTop: '4px' }}>
-            {[basics.email, basics.phone, [basics.location?.city, basics.location?.region].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
+            {(() => {
+              const eu = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`
+              const parts: React.ReactNode[] = []
+              if (basics.email) parts.push(<a key="em" href={`mailto:${basics.email}`} style={{ color: 'inherit', textDecoration: 'none' }}>{basics.email}</a>)
+              if (basics.phone) parts.push(basics.phone)
+              if (basics.url) parts.push(<a key="ul" href={eu(basics.url)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{basics.url}</a>)
+              const loc = [basics.location?.city, basics.location?.region].filter(Boolean).join(', ')
+              if (loc) parts.push(loc)
+              return parts.flatMap((p, i) => i < parts.length - 1 ? [p, ' · '] : [p])
+            })()}
           </div>
         </div>
         <div style={{ padding: `${pad}px`, display: 'flex', gap: '24px' }}>

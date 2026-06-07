@@ -25,3 +25,7 @@ export const DEFAULT_SECTION_ORDER = [
 export function resolveSectionOrder(meta: ResumeMeta): string[] {
   return meta.sectionOrder?.length > 0 ? meta.sectionOrder : DEFAULT_SECTION_ORDER
 }
+
+export function ensureHttps(url: string): string {
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`
+}

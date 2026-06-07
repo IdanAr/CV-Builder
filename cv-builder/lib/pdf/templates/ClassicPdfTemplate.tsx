@@ -1,7 +1,7 @@
 import React from 'react'
-import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/renderer'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
-import { mapToPdfFont, inToPt, formatContact, resolveSectionOrder } from './pdf-utils'
+import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 
 export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: ResumeMeta }) {
@@ -29,6 +29,29 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
     body: { fontSize: 10 },
     summaryBox: { fontSize: 10, marginTop: 8 },
   })
+
+  function buildContactRow() {
+    const items: Array<{ label: string; href: string }> = []
+    if (basics.email) items.push({ label: basics.email, href: `mailto:${basics.email}` })
+    if (basics.phone) items.push({ label: basics.phone, href: '' })
+    if (basics.url) items.push({ label: basics.url, href: ensureHttps(basics.url) })
+    const loc = [basics.location?.city, basics.location?.region].filter(Boolean).join(', ')
+    if (loc) items.push({ label: loc, href: '' })
+    if (!items.length) return null
+    return (
+      <View style={{ flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', marginTop: 3 }}>
+        {items.map((item, i) => (
+          <React.Fragment key={i}>
+            {item.href
+              ? <Link src={item.href}><Text style={{ fontSize: 10, color: '#0563C1' }}>{item.label}</Text></Link>
+              : <Text style={{ fontSize: 10, color: '#555555' }}>{item.label}</Text>
+            }
+            {i < items.length - 1 && <Text style={{ fontSize: 10, color: '#555555' }}> · </Text>}
+          </React.Fragment>
+        ))}
+      </View>
+    )
+  }
 
   function renderPdfSection(section: string): React.ReactNode {
     if (section.startsWith('custom:')) {
@@ -216,7 +239,7 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
           <View style={{ marginBottom: 12 }}>
             <Text style={styles.name}>{basics.name ?? ''}</Text>
             {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
-            <Text style={styles.contact}>{formatContact(basics)}</Text>
+            {buildContactRow()}
             {basics.summary ? <Text style={styles.summaryBox}>{basics.summary}</Text> : null}
           </View>
           {/* Decorative divider — tagged as artifact */}
