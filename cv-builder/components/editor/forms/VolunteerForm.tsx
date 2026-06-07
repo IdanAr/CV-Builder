@@ -1,6 +1,7 @@
 'use client'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
+import { MonthYearPicker } from './MonthYearPicker'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type Item = NonNullable<ResumeData['volunteer']>[number]
@@ -31,10 +32,8 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
           className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <input type="text" value={item.startDate ?? ''} onChange={(e) => set('startDate', e.target.value)}
-          placeholder="Start date" className={inputClass} />
-        <input type="text" value={item.endDate ?? ''} onChange={(e) => set('endDate', e.target.value)}
-          placeholder="End date" className={inputClass} />
+        <MonthYearPicker value={item.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
+        <MonthYearPicker value={item.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
       </div>
       <textarea value={item.summary ?? ''} onChange={(e) => set('summary', e.target.value)}
         placeholder="Summary..." rows={2}

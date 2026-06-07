@@ -2,6 +2,7 @@
 
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
+import { MonthYearPicker } from './MonthYearPicker'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type EduItem = NonNullable<ResumeData['education']>[number]
@@ -31,10 +32,8 @@ function EduItemForm({ item, onUpdate, onRemove }: { item: EduItem; onUpdate: (v
           placeholder="Field of study" className={inputClass} />
       </div>
       <div className="grid grid-cols-3 gap-2">
-        <input type="text" value={item.startDate ?? ''} onChange={(e) => set('startDate', e.target.value)}
-          placeholder="Start (2018-09)" className={inputClass} />
-        <input type="text" value={item.endDate ?? ''} onChange={(e) => set('endDate', e.target.value)}
-          placeholder="End (2022-06)" className={inputClass} />
+        <MonthYearPicker value={item.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
+        <MonthYearPicker value={item.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
         <input type="text" value={item.score ?? ''} onChange={(e) => set('score', e.target.value)}
           placeholder="GPA / Score" className={inputClass} />
       </div>
