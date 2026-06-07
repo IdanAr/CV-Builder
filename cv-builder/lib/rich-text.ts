@@ -81,12 +81,12 @@ export function parseRichText(input: string): TextRun[] {
     if (tok.type !== 'marker') continue
     if (usedAsClose.has(ti)) continue
     // Already paired as an open? skip
-    if ([...pairs.keys()].includes(ti)) continue
+    if (pairs.has(ti)) continue
 
     // Search for a matching close
     for (let tj = ti + 1; tj < tokens.length; tj++) {
       if (usedAsClose.has(tj)) continue
-      if ([...pairs.keys()].includes(tj)) continue
+      if (pairs.has(tj)) continue
       const candidate = tokens[tj]
       if (candidate.type === 'marker' && candidate.value === tok.value) {
         // Check there's at least one text token in between (otherwise **  ** is odd

@@ -71,7 +71,7 @@ export function RichTextField({
           value.slice(end + markerLen)
         newStart = start - markerLen
         newEnd = end - markerLen
-      } else if (selected.startsWith(marker) && selected.endsWith(marker) && selected.length > marker.length * 2) {
+      } else if (selected.startsWith(marker) && selected.endsWith(marker) && selected.length >= marker.length * 2) {
         // Selection itself starts and ends with the marker — toggle off
         const inner = selected.slice(markerLen, selected.length - markerLen)
         newValue = value.slice(0, start) + inner + value.slice(end)
