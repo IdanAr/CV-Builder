@@ -1,7 +1,7 @@
 import React from 'react'
 import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/renderer'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
-import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps } from './pdf-utils'
+import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 
 export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: ResumeMeta }) {
@@ -73,9 +73,9 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
                   <Text style={styles.small}>{[job.startDate, job.endDate || 'Present'].filter(Boolean).join(' – ')}</Text>
                 </View>
                 <Text style={styles.accent}>{job.position ?? ''}</Text>
-                {job.summary ? <Text style={styles.body}>{job.summary}</Text> : null}
+                {renderPdfRichText(job.summary, styles.body)}
                 {(job.highlights ?? []).map((h, hi) => (
-                  <Text key={hi} style={styles.bullet}>• {h}</Text>
+                  <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
                 ))}
               </View>
             ))}
@@ -187,8 +187,10 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
                   <Text style={styles.small}>{[v.startDate, v.endDate || 'Present'].filter(Boolean).join(' – ')}</Text>
                 </View>
                 <Text style={styles.accent}>{v.position ?? ''}</Text>
-                {v.summary ? <Text style={styles.body}>{v.summary}</Text> : null}
-                {(v.highlights ?? []).map((h, hi) => <Text key={hi} style={styles.bullet}>• {h}</Text>)}
+                {renderPdfRichText(v.summary, styles.body)}
+                {(v.highlights ?? []).map((h, hi) => (
+                  <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                ))}
               </View>
             ))}
           </View>
@@ -240,7 +242,7 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
             <Text style={styles.name}>{basics.name ?? ''}</Text>
             {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
             {buildContactRow()}
-            {basics.summary ? <Text style={styles.summaryBox}>{basics.summary}</Text> : null}
+            {renderPdfRichText(basics.summary, styles.summaryBox)}
           </View>
           {/* Decorative divider — tagged as artifact */}
           <View aria-hidden={true} style={{ borderBottomWidth: 0.5, borderBottomColor: '#cccccc', marginBottom: 4 }} />
@@ -265,7 +267,7 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
         {basics.summary ? (
           <View>
             <Text style={styles.sectionTitle}>Summary</Text>
-            <Text style={styles.body}>{basics.summary}</Text>
+            {renderPdfRichText(basics.summary, styles.body)}
           </View>
         ) : null}
         {sectionOrder.map(renderPdfSection)}

@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, Link } from '@react-pdf/renderer'
 import type { CustomSection } from '@/lib/schemas/resume.zod'
-import { ensureHttps } from './pdf-utils'
+import { ensureHttps, renderPdfRichText, renderPdfRichTextRuns } from './pdf-utils'
 
 interface PdfCustomSectionStyles {
   sectionTitle: object
@@ -41,12 +41,12 @@ export function renderPdfCustomSection(
               <Text style={styles.small}>{item.url}</Text>
             </Link>
           ) : null}
-          {enabledFields.includes('summary') && item.summary ? (
-            <Text style={styles.body}>{item.summary}</Text>
-          ) : null}
+          {enabledFields.includes('summary') && item.summary
+            ? renderPdfRichText(item.summary, styles.body)
+            : null}
           {enabledFields.includes('highlights') && (item.highlights ?? []).length > 0
             ? (item.highlights ?? []).map((h, hi) => (
-                <Text key={hi} style={styles.bullet}>• {h}</Text>
+                <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
               ))
             : null}
           {enabledFields.includes('keywords') && (item.keywords ?? []).length > 0 ? (

@@ -1,7 +1,7 @@
 import React from 'react'
 import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/renderer'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
-import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps } from './pdf-utils'
+import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 
 export function MinimalPdfTemplate({ data, meta }: { data: ResumeData; meta: ResumeMeta }) {
@@ -72,9 +72,9 @@ export function MinimalPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
                   <Text style={styles.small}>{[job.startDate, job.endDate || 'Present'].filter(Boolean).join(' – ')}</Text>
                 </View>
                 <Text style={styles.accent}>{job.position ?? ''}</Text>
-                {job.summary ? <Text style={styles.body}>{job.summary}</Text> : null}
+                {renderPdfRichText(job.summary, styles.body)}
                 {(job.highlights ?? []).map((h, hi) => (
-                  <Text key={hi} style={styles.bullet}>• {h}</Text>
+                  <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
                 ))}
               </View>
             ))}
@@ -186,8 +186,10 @@ export function MinimalPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
                   <Text style={styles.small}>{[v.startDate, v.endDate || 'Present'].filter(Boolean).join(' – ')}</Text>
                 </View>
                 <Text style={styles.accent}>{v.position ?? ''}</Text>
-                {v.summary ? <Text style={styles.body}>{v.summary}</Text> : null}
-                {(v.highlights ?? []).map((h, hi) => <Text key={hi} style={styles.bullet}>• {h}</Text>)}
+                {renderPdfRichText(v.summary, styles.body)}
+                {(v.highlights ?? []).map((h, hi) => (
+                  <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                ))}
               </View>
             ))}
           </View>
@@ -237,7 +239,7 @@ export function MinimalPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
           {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
           {buildContactRow()}
         </View>
-        {basics.summary ? <Text style={[styles.body, { marginBottom: 12, color: '#444444' }]}>{basics.summary}</Text> : null}
+        {renderPdfRichText(basics.summary, { ...(styles.body as object), marginBottom: 12, color: '#444444' })}
         {sectionOrder.map(renderPdfSection)}
       </Page>
     </Document>
