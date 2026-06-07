@@ -3,6 +3,25 @@ import {
   AlignmentType, BorderStyle, convertInchesToTwip,
 } from 'docx'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
+import { parseRichText, TextRun as RichTextRun } from '@/lib/rich-text'
+
+function richTextRuns(
+  text: string,
+  font: string,
+  size: number,
+  extraProps?: Partial<{ bold: boolean; color: string }>
+): TextRun[] {
+  const runs: RichTextRun[] = parseRichText(text)
+  return runs.map(run => new TextRun({
+    text: run.text,
+    font,
+    size,
+    bold: run.bold || extraProps?.bold || false,
+    italics: run.italic || false,
+    underline: run.underline ? {} : undefined,
+    ...(extraProps?.color ? { color: extraProps.color } : {}),
+  }))
+}
 
 function mapFont(font: string): string {
   const map: Record<string, string> = {
@@ -41,11 +60,11 @@ function jobEntry(
     }),
   ]
   if (summary) {
-    paras.push(new Paragraph({ children: [new TextRun({ text: summary, font, size: 20 })], spacing: { after: 40 } }))
+    paras.push(new Paragraph({ children: richTextRuns(summary, font, 20), spacing: { after: 40 } }))
   }
   for (const h of highlights) {
     paras.push(new Paragraph({
-      children: [new TextRun({ text: h, font, size: 20 })],
+      children: richTextRuns(h, font, 20),
       bullet: { level: 0 },
       spacing: { after: 20 },
     }))
@@ -123,7 +142,7 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
   if (basics.summary) {
     children.push(sectionHeading('Summary', headFont))
     children.push(new Paragraph({
-      children: [new TextRun({ text: basics.summary, font: bodyFont, size: 20 })],
+      children: richTextRuns(basics.summary, bodyFont, 20),
       spacing: { after: 80 },
     }))
   }
@@ -159,10 +178,10 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
           }))
         }
         if (cs.enabledFields.includes('summary') && item.summary) {
-          children.push(new Paragraph({ children: [new TextRun({ text: item.summary, font: bodyFont, size: 20 })], spacing: { after: 40 } }))
+          children.push(new Paragraph({ children: richTextRuns(item.summary, bodyFont, 20), spacing: { after: 40 } }))
         }
         for (const h of (cs.enabledFields.includes('highlights') ? (item.highlights ?? []) : [])) {
-          children.push(new Paragraph({ children: [new TextRun({ text: h, font: bodyFont, size: 20 })], bullet: { level: 0 }, spacing: { after: 20 } }))
+          children.push(new Paragraph({ children: richTextRuns(h, bodyFont, 20), bullet: { level: 0 }, spacing: { after: 20 } }))
         }
         if (cs.enabledFields.includes('keywords') && (item.keywords ?? []).length > 0) {
           children.push(new Paragraph({ children: [new TextRun({ text: (item.keywords ?? []).join(' · '), font: bodyFont, size: 18, color: '555555' })], spacing: { after: 40 } }))
@@ -261,7 +280,7 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
               spacing: { before: 100 },
             }),
             ...(a.awarder ? [new Paragraph({ children: [new TextRun({ text: a.awarder, font: bodyFont, size: 20, color: '666666' })], spacing: { after: 20 } })] : []),
-            ...(a.summary ? [new Paragraph({ children: [new TextRun({ text: a.summary, font: bodyFont, size: 20 })], spacing: { after: 80 } })] : [])
+            ...(a.summary ? [new Paragraph({ children: richTextRuns(a.summary, bodyFont, 20), spacing: { after: 80 } })] : [])
           )
         }
         break
@@ -279,7 +298,7 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
               spacing: { before: 100 },
             }),
             ...(p.publisher ? [new Paragraph({ children: [new TextRun({ text: p.publisher, font: bodyFont, size: 20, color: '666666' })], spacing: { after: 20 } })] : []),
-            ...(p.summary ? [new Paragraph({ children: [new TextRun({ text: p.summary, font: bodyFont, size: 20 })], spacing: { after: 80 } })] : [])
+            ...(p.summary ? [new Paragraph({ children: richTextRuns(p.summary, bodyFont, 20), spacing: { after: 80 } })] : [])
           )
         }
         break
@@ -321,7 +340,7 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
             }),
             ...(p.description ? [new Paragraph({ children: [new TextRun({ text: p.description, font: bodyFont, size: 20 })], spacing: { after: 40 } })] : []),
             ...(p.highlights ?? []).map(h => new Paragraph({
-              children: [new TextRun({ text: h, font: bodyFont, size: 20 })],
+              children: richTextRuns(h, bodyFont, 20),
               bullet: { level: 0 },
               spacing: { after: 20 },
             })),
