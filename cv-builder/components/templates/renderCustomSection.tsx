@@ -14,7 +14,7 @@ export function renderCustomSection(
   if (!items.length) return null
 
   return (
-    <div key={section.id}>
+    <div>
       <div style={styles.sectionTitle}>{name}</div>
       {items.map((item, i) => (
         <div key={item.id || i} style={{ marginBottom: '10px' }}>

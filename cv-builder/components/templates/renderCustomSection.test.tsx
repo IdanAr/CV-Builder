@@ -98,4 +98,22 @@ describe('renderCustomSection', () => {
     render(<div>{renderCustomSection(section, styles)}</div>)
     expect(screen.getByText('2022-01 – 2023-06')).toBeTruthy()
   })
+
+  it('renders url when enabledFields includes url', () => {
+    const section: CustomSection = {
+      id: '1', name: 'S', enabledFields: ['url'],
+      items: [{ id: 'i1', title: 'T', url: 'https://example.com' }],
+    }
+    render(<div>{renderCustomSection(section, styles)}</div>)
+    expect(screen.getByText('https://example.com')).toBeTruthy()
+  })
+
+  it('does not render url when not in enabledFields', () => {
+    const section: CustomSection = {
+      id: '1', name: 'S', enabledFields: [],
+      items: [{ id: 'i1', title: 'T', url: 'https://hidden.com' }],
+    }
+    render(<div>{renderCustomSection(section, styles)}</div>)
+    expect(screen.queryByText('https://hidden.com')).toBeNull()
+  })
 })
