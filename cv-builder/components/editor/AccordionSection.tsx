@@ -10,6 +10,8 @@ interface AccordionSectionProps {
   children: ReactNode
   onMoveUp?: () => void
   onMoveDown?: () => void
+  onRename?: (name: string) => void
+  onDelete?: () => void
 }
 
 export function AccordionSection({
@@ -20,6 +22,8 @@ export function AccordionSection({
   children,
   onMoveUp,
   onMoveDown,
+  onRename,
+  onDelete,
 }: AccordionSectionProps) {
   return (
     <div className="border border-indigo-100 rounded-xl overflow-hidden bg-white/60 backdrop-blur-sm shadow-sm">
@@ -30,9 +34,20 @@ export function AccordionSection({
           aria-expanded={isOpen}
           className="flex-1 flex items-center gap-2 px-4 py-3 text-left min-w-0"
         >
-          <span className="font-medium text-sm text-indigo-900">{title}</span>
+          {onRename ? (
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => onRename(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Section name"
+              className="font-medium text-sm text-indigo-900 bg-transparent border-none outline-none focus:ring-1 focus:ring-indigo-300 rounded px-1 w-full"
+            />
+          ) : (
+            <span className="font-medium text-sm text-indigo-900">{title}</span>
+          )}
           {badge && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-500">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-500 shrink-0">
               {badge}
             </span>
           )}
@@ -55,6 +70,16 @@ export function AccordionSection({
             aria-label={`Move ${title} down`}
           >
             ↓
+          </button>
+        )}
+        {onDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="p-1 text-gray-400 hover:text-red-500 rounded"
+            aria-label="Delete section"
+          >
+            ✕
           </button>
         )}
         <span aria-hidden="true" className="text-indigo-300 text-xs px-3">
