@@ -19,9 +19,11 @@ const baseSection: CustomSection = {
 }
 
 function mockStore(section: CustomSection) {
+  const state = { data: { customSections: [section] }, updateCustomSection }
   vi.mocked(useResumeEditorStore).mockImplementation((sel: (s: unknown) => unknown) =>
-    sel({ data: { customSections: [section] }, updateCustomSection })
+    sel(state)
   )
+  vi.mocked(useResumeEditorStore.getState).mockReturnValue(state as ReturnType<typeof useResumeEditorStore.getState>)
 }
 
 beforeEach(() => {

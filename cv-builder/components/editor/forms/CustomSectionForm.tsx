@@ -64,7 +64,7 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
       {enabledFields.includes('summary') && (
         <textarea value={item.summary ?? ''} onChange={(e) => set('summary', e.target.value)}
           placeholder="Description..." rows={2}
-          className="w-full border border-indigo-200 rounded-lg px-2 py-1 text-sm bg-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y" />
+          className={`${inputClass} resize-y`} />
       )}
 
       {enabledFields.includes('highlights') && (
@@ -134,11 +134,15 @@ export function CustomSectionForm({ sectionId }: { sectionId: string }) {
   if (!section) return null
 
   function toggleField(field: CustomSectionFieldType) {
-    const has = section!.enabledFields.includes(field)
+    const current = useResumeEditorStore.getState().data.customSections?.find(
+      (cs) => cs.id === sectionId
+    )
+    if (!current) return
+    const has = current.enabledFields.includes(field)
     updateCustomSection(sectionId, {
       enabledFields: has
-        ? section!.enabledFields.filter((f) => f !== field)
-        : [...section!.enabledFields, field],
+        ? current.enabledFields.filter((f) => f !== field)
+        : [...current.enabledFields, field],
     })
   }
 
