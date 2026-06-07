@@ -61,6 +61,8 @@ export function EditTab() {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return
       const mod = e.ctrlKey || e.metaKey
       if (mod && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo() }
       if (mod && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo() }

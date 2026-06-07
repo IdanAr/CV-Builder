@@ -175,6 +175,62 @@ describe('removeCustomSection', () => {
   })
 })
 
+describe('undo/redo', () => {
+  it('canUndo is false initially', () => {
+    const s = useResumeEditorStore.getState()
+    expect(s.canUndo).toBe(false)
+    expect(s.canRedo).toBe(false)
+  })
+
+  it('setTitle makes canUndo true', () => {
+    useResumeEditorStore.getState().setTitle('test')
+    expect(useResumeEditorStore.getState().canUndo).toBe(true)
+  })
+
+  it('undo restores previous title', () => {
+    useResumeEditorStore.getState().setTitle('A')
+    useResumeEditorStore.getState().setTitle('B')
+    useResumeEditorStore.getState().undo()
+    const s = useResumeEditorStore.getState()
+    expect(s.title).toBe('A')
+    expect(s.canRedo).toBe(true)
+  })
+
+  it('redo re-applies change', () => {
+    useResumeEditorStore.getState().setTitle('A')
+    useResumeEditorStore.getState().setTitle('B')
+    useResumeEditorStore.getState().undo()
+    useResumeEditorStore.getState().redo()
+    const s = useResumeEditorStore.getState()
+    expect(s.title).toBe('B')
+    expect(s.canRedo).toBe(false)
+  })
+
+  it('undo is no-op when stack empty', () => {
+    const before = useResumeEditorStore.getState()
+    expect(() => useResumeEditorStore.getState().undo()).not.toThrow()
+    const after = useResumeEditorStore.getState()
+    expect(after.canUndo).toBe(false)
+    expect(after.canRedo).toBe(false)
+    expect(after.title).toBe(before.title)
+  })
+
+  it('history capped at 50', () => {
+    for (let i = 0; i < 51; i++) {
+      useResumeEditorStore.getState().setTitle(`title-${i}`)
+    }
+    expect(useResumeEditorStore.getState()._history.length).toBe(50)
+  })
+
+  it('hydrate clears history', () => {
+    useResumeEditorStore.getState().setTitle('before-hydrate')
+    useResumeEditorStore.getState().hydrate('r1', 'Fresh', emptyData, defaultMeta)
+    const s = useResumeEditorStore.getState()
+    expect(s._history.length).toBe(0)
+    expect(s.canUndo).toBe(false)
+  })
+})
+
 describe('initAutoSave', () => {
   beforeEach(() => { vi.useFakeTimers() })
   afterEach(() => { vi.useRealTimers() })

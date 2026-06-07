@@ -11,8 +11,8 @@ export interface ResumeEditorStore {
   isDirty: boolean
   isSaving: boolean
   saveError: string | null
-  _history: Array<{ data: ResumeData; meta: ResumeMeta }>
-  _future:  Array<{ data: ResumeData; meta: ResumeMeta }>
+  _history: Array<{ title: string; data: ResumeData; meta: ResumeMeta }>
+  _future:  Array<{ title: string; data: ResumeData; meta: ResumeMeta }>
   canUndo: boolean
   canRedo: boolean
   undo: () => void
@@ -35,7 +35,7 @@ const MAX_HISTORY = 50
 function pushHistory(
   s: ResumeEditorStore
 ): Pick<ResumeEditorStore, '_history' | '_future' | 'canUndo' | 'canRedo'> {
-  const entry = { data: s.data, meta: s.meta }
+  const entry = { title: s.title, data: s.data, meta: s.meta }
   const history = [...s._history, entry]
   if (history.length > MAX_HISTORY) history.shift()
   return { _history: history, _future: [], canUndo: true, canRedo: false }
@@ -69,8 +69,9 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
         if (s._history.length === 0) return {}
         const history = [...s._history]
         const prev = history.pop()!
-        const future = [{ data: s.data, meta: s.meta }, ...s._future]
+        const future = [{ title: s.title, data: s.data, meta: s.meta }, ...s._future]
         return {
+          title: prev.title,
           data: prev.data,
           meta: prev.meta,
           _history: history,
@@ -85,8 +86,10 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
         if (s._future.length === 0) return {}
         const future = [...s._future]
         const next = future.shift()!
-        const history = [...s._history, { data: s.data, meta: s.meta }]
+        const history = [...s._history, { title: s.title, data: s.data, meta: s.meta }]
+        if (history.length > MAX_HISTORY) history.shift()
         return {
+          title: next.title,
           data: next.data,
           meta: next.meta,
           _history: history,
