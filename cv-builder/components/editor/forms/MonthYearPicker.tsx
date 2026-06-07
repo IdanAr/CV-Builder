@@ -56,7 +56,7 @@ export function MonthYearPicker({ value, onChange, allowPresent = false, placeho
   }, [value])
 
   function emitChange(nextMonth: string, nextYear: string, nextPresent: boolean) {
-    if (nextPresent) {
+    if (nextPresent && allowPresent) {
       onChange('Present')
       return
     }
@@ -104,7 +104,7 @@ export function MonthYearPicker({ value, onChange, allowPresent = false, placeho
         <label className="flex items-center gap-1.5 text-sm text-indigo-600 cursor-pointer">
           <input
             type="checkbox"
-            checked={true}
+            checked={isPresent}
             onChange={handlePresentChange}
             className="rounded border-indigo-300 text-indigo-500 focus:ring-indigo-500"
           />
