@@ -11,6 +11,12 @@ export interface ResumeEditorStore {
   isDirty: boolean
   isSaving: boolean
   saveError: string | null
+  _history: Array<{ data: ResumeData; meta: ResumeMeta }>
+  _future:  Array<{ data: ResumeData; meta: ResumeMeta }>
+  canUndo: boolean
+  canRedo: boolean
+  undo: () => void
+  redo: () => void
   setTitle: (title: string) => void
   setData: (patch: Partial<ResumeData>) => void
   setMeta: (patch: Partial<ResumeMeta>) => void
@@ -22,6 +28,17 @@ export interface ResumeEditorStore {
   _setIsSaving: (v: boolean) => void
   _setIsDirty: (v: boolean) => void
   _setSaveError: (v: string | null) => void
+}
+
+const MAX_HISTORY = 50
+
+function pushHistory(
+  s: ResumeEditorStore
+): Pick<ResumeEditorStore, '_history' | '_future' | 'canUndo' | 'canRedo'> {
+  const entry = { data: s.data, meta: s.meta }
+  const history = [...s._history, entry]
+  if (history.length > MAX_HISTORY) history.shift()
+  return { _history: history, _future: [], canUndo: true, canRedo: false }
 }
 
 export const useResumeEditorStore = create<ResumeEditorStore>()(
@@ -43,8 +60,46 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
     isDirty: false,
     isSaving: false,
     saveError: null,
-    setTitle: (title) => set({ title, isDirty: true }),
-    setData: (patch) => set((s) => ({ data: { ...s.data, ...patch }, isDirty: true })),
+    _history: [],
+    _future: [],
+    canUndo: false,
+    canRedo: false,
+    undo: () =>
+      set((s) => {
+        if (s._history.length === 0) return {}
+        const history = [...s._history]
+        const prev = history.pop()!
+        const future = [{ data: s.data, meta: s.meta }, ...s._future]
+        return {
+          data: prev.data,
+          meta: prev.meta,
+          _history: history,
+          _future: future,
+          canUndo: history.length > 0,
+          canRedo: true,
+          isDirty: true,
+        }
+      }),
+    redo: () =>
+      set((s) => {
+        if (s._future.length === 0) return {}
+        const future = [...s._future]
+        const next = future.shift()!
+        const history = [...s._history, { data: s.data, meta: s.meta }]
+        return {
+          data: next.data,
+          meta: next.meta,
+          _history: history,
+          _future: future,
+          canUndo: true,
+          canRedo: future.length > 0,
+          isDirty: true,
+        }
+      }),
+    setTitle: (title) =>
+      set((s) => ({ ...pushHistory(s), title, isDirty: true })),
+    setData: (patch) =>
+      set((s) => ({ ...pushHistory(s), data: { ...s.data, ...patch }, isDirty: true })),
     setMeta: (patch) =>
       set((s) => {
         const merged: ResumeMeta = { ...s.meta, ...patch }
@@ -52,18 +107,20 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
           merged.pageMargins = Math.max(0.5, Math.min(1.5, patch.pageMargins))
         if (patch.lineSpacing !== undefined)
           merged.lineSpacing = Math.max(1.0, Math.min(1.15, patch.lineSpacing))
-        return { meta: merged, isDirty: true }
+        return { ...pushHistory(s), meta: merged, isDirty: true }
       }),
     setSectionData: (section, value) =>
-      set((s) => ({ data: { ...s.data, [section]: value }, isDirty: true })),
+      set((s) => ({ ...pushHistory(s), data: { ...s.data, [section]: value }, isDirty: true })),
     addCustomSection: (section) =>
       set((s) => ({
+        ...pushHistory(s),
         data: { ...s.data, customSections: [...(s.data.customSections ?? []), section] },
         meta: { ...s.meta, sectionOrder: [...s.meta.sectionOrder, `custom:${section.id}`] },
         isDirty: true,
       })),
     updateCustomSection: (id, patch) =>
       set((s) => ({
+        ...pushHistory(s),
         data: {
           ...s.data,
           customSections: (s.data.customSections ?? []).map((cs) =>
@@ -74,6 +131,7 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
       })),
     removeCustomSection: (id) =>
       set((s) => ({
+        ...pushHistory(s),
         data: {
           ...s.data,
           customSections: (s.data.customSections ?? []).filter((cs) => cs.id !== id),
@@ -85,7 +143,7 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
         isDirty: true,
       })),
     hydrate: (resumeId, title, data, meta) =>
-      set({ resumeId, title, data, meta, isDirty: false, saveError: null }),
+      set({ resumeId, title, data, meta, isDirty: false, saveError: null, _history: [], _future: [], canUndo: false, canRedo: false }),
     _setIsSaving: (isSaving) => set({ isSaving }),
     _setIsDirty: (isDirty) => set({ isDirty }),
     _setSaveError: (saveError) => set({ saveError }),

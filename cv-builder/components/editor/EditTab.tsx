@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { AccordionSection } from './AccordionSection'
 import { BasicsForm } from './forms/BasicsForm'
@@ -54,6 +54,20 @@ export function EditTab() {
   const addCustomSection = useResumeEditorStore((s) => s.addCustomSection)
   const updateCustomSection = useResumeEditorStore((s) => s.updateCustomSection)
   const removeCustomSection = useResumeEditorStore((s) => s.removeCustomSection)
+  const undo = useResumeEditorStore((s) => s.undo)
+  const redo = useResumeEditorStore((s) => s.redo)
+  const canUndo = useResumeEditorStore((s) => s.canUndo)
+  const canRedo = useResumeEditorStore((s) => s.canRedo)
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const mod = e.ctrlKey || e.metaKey
+      if (mod && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo() }
+      if (mod && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [undo, redo])
 
   const orderedSections = (meta.sectionOrder?.length > 0
     ? meta.sectionOrder
@@ -83,6 +97,22 @@ export function EditTab() {
 
   return (
     <div className="max-w-2xl mx-auto py-6 px-4 space-y-2 bg-transparent">
+      <div className="flex items-center gap-1 mb-3">
+        <button
+          onClick={undo}
+          disabled={!canUndo}
+          className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          ↩ Undo
+        </button>
+        <button
+          onClick={redo}
+          disabled={!canRedo}
+          className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Redo ↪
+        </button>
+      </div>
       {sectionOrder.map((section, idx) => {
         const metaIdx = idx - 1
         const isBasics = section === 'basics'

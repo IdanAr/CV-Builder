@@ -20,6 +20,7 @@ beforeEach(() => {
   useResumeEditorStore.setState({
     resumeId: '', title: '', data: emptyData, meta: defaultMeta,
     isDirty: false, isSaving: false, saveError: null,
+    _history: [], _future: [], canUndo: false, canRedo: false,
   })
 })
 
