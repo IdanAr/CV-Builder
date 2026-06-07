@@ -28,30 +28,34 @@ export function AccordionSection({
   return (
     <div className="border border-indigo-100 rounded-xl overflow-hidden bg-white/60 backdrop-blur-sm shadow-sm">
       <div className="flex items-center gap-1 pr-2 bg-white/70 hover:bg-white/90 transition-colors">
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={isOpen}
-          className="flex-1 flex items-center gap-2 px-4 py-3 text-left min-w-0"
-        >
-          {onRename ? (
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => onRename(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              aria-label="Section name"
-              className="font-medium text-sm text-indigo-900 bg-transparent border-none outline-none focus:ring-1 focus:ring-indigo-300 rounded px-1 w-full"
-            />
-          ) : (
+        {onRename ? (
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => onRename(e.target.value)}
+            aria-label={`Rename ${title}`}
+            className="flex-1 font-medium text-sm text-indigo-900 bg-transparent border-none outline-none focus:ring-1 focus:ring-indigo-300 rounded px-4 py-3 min-w-0"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={isOpen}
+            className="flex-1 flex items-center gap-2 px-4 py-3 text-left min-w-0"
+          >
             <span className="font-medium text-sm text-indigo-900">{title}</span>
-          )}
-          {badge && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-500 shrink-0">
-              {badge}
-            </span>
-          )}
-        </button>
+            {badge && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-500 shrink-0">
+                {badge}
+              </span>
+            )}
+          </button>
+        )}
+        {onRename && badge && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-500 shrink-0">
+            {badge}
+          </span>
+        )}
         {onMoveUp && (
           <button
             type="button"
@@ -82,9 +86,15 @@ export function AccordionSection({
             ✕
           </button>
         )}
-        <span aria-hidden="true" className="text-indigo-300 text-xs px-3">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={isOpen}
+          aria-label={`Toggle ${title}`}
+          className="text-indigo-300 text-xs px-3 py-3"
+        >
           {isOpen ? '▲' : '▼'}
-        </span>
+        </button>
       </div>
       {isOpen && (
         <div className="px-4 pb-4 pt-2 border-t border-indigo-100 bg-white/50">{children}</div>

@@ -12,7 +12,7 @@ describe('AccordionSection', () => {
       </AccordionSection>
     )
     expect(screen.getByText('Work Experience')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /work experience/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Work Experience' }))
     expect(onToggle).toHaveBeenCalledOnce()
   })
 
