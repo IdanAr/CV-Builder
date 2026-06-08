@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
-import { AccordionSection } from './AccordionSection'
+import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+import { AccordionSection, type DragHandleProps } from './AccordionSection'
 import { BasicsForm } from './forms/BasicsForm'
 import { WorkForm } from './forms/WorkForm'
 import { EducationForm } from './forms/EducationForm'
@@ -46,6 +48,17 @@ function getCustomBadge(section: CustomSection): string {
     : 'empty'
 }
 
+function SortableAccordionItem({
+  id,
+  children,
+}: {
+  id: string
+  children: (props: DragHandleProps) => React.ReactNode
+}) {
+  const { listeners, attributes, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  return <>{children({ listeners, attributes, setNodeRef, transform, transition, isDragging })}</>
+}
+
 export function EditTab() {
   const [openSection, setOpenSection] = useState<string | null>('basics')
   const meta = useResumeEditorStore((s) => s.meta)
@@ -56,8 +69,6 @@ export function EditTab() {
   const removeCustomSection = useResumeEditorStore((s) => s.removeCustomSection)
   const undo = useResumeEditorStore((s) => s.undo)
   const redo = useResumeEditorStore((s) => s.redo)
-  const canUndo = useResumeEditorStore((s) => s.canUndo)
-  const canRedo = useResumeEditorStore((s) => s.canRedo)
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -76,14 +87,12 @@ export function EditTab() {
     : ['work', 'education', 'skills', 'volunteer', 'languages']
   ).filter((s) => s in SECTION_FORMS || s.startsWith('custom:'))
 
-  const sectionOrder = ['basics', ...orderedSections]
-
-  function moveSection(metaIdx: number, direction: 'up' | 'down') {
-    const current = useResumeEditorStore.getState().meta.sectionOrder
-    const order = [...current]
-    const swapIdx = direction === 'up' ? metaIdx - 1 : metaIdx + 1
-    ;[order[metaIdx], order[swapIdx]] = [order[swapIdx], order[metaIdx]]
-    setMeta({ sectionOrder: order })
+  function handleDragEnd({ active, over }: DragEndEvent) {
+    if (!over || active.id === over.id) return
+    const oldIndex = orderedSections.indexOf(String(active.id))
+    const newIndex = orderedSections.indexOf(String(over.id))
+    if (oldIndex === -1 || newIndex === -1) return
+    setMeta({ sectionOrder: arrayMove(orderedSections, oldIndex, newIndex) })
   }
 
   function handleAddSection() {
@@ -99,64 +108,61 @@ export function EditTab() {
 
   return (
     <div className="max-w-2xl mx-auto py-6 px-4 space-y-2 bg-transparent">
-      <div className="flex items-center gap-1 mb-3">
-        <button
-          onClick={undo}
-          disabled={!canUndo}
-          className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          ↩ Undo
-        </button>
-        <button
-          onClick={redo}
-          disabled={!canRedo}
-          className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          Redo ↪
-        </button>
-      </div>
-      {sectionOrder.map((section, idx) => {
-        const metaIdx = idx - 1
-        const isBasics = section === 'basics'
-        const isCustom = section.startsWith('custom:')
+      {/* basics is always first and not sortable */}
+      <AccordionSection
+        title={SECTION_LABELS['basics']}
+        badge={getBadge('basics', data)}
+        isOpen={openSection === 'basics'}
+        onToggle={() => setOpenSection((prev) => (prev === 'basics' ? null : 'basics'))}
+      >
+        <BasicsForm />
+      </AccordionSection>
 
-        if (isCustom) {
-          const customId = section.slice(7)
-          const customSection = data.customSections?.find((cs) => cs.id === customId)
-          if (!customSection) return null
-          return (
-            <AccordionSection
-              key={section}
-              title={customSection.name}
-              badge={getCustomBadge(customSection)}
-              isOpen={openSection === section}
-              onToggle={() => setOpenSection((prev) => (prev === section ? null : section))}
-              onMoveUp={metaIdx > 0 ? () => moveSection(metaIdx, 'up') : undefined}
-              onMoveDown={metaIdx < orderedSections.length - 1 ? () => moveSection(metaIdx, 'down') : undefined}
-              onRename={(name) => updateCustomSection(customId, { name })}
-              onDelete={() => removeCustomSection(customId)}
-            >
-              <CustomSectionForm sectionId={customId} />
-            </AccordionSection>
-          )
-        }
-
-        const FormComponent = SECTION_FORMS[section]
-        if (!FormComponent) return null
-        return (
-          <AccordionSection
-            key={section}
-            title={SECTION_LABELS[section] ?? section}
-            badge={getBadge(section, data)}
-            isOpen={openSection === section}
-            onToggle={() => setOpenSection((prev) => (prev === section ? null : section))}
-            onMoveUp={!isBasics && metaIdx > 0 ? () => moveSection(metaIdx, 'up') : undefined}
-            onMoveDown={!isBasics && metaIdx < orderedSections.length - 1 ? () => moveSection(metaIdx, 'down') : undefined}
-          >
-            <FormComponent />
-          </AccordionSection>
-        )
-      })}
+      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={orderedSections} strategy={verticalListSortingStrategy}>
+          {orderedSections.map((section) => {
+            if (section.startsWith('custom:')) {
+              const customId = section.slice(7)
+              const customSection = data.customSections?.find((cs) => cs.id === customId)
+              if (!customSection) return null
+              return (
+                <SortableAccordionItem key={section} id={section}>
+                  {(dragHandleProps) => (
+                    <AccordionSection
+                      title={customSection.name}
+                      badge={getCustomBadge(customSection)}
+                      isOpen={openSection === section}
+                      onToggle={() => setOpenSection((prev) => (prev === section ? null : section))}
+                      onRename={(name) => updateCustomSection(customId, { name })}
+                      onDelete={() => removeCustomSection(customId)}
+                      dragHandleProps={dragHandleProps}
+                    >
+                      <CustomSectionForm sectionId={customId} />
+                    </AccordionSection>
+                  )}
+                </SortableAccordionItem>
+              )
+            }
+            const FormComponent = SECTION_FORMS[section]
+            if (!FormComponent) return null
+            return (
+              <SortableAccordionItem key={section} id={section}>
+                {(dragHandleProps) => (
+                  <AccordionSection
+                    title={SECTION_LABELS[section] ?? section}
+                    badge={getBadge(section, data)}
+                    isOpen={openSection === section}
+                    onToggle={() => setOpenSection((prev) => (prev === section ? null : section))}
+                    dragHandleProps={dragHandleProps}
+                  >
+                    <FormComponent />
+                  </AccordionSection>
+                )}
+              </SortableAccordionItem>
+            )
+          })}
+        </SortableContext>
+      </DndContext>
 
       <button
         type="button"

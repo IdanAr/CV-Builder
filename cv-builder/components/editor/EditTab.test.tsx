@@ -15,12 +15,47 @@ vi.mock('./forms/EducationForm', () => ({ EducationForm: () => <div>EducationFor
 vi.mock('./forms/SkillsForm', () => ({ SkillsForm: () => <div>SkillsForm</div> }))
 vi.mock('./forms/LanguagesForm', () => ({ LanguagesForm: () => <div>LanguagesForm</div> }))
 vi.mock('./forms/VolunteerForm', () => ({ VolunteerForm: () => <div>VolunteerForm</div> }))
-vi.mock('./forms/CustomSectionForm', () => ({ CustomSectionForm: ({ sectionId }: { sectionId: string }) => <div>CustomSectionForm:{sectionId}</div> }))
+vi.mock('./forms/CustomSectionForm', () => ({
+  CustomSectionForm: ({ sectionId }: { sectionId: string }) => <div>CustomSectionForm:{sectionId}</div>,
+}))
+vi.mock('@dnd-kit/utilities', () => ({
+  CSS: { Transform: { toString: () => '' } },
+}))
+
+// Capture the onDragEnd callback registered by DndContext so tests can invoke it directly
+let capturedOnDragEnd: ((event: { active: { id: string }; over: { id: string } | null }) => void) | null = null
+vi.mock('@dnd-kit/core', async () => {
+  const actual = await vi.importActual('@dnd-kit/core')
+  return {
+    ...(actual as object),
+    DndContext: ({ onDragEnd, children }: { onDragEnd: (e: any) => void; children: any }) => {
+      capturedOnDragEnd = onDragEnd
+      return <>{children}</>
+    },
+  }
+})
+vi.mock('@dnd-kit/sortable', async () => {
+  const actual = await vi.importActual('@dnd-kit/sortable')
+  return {
+    ...(actual as object),   // keeps arrayMove from the real package
+    SortableContext: ({ children }: { children: any }) => <>{children}</>,
+    useSortable: () => ({
+      listeners: undefined,
+      attributes: {},
+      setNodeRef: () => {},
+      transform: null,
+      transition: undefined,
+      isDragging: false,
+    }),
+  }
+})
 
 const setMeta = vi.fn()
 const addCustomSection = vi.fn()
 const updateCustomSection = vi.fn()
 const removeCustomSection = vi.fn()
+const undo = vi.fn()
+const redo = vi.fn()
 
 const baseMeta = {
   sectionOrder: ['work', 'education', 'skills'],
@@ -37,7 +72,7 @@ const baseMeta = {
 function setupStore(overrides: { sectionOrder?: string[]; customSections?: CustomSection[] } = {}) {
   const meta = { ...baseMeta, sectionOrder: overrides.sectionOrder ?? baseMeta.sectionOrder }
   const data = overrides.customSections ? { customSections: overrides.customSections } : {}
-  const state = { meta, data, setMeta, addCustomSection, updateCustomSection, removeCustomSection }
+  const state = { meta, data, setMeta, addCustomSection, updateCustomSection, removeCustomSection, undo, redo }
   vi.mocked(useResumeEditorStore).mockImplementation((sel: (s: unknown) => unknown) => sel(state))
   ;(useResumeEditorStore as { getState: ReturnType<typeof vi.fn> }).getState.mockReturnValue(state)
 }
@@ -47,6 +82,7 @@ beforeEach(() => {
   addCustomSection.mockClear()
   updateCustomSection.mockClear()
   removeCustomSection.mockClear()
+  capturedOnDragEnd = null
   setupStore()
 })
 
@@ -57,16 +93,34 @@ describe('EditTab — built-in sections', () => {
     expect(screen.getAllByRole('button', { name: /work experience/i }).length).toBeGreaterThan(0)
   })
 
-  it('basics section has no ↑↓ or delete buttons', () => {
+  it('basics section has no delete button', () => {
     render(<EditTab />)
-    expect(screen.queryByRole('button', { name: /move personal info/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /delete personal info/i })).toBeNull()
   })
 
-  it('sections do not render ↑↓ move buttons (drag-and-drop handles reordering)', () => {
+  it('does not render Undo or Redo buttons inside EditTab', () => {
     render(<EditTab />)
-    expect(screen.queryByRole('button', { name: /move .* up/i })).toBeNull()
-    expect(screen.queryByRole('button', { name: /move .* down/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /undo/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /redo/i })).toBeNull()
+  })
+
+  it('drag end calls setMeta with reordered sectionOrder', () => {
+    render(<EditTab />)
+    // Simulate dragging 'work' (index 0) to 'education' position (index 1)
+    capturedOnDragEnd!({ active: { id: 'work' }, over: { id: 'education' } })
+    expect(setMeta).toHaveBeenCalledWith({ sectionOrder: ['education', 'work', 'skills'] })
+  })
+
+  it('drag end with no over target does not call setMeta', () => {
+    render(<EditTab />)
+    capturedOnDragEnd!({ active: { id: 'work' }, over: null })
+    expect(setMeta).not.toHaveBeenCalled()
+  })
+
+  it('drag end with same active and over does not call setMeta', () => {
+    render(<EditTab />)
+    capturedOnDragEnd!({ active: { id: 'work' }, over: { id: 'work' } })
+    expect(setMeta).not.toHaveBeenCalled()
   })
 })
 
