@@ -22,6 +22,7 @@ export default async function ResumePage({
       title={resume.title}
       data={(resume.data ?? {}) as ResumeData}
       meta={resume.meta as ResumeMeta}
+      user={session.user}
     />
   )
 }

@@ -5,6 +5,7 @@ import ResumeCard from '@/components/ResumeCard'
 import NewResumeButton from '@/components/NewResumeButton'
 import UploadCVButton from '@/components/UploadCVButton'
 import { AppNavbar } from '@/components/ui/AppNavbar'
+import { UserProfileButton } from '@/components/ui/UserProfileButton'
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -19,6 +20,8 @@ export default async function DashboardPage() {
           <>
             <UploadCVButton />
             <NewResumeButton />
+            <div className="w-px h-4 bg-indigo-200" />
+            <UserProfileButton user={session.user} />
           </>
         }
       />

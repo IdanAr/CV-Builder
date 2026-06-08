@@ -118,4 +118,20 @@ describe('UserProfileButton', () => {
     fireEvent.click(screen.getByRole('button', { name: /close terms/i }))
     expect(screen.queryByRole('heading', { name: /terms & conditions/i })).not.toBeInTheDocument()
   })
+
+  it('closes Settings modal on Escape key', () => {
+    render(<UserProfileButton user={user} />)
+    fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /settings/i }))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('heading', { name: /^settings$/i })).not.toBeInTheDocument()
+  })
+
+  it('closes Terms modal on Escape key', () => {
+    render(<UserProfileButton user={user} />)
+    fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /terms/i }))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('heading', { name: /terms & conditions/i })).not.toBeInTheDocument()
+  })
 })

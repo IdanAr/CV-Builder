@@ -79,6 +79,18 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
     }
   }, [dropdownOpen])
 
+  useEffect(() => {
+    if (!settingsOpen && !termsOpen) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setSettingsOpen(false)
+        setTermsOpen(false)
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [settingsOpen, termsOpen])
+
   const firstName = user.name?.split(' ')[0] ?? 'Account'
 
   return (
@@ -125,7 +137,7 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
           </div>
 
           {/* Menu items */}
-          <div className="p-1.5">
+          <div role="group" className="p-1.5">
             <button
               role="menuitem"
               onClick={() => {
@@ -177,7 +189,7 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
           </div>
 
           {/* Sign Out */}
-          <div className="border-t border-indigo-50 p-1.5">
+          <div role="group" className="border-t border-indigo-50 p-1.5">
             <button
               role="menuitem"
               onClick={() => signOut({ callbackUrl: '/signin' })}
@@ -211,11 +223,14 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
           onClick={() => setSettingsOpen(false)}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settings-dialog-title"
             className="w-full max-w-md rounded-2xl border border-white/50 bg-white/90 p-6 shadow-2xl backdrop-blur-xl"
             onClick={e => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-base font-bold text-indigo-900">Settings</h2>
+              <h2 id="settings-dialog-title" className="text-base font-bold text-indigo-900">Settings</h2>
               <button
                 aria-label="Close Settings"
                 onClick={() => setSettingsOpen(false)}
@@ -239,11 +254,14 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
           onClick={() => setTermsOpen(false)}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="terms-dialog-title"
             className="w-full max-w-lg rounded-2xl border border-white/50 bg-white/90 shadow-2xl backdrop-blur-xl"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-indigo-50 px-6 py-4">
-              <h2 className="text-base font-bold text-indigo-900">
+              <h2 id="terms-dialog-title" className="text-base font-bold text-indigo-900">
                 Terms &amp; Conditions
               </h2>
               <button

@@ -9,6 +9,7 @@ import { DesignPanel } from './DesignPanel'
 import { AtsScorePanel } from '@/components/ats/AtsScorePanel'
 import { EditorErrorBoundary } from './EditorErrorBoundary'
 import { AppNavbar } from '@/components/ui/AppNavbar'
+import { UserProfileButton } from '@/components/ui/UserProfileButton'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
 type Tab = 'edit' | 'design' | 'ats'
@@ -29,9 +30,10 @@ export interface EditorShellProps {
   title: string
   data: ResumeData
   meta: ResumeMeta
+  user?: { name?: string | null; email?: string | null; image?: string | null }
 }
 
-export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
+export function EditorShell({ resumeId, title, data, meta, user }: EditorShellProps) {
   const [activeTab, setActiveTab] = useState<Tab>('edit')
   const [previewExpanded, setPreviewExpanded] = useState(false)
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
@@ -162,6 +164,12 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
             >
               DOCX
             </button>
+            {user && (
+              <>
+                <div className="w-px h-4 bg-indigo-200" />
+                <UserProfileButton user={user} />
+              </>
+            )}
           </div>
         }
       />
