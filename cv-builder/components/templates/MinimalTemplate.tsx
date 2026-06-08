@@ -1,4 +1,5 @@
 'use client'
+import React from 'react'
 import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
 import { richTextToHtml } from '@/lib/rich-text'
@@ -182,7 +183,9 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
         </div>
       </div>
       {basics.summary && <div style={{ fontSize: '10pt', color: '#444', marginBottom: '16px' }}>{rt(basics.summary)}</div>}
-      {sectionOrder.map(renderSection)}
+      {sectionOrder.map((s) => (
+        <React.Fragment key={s}>{renderSection(s)}</React.Fragment>
+      ))}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { renderCustomSection } from './renderCustomSection'
 import { richTextToHtml } from '@/lib/rich-text'
@@ -198,8 +199,12 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
           <div style={{ fontSize: '10pt', fontStyle: 'italic', marginBottom: '12px' }}>{rt(basics.summary)}</div>
         )}
         <div style={{ display: 'flex', gap: '24px' }}>
-          <div style={{ flex: '0 0 58%' }}>{leftSections.map(renderSection)}</div>
-          <div style={{ flex: 1 }}>{rightSections.map(renderSection)}</div>
+          <div style={{ flex: '0 0 58%' }}>{leftSections.map((s) => (
+            <React.Fragment key={s}>{renderSection(s)}</React.Fragment>
+          ))}</div>
+          <div style={{ flex: 1 }}>{rightSections.map((s) => (
+            <React.Fragment key={s}>{renderSection(s)}</React.Fragment>
+          ))}</div>
         </div>
       </div>
     )
@@ -214,7 +219,9 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
           <div style={{ fontSize: '10pt' }}>{rt(basics.summary)}</div>
         </div>
       )}
-      {sectionOrder.map(renderSection)}
+      {sectionOrder.map((s) => (
+        <React.Fragment key={s}>{renderSection(s)}</React.Fragment>
+      ))}
     </div>
   )
 }

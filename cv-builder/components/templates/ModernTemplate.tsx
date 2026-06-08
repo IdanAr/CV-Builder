@@ -1,4 +1,5 @@
 'use client'
+import React from 'react'
 import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
 import { richTextToHtml } from '@/lib/rich-text'
@@ -165,7 +166,9 @@ export function ModernTemplate({ data, meta }: TemplateProps) {
       {basics.summary && (
         <div style={{ marginBottom: '12px', fontSize: '10pt', color: '#444' }}>{rt(basics.summary)}</div>
       )}
-      {sectionOrder.map(renderSection)}
+      {sectionOrder.map((s) => (
+        <React.Fragment key={s}>{renderSection(s)}</React.Fragment>
+      ))}
     </div>
   )
 
@@ -191,8 +194,12 @@ export function ModernTemplate({ data, meta }: TemplateProps) {
           </div>
         </div>
         <div style={{ padding: `${pad}px`, display: 'flex', gap: '24px' }}>
-          <div style={{ flex: '0 0 58%' }}>{leftSections.map(renderSection)}</div>
-          <div style={{ flex: 1 }}>{rightSections.map(renderSection)}</div>
+          <div style={{ flex: '0 0 58%' }}>{leftSections.map((s) => (
+            <React.Fragment key={s}>{renderSection(s)}</React.Fragment>
+          ))}</div>
+          <div style={{ flex: 1 }}>{rightSections.map((s) => (
+            <React.Fragment key={s}>{renderSection(s)}</React.Fragment>
+          ))}</div>
         </div>
       </div>
     )
