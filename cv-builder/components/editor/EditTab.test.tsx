@@ -63,16 +63,10 @@ describe('EditTab — built-in sections', () => {
     expect(screen.queryByRole('button', { name: /delete personal info/i })).toBeNull()
   })
 
-  it('first section in sectionOrder has ↓ but no ↑', () => {
+  it('sections do not render ↑↓ move buttons (drag-and-drop handles reordering)', () => {
     render(<EditTab />)
-    expect(screen.queryByRole('button', { name: /move work experience up/i })).toBeNull()
-    expect(screen.getByRole('button', { name: /move work experience down/i })).toBeTruthy()
-  })
-
-  it('clicking ↓ on a section calls setMeta with swapped sectionOrder', () => {
-    render(<EditTab />)
-    fireEvent.click(screen.getByRole('button', { name: /move work experience down/i }))
-    expect(setMeta).toHaveBeenCalledWith({ sectionOrder: ['education', 'work', 'skills'] })
+    expect(screen.queryByRole('button', { name: /move .* up/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /move .* down/i })).toBeNull()
   })
 })
 

@@ -1,6 +1,18 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { DraggableAttributes, SyntheticListenerMap } from '@dnd-kit/core'
+import type { Transform } from '@dnd-kit/utilities'
+import { CSS } from '@dnd-kit/utilities'
+
+export interface DragHandleProps {
+  listeners: SyntheticListenerMap | undefined
+  attributes: DraggableAttributes
+  setNodeRef: (el: HTMLElement | null) => void
+  transform: Transform | null
+  transition: string | undefined
+  isDragging: boolean
+}
 
 interface AccordionSectionProps {
   title: string
@@ -8,10 +20,9 @@ interface AccordionSectionProps {
   isOpen: boolean
   onToggle: () => void
   children: ReactNode
-  onMoveUp?: () => void
-  onMoveDown?: () => void
   onRename?: (name: string) => void
   onDelete?: () => void
+  dragHandleProps?: DragHandleProps
 }
 
 export function AccordionSection({
@@ -20,14 +31,33 @@ export function AccordionSection({
   isOpen,
   onToggle,
   children,
-  onMoveUp,
-  onMoveDown,
   onRename,
   onDelete,
+  dragHandleProps,
 }: AccordionSectionProps) {
   return (
-    <div className="border border-indigo-100 rounded-xl overflow-hidden bg-white/60 backdrop-blur-sm shadow-sm">
+    <div
+      ref={dragHandleProps?.setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(dragHandleProps?.transform ?? null),
+        transition: dragHandleProps?.transition,
+      }}
+      className={`border border-indigo-100 rounded-xl overflow-hidden bg-white/60 backdrop-blur-sm shadow-sm group${
+        dragHandleProps?.isDragging ? ' opacity-60 border-dashed border-indigo-400' : ''
+      }`}
+    >
       <div className="flex items-center gap-1 pr-2 bg-white/70 hover:bg-white/90 transition-colors">
+        {dragHandleProps && (
+          <button
+            type="button"
+            className="pl-2 pr-1 py-3 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab text-indigo-300 hover:text-indigo-500 select-none"
+            {...dragHandleProps.listeners}
+            {...dragHandleProps.attributes}
+            aria-label="Drag to reorder"
+          >
+            ⠿
+          </button>
+        )}
         {onRename ? (
           <input
             type="text"
@@ -55,26 +85,6 @@ export function AccordionSection({
           <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-500 shrink-0">
             {badge}
           </span>
-        )}
-        {onMoveUp && (
-          <button
-            type="button"
-            onClick={onMoveUp}
-            className="p-1 text-indigo-300 hover:text-indigo-600 rounded"
-            aria-label={`Move ${title} up`}
-          >
-            ↑
-          </button>
-        )}
-        {onMoveDown && (
-          <button
-            type="button"
-            onClick={onMoveDown}
-            className="p-1 text-indigo-300 hover:text-indigo-600 rounded"
-            aria-label={`Move ${title} down`}
-          >
-            ↓
-          </button>
         )}
         {onDelete && (
           <button
