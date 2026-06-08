@@ -57,6 +57,9 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const settingsCloseRef = useRef<HTMLButtonElement>(null)
+  const termsCloseRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!dropdownOpen) return
@@ -91,12 +94,27 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [settingsOpen, termsOpen])
 
+  useEffect(() => {
+    if (settingsOpen) {
+      settingsCloseRef.current?.focus()
+      return () => { triggerRef.current?.focus() }
+    }
+  }, [settingsOpen])
+
+  useEffect(() => {
+    if (termsOpen) {
+      termsCloseRef.current?.focus()
+      return () => { triggerRef.current?.focus() }
+    }
+  }, [termsOpen])
+
   const firstName = user.name?.split(' ')[0] ?? 'Account'
 
   return (
     <div ref={containerRef} className="relative">
       {/* Trigger pill */}
       <button
+        ref={triggerRef}
         onClick={() => setDropdownOpen(o => !o)}
         aria-label="Open user menu"
         aria-expanded={dropdownOpen}
@@ -232,6 +250,7 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
             <div className="mb-5 flex items-center justify-between">
               <h2 id="settings-dialog-title" className="text-base font-bold text-indigo-900">Settings</h2>
               <button
+                ref={settingsCloseRef}
                 aria-label="Close Settings"
                 onClick={() => setSettingsOpen(false)}
                 className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50/60 text-sm text-indigo-400 transition hover:bg-indigo-100/80"
@@ -265,6 +284,7 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
                 Terms &amp; Conditions
               </h2>
               <button
+                ref={termsCloseRef}
                 aria-label="Close Terms"
                 onClick={() => setTermsOpen(false)}
                 className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50/60 text-sm text-indigo-400 transition hover:bg-indigo-100/80"
