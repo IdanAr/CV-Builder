@@ -18,6 +18,7 @@ const TAB_LABELS: Record<Tab, string> = { edit: 'Edit', design: 'Design', ats: '
 const PANEL_WIDTH_KEY = 'cv-builder:panel-width'
 const DEFAULT_PANEL_WIDTH = 320
 const MIN_PANEL_WIDTH = 240
+const MAX_PANEL_WIDTH_RATIO = 0.6
 
 export interface EditorShellProps {
   resumeId: string
@@ -57,7 +58,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
     if (saved) {
       const w = parseInt(saved, 10)
       if (!isNaN(w)) {
-        setPanelWidth(Math.max(MIN_PANEL_WIDTH, Math.min(Math.floor(window.innerWidth * 0.6), w)))
+        setPanelWidth(Math.max(MIN_PANEL_WIDTH, Math.min(Math.floor(window.innerWidth * MAX_PANEL_WIDTH_RATIO), w)))
       }
     }
   }, [])
@@ -70,14 +71,21 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
 
   function handleDividerPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!draggingRef.current) return
-    setPanelWidth(Math.max(MIN_PANEL_WIDTH, Math.min(Math.floor(window.innerWidth * 0.6), e.clientX)))
+    setPanelWidth(Math.max(MIN_PANEL_WIDTH, Math.min(Math.floor(window.innerWidth * MAX_PANEL_WIDTH_RATIO), e.clientX)))
   }
 
-  function handleDividerPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+  function handleDividerPointerUp(_e: React.PointerEvent<HTMLDivElement>) {
     draggingRef.current = false
     setDividerActive(false)
-    const w = Math.max(MIN_PANEL_WIDTH, Math.min(Math.floor(window.innerWidth * 0.6), e.clientX))
-    localStorage.setItem(PANEL_WIDTH_KEY, String(w))
+    setPanelWidth((w) => {
+      localStorage.setItem(PANEL_WIDTH_KEY, String(w))
+      return w
+    })
+  }
+
+  function handleDividerPointerCancel() {
+    draggingRef.current = false
+    setDividerActive(false)
   }
 
   function handleJsonExport() {
@@ -245,6 +253,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
             onPointerDown={handleDividerPointerDown}
             onPointerMove={handleDividerPointerMove}
             onPointerUp={handleDividerPointerUp}
+            onPointerCancel={handleDividerPointerCancel}
           />
         )}
 
