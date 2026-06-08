@@ -42,7 +42,7 @@ interface UserProfileButtonProps {
 }
 ```
 
-**Trigger button:** Avatar + name pill, right-aligned in the navbar. Avatar is the user's OAuth profile image if available; falls back to uppercase initials derived from `name`. A chevron icon rotates when the dropdown is open.
+**Trigger button:** Avatar + name pill, right-aligned in the navbar. Avatar is the user's OAuth profile image if available; falls back to a 2-character uppercase initials string derived from the first letter of each word in `name` (e.g. "Idan Arbel" → "IA"). A chevron icon rotates when the dropdown is open.
 
 **Dropdown panel:** Floats below the trigger, `z-50`, `right-0`. Glassmorphic card (`bg-white/90 backdrop-blur-xl border border-white/40 shadow-xl rounded-xl`). Closes on outside click (`useEffect` + `mousedown` listener on `document`) and on `Escape` key.
 
@@ -72,7 +72,7 @@ Same modal shell as Settings. Contains the full Terms & Conditions text for CV B
 | File | Change |
 |------|--------|
 | `components/ui/UserProfileButton.tsx` | **Create** — full component with dropdown + both modals |
-| `app/(dashboard)/dashboard/page.tsx` | **Edit** — import and pass `<UserProfileButton user={session.user} />` to AppNavbar actions alongside existing buttons |
+| `app/(dashboard)/dashboard/page.tsx` | **Edit** — import and pass `<UserProfileButton user={session.user} />` to AppNavbar actions, positioned after existing buttons (rightmost) |
 | `app/(dashboard)/dashboard/resumes/[id]/page.tsx` | **Edit** — pass `session.user` as `user` prop to `EditorShell` |
 | `components/editor/EditorShell.tsx` | **Edit** — add `user` prop to `EditorShellProps`, pass `<UserProfileButton user={user} />` to AppNavbar actions |
 

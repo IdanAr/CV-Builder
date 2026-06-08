@@ -1,6 +1,11 @@
 // lib/schemas/resume.zod.ts
 import { z } from 'zod'
 
+// Form inputs clear to '' rather than undefined; treat '' as absent so that
+// z.string().url()/.email() format checks don't reject cleared fields.
+const optionalUrl = () => z.union([z.string().url(), z.literal('')]).optional()
+const optionalEmail = () => z.union([z.string().email(), z.literal('')]).optional()
+
 const LocationSchema = z.object({
   address: z.string().optional(),
   postalCode: z.string().optional(),
@@ -12,16 +17,16 @@ const LocationSchema = z.object({
 const ProfileSchema = z.object({
   network: z.string().optional(),
   username: z.string().optional(),
-  url: z.string().url().optional(),
+  url: optionalUrl(),
 })
 
 const BasicsSchema = z.object({
   name: z.string().optional(),
   label: z.string().optional(),
   image: z.string().optional(),
-  email: z.string().email().optional(),
+  email: optionalEmail(),
   phone: z.string().optional(),
-  url: z.string().url().optional(),
+  url: optionalUrl(),
   summary: z.string().optional(),
   location: LocationSchema.optional(),
   profiles: z.array(ProfileSchema).optional(),
@@ -32,7 +37,7 @@ const WorkSchema = z.object({
   location: z.string().optional(),
   description: z.string().optional(),
   position: z.string().optional(),
-  url: z.string().url().optional(),
+  url: optionalUrl(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   summary: z.string().optional(),
@@ -41,7 +46,7 @@ const WorkSchema = z.object({
 
 const EducationSchema = z.object({
   institution: z.string().optional(),
-  url: z.string().url().optional(),
+  url: optionalUrl(),
   area: z.string().optional(),
   studyType: z.string().optional(),
   startDate: z.string().optional(),
@@ -60,7 +65,7 @@ const CertificateSchema = z.object({
   name: z.string().optional(),
   date: z.string().optional(),
   issuer: z.string().optional(),
-  url: z.string().url().optional(),
+  url: optionalUrl(),
 })
 
 const AwardSchema = z.object({
@@ -74,14 +79,14 @@ const PublicationSchema = z.object({
   name: z.string().optional(),
   publisher: z.string().optional(),
   releaseDate: z.string().optional(),
-  url: z.string().url().optional(),
+  url: optionalUrl(),
   summary: z.string().optional(),
 })
 
 const VolunteerSchema = z.object({
   organization: z.string().optional(),
   position: z.string().optional(),
-  url: z.string().url().optional(),
+  url: optionalUrl(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   summary: z.string().optional(),
@@ -105,7 +110,7 @@ const ProjectSchema = z.object({
   keywords: z.array(z.string()).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  url: z.string().url().optional(),
+  url: optionalUrl(),
   roles: z.array(z.string()).optional(),
   entity: z.string().optional(),
   type: z.string().optional(),

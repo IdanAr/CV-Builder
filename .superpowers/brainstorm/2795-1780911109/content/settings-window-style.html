@@ -1,0 +1,59 @@
+<h2>How should the Settings window open?</h2>
+<p class="subtitle">You said "float window" — here are two interpretations. Which feels right?</p>
+
+<div class="split">
+
+  <div class="mockup">
+    <div class="mockup-header">A — Centered modal dialog</div>
+    <div class="mockup-body" style="background:#f5f3ff;padding:0;overflow:hidden;position:relative;min-height:260px;">
+      <!-- Dimmed background -->
+      <div style="position:absolute;inset:0;background:rgba(99,102,241,0.08);backdrop-filter:blur(2px);"></div>
+      <!-- Modal card -->
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:75%;background:rgba(255,255,255,0.92);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;box-shadow:0 20px 60px rgba(99,102,241,0.2);padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <span style="font-weight:700;color:#3730a3;font-size:14px;">Settings</span>
+          <span style="color:#a5b4fc;font-size:18px;cursor:pointer;">✕</span>
+        </div>
+        <div style="background:rgba(238,242,255,0.6);border-radius:8px;height:90px;display:flex;align-items:center;justify-content:center;">
+          <span style="color:#a5b4fc;font-size:11px;">Settings content — coming soon</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">B — Right-side slide-over panel</div>
+    <div class="mockup-body" style="background:#f5f3ff;padding:0;overflow:hidden;position:relative;min-height:260px;">
+      <!-- Dimmed background -->
+      <div style="position:absolute;inset:0;background:rgba(99,102,241,0.06);"></div>
+      <!-- Slide-over -->
+      <div style="position:absolute;top:0;right:0;bottom:0;width:55%;background:rgba(255,255,255,0.92);backdrop-filter:blur(16px);border-left:1px solid rgba(99,102,241,0.15);box-shadow:-20px 0 60px rgba(99,102,241,0.15);padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <span style="font-weight:700;color:#3730a3;font-size:14px;">Settings</span>
+          <span style="color:#a5b4fc;font-size:18px;cursor:pointer;">✕</span>
+        </div>
+        <div style="background:rgba(238,242,255,0.6);border-radius:8px;height:160px;display:flex;align-items:center;justify-content:center;">
+          <span style="color:#a5b4fc;font-size:11px;">Settings content — coming soon</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="options" style="margin-top:24px;">
+  <div class="option" data-choice="modal" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Centered modal</h3>
+      <p>Appears over the page with a dimmed backdrop. Standard, focused — won't feel cramped for future settings.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="slideover" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Right slide-over panel</h3>
+      <p>Slides in from the right edge. Keeps the page context visible — common for settings in app editors.</p>
+    </div>
+  </div>
+</div>

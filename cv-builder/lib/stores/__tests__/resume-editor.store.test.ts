@@ -252,13 +252,48 @@ describe('initAutoSave', () => {
     fetchSpy.mockRestore()
   })
 
-  it('sets saveError and retries once on fetch failure', async () => {
+  it('shows retrying message during retries and final error after all retries exhausted', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network'))
     useResumeEditorStore.getState().hydrate('r1', 'CV', emptyData, defaultMeta)
     const unsub = initAutoSave()
     useResumeEditorStore.getState().setTitle('New Title')
-    await vi.runAllTimersAsync()
+    // Fire debounce → first save attempt fails → retrying message set
+    await vi.advanceTimersByTimeAsync(1000)
     expect(useResumeEditorStore.getState().saveError).toContain('retrying')
+    // Fire all remaining retry timers → all exhausted → final error message
+    await vi.runAllTimersAsync()
+    expect(useResumeEditorStore.getState().saveError).toContain("several attempts")
+    unsub()
+    fetchSpy.mockRestore()
+  })
+
+  it('clears saveError and marks clean on successful save after retry', async () => {
+    let callCount = 0
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      callCount++
+      if (callCount < 2) throw new Error('network')
+      return new Response('{}', { status: 200 })
+    })
+    useResumeEditorStore.getState().hydrate('r1', 'CV', emptyData, defaultMeta)
+    const unsub = initAutoSave()
+    useResumeEditorStore.getState().setTitle('New Title')
+    await vi.runAllTimersAsync()
+    expect(useResumeEditorStore.getState().saveError).toBeNull()
+    expect(useResumeEditorStore.getState().isDirty).toBe(false)
+    unsub()
+    fetchSpy.mockRestore()
+  })
+
+  it('shows validation error immediately without retrying on HTTP 400', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ code: 'VALIDATION_ERROR', details: [] }), { status: 400 })
+    )
+    useResumeEditorStore.getState().hydrate('r1', 'CV', emptyData, defaultMeta)
+    const unsub = initAutoSave()
+    useResumeEditorStore.getState().setTitle('New Title')
+    await vi.runAllTimersAsync()
+    expect(fetchSpy).toHaveBeenCalledTimes(1) // no retries
+    expect(useResumeEditorStore.getState().saveError).toContain('invalid values')
     unsub()
     fetchSpy.mockRestore()
   })

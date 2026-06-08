@@ -1,0 +1,118 @@
+<h2>③ Drag & Drop — Handle Style</h2>
+<p class="subtitle">How should sections indicate they're draggable?</p>
+
+<div class="cards" style="margin-top:20px">
+
+  <!-- Option A: Left grip handle only -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px;background:#f8faff">
+      <div style="display:flex;flex-direction:column;gap:4px;width:200px;margin:0 auto">
+        <div style="display:flex;align-items:center;gap:0;border:1px solid #e0e7ff;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.8)">
+          <div style="padding:8px 7px;background:#f5f3ff;border-right:1px solid #e0e7ff;cursor:grab;color:#a5b4fc;font-size:13px;line-height:1">⠿</div>
+          <div style="flex:1;padding:7px 10px;font-size:9px;font-weight:600;color:#3730a3">Personal Info</div>
+          <div style="padding:4px 8px;font-size:8px;color:#a5b4fc">▼</div>
+        </div>
+        <!-- Dragging state -->
+        <div style="display:flex;align-items:center;gap:0;border:2px dashed #818cf8;border-radius:8px;overflow:hidden;background:#eef2ff;opacity:0.8">
+          <div style="padding:8px 7px;background:#e0e7ff;border-right:1px solid #c7d2fe;color:#818cf8;font-size:13px;line-height:1">⠿</div>
+          <div style="flex:1;padding:7px 10px;font-size:9px;font-weight:600;color:#6366f1">Work Experience</div>
+          <div style="padding:4px 8px;font-size:8px;color:#a5b4fc">▼</div>
+        </div>
+        <!-- Drop indicator line -->
+        <div style="height:2px;background:#6366f1;border-radius:2px;margin:0 4px"></div>
+        <div style="display:flex;align-items:center;gap:0;border:1px solid #e0e7ff;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.8)">
+          <div style="padding:8px 7px;background:#f5f3ff;border-right:1px solid #e0e7ff;cursor:grab;color:#a5b4fc;font-size:13px;line-height:1">⠿</div>
+          <div style="flex:1;padding:7px 10px;font-size:9px;font-weight:600;color:#3730a3">Education</div>
+          <div style="padding:4px 8px;font-size:8px;color:#a5b4fc">▼</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0;border:1px solid #e0e7ff;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.8)">
+          <div style="padding:8px 7px;background:#f5f3ff;border-right:1px solid #e0e7ff;cursor:grab;color:#a5b4fc;font-size:13px;line-height:1">⠿</div>
+          <div style="flex:1;padding:7px 10px;font-size:9px;font-weight:600;color:#3730a3">Skills</div>
+          <div style="padding:4px 8px;font-size:8px;color:#a5b4fc">▼</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:8px;color:#6b7280;margin-top:8px">⠿ grip on the left — always visible, drag only from that zone</div>
+    </div>
+    <div class="card-body">
+      <h3>A — Left grip zone <span style="font-size:10px;color:#6366f1">(Recommended)</span></h3>
+      <p>A dedicated drag handle on the left. Clear affordance — users know exactly where to grab. The rest of the row still toggles the accordion open/close.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Full row draggable, grip appears on hover -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px;background:#f8faff">
+      <div style="display:flex;flex-direction:column;gap:4px;width:200px;margin:0 auto">
+        <!-- Normal state -->
+        <div style="display:flex;align-items:center;gap:0;border:1px solid #e0e7ff;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.8)">
+          <div style="padding:8px 7px;color:transparent;font-size:13px;line-height:1">⠿</div>
+          <div style="flex:1;padding:7px 10px;font-size:9px;font-weight:600;color:#3730a3">Personal Info</div>
+          <div style="padding:4px 8px;font-size:8px;color:#a5b4fc">▼</div>
+        </div>
+        <!-- Hover state (grip appears) -->
+        <div style="display:flex;align-items:center;gap:0;border:1px solid #c7d2fe;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.95);box-shadow:0 1px 4px rgba(99,102,241,0.1);cursor:grab">
+          <div style="padding:8px 7px;color:#c7d2fe;font-size:13px;line-height:1">⠿</div>
+          <div style="flex:1;padding:7px 10px;font-size:9px;font-weight:600;color:#3730a3">Work Experience <span style="font-size:7px;color:#a5b4fc;font-weight:400">← hover</span></div>
+          <div style="padding:4px 8px;font-size:8px;color:#a5b4fc">▼</div>
+        </div>
+        <!-- Dragging -->
+        <div style="display:flex;align-items:center;gap:0;border:2px dashed #818cf8;border-radius:8px;overflow:hidden;background:#eef2ff;opacity:0.75">
+          <div style="padding:8px 7px;color:#818cf8;font-size:13px;line-height:1">⠿</div>
+          <div style="flex:1;padding:7px 10px;font-size:9px;font-weight:600;color:#6366f1">Education <span style="font-size:7px;color:#818cf8;font-weight:400">← dragging</span></div>
+          <div style="padding:4px 8px;font-size:8px;color:#a5b4fc">▼</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0;border:1px solid #e0e7ff;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.8)">
+          <div style="padding:8px 7px;color:transparent;font-size:13px;line-height:1">⠿</div>
+          <div style="flex:1;padding:7px 10px;font-size:9px;font-weight:600;color:#3730a3">Skills</div>
+          <div style="padding:4px 8px;font-size:8px;color:#a5b4fc">▼</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:8px;color:#6b7280;margin-top:8px">Grip hidden at rest, appears on hover — full row is draggable</div>
+    </div>
+    <div class="card-body">
+      <h3>B — Full row, hover-reveal grip</h3>
+      <p>The whole row becomes the drag target. Grip dots appear on hover as a hint. Simpler visually but conflicts slightly with the accordion toggle click.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Keep ↑↓ buttons + add drag -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px;background:#f8faff">
+      <div style="display:flex;flex-direction:column;gap:4px;width:200px;margin:0 auto">
+        <div style="display:flex;align-items:center;gap:0;border:1px solid #e0e7ff;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.8)">
+          <div style="padding:8px 7px;background:#f5f3ff;border-right:1px solid #e0e7ff;cursor:grab;color:#a5b4fc;font-size:13px;line-height:1">⠿</div>
+          <div style="flex:1;padding:7px 10px;font-size:9px;font-weight:600;color:#3730a3">Personal Info</div>
+          <div style="display:flex;flex-direction:column;padding:2px 4px;gap:1px">
+            <button style="font-size:8px;color:#c7d2fe;background:none;border:none;padding:1px 2px;line-height:1">↑</button>
+            <button style="font-size:8px;color:#a5b4fc;background:none;border:none;padding:1px 2px;line-height:1">↓</button>
+          </div>
+          <div style="padding:4px 6px;font-size:8px;color:#a5b4fc">▼</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0;border:1px solid #e0e7ff;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.8)">
+          <div style="padding:8px 7px;background:#f5f3ff;border-right:1px solid #e0e7ff;cursor:grab;color:#a5b4fc;font-size:13px;line-height:1">⠿</div>
+          <div style="flex:1;padding:7px 10px;font-size:9px;font-weight:600;color:#3730a3">Work Experience</div>
+          <div style="display:flex;flex-direction:column;padding:2px 4px;gap:1px">
+            <button style="font-size:8px;color:#a5b4fc;background:none;border:none;padding:1px 2px;line-height:1">↑</button>
+            <button style="font-size:8px;color:#a5b4fc;background:none;border:none;padding:1px 2px;line-height:1">↓</button>
+          </div>
+          <div style="padding:4px 6px;font-size:8px;color:#a5b4fc">▼</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0;border:1px solid #e0e7ff;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.8)">
+          <div style="padding:8px 7px;background:#f5f3ff;border-right:1px solid #e0e7ff;cursor:grab;color:#a5b4fc;font-size:13px;line-height:1">⠿</div>
+          <div style="flex:1;padding:7px 10px;font-size:9px;font-weight:600;color:#3730a3">Education</div>
+          <div style="display:flex;flex-direction:column;padding:2px 4px;gap:1px">
+            <button style="font-size:8px;color:#a5b4fc;background:none;border:none;padding:1px 2px;line-height:1">↑</button>
+            <button style="font-size:8px;color:#a5b4fc;background:none;border:none;padding:1px 2px;line-height:1">↓</button>
+          </div>
+          <div style="padding:4px 6px;font-size:8px;color:#a5b4fc">▼</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:8px;color:#6b7280;margin-top:8px">Both drag handle and ↑↓ buttons — keyboard-friendly fallback</div>
+    </div>
+    <div class="card-body">
+      <h3>C — Grip + keep ↑↓ buttons</h3>
+      <p>Adds drag but keeps the arrow buttons as a fallback. More crowded header row. Useful if you want precise keyboard-friendly nudging alongside drag.</p>
+    </div>
+  </div>
+
+</div>

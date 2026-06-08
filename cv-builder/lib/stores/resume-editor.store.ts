@@ -154,14 +154,15 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
 )
 
 let _saveTimer: ReturnType<typeof setTimeout> | null = null
+let _retryTimer: ReturnType<typeof setTimeout> | null = null
 let _retryCount = 0
+const MAX_RETRIES = 3
+const RETRY_DELAYS = [3000, 6000, 12000] // exponential backoff
 
 export function initAutoSave(): () => void {
   _retryCount = 0
-  if (_saveTimer) {
-    clearTimeout(_saveTimer)
-    _saveTimer = null
-  }
+  if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null }
+  if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null }
   return useResumeEditorStore.subscribe(
     (s) => s.isDirty,
     (isDirty) => {
@@ -183,18 +184,41 @@ async function performSave(): Promise<void> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title, data, meta }),
     })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      const detail = body?.code ?? `HTTP ${res.status}`
+      throw new Error(detail, { cause: { status: res.status, body } })
+    }
     _setIsDirty(false)
     _setSaveError(null)
     _retryCount = 0
-  } catch {
-    if (_retryCount < 1) {
-      _retryCount++
-      _setSaveError("Changes couldn't be saved — retrying…")
-      setTimeout(performSave, 3000)
-    } else {
+  } catch (err) {
+    const cause = (err as { cause?: { status?: number; body?: { code?: string; details?: unknown } } }).cause
+    const status = cause?.status
+    // Validation errors won't resolve on retry — surface them immediately with details.
+    if (status === 400) {
+      const details = cause?.body?.details
+      console.error('[AutoSave] Validation error — save aborted:', details ?? cause?.body)
       _retryCount = 0
-      _setSaveError("Changes couldn't be saved — retrying failed. Please check your connection.")
+      _setSaveError("Couldn't save — some fields have invalid values. Check URLs and email addresses.")
+      return
+    }
+    if (status === 401) {
+      console.error('[AutoSave] Session expired')
+      _retryCount = 0
+      _setSaveError("Couldn't save — your session has expired. Please refresh the page.")
+      return
+    }
+    if (_retryCount < MAX_RETRIES) {
+      const delay = RETRY_DELAYS[_retryCount] ?? 12000
+      _retryCount++
+      console.warn(`[AutoSave] Save failed (attempt ${_retryCount}/${MAX_RETRIES}), retrying in ${delay / 1000}s…`, err)
+      _setSaveError(`Couldn't save — retrying… (attempt ${_retryCount}/${MAX_RETRIES})`)
+      _retryTimer = setTimeout(performSave, delay)
+    } else {
+      console.error('[AutoSave] All retries exhausted:', err)
+      _retryCount = 0
+      _setSaveError("Couldn't save after several attempts — please check your connection and try again.")
     }
   } finally {
     _setIsSaving(false)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 
@@ -56,18 +57,44 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
+  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null)
+  const [mounted, setMounted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const settingsCloseRef = useRef<HTMLButtonElement>(null)
   const termsCloseRef = useRef<HTMLButtonElement>(null)
 
+  // Portals render the menu/modals into document.body so they always sit above
+  // ancestors (e.g. the navbar's backdrop-blur) which create their own stacking
+  // context and containing block for fixed-position elements.
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!dropdownOpen) return
+    function updatePosition() {
+      const rect = triggerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setMenuPosition({ top: rect.bottom + 8, right: window.innerWidth - rect.right })
+    }
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [dropdownOpen])
+
   useEffect(() => {
     if (!dropdownOpen) return
     function onMouseDown(e: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
+      const target = e.target as Node
+      const insideTrigger = containerRef.current?.contains(target) ?? false
+      const insideMenu = menuRef.current?.contains(target) ?? false
+      if (!insideTrigger && !insideMenu) {
         setDropdownOpen(false)
       }
     }
@@ -138,10 +165,12 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
       </button>
 
       {/* Dropdown */}
-      {dropdownOpen && (
+      {mounted && dropdownOpen && menuPosition && createPortal(
         <div
+          ref={menuRef}
           role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-white/40 bg-white/90 shadow-xl backdrop-blur-xl"
+          style={{ top: menuPosition.top, right: menuPosition.right }}
+          className="fixed z-[100] w-56 overflow-hidden rounded-xl border border-white/40 bg-white/90 shadow-xl backdrop-blur-xl"
         >
           {/* User info header (non-interactive) */}
           <div className="flex items-center gap-3 border-b border-indigo-50 px-4 py-3">
@@ -230,14 +259,15 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
               Sign Out
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Settings modal */}
-      {settingsOpen && (
+      {mounted && settingsOpen && createPortal(
         <div
           data-testid="settings-backdrop"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-indigo-900/10 px-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-indigo-900/10 px-4 backdrop-blur-sm"
           onClick={() => setSettingsOpen(false)}
         >
           <div
@@ -262,14 +292,15 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
               <p className="text-sm text-indigo-300">Settings content coming soon</p>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Terms & Conditions modal */}
-      {termsOpen && (
+      {mounted && termsOpen && createPortal(
         <div
           data-testid="terms-backdrop"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-indigo-900/10 px-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-indigo-900/10 px-4 backdrop-blur-sm"
           onClick={() => setTermsOpen(false)}
         >
           <div
@@ -382,7 +413,8 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
               </p>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
