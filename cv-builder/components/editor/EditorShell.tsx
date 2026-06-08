@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useResumeEditorStore, initAutoSave } from '@/lib/stores/resume-editor.store'
 import { EditTab } from './EditTab'
@@ -15,6 +15,10 @@ type Tab = 'edit' | 'design' | 'ats'
 
 const TAB_LABELS: Record<Tab, string> = { edit: 'Edit', design: 'Design', ats: 'ATS' }
 
+const PANEL_WIDTH_KEY = 'cv-builder:panel-width'
+const DEFAULT_PANEL_WIDTH = 320
+const MIN_PANEL_WIDTH = 240
+
 export interface EditorShellProps {
   resumeId: string
   title: string
@@ -25,12 +29,20 @@ export interface EditorShellProps {
 export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
   const [activeTab, setActiveTab] = useState<Tab>('edit')
   const [previewExpanded, setPreviewExpanded] = useState(false)
+  const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
+  const [dividerActive, setDividerActive] = useState(false)
+  const draggingRef = useRef(false)
+
   const storeTitle = useResumeEditorStore((s) => s.title)
   const isDirty = useResumeEditorStore((s) => s.isDirty)
   const isSaving = useResumeEditorStore((s) => s.isSaving)
   const saveError = useResumeEditorStore((s) => s.saveError)
   const setTitle = useResumeEditorStore((s) => s.setTitle)
   const hydrate = useResumeEditorStore((s) => s.hydrate)
+  const undo = useResumeEditorStore((s) => s.undo)
+  const redo = useResumeEditorStore((s) => s.redo)
+  const canUndo = useResumeEditorStore((s) => s.canUndo)
+  const canRedo = useResumeEditorStore((s) => s.canRedo)
 
   useEffect(() => {
     hydrate(resumeId, title, data, meta)
@@ -39,6 +51,34 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
   useEffect(() => {
     return initAutoSave()
   }, [])
+
+  useEffect(() => {
+    const saved = localStorage.getItem(PANEL_WIDTH_KEY)
+    if (saved) {
+      const w = parseInt(saved, 10)
+      if (!isNaN(w)) {
+        setPanelWidth(Math.max(MIN_PANEL_WIDTH, Math.min(Math.floor(window.innerWidth * 0.6), w)))
+      }
+    }
+  }, [])
+
+  function handleDividerPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    draggingRef.current = true
+    setDividerActive(true)
+  }
+
+  function handleDividerPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!draggingRef.current) return
+    setPanelWidth(Math.max(MIN_PANEL_WIDTH, Math.min(Math.floor(window.innerWidth * 0.6), e.clientX)))
+  }
+
+  function handleDividerPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    draggingRef.current = false
+    setDividerActive(false)
+    const w = Math.max(MIN_PANEL_WIDTH, Math.min(Math.floor(window.innerWidth * 0.6), e.clientX))
+    localStorage.setItem(PANEL_WIDTH_KEY, String(w))
+  }
 
   function handleJsonExport() {
     const s = useResumeEditorStore.getState()
@@ -129,8 +169,11 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
             ))}
           </div>
         ) : (
-          <div className="w-80 min-w-[320px] flex flex-col border-r border-white/20 bg-white/40 backdrop-blur-xl shrink-0">
-            {/* Title + save status */}
+          <div
+            className="flex flex-col border-r border-white/20 bg-white/40 backdrop-blur-xl shrink-0"
+            style={{ width: panelWidth }}
+          >
+            {/* Title */}
             <div className="flex items-center gap-3 px-4 py-2 border-b border-indigo-100 shrink-0 bg-white/50">
               <input
                 type="text"
@@ -158,6 +201,26 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
               ))}
             </div>
 
+            {/* Sticky Undo/Redo — only on Edit tab */}
+            {activeTab === 'edit' && (
+              <div className="flex items-center gap-1 px-3 py-1.5 border-b border-indigo-100 shrink-0 bg-indigo-50/60">
+                <button
+                  onClick={undo}
+                  disabled={!canUndo}
+                  className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  ↩ Undo
+                </button>
+                <button
+                  onClick={redo}
+                  disabled={!canRedo}
+                  className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Redo ↪
+                </button>
+              </div>
+            )}
+
             {/* Tab content */}
             <div className="flex-1 overflow-auto">
               <div className={activeTab === 'edit' ? 'block' : 'hidden'}>
@@ -171,6 +234,18 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Resize divider — only when panel is not collapsed */}
+        {!previewExpanded && (
+          <div
+            className={`w-1 shrink-0 cursor-col-resize select-none transition-colors ${
+              dividerActive ? 'bg-indigo-400/40' : 'hover:bg-indigo-400/40 bg-transparent'
+            }`}
+            onPointerDown={handleDividerPointerDown}
+            onPointerMove={handleDividerPointerMove}
+            onPointerUp={handleDividerPointerUp}
+          />
         )}
 
         {/* Right panel — preview */}
