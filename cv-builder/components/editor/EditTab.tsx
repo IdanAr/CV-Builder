@@ -85,7 +85,7 @@ export function EditTab() {
   const orderedSections = (meta.sectionOrder?.length > 0
     ? meta.sectionOrder
     : ['work', 'education', 'skills', 'volunteer', 'languages']
-  ).filter((s) => s in SECTION_FORMS || s.startsWith('custom:'))
+  ).filter((s) => (s in SECTION_FORMS && s !== 'basics') || s.startsWith('custom:'))
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return

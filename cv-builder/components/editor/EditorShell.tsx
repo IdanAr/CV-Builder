@@ -20,6 +20,10 @@ const DEFAULT_PANEL_WIDTH = 320
 const MIN_PANEL_WIDTH = 240
 const MAX_PANEL_WIDTH_RATIO = 0.6
 
+function clampPanelWidth(x: number): number {
+  return Math.max(MIN_PANEL_WIDTH, Math.min(Math.floor(window.innerWidth * MAX_PANEL_WIDTH_RATIO), x))
+}
+
 export interface EditorShellProps {
   resumeId: string
   title: string
@@ -33,6 +37,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
   const [dividerActive, setDividerActive] = useState(false)
   const draggingRef = useRef(false)
+  const dragStartWidthRef = useRef(DEFAULT_PANEL_WIDTH)
 
   const storeTitle = useResumeEditorStore((s) => s.title)
   const isDirty = useResumeEditorStore((s) => s.isDirty)
@@ -58,12 +63,13 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
     if (saved) {
       const w = parseInt(saved, 10)
       if (!isNaN(w)) {
-        setPanelWidth(Math.max(MIN_PANEL_WIDTH, Math.min(Math.floor(window.innerWidth * MAX_PANEL_WIDTH_RATIO), w)))
+        setPanelWidth(clampPanelWidth(w))
       }
     }
   }, [])
 
   function handleDividerPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    dragStartWidthRef.current = panelWidth
     e.currentTarget.setPointerCapture(e.pointerId)
     draggingRef.current = true
     setDividerActive(true)
@@ -71,7 +77,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
 
   function handleDividerPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!draggingRef.current) return
-    setPanelWidth(Math.max(MIN_PANEL_WIDTH, Math.min(Math.floor(window.innerWidth * MAX_PANEL_WIDTH_RATIO), e.clientX)))
+    setPanelWidth(clampPanelWidth(e.clientX))
   }
 
   function handleDividerPointerUp(_e: React.PointerEvent<HTMLDivElement>) {
@@ -86,6 +92,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
   function handleDividerPointerCancel() {
     draggingRef.current = false
     setDividerActive(false)
+    setPanelWidth(dragStartWidthRef.current)
   }
 
   function handleJsonExport() {
@@ -125,7 +132,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
       {/* Top navbar */}
       <AppNavbar
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Link
               href="/dashboard"
               className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
@@ -151,7 +158,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
             </button>
             <button
               onClick={() => handleExport('docx')}
-              className="text-xs border border-indigo-200 text-indigo-600 rounded px-3 py-1.5 hover:bg-indigo-50 transition-colors"
+              className="text-xs bg-indigo-600 text-white rounded px-3 py-1.5 hover:bg-indigo-700 transition-colors"
             >
               DOCX
             </button>
