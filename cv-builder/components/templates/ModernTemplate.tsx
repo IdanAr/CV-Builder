@@ -3,6 +3,7 @@ import React from 'react'
 import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
 import { richTextToHtml } from '@/lib/rich-text'
+import { getColumnSide } from '@/lib/get-column-side'
 import { formatDate } from '@/lib/format-date'
 
 function rt(text: string | undefined | null): React.ReactNode {
@@ -176,8 +177,9 @@ export function ModernTemplate({ data, meta }: TemplateProps) {
   )
 
   if (meta.layout === 'two-column') {
-    const leftSections = sectionOrder.filter((s) => ['work', 'education', 'volunteer'].includes(s) || s.startsWith('custom:'))
-    const rightSections = sectionOrder.filter((s) => !leftSections.includes(s))
+    const ca = meta.columnAssignment ?? {}
+    const leftSections = sectionOrder.filter((s) => getColumnSide(s, ca) === 'left')
+    const rightSections = sectionOrder.filter((s) => getColumnSide(s, ca) === 'right')
     return (
       <div style={page}>
         <div style={{ background: meta.primaryColor, color: '#fff', padding: `${pad}px ${pad}px ${pad * 0.75}px` }}>

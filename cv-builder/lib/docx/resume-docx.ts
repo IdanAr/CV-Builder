@@ -4,6 +4,7 @@ import {
 } from 'docx'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { parseRichText, TextRun as RichTextRun } from '@/lib/rich-text'
+import { getColumnSide } from '@/lib/get-column-side'
 
 function richTextRuns(
   text: string,
@@ -426,9 +427,9 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
   let bodyContent: (Paragraph | Table)[]
 
   if (meta.layout === 'two-column') {
-    const leftBuiltIn = ['work', 'education', 'volunteer']
-    const leftSections = sectionOrder.filter(s => leftBuiltIn.includes(s) || s.startsWith('custom:'))
-    const rightSections = sectionOrder.filter(s => !leftBuiltIn.includes(s) && !s.startsWith('custom:'))
+    const ca = meta.columnAssignment ?? {}
+    const leftSections = sectionOrder.filter(s => getColumnSide(s, ca) === 'left')
+    const rightSections = sectionOrder.filter(s => getColumnSide(s, ca) === 'right')
 
     // Column widths mirror the PDF's flex: 0.58 / 0.42
     const colGapTwips = convertInchesToTwip(0.15)
