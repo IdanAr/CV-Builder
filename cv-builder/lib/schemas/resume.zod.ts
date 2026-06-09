@@ -3,7 +3,7 @@ import { z } from 'zod'
 
 // Form inputs clear to '' rather than undefined; treat '' as absent so that
 // z.string().url()/.email() format checks don't reject cleared fields.
-const optionalUrl = () => z.union([z.string().url(), z.literal('')]).optional()
+const optionalUrl = () => z.string().optional()
 const optionalEmail = () => z.union([z.string().email(), z.literal('')]).optional()
 
 const LocationSchema = z.object({

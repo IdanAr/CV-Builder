@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { CustomSection } from '@/lib/schemas/resume.zod'
 import { richTextToHtml } from '@/lib/rich-text'
+import { formatDate } from '@/lib/format-date'
 
 function rt(text: string | undefined | null): React.ReactNode {
   if (!text) return null
@@ -28,7 +29,7 @@ export function renderCustomSection(
             {item.title && <strong style={{ fontSize: '11pt' }}>{item.title}</strong>}
             {enabledFields.includes('dateRange') && (item.startDate || item.endDate) && (
               <span style={{ fontSize: '10pt', color: '#666' }}>
-                {[item.startDate, item.endDate].filter(Boolean).join(' – ')}
+                {[formatDate(item.startDate), formatDate(item.endDate)].filter(Boolean).join(' – ')}
               </span>
             )}
           </div>

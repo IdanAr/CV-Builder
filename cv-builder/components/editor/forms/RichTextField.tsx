@@ -34,7 +34,7 @@ export function RichTextField({
   value,
   onChange,
   placeholder,
-  rows = 3,
+  rows = 5,
   className,
 }: RichTextFieldProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)

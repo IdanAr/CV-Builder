@@ -96,7 +96,7 @@ describe('renderCustomSection', () => {
       items: [{ id: 'i1', title: 'T', startDate: '2022-01', endDate: '2023-06' }],
     }
     render(<div>{renderCustomSection(section, styles)}</div>)
-    expect(screen.getByText('2022-01 – 2023-06')).toBeTruthy()
+    expect(screen.getByText('01/2022 – 06/2023')).toBeTruthy()
   })
 
   it('renders url when enabledFields includes url', () => {

@@ -4,6 +4,7 @@ import React from 'react'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { renderCustomSection } from './renderCustomSection'
 import { richTextToHtml } from '@/lib/rich-text'
+import { formatDate } from '@/lib/format-date'
 
 function rt(text: string | undefined | null): React.ReactNode {
   if (!text) return null
@@ -64,7 +65,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong style={{ fontSize: '11pt' }}>{job.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
-                    {[job.startDate, job.endDate || 'Present'].filter(Boolean).join(' – ')}
+                    {[formatDate(job.startDate), formatDate(job.endDate) || 'Present'].filter(Boolean).join(' – ')}
                   </span>
                 </div>
                 <div style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{job.position}</div>
@@ -90,7 +91,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{edu.institution}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
-                    {[edu.startDate, edu.endDate].filter(Boolean).join(' – ')}
+                    {[formatDate(edu.startDate), formatDate(edu.endDate)].filter(Boolean).join(' – ')}
                   </span>
                 </div>
                 <div style={{ fontSize: '10.5pt' }}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</div>
@@ -106,14 +107,17 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
         return (
           <div key="skills">
             <div style={sectionTitle}>Skills</div>
-            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
+            <div style={{ fontSize: '10pt', lineHeight: 1.7 }}>
               {skills.map((s, i) => (
-                <span key={i}>
-                  <strong>{s.name}</strong>
-                  {s.level && <span style={{ color: '#666' }}> ({s.level})</span>}
-                  {(s.keywords ?? []).length > 0 && <span style={{ color: '#555' }}>: {(s.keywords ?? []).join(', ')}</span>}
-                  {i < skills.length - 1 && <span style={{ margin: '0 8px', color: '#ccc' }}>|</span>}
-                </span>
+                <div key={i} style={{ display: 'flex', gap: '16px', marginBottom: '2px' }}>
+                  <div style={{ minWidth: '130px', fontWeight: 600, flexShrink: 0 }}>
+                    {s.name}
+                    {s.level && <span style={{ fontWeight: 400, color: '#666' }}> · {s.level}</span>}
+                  </div>
+                  {(s.keywords ?? []).length > 0 && (
+                    <div style={{ color: '#444', flex: 1 }}>{(s.keywords ?? []).join(', ')}</div>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -127,11 +131,10 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
             <div style={sectionTitle}>Languages</div>
             <div style={{ fontSize: '10pt', lineHeight: 1.8 }}>
               {langs.map((l, i) => (
-                <span key={i}>
+                <div key={i}>
                   <strong>{l.language}</strong>
-                  {l.fluency && <span style={{ color: '#666' }}> ({l.fluency})</span>}
-                  {i < langs.length - 1 && <span style={{ margin: '0 8px' }}>·</span>}
-                </span>
+                  {l.fluency && <span style={{ color: '#666' }}> – {l.fluency}</span>}
+                </div>
               ))}
             </div>
           </div>
@@ -148,7 +151,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{v.organization}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
-                    {[v.startDate, v.endDate || 'Present'].filter(Boolean).join(' – ')}
+                    {[formatDate(v.startDate), formatDate(v.endDate) || 'Present'].filter(Boolean).join(' – ')}
                   </span>
                 </div>
                 <div style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{v.position}</div>
