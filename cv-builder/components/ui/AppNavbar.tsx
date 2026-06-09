@@ -8,10 +8,20 @@ export function AppNavbar({ actions }: AppNavbarProps) {
   return (
     <nav className="w-full bg-white/55 backdrop-blur-xl border-b border-white/30 shadow-sm">
       <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex h-18 items-center justify-between">
-          {/* Logo + wordmark */}
-          <div className="flex items-center gap-2">
-            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="h-14 w-14 shrink-0">
+        {/* Added 'relative' and 'w-full' to this wrapper so the absolute logo positions correctly */}
+        <div className="relative flex h-20 items-center w-full">
+          
+          {/* Actions Container: Now spans the entire width (z-10 to stay clickable above the logo area) */}
+          {actions && (
+            <div className="flex flex-1 items-center w-full z-10">
+              {actions}
+            </div>
+          )}
+
+          {/* Absolute Centered Logo + wordmark */}
+          {/* left-1/2 and -translate-x-1/2 perfectly center this element regardless of what is on the left/right */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 z-0 pointer-events-none">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="h-18 w-18 shrink-0">
               <polygon points="50,25 65,35 65,55 50,65 35,55 35,35" fill="#7C3AED" />
               <circle cx="30" cy="30" r="4" fill="#A78BFA" />
               <circle cx="70" cy="30" r="4" fill="#A78BFA" />
@@ -28,17 +38,11 @@ export function AppNavbar({ actions }: AppNavbarProps) {
               <path d="M 42 42 L 48 42 L 50 38 L 52 42 L 58 42 L 54 48 L 56 54 L 50 50 L 44 54 L 46 48 Z"
                 fill="#FFFFFF" opacity="0.9" />
             </svg>
-            <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+            <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 whitespace-nowrap">
               CV Builder
             </span>
           </div>
 
-          {/* Right-side actions */}
-          {actions && (
-            <div className="flex items-center gap-2">
-              {actions}
-            </div>
-          )}
         </div>
       </div>
     </nav>
