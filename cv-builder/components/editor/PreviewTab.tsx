@@ -8,6 +8,9 @@ import { ModernTemplate } from '@/components/templates/ModernTemplate'
 import { MinimalTemplate } from '@/components/templates/MinimalTemplate'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
+const A4_WIDTH_PX = 794
+const A4_HEIGHT_PX = 1123
+
 const TEMPLATES: Record<string, React.ComponentType<{ data: ResumeData; meta: ResumeMeta }>> = {
   classic: ClassicTemplate,
   modern: ModernTemplate,
@@ -19,26 +22,104 @@ export function PreviewTab() {
   const meta = useResumeEditorStore((s) => s.meta)
   const debouncedData = useDebounce(data, 300)
   const debouncedMeta = useDebounce(meta, 300)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [fitScale, setFitScale] = useState(0.75)
 
+  const containerRef = useRef<HTMLDivElement>(null)
+  const innerRef = useRef<HTMLDivElement>(null)
+  const [fitScale, setFitScale] = useState(0.75)
+  const [templateHeight, setTemplateHeight] = useState(A4_HEIGHT_PX)
+
+  // Track container width → fitScale
   useEffect(() => {
-    const update = () => {
-      if (containerRef.current) {
-        setFitScale(Math.min(1, (containerRef.current.clientWidth - 64) / 794))
-      }
-    }
-    update()
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
+    const el = containerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      setFitScale(Math.min(1, (el.clientWidth - 64) / A4_WIDTH_PX))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // Track rendered template height
+  useEffect(() => {
+    const el = innerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      setTemplateHeight(el.scrollHeight)
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
   }, [])
 
   const Template = TEMPLATES[debouncedMeta.templateId] ?? ClassicTemplate
 
+  const pageCount = Math.floor(templateHeight / A4_HEIGHT_PX)
+  const pageBreaks = Array.from({ length: pageCount }, (_, i) => i + 1)
+
   return (
-    <div ref={containerRef} className="flex-1 overflow-auto bg-white/20 backdrop-blur-sm flex justify-center py-8">
-      <div style={{ transform: `scale(${fitScale})`, transformOrigin: 'top center' }}>
-        <Template data={debouncedData} meta={debouncedMeta} />
+    <div
+      ref={containerRef}
+      className="flex-1 overflow-auto bg-white/20 backdrop-blur-sm flex justify-center py-8"
+    >
+      {/* Outer wrapper sized to post-scale visual dimensions so the scroll container tracks content correctly */}
+      <div
+        style={{
+          position: 'relative',
+          width: A4_WIDTH_PX * fitScale,
+          height: templateHeight * fitScale,
+          flexShrink: 0,
+        }}
+      >
+        {/* Inner div absolutely positioned and CSS-scaled — transform does not affect layout flow */}
+        <div
+          ref={innerRef}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: A4_WIDTH_PX,
+            transformOrigin: 'top left',
+            transform: `scale(${fitScale})`,
+          }}
+        >
+          <Template data={debouncedData} meta={debouncedMeta} />
+        </div>
+
+        {/* Page break indicators */}
+        {pageBreaks.map((page) => (
+          <div
+            key={page}
+            style={{
+              position: 'absolute',
+              top: page * A4_HEIGHT_PX * fitScale,
+              left: 0,
+              right: 0,
+              pointerEvents: 'none',
+              zIndex: 10,
+            }}
+          >
+            <div
+              style={{
+                borderTop: '2px dashed rgba(99, 102, 241, 0.4)',
+                display: 'flex',
+                justifyContent: 'center',
+              }}
+            >
+              <span
+                style={{
+                  background: 'rgba(99, 102, 241, 0.08)',
+                  color: 'rgba(99, 102, 241, 0.6)',
+                  fontSize: '10px',
+                  padding: '1px 8px',
+                  borderRadius: '0 0 4px 4px',
+                  fontFamily: 'sans-serif',
+                  userSelect: 'none',
+                }}
+              >
+                Page {page + 1}
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
