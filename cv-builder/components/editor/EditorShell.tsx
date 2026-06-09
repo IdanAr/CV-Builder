@@ -137,7 +137,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
           <div className="flex items-center gap-3 flex-1">
             <Link
               href="/dashboard"
-              className="mr-auto text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+              className="mr-auto text-lg font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
             >
               ← My CVs
             </Link>
