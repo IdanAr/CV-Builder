@@ -7,11 +7,11 @@ interface AppNavbarProps {
 export function AppNavbar({ actions }: AppNavbarProps) {
   return (
     <nav className="w-full bg-white/55 backdrop-blur-xl border-b border-white/30 shadow-sm">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-14 items-center justify-between">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
+        <div className="flex h-18 items-center justify-between">
           {/* Logo + wordmark */}
           <div className="flex items-center gap-2">
-            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 shrink-0">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="h-14 w-14 shrink-0">
               <polygon points="50,25 65,35 65,55 50,65 35,55 35,35" fill="#7C3AED" />
               <circle cx="30" cy="30" r="4" fill="#A78BFA" />
               <circle cx="70" cy="30" r="4" fill="#A78BFA" />
