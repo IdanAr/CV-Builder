@@ -49,4 +49,45 @@ describe('DesignPanel', () => {
     fireEvent.click(screen.getByText('Two columns'))
     expect(useResumeEditorStore.getState().meta.layout).toBe('two-column')
   })
+
+  it('section columns block is hidden in single-column mode', () => {
+    render(<DesignPanel />)
+    expect(screen.queryByText('Section columns')).toBeNull()
+  })
+
+  it('section columns block is visible in two-column mode', () => {
+    useResumeEditorStore.setState({
+      resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+      data: {},
+      meta: { ...defaultMeta, layout: 'two-column' },
+    })
+    render(<DesignPanel />)
+    expect(screen.getByText('Section columns')).toBeTruthy()
+  })
+
+  it('section columns block shows LEFT and RIGHT badges', () => {
+    useResumeEditorStore.setState({
+      resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+      data: {},
+      meta: { ...defaultMeta, layout: 'two-column', sectionOrder: ['work', 'skills'] },
+    })
+    render(<DesignPanel />)
+    const leftBtns = screen.getAllByText('LEFT')
+    const rightBtns = screen.getAllByText('RIGHT')
+    expect(leftBtns.length).toBeGreaterThan(0)
+    expect(rightBtns.length).toBeGreaterThan(0)
+  })
+
+  it('clicking RIGHT badge updates columnAssignment', () => {
+    useResumeEditorStore.setState({
+      resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+      data: {},
+      meta: { ...defaultMeta, layout: 'two-column', sectionOrder: ['work', 'skills'] },
+    })
+    render(<DesignPanel />)
+    // 'work' defaults to left — click RIGHT to move it
+    const rightBtns = screen.getAllByText('RIGHT')
+    fireEvent.click(rightBtns[0])
+    expect(useResumeEditorStore.getState().meta.columnAssignment?.work).toBe('right')
+  })
 })

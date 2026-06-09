@@ -1,6 +1,24 @@
 'use client'
 
+import React from 'react'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
+import { getColumnSide } from '@/lib/get-column-side'
+import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 const ATS_FONTS = [
   'Calibri', 'Arial', 'Helvetica', 'Garamond', 'Cambria', 'Georgia',
@@ -13,12 +31,108 @@ const TEMPLATES = [
   { id: 'minimal', label: 'Minimal', desc: 'Typography-only, maximum ATS compatibility' },
 ]
 
+const SECTION_LABELS: Record<string, string> = {
+  work: 'Work',
+  education: 'Education',
+  skills: 'Skills',
+  volunteer: 'Volunteer',
+  languages: 'Languages',
+}
+
+function getSectionLabel(sectionKey: string, data: ResumeData): string {
+  if (!sectionKey.startsWith('custom:')) {
+    return SECTION_LABELS[sectionKey] ?? sectionKey.charAt(0).toUpperCase() + sectionKey.slice(1)
+  }
+  const id = sectionKey.slice('custom:'.length)
+  const cs = data.customSections?.find((s) => s.id === id)
+  return cs?.name ?? sectionKey
+}
+
+interface SortableColumnRowProps {
+  sectionKey: string
+  label: string
+  side: 'left' | 'right'
+  onToggle: () => void
+}
+
+function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumnRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: sectionKey,
+  })
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 px-2.5 py-1.5 border-b border-indigo-50 last:border-b-0"
+    >
+      <span
+        {...attributes}
+        {...listeners}
+        className="text-indigo-300 cursor-grab active:cursor-grabbing text-base select-none"
+        aria-label="Drag to reorder"
+      >
+        ⠿
+      </span>
+      <span className="flex-1 text-sm text-gray-700">{label}</span>
+      <div className="flex rounded overflow-hidden border border-indigo-200 text-xs font-bold">
+        <button
+          type="button"
+          onClick={side === 'left' ? undefined : onToggle}
+          className={`px-2 py-0.5 transition-colors ${
+            side === 'left'
+              ? 'bg-indigo-600 text-white'
+              : 'bg-white text-indigo-300 hover:text-indigo-500'
+          }`}
+        >
+          LEFT
+        </button>
+        <button
+          type="button"
+          onClick={side === 'right' ? undefined : onToggle}
+          className={`px-2 py-0.5 transition-colors ${
+            side === 'right'
+              ? 'bg-indigo-600 text-white'
+              : 'bg-white text-indigo-300 hover:text-indigo-500'
+          }`}
+        >
+          RIGHT
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function DesignPanel() {
   const meta = useResumeEditorStore((s) => s.meta)
+  const data = useResumeEditorStore((s) => s.data)
   const setMeta = useResumeEditorStore((s) => s.setMeta)
+
+  const sensors = useSensors(useSensor(PointerSensor))
 
   const selectClass = 'w-full border border-indigo-200 rounded-lg px-2 py-1.5 text-sm bg-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
   const labelClass = 'block text-xs font-medium text-indigo-600 mb-1'
+
+  function handleColumnDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = meta.sectionOrder.indexOf(active.id as string)
+    const newIndex = meta.sectionOrder.indexOf(over.id as string)
+    if (oldIndex === -1 || newIndex === -1) return
+    setMeta({ sectionOrder: arrayMove(meta.sectionOrder, oldIndex, newIndex) })
+  }
+
+  function handleColumnToggle(sectionKey: string) {
+    const current = getColumnSide(sectionKey, meta.columnAssignment ?? {})
+    const next: 'left' | 'right' = current === 'left' ? 'right' : 'left'
+    setMeta({ columnAssignment: { ...meta.columnAssignment, [sectionKey]: next } })
+  }
 
   return (
     <div className="max-w-sm mx-auto py-6 px-4 space-y-6">
@@ -64,6 +178,36 @@ export function DesignPanel() {
           ))}
         </div>
       </div>
+
+      {/* Section columns — only visible in two-column mode */}
+      {meta.layout === 'two-column' && (
+        <div>
+          <p className={labelClass}>Section columns</p>
+          <div className="bg-white border border-indigo-100 rounded-lg overflow-hidden">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleColumnDragEnd}
+            >
+              <SortableContext
+                items={meta.sectionOrder}
+                strategy={verticalListSortingStrategy}
+              >
+                {meta.sectionOrder.map((sectionKey) => (
+                  <SortableColumnRow
+                    key={sectionKey}
+                    sectionKey={sectionKey}
+                    label={getSectionLabel(sectionKey, data)}
+                    side={getColumnSide(sectionKey, meta.columnAssignment ?? {})}
+                    onToggle={() => handleColumnToggle(sectionKey)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          </div>
+          <p className="text-xs text-indigo-300 mt-1.5 text-center">⠿ drag to reorder · click badge to switch column</p>
+        </div>
+      )}
 
       {/* Fonts */}
       <div className="grid grid-cols-2 gap-3">
