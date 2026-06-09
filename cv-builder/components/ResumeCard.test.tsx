@@ -11,7 +11,7 @@ const baseResume = {
   _id: 'abc123',
   title: 'My Resume',
   data: { basics: { label: 'Software Engineer' } },
-  meta: { templateId: 'classic', layout: 'single-column' },
+  meta: { templateId: 'classic', layout: 'single-column', columnAssignment: {} },
   sectionsFilledCount: 3,
   formatScore: 20,
   createdAt: new Date().toISOString(),

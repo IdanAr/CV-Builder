@@ -67,6 +67,7 @@ const baseMeta = {
   pageMargins: 1.0,
   lineSpacing: 1.15,
   layout: 'single-column' as const,
+  columnAssignment: {},
 }
 
 function setupStore(overrides: { sectionOrder?: string[]; customSections?: CustomSection[] } = {}) {

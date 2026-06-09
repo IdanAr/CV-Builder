@@ -10,6 +10,7 @@ const defaultMeta: ResumeMeta = {
   pageMargins: 1.0, lineSpacing: 1.15,
   sectionOrder: ['work', 'education', 'skills'],
   layout: 'single-column',
+  columnAssignment: {},
 }
 
 const sampleData: ResumeData = {

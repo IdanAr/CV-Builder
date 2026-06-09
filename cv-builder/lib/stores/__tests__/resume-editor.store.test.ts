@@ -14,6 +14,7 @@ const defaultMeta: ResumeMeta = {
   lineSpacing: 1.15,
   sectionOrder: ['work', 'education', 'skills'],
   layout: 'single-column',
+  columnAssignment: {},
 }
 
 beforeEach(() => {

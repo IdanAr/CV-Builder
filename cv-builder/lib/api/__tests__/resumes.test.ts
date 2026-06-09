@@ -98,6 +98,7 @@ describe('createResume', () => {
         lineSpacing: 1.15,
         sectionOrder: [] as string[],
         layout: 'single-column' as const,
+        columnAssignment: {},
       },
     }
     const created = { _id: 'r2', userId: 'u1', ...input }

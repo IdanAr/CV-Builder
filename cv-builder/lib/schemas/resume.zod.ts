@@ -167,6 +167,7 @@ export const ResumeMetaSchema = z.object({
     .array(z.string())
     .default(['work', 'education', 'skills', 'volunteer', 'languages']),
   layout: z.enum(['single-column', 'two-column']).default('single-column'),
+  columnAssignment: z.record(z.string(), z.enum(['left', 'right'])).default({}),
 })
 
 export const CreateResumeSchema = z.object({
@@ -185,6 +186,7 @@ const ResumeMetaPatchSchema = z.object({
   lineSpacing: z.number().min(1.0).max(1.15).optional(),
   sectionOrder: z.array(z.string()).optional(),
   layout: z.enum(['single-column', 'two-column']).optional(),
+  columnAssignment: z.record(z.string(), z.enum(['left', 'right'])).optional(),
 })
 
 export const PatchResumeSchema = z.object({
