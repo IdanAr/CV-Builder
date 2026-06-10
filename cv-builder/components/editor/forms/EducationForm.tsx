@@ -31,9 +31,14 @@ function EduItemForm({ item, onUpdate, onRemove }: { item: EduItem; onUpdate: (v
         <input type="text" value={item.area ?? ''} onChange={(e) => set('area', e.target.value)}
           placeholder="Field of study" className={inputClass} />
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      {/* Date Pickers Row */}
+      <div className="grid grid-cols-2 gap-2">
         <MonthYearPicker value={item.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
         <MonthYearPicker value={item.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
+      </div>
+      
+      {/* GPA / Score Row */}
+      <div>
         <input type="text" value={item.score ?? ''} onChange={(e) => set('score', e.target.value)}
           placeholder="GPA / Score" className={inputClass} />
       </div>

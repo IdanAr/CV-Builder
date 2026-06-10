@@ -100,24 +100,31 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
   }
 
   return (
-    <div className="rounded-xl border border-white/30 bg-white/65 backdrop-blur-xl p-4 shadow-lg">
+    <div className="relative group rounded-xl border border-white/30 bg-white/65 backdrop-blur-xl p-4 shadow-lg hover:border-indigo-300 hover:shadow-xl transition-all">
+      {/* The invisible link that covers the whole card */}
+      <Link href={`/dashboard/resumes/${resume._id}`} className="absolute inset-0 z-0" aria-label={`Open ${resume.title}`} />
+
       <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
+        {/* Added 'relative z-10' to text so it stays selectable above the link */}
+        <div className="min-w-0 relative z-10 pointer-events-none">
           <p className="truncate font-semibold text-indigo-900">{resume.title}</p>
           <p className="truncate text-sm text-indigo-400">
             {resume.data.basics?.label ?? 'No role set'} · {resume.meta.templateId ?? 'classic'} template
           </p>
         </div>
-        <div className="flex shrink-0 gap-2">
-          <Link
-            href={`/dashboard/resumes/${resume._id}`}
-            className="rounded-md border border-indigo-300 px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50"
+        
+        {/* Added 'relative z-10' to lift these buttons above the invisible link */}
+        <div className="relative z-10 flex shrink-0 gap-2">
+          
+          <span
+            className="rounded-md border border-indigo-300 bg-white/50 px-3 py-1.5 text-xs font-medium text-indigo-700 transition group-hover:bg-indigo-50 pointer-events-none"
           >
             Open
-          </Link>
+          </span>
+          
           <button
             onClick={handleDownload}
-            className="rounded-md border border-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50"
+            className="rounded-md border border-indigo-100 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50"
             title="Download as JSON"
           >
             ↓ JSON
@@ -125,14 +132,14 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
           <button
             onClick={handleDuplicate}
             disabled={duplicating}
-            className="rounded-md border border-indigo-100 px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50"
+            className="rounded-md border border-indigo-100 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50"
             title="Duplicate"
           >
             {duplicating ? '…' : '⧉'}
           </button>
           {confirmingDelete ? (
             <span className="flex items-center gap-1">
-              <span className="text-xs font-medium text-red-600">Sure?</span>
+              <span className="text-xs font-medium text-red-600 bg-white/80 px-1 rounded">Sure?</span>
               <button
                 onClick={handleDelete}
                 disabled={deleting}
@@ -142,7 +149,7 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
               </button>
               <button
                 onClick={() => setConfirmingDelete(false)}
-                className="rounded-md border border-indigo-100 px-2 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50"
+                className="rounded-md border border-indigo-100 bg-white px-2 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50"
               >
                 Cancel
               </button>
@@ -151,7 +158,7 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
             <button
               onClick={handleDelete}
               disabled={deleting}
-              className="rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+              className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
               title="Delete"
             >
               ✕
@@ -160,8 +167,8 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
         </div>
       </div>
 
-      {/* Metadata row */}
-      <div className="mt-3 flex flex-wrap gap-6 border-t border-indigo-100 pt-3">
+      {/* Metadata row - pointer-events-none allows clicking through to the main card link */}
+      <div className="mt-3 flex flex-wrap gap-6 border-t border-indigo-100 pt-3 relative z-10 pointer-events-none">
         <div>
           <p className="text-xs uppercase tracking-wide text-indigo-400">Created</p>
           <p className="mt-0.5 text-sm text-indigo-900">{formatDate(resume.createdAt)}</p>

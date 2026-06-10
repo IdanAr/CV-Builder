@@ -15,20 +15,21 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <AppNavbar
+ <AppNavbar
         actions={
-          <>
-            <UploadCVButton />
+          // FIX: Replaced the <> fragment with this styling div
+          <div className="flex items-center gap-3 ml-auto">
             <NewResumeButton />
+            <UploadCVButton />
             <div className="w-px h-4 bg-indigo-200" />
             <UserProfileButton user={session.user} />
-          </>
+          </div>
         }
       />
 
       <div className="mx-auto max-w-4xl px-4 py-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-indigo-900">My CVs</h1>
+          <h1 className="text-2xl font-bold text-indigo-700">My CVs</h1>
         </div>
 
         {resumes.length === 0 ? (

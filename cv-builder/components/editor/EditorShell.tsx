@@ -17,12 +17,21 @@ type Tab = 'edit' | 'design' | 'ats'
 const TAB_LABELS: Record<Tab, string> = { edit: 'Edit', design: 'Design', ats: 'ATS' }
 
 const PANEL_WIDTH_KEY = 'cv-builder:panel-width'
-const DEFAULT_PANEL_WIDTH = 320
-const MIN_PANEL_WIDTH = 240
-const MAX_PANEL_WIDTH_RATIO = 0.6
+const DEFAULT_PANEL_WIDTH = 500 // Increased to give the UI breathing room initially
 
 function clampPanelWidth(x: number): number {
-  return Math.max(MIN_PANEL_WIDTH, Math.min(Math.floor(window.innerWidth * MAX_PANEL_WIDTH_RATIO), x))
+  // Safety check for Next.js SSR
+  if (typeof window === 'undefined') return DEFAULT_PANEL_WIDTH
+
+  // 1. Prevent squishing on desktop: hard minimum of 500px.
+  // 2. Prevent breaking on mobile: if screen is < 500px, limit the minimum to the screen width.
+  const dynamicMinWidth = Math.min(500, window.innerWidth)
+
+  // 3. Max width: 60% of the screen, but ensure it never drops below the minimum width.
+  const maxAllowed = Math.max(dynamicMinWidth, Math.floor(window.innerWidth * 0.6))
+
+  // Clamp the dragged width (x) between our dynamic bounds
+  return Math.max(dynamicMinWidth, Math.min(maxAllowed, x))
 }
 
 export interface EditorShellProps {
@@ -197,7 +206,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
             style={{ width: panelWidth }}
           >
             {/* Title */}
-            <div className="flex items-center gap-3 px-4 py-2 border-b border-indigo-100 shrink-0 bg-white/50">
+            <div className="flex items-center gap-3 px-4 h-12 border-b border-indigo-100 shrink-0 bg-white/50">
               <input
                 type="text"
                 value={storeTitle}
@@ -274,7 +283,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
 
         {/* Right panel — preview */}
         <div className="flex-1 flex flex-col min-w-0 bg-white/30 backdrop-blur-sm">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-indigo-100 bg-white/50 shrink-0">
+         <div className="flex items-center gap-2 px-3 h-12 border-b border-indigo-100 bg-white/50 shrink-0">
             <span className="text-xs font-medium text-indigo-500 flex-1">Live Preview</span>
             <button
               onClick={() => setPreviewExpanded((v) => !v)}

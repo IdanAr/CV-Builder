@@ -81,28 +81,29 @@ function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumn
         ⠿
       </span>
       <span className="flex-1 text-sm text-gray-700">{label}</span>
-      <div className="flex rounded overflow-hidden border border-indigo-200 text-xs font-bold">
+
+<div className="flex p-0.5 bg-indigo-50/80 border border-indigo-100 rounded-md text-xs font-medium">
         <button
           type="button"
           onClick={side === 'left' ? undefined : onToggle}
-          className={`px-2 py-0.5 transition-colors ${
+          className={`px-3 py-1 rounded-[4px] transition-all duration-200 ${
             side === 'left'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-white text-indigo-300 hover:text-indigo-500'
+              ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5'
+              : 'text-indigo-400 hover:text-indigo-600 hover:bg-indigo-100/50'
           }`}
         >
-          LEFT
+          Left
         </button>
         <button
           type="button"
           onClick={side === 'right' ? undefined : onToggle}
-          className={`px-2 py-0.5 transition-colors ${
+          className={`px-3 py-1 rounded-[4px] transition-all duration-200 ${
             side === 'right'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-white text-indigo-300 hover:text-indigo-500'
+              ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5'
+              : 'text-indigo-400 hover:text-indigo-600 hover:bg-indigo-100/50'
           }`}
         >
-          RIGHT
+          Right
         </button>
       </div>
     </div>
