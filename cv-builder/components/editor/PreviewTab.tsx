@@ -6,6 +6,8 @@ import { useDebounce } from '@/lib/hooks/use-debounce'
 import { ClassicTemplate } from '@/components/templates/ClassicTemplate'
 import { ModernTemplate } from '@/components/templates/ModernTemplate'
 import { MinimalTemplate } from '@/components/templates/MinimalTemplate'
+import { ExecutiveTemplate } from '@/components/templates/ExecutiveTemplate'
+import { SidebarTemplate } from '@/components/templates/SidebarTemplate'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
 const A4_WIDTH_PX = 794
@@ -15,6 +17,8 @@ const TEMPLATES: Record<string, React.ComponentType<{ data: ResumeData; meta: Re
   classic: ClassicTemplate,
   modern: ModernTemplate,
   minimal: MinimalTemplate,
+  executive: ExecutiveTemplate,
+  sidebar: SidebarTemplate,
 }
 
 export function PreviewTab() {

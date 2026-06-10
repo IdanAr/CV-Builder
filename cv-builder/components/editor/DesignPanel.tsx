@@ -29,6 +29,8 @@ const TEMPLATES = [
   { id: 'classic', label: 'Classic', desc: 'Clean, professional, thin dividers' },
   { id: 'modern', label: 'Modern', desc: 'Bold header block, accent titles' },
   { id: 'minimal', label: 'Minimal', desc: 'Typography-only, maximum ATS compatibility' },
+  { id: 'executive', label: 'Executive', desc: 'Serif, double-rule header, senior industries' },
+  { id: 'sidebar', label: 'Sidebar', desc: 'Colored left rail, skills & languages in panel' },
 ]
 
 const SECTION_LABELS: Record<string, string> = {

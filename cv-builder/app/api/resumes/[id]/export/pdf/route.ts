@@ -4,6 +4,8 @@ import { getResume } from '@/lib/api/resumes'
 import { ClassicPdfTemplate } from '@/lib/pdf/templates/ClassicPdfTemplate'
 import { ModernPdfTemplate } from '@/lib/pdf/templates/ModernPdfTemplate'
 import { MinimalPdfTemplate } from '@/lib/pdf/templates/MinimalPdfTemplate'
+import { ExecutivePdfTemplate } from '@/lib/pdf/templates/ExecutivePdfTemplate'
+import { SidebarPdfTemplate } from '@/lib/pdf/templates/SidebarPdfTemplate'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import React from 'react'
 
@@ -13,6 +15,10 @@ function selectTemplate(data: ResumeData, meta: ResumeMeta) {
       return React.createElement(ModernPdfTemplate, { data, meta })
     case 'minimal':
       return React.createElement(MinimalPdfTemplate, { data, meta })
+    case 'executive':
+      return React.createElement(ExecutivePdfTemplate, { data, meta })
+    case 'sidebar':
+      return React.createElement(SidebarPdfTemplate, { data, meta })
     default:
       return React.createElement(ClassicPdfTemplate, { data, meta })
   }

@@ -1,0 +1,29 @@
+<!-- @dsCard group="Colors" viewport="700x170" name="Purple & brand gradient" subtitle="Accent hue + the indigo→purple gradient and logo stops" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  body { margin: 0; font-family: var(--font-ui); background: var(--app-bg); padding: 18px; }
+  .row { display: flex; gap: 8px; align-items: flex-end; }
+  .sw { flex: 1; }
+  .chip { height: 48px; border-radius: var(--radius-md); border: 1px solid rgba(0,0,0,0.04); }
+  .n { font-size: 11px; color: var(--text-body); margin-top: 6px; }
+  .h { font-size: 10px; color: var(--text-faint); font-family: var(--font-mono); }
+  .grad { height: 56px; border-radius: var(--radius-lg); background: var(--brand-gradient); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 13px; }
+  .lbl { font-size: 10px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .08em; margin: 0 0 8px; }
+</style>
+</head>
+<body>
+  <p class="lbl">Purple ramp</p>
+  <div class="row" id="r"></div>
+  <div style="height:14px"></div>
+  <div class="grad">linear-gradient(90deg, indigo-600 → purple-600)</div>
+  <script>
+    const ramp = [['300','#d8b4fe'],['400','#c084fc'],['500','#a855f7'],['600','#9333ea'],['700','#7c3aed'],['logo-violet','#8b5cf6'],['logo-indigo','#6366f1'],['violet-soft','#a78bfa']];
+    document.getElementById('r').innerHTML = ramp.map(([n,h]) =>
+      `<div class="sw"><div class="chip" style="background:${h}"></div><div class="n">${n}</div><div class="h">${h}</div></div>`).join('');
+  </script>
+</body>
+</html>

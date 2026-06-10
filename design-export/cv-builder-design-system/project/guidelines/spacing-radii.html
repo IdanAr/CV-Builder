@@ -1,0 +1,37 @@
+<!-- @dsCard group="Spacing" viewport="700x150" name="Radii & glass shadows" subtitle="Rounding from sm→full and the indigo-tinted shadow stack" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  body { margin: 0; font-family: var(--font-ui); background: var(--app-bg); padding: 20px; display: flex; gap: 28px; }
+  .grp { display: flex; gap: 14px; align-items: flex-end; }
+  .lbl { font-size: 10px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .08em; margin: 0 0 10px; }
+  .box { width: 60px; height: 50px; background: #fff; border: 1px solid var(--border-default); }
+  .sh { width: 70px; height: 50px; background: #fff; border-radius: var(--radius-lg); }
+  .c { text-align: center; }
+  .n { font-size: 10px; color: var(--text-body); margin-top: 6px; font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+  <div>
+    <p class="lbl">Radius</p>
+    <div class="grp">
+      <div class="c"><div class="box" style="border-radius:var(--radius-sm)"></div><div class="n">sm·4</div></div>
+      <div class="c"><div class="box" style="border-radius:var(--radius-lg)"></div><div class="n">lg·8</div></div>
+      <div class="c"><div class="box" style="border-radius:var(--radius-xl)"></div><div class="n">xl·12</div></div>
+      <div class="c"><div class="box" style="border-radius:var(--radius-2xl)"></div><div class="n">2xl·16</div></div>
+    </div>
+  </div>
+  <div>
+    <p class="lbl">Shadow</p>
+    <div class="grp">
+      <div class="c"><div class="sh" style="box-shadow:var(--shadow-sm)"></div><div class="n">sm</div></div>
+      <div class="c"><div class="sh" style="box-shadow:var(--shadow-md)"></div><div class="n">md</div></div>
+      <div class="c"><div class="sh" style="box-shadow:var(--shadow-lg)"></div><div class="n">lg</div></div>
+      <div class="c"><div class="sh" style="box-shadow:var(--shadow-glow)"></div><div class="n">glow</div></div>
+    </div>
+  </div>
+</body>
+</html>

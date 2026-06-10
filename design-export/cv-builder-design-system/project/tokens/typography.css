@@ -1,0 +1,70 @@
+/* ============================================================
+   CV Builder — Typography tokens
+   App chrome:  Inter (declared in the product's globals.css).
+   CV documents: a curated set of ATS-safe families the builder
+   exposes in its Design panel — Calibri, Arial, Helvetica,
+   Garamond, Cambria, Georgia, Lato, Roboto, IBM Plex Sans.
+   System families fall back to the nearest installed face;
+   webfont families (Inter, Lato, Roboto, IBM Plex Sans, Source
+   Serif 4) are declared in fonts/fonts.css.
+   ============================================================ */
+:root {
+  /* ---- Font families ---- */
+  --font-ui:       'Inter', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  --font-mono:     'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* ATS-safe document families (as offered in the Design panel) */
+  --font-ats-calibri:   'Calibri', 'Carlito', 'Inter', system-ui, sans-serif;
+  --font-ats-arial:     'Arial', 'Helvetica', system-ui, sans-serif;
+  --font-ats-helvetica: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+  --font-ats-garamond:  'EB Garamond', 'Garamond', 'Source Serif 4', Georgia, serif;
+  --font-ats-cambria:   'Cambria', 'Source Serif 4', Georgia, serif;
+  --font-ats-georgia:   'Georgia', 'Source Serif 4', 'Times New Roman', serif;
+  --font-ats-lato:      'Lato', system-ui, sans-serif;
+  --font-ats-roboto:    'Roboto', system-ui, sans-serif;
+  --font-ats-plex:      'IBM Plex Sans', system-ui, sans-serif;
+
+  /* document default */
+  --font-doc-body:   var(--font-ats-calibri);
+  --font-doc-head:   var(--font-ats-calibri);
+  --font-doc-serif:  var(--font-ats-georgia);
+
+  /* ---- App type scale (px) ---- */
+  --text-xs:    12px;   /* meta, badges */
+  --text-sm:    14px;   /* body, controls */
+  --text-base:  16px;   /* default */
+  --text-lg:    18px;   /* nav wordmark */
+  --text-xl:    20px;   /* card titles */
+  --text-2xl:   24px;   /* page headings (My CVs) */
+  --text-4xl:   36px;
+  --text-6xl:   60px;   /* hero / big score */
+
+  /* ---- Document type scale (pt — print units) ---- */
+  --doc-name:        20pt;   /* @kind font */ /* candidate name (18–22pt rule) */
+  --doc-name-lg:     22pt;   /* @kind font */
+  --doc-section:     13pt;   /* @kind font */ /* section headers (12–14pt) */
+  --doc-section-sm:  10pt;   /* @kind font */ /* minimal uppercase label */
+  --doc-role:        10.5pt; /* @kind font */
+  --doc-body-pt:     10pt;   /* @kind font */ /* bullets / body (10–12pt) */
+  --doc-base-pt:     11pt;   /* @kind font */
+
+  /* ---- Weights ---- */
+  --weight-normal:   400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+  --weight-extra:    800;
+
+  /* ---- Line height ---- */
+  --leading-tight:  1.15;
+  --leading-snug:   1.35;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+  --leading-doc:    1.15;   /* CV body (1.0–1.15 constraint) */
+
+  /* ---- Tracking ---- */
+  --tracking-tight:  -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide:   0.08em;   /* modern uppercase titles */
+  --tracking-wider:  0.12em;   /* minimal uppercase labels */
+}

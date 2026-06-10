@@ -1,0 +1,57 @@
+/* ============================================================
+   CV Builder — Spacing, radii, shadows, effects
+   The app leans on a glassmorphic system: frosted fills,
+   soft shadows, generous rounding. The CV canvas is flat
+   and print-true (no shadow, A4 page metrics in px @96dpi).
+   ============================================================ */
+:root {
+  /* ---- Spacing scale (4px base) ---- */
+  --space-0:   0;
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+  --space-20:  80px;
+
+  /* ---- Radii ---- */
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   8px;    /* inputs, small buttons */
+  --radius-xl:   12px;   /* cards */
+  --radius-2xl:  16px;   /* modals, hero cards */
+  --radius-full: 9999px; /* pills, avatars */
+
+  /* ---- Shadows (cool indigo-tinted) ---- */
+  --shadow-sm:  0 1px 2px rgba(49, 46, 129, 0.06);
+  --shadow-md:  0 4px 12px rgba(49, 46, 129, 0.08);
+  --shadow-lg:  0 10px 25px rgba(49, 46, 129, 0.10);
+  --shadow-xl:  0 20px 40px rgba(49, 46, 129, 0.14);
+  --shadow-glow: 0 8px 24px rgba(99, 102, 241, 0.25);
+
+  /* ---- Glass effect primitives ---- */
+  --blur-glass:  20px;   /* backdrop-blur-xl */
+  --blur-soft:   8px;
+  --glass-fill:  rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.30);
+
+  /* ---- Focus ring ---- */
+  --focus-ring: 0 0 0 2px var(--indigo-500);
+
+  /* ---- Motion ---- */
+  --ease-out:   cubic-bezier(0.16, 1, 0.3, 1); /* @kind other */
+  --dur-fast:   150ms; /* @kind other */
+  --dur-base:   200ms; /* @kind other */
+  --dur-slow:   300ms; /* @kind other */
+
+  /* ---- CV page geometry (A4 @ 96dpi) ---- */
+  --page-w:        794px;
+  --page-h:        1123px;
+  --page-margin:   96px;    /* 1.0in default; range 0.5–1.5in */
+  --page-margin-min: 48px;  /* 0.5in hard floor */
+}

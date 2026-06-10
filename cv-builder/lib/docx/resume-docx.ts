@@ -62,6 +62,21 @@ function buildDocxTheme(meta: ResumeMeta): DocxTheme {
         sectionBorder: false,
         accentColor: '#000000',
       }
+    case 'executive':
+      return {
+        sectionTitleColor: meta.primaryColor,
+        sectionUppercase: true,
+        sectionBorder: true,
+        accentColor: meta.accentColor,
+      }
+    case 'sidebar':
+      // DOCX flattens the sidebar to linear order for ATS — rail sections follow main sections
+      return {
+        sectionTitleColor: meta.primaryColor,
+        sectionUppercase: true,
+        sectionBorder: false,
+        accentColor: meta.accentColor,
+      }
     default:
       return {
         sectionTitleColor: meta.primaryColor,
