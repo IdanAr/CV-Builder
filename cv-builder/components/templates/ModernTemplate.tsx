@@ -198,13 +198,18 @@ export function ModernTemplate({ data, meta }: TemplateProps) {
             })()}
           </div>
         </div>
-        <div style={{ padding: `${pad}px`, display: 'flex', gap: '24px' }}>
-          <div style={{ flex: '0 0 58%' }}>{leftSections.map((s) => (
-            <React.Fragment key={s}>{renderSection(s)}</React.Fragment>
-          ))}</div>
-          <div style={{ flex: 1 }}>{rightSections.map((s) => (
-            <React.Fragment key={s}>{renderSection(s)}</React.Fragment>
-          ))}</div>
+        <div style={{ padding: `${pad}px` }}>
+          {basics.summary && (
+            <div style={{ marginBottom: '12px', fontSize: '10pt', color: '#444' }}>{rt(basics.summary)}</div>
+          )}
+          <div style={{ display: 'flex', gap: '24px' }}>
+            <div style={{ flex: '0 0 58%' }}>{leftSections.map((s) => (
+              <React.Fragment key={s}>{renderSection(s)}</React.Fragment>
+            ))}</div>
+            <div style={{ flex: 1 }}>{rightSections.map((s) => (
+              <React.Fragment key={s}>{renderSection(s)}</React.Fragment>
+            ))}</div>
+          </div>
         </div>
       </div>
     )

@@ -131,15 +131,12 @@ export function ModernPdfTemplate({ data, meta }: { data: ResumeData; meta: Resu
         return (
           <View key="languages">
             <Text style={styles.sectionTitle}>Languages</Text>
-            <Text style={styles.body}>
-              {languages.map((l, i) => (
-                <Text key={i}>
-                  <Text style={styles.bold}>{l.language ?? ''}</Text>
-                  {l.fluency ? <Text style={styles.small}> ({l.fluency})</Text> : null}
-                  {i < languages.length - 1 ? <Text>{'  ·  '}</Text> : null}
-                </Text>
-              ))}
-            </Text>
+            {languages.map((l, i) => (
+              <Text key={i} style={styles.body}>
+                <Text style={styles.bold}>{l.language ?? ''}</Text>
+                {l.fluency ? <Text style={styles.small}> – {l.fluency}</Text> : null}
+              </Text>
+            ))}
           </View>
         )
       case 'awards':
@@ -244,9 +241,12 @@ export function ModernPdfTemplate({ data, meta }: { data: ResumeData; meta: Resu
             {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
             {buildContactRow()}
           </View>
-          <View style={[styles.body_section, { flexDirection: 'row', gap: 16 }]}>
-            <View style={{ flex: 0.58 }}>{leftSections.map(renderPdfSection)}</View>
-            <View style={{ flex: 0.42 }}>{rightSections.map(renderPdfSection)}</View>
+          <View style={styles.body_section}>
+            {basics.summary ? renderPdfRichText(basics.summary, { ...(styles.body as object), marginBottom: 12 }) : null}
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <View style={{ flex: 0.58 }}>{leftSections.map(renderPdfSection)}</View>
+              <View style={{ flex: 0.42 }}>{rightSections.map(renderPdfSection)}</View>
+            </View>
           </View>
         </Page>
       </Document>

@@ -242,14 +242,15 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
       case 'languages':
         if (!languages.length) break
         out.push(sectionHeading('Languages', headFont, theme))
-        out.push(new Paragraph({
-          children: languages.flatMap((l, i) => [
-            new TextRun({ text: l.language ?? '', bold: true, font: bodyFont, size: 20 }),
-            ...(l.fluency ? [new TextRun({ text: ` (${l.fluency})`, font: bodyFont, size: 20, color: '666666' })] : []),
-            ...(i < languages.length - 1 ? [new TextRun({ text: '  ·  ', font: bodyFont, size: 20 })] : []),
-          ]),
-          spacing: { after: 80 },
-        }))
+        for (const l of languages) {
+          out.push(new Paragraph({
+            children: [
+              new TextRun({ text: l.language ?? '', bold: true, font: bodyFont, size: 20 }),
+              ...(l.fluency ? [new TextRun({ text: ` – ${l.fluency}`, font: bodyFont, size: 20, color: '666666' })] : []),
+            ],
+            spacing: { after: 40 },
+          }))
+        }
         break
       case 'awards':
         if (!awards.length) break

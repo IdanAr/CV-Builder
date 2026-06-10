@@ -130,15 +130,12 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
         return (
           <View key="languages">
             <Text style={styles.sectionTitle}>Languages</Text>
-            <Text style={styles.body}>
-              {languages.map((l, i) => (
-                <Text key={i}>
-                  <Text style={styles.bold}>{l.language ?? ''}</Text>
-                  {l.fluency ? <Text style={styles.small}> ({l.fluency})</Text> : null}
-                  {i < languages.length - 1 ? <Text>{'  ·  '}</Text> : null}
-                </Text>
-              ))}
-            </Text>
+            {languages.map((l, i) => (
+              <Text key={i} style={styles.body}>
+                <Text style={styles.bold}>{l.language ?? ''}</Text>
+                {l.fluency ? <Text style={styles.small}> – {l.fluency}</Text> : null}
+              </Text>
+            ))}
           </View>
         )
       case 'awards':
