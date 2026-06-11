@@ -56,6 +56,7 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
       lineSpacing: 1.15,
       sectionOrder: ['work', 'education', 'skills', 'volunteer', 'languages'],
       layout: 'single-column',
+      columnAssignment: {},
     },
     isDirty: false,
     isSaving: false,
@@ -110,6 +111,10 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
           merged.pageMargins = Math.max(0.5, Math.min(1.5, patch.pageMargins))
         if (patch.lineSpacing !== undefined)
           merged.lineSpacing = Math.max(1.0, Math.min(1.15, patch.lineSpacing))
+        // Minimal is a single-column-only template — switching to it (or setting
+        // two-column while on it) always resolves to single-column.
+        if (merged.templateId === 'minimal')
+          merged.layout = 'single-column'
         return { ...pushHistory(s), meta: merged, isDirty: true }
       }),
     setSectionData: (section, value) =>

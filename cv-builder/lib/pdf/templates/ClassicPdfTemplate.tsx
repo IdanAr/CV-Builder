@@ -3,6 +3,8 @@ import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/rendere
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
+import { getColumnSide } from '@/lib/get-column-side'
+import { formatDate } from '@/lib/format-date'
 
 export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: ResumeMeta }) {
   const { basics = {}, work = [], education = [], skills = [],
@@ -16,18 +18,21 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
 
   const styles = StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: 11, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
-    name: { fontFamily: headFont, fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 3 },
-    subtitle: { fontSize: 11, color: '#555555', textAlign: 'center' },
-    contact: { fontSize: 10, color: '#555555', textAlign: 'center', marginTop: 3 },
+    name: { fontFamily: headFont, fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 1.5 },
+    subtitle: { fontSize: 12, color: '#555555', textAlign: 'center' },
     sectionTitle: { fontFamily: headFont, fontSize: 13, fontWeight: 'bold', color: meta.primaryColor,
-      borderBottomWidth: 1, borderBottomColor: meta.primaryColor, paddingBottom: 2, marginTop: 14, marginBottom: 6 },
+      borderBottomWidth: 1.1, borderBottomColor: meta.primaryColor, paddingBottom: 2, marginTop: 13.5, marginBottom: 6 },
     entryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 },
     bold: { fontWeight: 'bold' },
-    accent: { color: meta.accentColor, fontWeight: 'bold', fontSize: 10.5 },
+    // Web renders the position at font-weight 500, which core PDF fonts lack — regular is the nearest face
+    accent: { color: meta.accentColor, fontSize: 10.5 },
     small: { fontSize: 10, color: '#666666' },
-    bullet: { fontSize: 10, marginLeft: 10, marginBottom: 1 },
+    bullet: { fontSize: 10, marginLeft: 13.5, marginBottom: 1 },
+    bulletFirst: { marginTop: 3 },
     body: { fontSize: 10 },
-    summaryBox: { fontSize: 10, marginTop: 8 },
+    entrySummary: { fontSize: 10, marginTop: 2 },
+    degree: { fontSize: 10.5 },
+    summaryBox: { fontSize: 10, fontStyle: 'italic', marginBottom: 9 },
   })
 
   function buildContactRow() {
@@ -43,7 +48,8 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
         {items.map((item, i) => (
           <React.Fragment key={i}>
             {item.href
-              ? <Link src={item.href}><Text style={{ fontSize: 10, color: '#0563C1' }}>{item.label}</Text></Link>
+              // Web header links inherit the muted text color with no underline
+              ? <Link src={item.href} style={{ textDecoration: 'none' }}><Text style={{ fontSize: 10, color: '#555555' }}>{item.label}</Text></Link>
               : <Text style={{ fontSize: 10, color: '#555555' }}>{item.label}</Text>
             }
             {i < items.length - 1 && <Text style={{ fontSize: 10, color: '#555555' }}> · </Text>}
@@ -58,7 +64,7 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
       const id = section.slice(7)
       const cs = data.customSections?.find((s) => s.id === id)
       if (!cs) return null
-      return renderPdfCustomSection(cs, { sectionTitle: styles.sectionTitle, entryRow: styles.entryRow, bold: styles.bold, accent: styles.accent, small: styles.small, body: styles.body, bullet: styles.bullet })
+      return renderPdfCustomSection(cs, { sectionTitle: styles.sectionTitle, entryRow: styles.entryRow, bold: styles.bold, accent: styles.accent, small: styles.small, body: styles.entrySummary, bullet: styles.bullet })
     }
     switch (section) {
       case 'work':
@@ -67,15 +73,15 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
           <View key="work">
             <Text style={styles.sectionTitle}>Work Experience</Text>
             {work.map((job, i) => (
-              <View key={i} style={{ marginBottom: 8 }}>
+              <View key={i} style={{ marginBottom: 7.5 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{job.name ?? ''}</Text>
-                  <Text style={styles.small}>{[job.startDate, job.endDate || 'Present'].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{[formatDate(job.startDate), formatDate(job.endDate) || 'Present'].filter(Boolean).join(' – ')}</Text>
                 </View>
                 <Text style={styles.accent}>{job.position ?? ''}</Text>
-                {renderPdfRichText(job.summary, styles.body)}
+                {renderPdfRichText(job.summary, styles.entrySummary)}
                 {(job.highlights ?? []).map((h, hi) => (
-                  <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                  <Text key={hi} style={hi === 0 ? [styles.bullet, styles.bulletFirst] : styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
                 ))}
               </View>
             ))}
@@ -90,9 +96,9 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
               <View key={i} style={{ marginBottom: 6 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{edu.institution ?? ''}</Text>
-                  <Text style={styles.small}>{[edu.startDate, edu.endDate].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{[formatDate(edu.startDate), formatDate(edu.endDate)].filter(Boolean).join(' – ')}</Text>
                 </View>
-                <Text style={styles.body}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
+                <Text style={styles.degree}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
                 {edu.score ? <Text style={styles.small}>Score: {edu.score}</Text> : null}
               </View>
             ))}
@@ -103,12 +109,15 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
         return (
           <View key="skills">
             <Text style={styles.sectionTitle}>Skills</Text>
+            {/* Mirrors the web definition list: fixed-width bold name column, keywords fill the rest */}
             {skills.map((s, i) => (
-              <Text key={i} style={styles.body}>
-                <Text style={styles.bold}>{s.name ?? ''}</Text>
-                {s.level ? <Text style={styles.small}> ({s.level})</Text> : null}
-                {(s.keywords ?? []).length > 0 ? <Text style={{ color: '#555555' }}>: {(s.keywords ?? []).join(', ')}</Text> : null}
-              </Text>
+              <View key={i} style={{ flexDirection: 'row', gap: 12, marginBottom: 1.5 }}>
+                <Text style={{ fontSize: 10, fontWeight: 'bold', minWidth: 97.5 }}>
+                  {s.name ?? ''}
+                  {s.level ? <Text style={{ fontWeight: 'normal', color: '#666666' }}> · {s.level}</Text> : null}
+                </Text>
+                {(s.keywords ?? []).length > 0 ? <Text style={{ fontSize: 10, color: '#444444', flex: 1 }}>{(s.keywords ?? []).join(', ')}</Text> : null}
+              </View>
             ))}
           </View>
         )
@@ -178,15 +187,15 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
           <View key="volunteer">
             <Text style={styles.sectionTitle}>Volunteer</Text>
             {volunteer.map((v, i) => (
-              <View key={i} style={{ marginBottom: 8 }}>
+              <View key={i} style={{ marginBottom: 6 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{v.organization ?? ''}</Text>
-                  <Text style={styles.small}>{[v.startDate, v.endDate || 'Present'].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{[formatDate(v.startDate), formatDate(v.endDate) || 'Present'].filter(Boolean).join(' – ')}</Text>
                 </View>
                 <Text style={styles.accent}>{v.position ?? ''}</Text>
-                {renderPdfRichText(v.summary, styles.body)}
+                {renderPdfRichText(v.summary, styles.entrySummary)}
                 {(v.highlights ?? []).map((h, hi) => (
-                  <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                  <Text key={hi} style={hi === 0 ? [styles.bullet, styles.bulletFirst] : styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
                 ))}
               </View>
             ))}
@@ -215,7 +224,7 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
               <View key={i} style={{ marginBottom: 8 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{p.name ?? ''}</Text>
-                  <Text style={styles.small}>{[p.startDate, p.endDate].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{[formatDate(p.startDate), formatDate(p.endDate)].filter(Boolean).join(' – ')}</Text>
                 </View>
                 {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
                 {(p.highlights ?? []).map((h, hi) => <Text key={hi} style={styles.bullet}>• {h}</Text>)}
@@ -230,8 +239,9 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
   }
 
   if (meta.layout === 'two-column') {
-    const leftSections = sectionOrder.filter((s) => ['work', 'education', 'volunteer'].includes(s) || s.startsWith('custom:'))
-    const rightSections = sectionOrder.filter((s) => !leftSections.includes(s))
+    const ca = meta.columnAssignment ?? {}
+    const leftSections = sectionOrder.filter((s) => getColumnSide(s, ca) === 'left')
+    const rightSections = sectionOrder.filter((s) => getColumnSide(s, ca) === 'right')
     return (
       <Document>
         <Page size="A4" style={styles.page}>
@@ -239,12 +249,10 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
             <Text style={styles.name}>{basics.name ?? ''}</Text>
             {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
             {buildContactRow()}
-            {renderPdfRichText(basics.summary, styles.summaryBox)}
           </View>
-          {/* Decorative divider — tagged as artifact */}
-          <View aria-hidden={true} style={{ borderBottomWidth: 0.5, borderBottomColor: '#cccccc', marginBottom: 4 }} />
+          {renderPdfRichText(basics.summary, styles.summaryBox)}
           {/* Two columns: left fully then right */}
-          <View style={{ flexDirection: 'row', gap: 16 }}>
+          <View style={{ flexDirection: 'row', gap: 18 }}>
             <View style={{ flex: 0.58 }}>{leftSections.map(renderPdfSection)}</View>
             <View style={{ flex: 0.42 }}>{rightSections.map(renderPdfSection)}</View>
           </View>
@@ -259,7 +267,7 @@ export function ClassicPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
         <View style={{ marginBottom: 12 }}>
           <Text style={styles.name}>{basics.name ?? ''}</Text>
           {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
-          <Text style={styles.contact}>{formatContact(basics)}</Text>
+          {buildContactRow()}
         </View>
         {basics.summary ? (
           <View>

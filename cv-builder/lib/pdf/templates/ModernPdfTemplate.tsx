@@ -1,8 +1,10 @@
 import React from 'react'
 import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/renderer'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
-import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns } from './pdf-utils'
+import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, formatContact, renderPdfRichText, renderPdfRichTextRuns } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
+import { getColumnSide } from '@/lib/get-column-side'
+import { formatDate } from '@/lib/format-date'
 
 export function ModernPdfTemplate({ data, meta }: { data: ResumeData; meta: ResumeMeta }) {
   const { basics = {}, work = [], education = [], skills = [],
@@ -17,18 +19,23 @@ export function ModernPdfTemplate({ data, meta }: { data: ResumeData; meta: Resu
   const styles = StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: 11, lineHeight: meta.lineSpacing, color: '#000000' },
     headerBlock: { backgroundColor: meta.primaryColor, padding: margin, paddingBottom: margin * 0.75 },
-    name: { fontFamily: headFont, fontSize: 22, fontWeight: 'bold', color: '#ffffff', marginBottom: 3 },
-    subtitle: { fontSize: 11, color: 'rgba(255,255,255,0.85)' },
-    contact: { fontSize: 10, color: 'rgba(255,255,255,0.7)', marginTop: 3 },
-    body_section: { padding: margin, paddingTop: margin * 0.75 },
-    sectionTitle: { fontFamily: headFont, fontSize: 11, fontWeight: 'bold', color: meta.accentColor,
-      textTransform: 'uppercase', letterSpacing: 1, marginTop: 14, marginBottom: 6 },
+    name: { fontFamily: headFont, fontSize: 22, fontWeight: 'bold', color: '#ffffff', marginBottom: 1.5 },
+    subtitle: { fontSize: 12, color: 'rgba(255,255,255,0.85)' },
+    contact: { fontSize: 10, color: 'rgba(255,255,255,0.75)', marginTop: 3 },
+    body_section: { padding: margin },
+    sectionTitle: { fontFamily: headFont, fontSize: 12, fontWeight: 'bold', color: meta.accentColor,
+      textTransform: 'uppercase', letterSpacing: 1, marginTop: 12, marginBottom: 6 },
     entryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 },
     bold: { fontWeight: 'bold' },
-    accent: { color: meta.accentColor, fontWeight: 'bold', fontSize: 10.5 },
+    // Web renders the position at font-weight 500, which core PDF fonts lack — regular is the nearest face
+    accent: { color: meta.accentColor, fontSize: 10.5 },
     small: { fontSize: 10, color: '#666666' },
-    bullet: { fontSize: 10, marginLeft: 10, marginBottom: 1 },
+    bullet: { fontSize: 10, marginLeft: 13.5, marginBottom: 1 },
+    bulletFirst: { marginTop: 3 },
     body: { fontSize: 10 },
+    entrySummary: { fontSize: 10, marginTop: 2 },
+    degree: { fontSize: 10.5 },
+    summaryBox: { fontSize: 10, color: '#444444', marginBottom: 9 },
   })
 
   function buildContactRow() {
@@ -40,14 +47,15 @@ export function ModernPdfTemplate({ data, meta }: { data: ResumeData; meta: Resu
     if (loc) items.push({ label: loc, href: '' })
     if (!items.length) return null
     return (
-      <View style={{ flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', marginTop: 3 }}>
+      // Web header is left-aligned with links inheriting the 0.75-opacity text color, no underline
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-start', flexWrap: 'wrap', marginTop: 3 }}>
         {items.map((item, i) => (
           <React.Fragment key={i}>
             {item.href
-              ? <Link src={item.href}><Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.9)' }}>{item.label}</Text></Link>
-              : <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>{item.label}</Text>
+              ? <Link src={item.href} style={{ textDecoration: 'none' }}><Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)' }}>{item.label}</Text></Link>
+              : <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)' }}>{item.label}</Text>
             }
-            {i < items.length - 1 && <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}> · </Text>}
+            {i < items.length - 1 && <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)' }}> · </Text>}
           </React.Fragment>
         ))}
       </View>
@@ -59,7 +67,7 @@ export function ModernPdfTemplate({ data, meta }: { data: ResumeData; meta: Resu
       const id = section.slice(7)
       const cs = data.customSections?.find((s) => s.id === id)
       if (!cs) return null
-      return renderPdfCustomSection(cs, { sectionTitle: styles.sectionTitle, entryRow: styles.entryRow, bold: styles.bold, accent: styles.accent, small: styles.small, body: styles.body, bullet: styles.bullet })
+      return renderPdfCustomSection(cs, { sectionTitle: styles.sectionTitle, entryRow: styles.entryRow, bold: styles.bold, accent: styles.accent, small: styles.small, body: styles.entrySummary, bullet: styles.bullet })
     }
     switch (section) {
       case 'work':
@@ -68,15 +76,15 @@ export function ModernPdfTemplate({ data, meta }: { data: ResumeData; meta: Resu
           <View key="work">
             <Text style={styles.sectionTitle}>Work Experience</Text>
             {work.map((job, i) => (
-              <View key={i} style={{ marginBottom: 8 }}>
+              <View key={i} style={{ marginBottom: 7.5 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{job.name ?? ''}</Text>
-                  <Text style={styles.small}>{[job.startDate, job.endDate || 'Present'].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{[formatDate(job.startDate), formatDate(job.endDate) || 'Present'].filter(Boolean).join(' – ')}</Text>
                 </View>
                 <Text style={styles.accent}>{job.position ?? ''}</Text>
-                {renderPdfRichText(job.summary, styles.body)}
+                {renderPdfRichText(job.summary, styles.entrySummary)}
                 {(job.highlights ?? []).map((h, hi) => (
-                  <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                  <Text key={hi} style={hi === 0 ? [styles.bullet, styles.bulletFirst] : styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
                 ))}
               </View>
             ))}
@@ -91,9 +99,9 @@ export function ModernPdfTemplate({ data, meta }: { data: ResumeData; meta: Resu
               <View key={i} style={{ marginBottom: 6 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{edu.institution ?? ''}</Text>
-                  <Text style={styles.small}>{[edu.startDate, edu.endDate].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{[formatDate(edu.startDate), formatDate(edu.endDate)].filter(Boolean).join(' – ')}</Text>
                 </View>
-                <Text style={styles.body}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
+                <Text style={styles.degree}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
                 {edu.score ? <Text style={styles.small}>Score: {edu.score}</Text> : null}
               </View>
             ))}
@@ -104,12 +112,15 @@ export function ModernPdfTemplate({ data, meta }: { data: ResumeData; meta: Resu
         return (
           <View key="skills">
             <Text style={styles.sectionTitle}>Skills</Text>
+            {/* Mirrors the web definition list: fixed-width bold name column, keywords fill the rest */}
             {skills.map((s, i) => (
-              <Text key={i} style={styles.body}>
-                <Text style={styles.bold}>{s.name ?? ''}</Text>
-                {s.level ? <Text style={styles.small}> ({s.level})</Text> : null}
-                {(s.keywords ?? []).length > 0 ? <Text style={{ color: '#555555' }}>: {(s.keywords ?? []).join(', ')}</Text> : null}
-              </Text>
+              <View key={i} style={{ flexDirection: 'row', gap: 12, marginBottom: 1.5 }}>
+                <Text style={{ fontSize: 10, fontWeight: 'bold', minWidth: 97.5 }}>
+                  {s.name ?? ''}
+                  {s.level ? <Text style={{ fontWeight: 'normal', color: '#666666' }}> · {s.level}</Text> : null}
+                </Text>
+                {(s.keywords ?? []).length > 0 ? <Text style={{ fontSize: 10, color: '#444444', flex: 1 }}>{(s.keywords ?? []).join(', ')}</Text> : null}
+              </View>
             ))}
           </View>
         )
@@ -179,15 +190,15 @@ export function ModernPdfTemplate({ data, meta }: { data: ResumeData; meta: Resu
           <View key="volunteer">
             <Text style={styles.sectionTitle}>Volunteer</Text>
             {volunteer.map((v, i) => (
-              <View key={i} style={{ marginBottom: 8 }}>
+              <View key={i} style={{ marginBottom: 6 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{v.organization ?? ''}</Text>
-                  <Text style={styles.small}>{[v.startDate, v.endDate || 'Present'].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{[formatDate(v.startDate), formatDate(v.endDate) || 'Present'].filter(Boolean).join(' – ')}</Text>
                 </View>
                 <Text style={styles.accent}>{v.position ?? ''}</Text>
-                {renderPdfRichText(v.summary, styles.body)}
+                {renderPdfRichText(v.summary, styles.entrySummary)}
                 {(v.highlights ?? []).map((h, hi) => (
-                  <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                  <Text key={hi} style={hi === 0 ? [styles.bullet, styles.bulletFirst] : styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
                 ))}
               </View>
             ))}
@@ -216,7 +227,7 @@ export function ModernPdfTemplate({ data, meta }: { data: ResumeData; meta: Resu
               <View key={i} style={{ marginBottom: 8 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{p.name ?? ''}</Text>
-                  <Text style={styles.small}>{[p.startDate, p.endDate].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{[formatDate(p.startDate), formatDate(p.endDate)].filter(Boolean).join(' – ')}</Text>
                 </View>
                 {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
                 {(p.highlights ?? []).map((h, hi) => <Text key={hi} style={styles.bullet}>• {h}</Text>)}
@@ -231,8 +242,9 @@ export function ModernPdfTemplate({ data, meta }: { data: ResumeData; meta: Resu
   }
 
   if (meta.layout === 'two-column') {
-    const leftSections = sectionOrder.filter((s) => ['work', 'education', 'volunteer'].includes(s) || s.startsWith('custom:'))
-    const rightSections = sectionOrder.filter((s) => !leftSections.includes(s))
+    const ca = meta.columnAssignment ?? {}
+    const leftSections = sectionOrder.filter((s) => getColumnSide(s, ca) === 'left')
+    const rightSections = sectionOrder.filter((s) => getColumnSide(s, ca) === 'right')
     return (
       <Document>
         <Page size="A4" style={styles.page}>
@@ -242,8 +254,8 @@ export function ModernPdfTemplate({ data, meta }: { data: ResumeData; meta: Resu
             {buildContactRow()}
           </View>
           <View style={styles.body_section}>
-            {basics.summary ? renderPdfRichText(basics.summary, { ...(styles.body as object), marginBottom: 12 }) : null}
-            <View style={{ flexDirection: 'row', gap: 16 }}>
+            {renderPdfRichText(basics.summary, styles.summaryBox)}
+            <View style={{ flexDirection: 'row', gap: 18 }}>
               <View style={{ flex: 0.58 }}>{leftSections.map(renderPdfSection)}</View>
               <View style={{ flex: 0.42 }}>{rightSections.map(renderPdfSection)}</View>
             </View>
@@ -262,7 +274,7 @@ export function ModernPdfTemplate({ data, meta }: { data: ResumeData; meta: Resu
           <Text style={styles.contact}>{formatContact(basics)}</Text>
         </View>
         <View style={styles.body_section}>
-          {renderPdfRichText(basics.summary, { ...(styles.body as object), marginBottom: 12 })}
+          {renderPdfRichText(basics.summary, styles.summaryBox)}
           {sectionOrder.map(renderPdfSection)}
         </View>
       </Page>

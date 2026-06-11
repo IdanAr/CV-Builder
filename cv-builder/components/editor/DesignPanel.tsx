@@ -161,11 +161,14 @@ export function DesignPanel() {
         </div>
       </div>
 
-      {/* Layout toggle */}
+      {/* Layout toggle — Minimal is single-column only */}
       <div>
         <p className={labelClass}>Layout</p>
         <div className="flex gap-2">
-          {(['single-column', 'two-column'] as const).map((layout) => (
+          {(meta.templateId === 'minimal'
+            ? (['single-column'] as const)
+            : (['single-column', 'two-column'] as const)
+          ).map((layout) => (
             <button
               key={layout}
               type="button"
@@ -180,10 +183,14 @@ export function DesignPanel() {
             </button>
           ))}
         </div>
+        {meta.templateId === 'minimal' && (
+          <p className="text-xs text-indigo-300 mt-1.5">The Minimal template supports a single column only.</p>
+        )}
       </div>
 
-      {/* Section columns — only visible in two-column mode */}
-      {meta.layout === 'two-column' && (
+      {/* Section columns — only visible in two-column mode (never for minimal,
+          which may carry a stale two-column layout from a previously saved resume) */}
+      {meta.layout === 'two-column' && meta.templateId !== 'minimal' && (
         <div>
           <p className={labelClass}>Section columns</p>
           <div className="bg-white border border-indigo-100 rounded-lg overflow-hidden">

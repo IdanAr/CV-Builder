@@ -48,6 +48,26 @@ describe('buildDocx', () => {
     expect(xml).toContain('w:val="none"')
   })
 
+  it('sidebar template renders a shaded rail table with the name inside it', async () => {
+    const meta: ResumeMeta = { ...defaultMeta, templateId: 'sidebar', primaryColor: '#1e3a5f' }
+    const doc = buildDocx({ ...sampleData, languages: [{ language: 'English', fluency: 'Native' }] }, meta)
+    const buffer = await Packer.toBuffer(doc)
+    const zip = await JSZip.loadAsync(buffer)
+    const xml = await zip.file('word/document.xml')!.async('string')
+    // The rail is a table cell shaded with the primary color
+    expect(xml).toContain('<w:tbl')
+    expect(xml.toLowerCase()).toContain('1e3a5f')
+    // Name and rail sections live inside the table (rail cell), before the main column
+    const tblIdx = xml.indexOf('<w:tbl')
+    expect(xml.indexOf('Jane Smith')).toBeGreaterThan(tblIdx)
+    const skillsIdx = xml.indexOf('SKILLS')
+    const workIdx = xml.indexOf('WORK EXPERIENCE')
+    expect(skillsIdx).toBeGreaterThan(-1)
+    expect(workIdx).toBeGreaterThan(-1)
+    // Rail (skills/languages) is the left cell, so it precedes the main column content
+    expect(skillsIdx).toBeLessThan(workIdx)
+  })
+
   it('two-column layout puts work in left cell and skills in right cell', async () => {
     const doc = buildDocx(sampleData, { ...defaultMeta, layout: 'two-column' })
     const buffer = await Packer.toBuffer(doc)

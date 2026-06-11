@@ -3,6 +3,7 @@ import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, renderPdfRichText, renderPdfRichTextRuns } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
+import { formatDate } from '@/lib/format-date'
 
 const RAIL_SECTIONS = new Set(['skills', 'languages'])
 
@@ -25,33 +26,40 @@ export function SidebarPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
     // Left rail
     rail: { width: '33%', backgroundColor: meta.primaryColor, padding: margin, paddingTop: margin },
     railName: { fontFamily: headFont, fontSize: 18, fontWeight: 'bold', color: '#ffffff', lineHeight: 1.1 },
-    railLabel: { fontSize: 10.5, color: 'rgba(255,255,255,0.85)', marginTop: 3 },
-    railContact: { fontSize: 9, color: 'rgba(255,255,255,0.9)', marginTop: 10, lineHeight: 1.8 },
+    railLabel: { fontSize: 10.5, color: 'rgba(255,255,255,0.85)', marginTop: 2.25 },
+    railContact: { marginTop: 9 },
+    railContactLine: { fontSize: 9, color: 'rgba(255,255,255,0.9)', lineHeight: 1.9 },
     railSectionTitle: {
       fontFamily: headFont, fontSize: 10, fontWeight: 'bold', color: '#ffffff',
       textTransform: 'uppercase', letterSpacing: 1,
       borderBottomWidth: 0.75, borderBottomColor: 'rgba(255,255,255,0.35)',
-      paddingBottom: 3, marginTop: 16, marginBottom: 6,
+      paddingBottom: 2.25, marginTop: 13.5, marginBottom: 5.25,
     },
     railBody: { fontSize: 9.5, color: 'rgba(255,255,255,0.9)', lineHeight: 1.6 },
+    railLang: { fontSize: 9.5, color: '#ffffff', lineHeight: 1.7 },
     railBold: { fontWeight: 'bold', color: '#ffffff', fontSize: 9.5 },
     railMuted: { color: 'rgba(255,255,255,0.8)', fontSize: 9.5 },
+    railKeywords: { color: 'rgba(255,255,255,0.85)', fontSize: 9.5 },
 
     // Main column
     main: { flex: 1, padding: margin, paddingTop: margin },
-    summary: { fontSize: 10, color: '#444444', marginBottom: 8 },
+    summary: { fontSize: 10, color: '#444444', marginBottom: 4.5 },
     sectionTitle: {
       fontFamily: headFont, fontSize: 12, fontWeight: 'bold', color: meta.primaryColor,
-      textTransform: 'uppercase', letterSpacing: 0.8,
-      borderBottomWidth: 2, borderBottomColor: meta.accentColor,
-      paddingBottom: 2, marginTop: 14, marginBottom: 7,
+      textTransform: 'uppercase', letterSpacing: 0.7,
+      borderBottomWidth: 1.5, borderBottomColor: meta.accentColor,
+      paddingBottom: 1.5, marginTop: 12, marginBottom: 6,
     },
     entryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 },
     bold: { fontWeight: 'bold' },
-    accent: { color: meta.accentColor, fontWeight: 'bold', fontSize: 10.5 },
+    // Web renders the position at font-weight 500, which core PDF fonts lack — regular is the nearest face
+    accent: { color: meta.accentColor, fontSize: 10.5 },
     small: { fontSize: 10, color: '#666666' },
-    bullet: { fontSize: 10, marginLeft: 10, marginBottom: 1 },
+    bullet: { fontSize: 10, marginLeft: 13.5, marginBottom: 1 },
+    bulletFirst: { marginTop: 3 },
     body: { fontSize: 10 },
+    entrySummary: { fontSize: 10, marginTop: 2 },
+    degree: { fontSize: 10.5 },
   })
 
   function renderRailSection(kind: string): React.ReactNode {
@@ -60,13 +68,13 @@ export function SidebarPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
         <View key="skills">
           <Text style={styles.railSectionTitle}>Skills</Text>
           {skills.map((s, i) => (
-            <View key={i} style={{ marginBottom: 5 }}>
+            <View key={i} style={{ marginBottom: 4.5 }}>
               <Text style={styles.railBold}>
                 {s.name ?? ''}
                 {s.level ? <Text style={styles.railMuted}> · {s.level}</Text> : null}
               </Text>
               {(s.keywords ?? []).length > 0 && (
-                <Text style={styles.railMuted}>{(s.keywords ?? []).join(', ')}</Text>
+                <Text style={styles.railKeywords}>{(s.keywords ?? []).join(', ')}</Text>
               )}
             </View>
           ))}
@@ -78,9 +86,9 @@ export function SidebarPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
         <View key="languages">
           <Text style={styles.railSectionTitle}>Languages</Text>
           {languages.map((l, i) => (
-            <Text key={i} style={styles.railBody}>
+            <Text key={i} style={styles.railLang}>
               <Text style={styles.railBold}>{l.language ?? ''}</Text>
-              {l.fluency ? <Text style={styles.railMuted}> – {l.fluency}</Text> : null}
+              {l.fluency ? <Text style={styles.railKeywords}> – {l.fluency}</Text> : null}
             </Text>
           ))}
         </View>
@@ -94,7 +102,7 @@ export function SidebarPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
       const id = section.slice(7)
       const cs = data.customSections?.find((s) => s.id === id)
       if (!cs) return null
-      return renderPdfCustomSection(cs, { sectionTitle: styles.sectionTitle, entryRow: styles.entryRow, bold: styles.bold, accent: styles.accent, small: styles.small, body: styles.body, bullet: styles.bullet })
+      return renderPdfCustomSection(cs, { sectionTitle: styles.sectionTitle, entryRow: styles.entryRow, bold: styles.bold, accent: styles.accent, small: styles.small, body: styles.entrySummary, bullet: styles.bullet })
     }
     switch (section) {
       case 'work':
@@ -103,15 +111,15 @@ export function SidebarPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
           <View key="work">
             <Text style={styles.sectionTitle}>Work Experience</Text>
             {work.map((job, i) => (
-              <View key={i} style={{ marginBottom: 8 }}>
+              <View key={i} style={{ marginBottom: 7.5 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{job.name ?? ''}</Text>
-                  <Text style={styles.small}>{[job.startDate, job.endDate || 'Present'].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{[formatDate(job.startDate), formatDate(job.endDate) || 'Present'].filter(Boolean).join(' – ')}</Text>
                 </View>
                 <Text style={styles.accent}>{job.position ?? ''}</Text>
-                {renderPdfRichText(job.summary, styles.body)}
+                {renderPdfRichText(job.summary, styles.entrySummary)}
                 {(job.highlights ?? []).map((h, hi) => (
-                  <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                  <Text key={hi} style={hi === 0 ? [styles.bullet, styles.bulletFirst] : styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
                 ))}
               </View>
             ))}
@@ -126,9 +134,9 @@ export function SidebarPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
               <View key={i} style={{ marginBottom: 6 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{edu.institution ?? ''}</Text>
-                  <Text style={styles.small}>{[edu.startDate, edu.endDate].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{[formatDate(edu.startDate), formatDate(edu.endDate)].filter(Boolean).join(' – ')}</Text>
                 </View>
-                <Text style={styles.body}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
+                <Text style={styles.degree}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
                 {edu.score ? <Text style={styles.small}>Score: {edu.score}</Text> : null}
               </View>
             ))}
@@ -187,15 +195,15 @@ export function SidebarPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
           <View key="volunteer">
             <Text style={styles.sectionTitle}>Volunteer</Text>
             {volunteer.map((v, i) => (
-              <View key={i} style={{ marginBottom: 8 }}>
+              <View key={i} style={{ marginBottom: 6 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{v.organization ?? ''}</Text>
-                  <Text style={styles.small}>{[v.startDate, v.endDate || 'Present'].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{[formatDate(v.startDate), formatDate(v.endDate) || 'Present'].filter(Boolean).join(' – ')}</Text>
                 </View>
                 <Text style={styles.accent}>{v.position ?? ''}</Text>
-                {renderPdfRichText(v.summary, styles.body)}
+                {renderPdfRichText(v.summary, styles.entrySummary)}
                 {(v.highlights ?? []).map((h, hi) => (
-                  <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                  <Text key={hi} style={hi === 0 ? [styles.bullet, styles.bulletFirst] : styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
                 ))}
               </View>
             ))}
@@ -224,7 +232,7 @@ export function SidebarPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
               <View key={i} style={{ marginBottom: 8 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{p.name ?? ''}</Text>
-                  <Text style={styles.small}>{[p.startDate, p.endDate].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{[formatDate(p.startDate), formatDate(p.endDate)].filter(Boolean).join(' – ')}</Text>
                 </View>
                 {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
                 {(p.highlights ?? []).map((h, hi) => <Text key={hi} style={styles.bullet}>• {h}</Text>)}
@@ -252,7 +260,7 @@ export function SidebarPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
               basics.url,
               [basics.location?.city, basics.location?.region].filter(Boolean).join(', '),
             ].filter(Boolean).map((p, i) => (
-              <Text key={i} style={styles.railContact}>{p}</Text>
+              <Text key={i} style={styles.railContactLine}>{p}</Text>
             ))}
           </View>
           {railSections.map(renderRailSection)}

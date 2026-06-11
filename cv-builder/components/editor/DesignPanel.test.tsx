@@ -50,6 +50,17 @@ describe('DesignPanel', () => {
     expect(useResumeEditorStore.getState().meta.layout).toBe('two-column')
   })
 
+  it('the Two columns option is not offered for the Minimal template', () => {
+    useResumeEditorStore.setState({
+      resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+      data: {},
+      meta: { ...defaultMeta, templateId: 'minimal' },
+    })
+    render(<DesignPanel />)
+    expect(screen.queryByText('Two columns')).toBeNull()
+    expect(screen.getByText('Single column')).toBeTruthy()
+  })
+
   it('section columns block is hidden in single-column mode', () => {
     render(<DesignPanel />)
     expect(screen.queryByText('Section columns')).toBeNull()
@@ -72,8 +83,8 @@ describe('DesignPanel', () => {
       meta: { ...defaultMeta, layout: 'two-column', sectionOrder: ['work', 'skills'] },
     })
     render(<DesignPanel />)
-    const leftBtns = screen.getAllByText('LEFT')
-    const rightBtns = screen.getAllByText('RIGHT')
+    const leftBtns = screen.getAllByText('Left')
+    const rightBtns = screen.getAllByText('Right')
     expect(leftBtns.length).toBeGreaterThan(0)
     expect(rightBtns.length).toBeGreaterThan(0)
   })
@@ -85,8 +96,8 @@ describe('DesignPanel', () => {
       meta: { ...defaultMeta, layout: 'two-column', sectionOrder: ['work', 'skills'] },
     })
     render(<DesignPanel />)
-    // 'work' defaults to left — click RIGHT to move it
-    const rightBtns = screen.getAllByText('RIGHT')
+    // 'work' defaults to left — click Right to move it
+    const rightBtns = screen.getAllByText('Right')
     fireEvent.click(rightBtns[0])
     expect(useResumeEditorStore.getState().meta.columnAssignment?.work).toBe('right')
   })

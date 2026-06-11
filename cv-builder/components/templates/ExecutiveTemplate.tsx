@@ -3,6 +3,7 @@
 import React from 'react'
 import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
+import { getColumnSide } from '@/lib/get-column-side'
 import { richTextToHtml } from '@/lib/rich-text'
 import { formatDate } from '@/lib/format-date'
 
@@ -168,8 +169,8 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
     }
   }
 
-  return (
-    <div style={page}>
+  const header = (
+    <>
       {/* Header */}
       <div style={{ marginBottom: '4px' }}>
         <div style={{
@@ -216,7 +217,31 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
           {rt(basics.summary)}
         </div>
       )}
+    </>
+  )
 
+  if (meta.layout === 'two-column') {
+    const ca = meta.columnAssignment ?? {}
+    const leftSections = sectionOrder.filter((s) => getColumnSide(s, ca) === 'left')
+    const rightSections = sectionOrder.filter((s) => getColumnSide(s, ca) === 'right')
+    return (
+      <div style={page}>
+        {header}
+        <div style={{ display: 'flex', gap: '24px' }}>
+          <div style={{ flex: '0 0 58%' }}>{leftSections.map((s) => (
+            <React.Fragment key={s}>{renderSection(s)}</React.Fragment>
+          ))}</div>
+          <div style={{ flex: 1 }}>{rightSections.map((s) => (
+            <React.Fragment key={s}>{renderSection(s)}</React.Fragment>
+          ))}</div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={page}>
+      {header}
       {sectionOrder.map((s) => (
         <React.Fragment key={s}>{renderSection(s)}</React.Fragment>
       ))}

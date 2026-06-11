@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, Link } from '@react-pdf/renderer'
 import type { CustomSection } from '@/lib/schemas/resume.zod'
 import { ensureHttps, renderPdfRichText, renderPdfRichTextRuns } from './pdf-utils'
+import { formatDate } from '@/lib/format-date'
 
 interface PdfCustomSectionStyles {
   sectionTitle: object
@@ -24,12 +25,12 @@ export function renderPdfCustomSection(
     <View key={section.id}>
       <Text style={styles.sectionTitle}>{name}</Text>
       {items.map((item, i) => (
-        <View key={item.id || i} style={{ marginBottom: 8 }}>
+        <View key={item.id || i} style={{ marginBottom: 7.5 }}>
           <View style={styles.entryRow}>
             {item.title ? <Text style={styles.bold}>{item.title}</Text> : null}
             {enabledFields.includes('dateRange') && (item.startDate || item.endDate) ? (
               <Text style={styles.small}>
-                {[item.startDate, item.endDate].filter(Boolean).join(' – ')}
+                {[formatDate(item.startDate), formatDate(item.endDate)].filter(Boolean).join(' – ')}
               </Text>
             ) : null}
           </View>
@@ -38,7 +39,7 @@ export function renderPdfCustomSection(
           ) : null}
           {enabledFields.includes('url') && item.url ? (
             <Link src={ensureHttps(item.url)}>
-              <Text style={styles.small}>{item.url}</Text>
+              <Text style={{ fontSize: 9, color: '#0066cc' }}>{item.url}</Text>
             </Link>
           ) : null}
           {enabledFields.includes('summary') && item.summary
@@ -46,14 +47,14 @@ export function renderPdfCustomSection(
             : null}
           {enabledFields.includes('highlights') && (item.highlights ?? []).length > 0
             ? (item.highlights ?? []).map((h, hi) => (
-                <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                <Text key={hi} style={hi === 0 ? [styles.bullet, { marginTop: 3 }] : styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
               ))
             : null}
           {enabledFields.includes('keywords') && (item.keywords ?? []).length > 0 ? (
-            <Text style={styles.small}>{(item.keywords ?? []).join(' · ')}</Text>
+            <Text style={{ fontSize: 9, color: '#555555', marginTop: 2 }}>{(item.keywords ?? []).join(' · ')}</Text>
           ) : null}
           {enabledFields.includes('level') && item.level ? (
-            <Text style={styles.small}>Level: {item.level}</Text>
+            <Text style={{ fontSize: 9, color: '#555555' }}>Level: {item.level}</Text>
           ) : null}
         </View>
       ))}

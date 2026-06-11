@@ -3,6 +3,8 @@ import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/rendere
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
+import { getColumnSide } from '@/lib/get-column-side'
+import { formatDate } from '@/lib/format-date'
 
 export function ExecutivePdfTemplate({ data, meta }: { data: ResumeData; meta: ResumeMeta }) {
   const { basics = {}, work = [], education = [], skills = [],
@@ -16,34 +18,52 @@ export function ExecutivePdfTemplate({ data, meta }: { data: ResumeData; meta: R
 
   const styles = StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: 11, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
-    name: { fontFamily: headFont, fontSize: 26, fontWeight: 'bold', color: meta.primaryColor, marginBottom: 2 },
-    subtitle: { fontSize: 12, color: meta.accentColor, fontStyle: 'italic', marginTop: 1 },
-    ruleThick: { borderTopWidth: 2, borderTopColor: meta.primaryColor, marginTop: 6, marginBottom: 1 },
-    ruleThin: { borderTopWidth: 0.75, borderTopColor: meta.primaryColor, marginBottom: 8 },
-    contact: { fontSize: 10, color: '#555555', marginTop: 2 },
+    name: { fontFamily: headFont, fontSize: 26, fontWeight: 'bold', color: meta.primaryColor, letterSpacing: 0.25 },
+    subtitle: { fontSize: 12, color: meta.accentColor, fontStyle: 'italic', marginTop: 0.75 },
+    // Web double rule: 2px top + 0.75px bottom with 3px between, 6px above / 8px below
+    ruleThick: { borderTopWidth: 1.5, borderTopColor: meta.primaryColor, marginTop: 4.5, marginBottom: 2.25 },
+    ruleThin: { borderTopWidth: 0.55, borderTopColor: meta.primaryColor, marginBottom: 6 },
     sectionTitle: {
       fontFamily: headFont, fontSize: 11.5, fontWeight: 'bold', color: meta.primaryColor,
-      textTransform: 'uppercase', letterSpacing: 1.2,
-      borderBottomWidth: 1, borderBottomColor: meta.primaryColor,
-      paddingBottom: 3, marginTop: 16, marginBottom: 6,
+      textTransform: 'uppercase', letterSpacing: 1.6,
+      borderBottomWidth: 0.75, borderBottomColor: meta.primaryColor,
+      paddingBottom: 2.25, marginTop: 13.5, marginBottom: 5.25,
     },
     entryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 },
     bold: { fontWeight: 'bold' },
     accent: { color: meta.accentColor, fontStyle: 'italic', fontSize: 10.5 },
     small: { fontSize: 10, color: '#666666' },
-    bullet: { fontSize: 10, marginLeft: 10, marginBottom: 1 },
+    bullet: { fontSize: 10, marginLeft: 13.5, marginBottom: 1 },
+    bulletFirst: { marginTop: 3 },
     body: { fontSize: 10, textAlign: 'justify' },
-    summary: { fontSize: 10.5, textAlign: 'justify', marginTop: 10 },
+    entrySummary: { fontSize: 10, marginTop: 2, textAlign: 'justify' },
+    plainSummary: { fontSize: 10, marginTop: 2 },
+    degree: { fontSize: 10.5, fontStyle: 'italic' },
+    summary: { fontSize: 10.5, textAlign: 'justify', marginTop: 9 },
   })
 
-  function buildContactParts(): string {
-    const items: string[] = []
-    if (basics.email) items.push(basics.email)
-    if (basics.phone) items.push(basics.phone)
-    if (basics.url) items.push(basics.url)
+  function buildContactRow() {
+    const items: Array<{ label: string; href: string }> = []
+    if (basics.email) items.push({ label: basics.email, href: `mailto:${basics.email}` })
+    if (basics.phone) items.push({ label: basics.phone, href: '' })
+    if (basics.url) items.push({ label: basics.url, href: ensureHttps(basics.url) })
     const loc = [basics.location?.city, basics.location?.region].filter(Boolean).join(', ')
-    if (loc) items.push(loc)
-    return items.join('   |   ')
+    if (loc) items.push({ label: loc, href: '' })
+    if (!items.length) return null
+    return (
+      // Web contact line: #555 text, links inherit color with no underline, "   |   " separators
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+        {items.map((item, i) => (
+          <React.Fragment key={i}>
+            {item.href
+              ? <Link src={item.href} style={{ textDecoration: 'none' }}><Text style={{ fontSize: 10, color: '#555555' }}>{item.label}</Text></Link>
+              : <Text style={{ fontSize: 10, color: '#555555' }}>{item.label}</Text>
+            }
+            {i < items.length - 1 && <Text style={{ fontSize: 10, color: '#555555' }}>{'   |   '}</Text>}
+          </React.Fragment>
+        ))}
+      </View>
+    )
   }
 
   function renderPdfSection(section: string): React.ReactNode {
@@ -51,7 +71,7 @@ export function ExecutivePdfTemplate({ data, meta }: { data: ResumeData; meta: R
       const id = section.slice(7)
       const cs = data.customSections?.find((s) => s.id === id)
       if (!cs) return null
-      return renderPdfCustomSection(cs, { sectionTitle: styles.sectionTitle, entryRow: styles.entryRow, bold: styles.bold, accent: styles.accent, small: styles.small, body: styles.body, bullet: styles.bullet })
+      return renderPdfCustomSection(cs, { sectionTitle: styles.sectionTitle, entryRow: styles.entryRow, bold: styles.bold, accent: styles.accent, small: styles.small, body: styles.plainSummary, bullet: styles.bullet })
     }
     switch (section) {
       case 'work':
@@ -60,15 +80,15 @@ export function ExecutivePdfTemplate({ data, meta }: { data: ResumeData; meta: R
           <View key="work">
             <Text style={styles.sectionTitle}>Work Experience</Text>
             {work.map((job, i) => (
-              <View key={i} style={{ marginBottom: 8 }}>
+              <View key={i} style={{ marginBottom: 7.5 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{job.name ?? ''}</Text>
-                  <Text style={styles.small}>{[job.startDate, job.endDate || 'Present'].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{[formatDate(job.startDate), formatDate(job.endDate) || 'Present'].filter(Boolean).join(' – ')}</Text>
                 </View>
                 <Text style={styles.accent}>{job.position ?? ''}</Text>
-                {renderPdfRichText(job.summary, styles.body)}
+                {renderPdfRichText(job.summary, styles.entrySummary)}
                 {(job.highlights ?? []).map((h, hi) => (
-                  <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                  <Text key={hi} style={hi === 0 ? [styles.bullet, styles.bulletFirst] : styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
                 ))}
               </View>
             ))}
@@ -83,9 +103,9 @@ export function ExecutivePdfTemplate({ data, meta }: { data: ResumeData; meta: R
               <View key={i} style={{ marginBottom: 6 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{edu.institution ?? ''}</Text>
-                  <Text style={styles.small}>{[edu.startDate, edu.endDate].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{[formatDate(edu.startDate), formatDate(edu.endDate)].filter(Boolean).join(' – ')}</Text>
                 </View>
-                <Text style={[styles.body, { fontStyle: 'italic' }]}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
+                <Text style={styles.degree}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
                 {edu.score ? <Text style={styles.small}>Score: {edu.score}</Text> : null}
               </View>
             ))}
@@ -96,12 +116,15 @@ export function ExecutivePdfTemplate({ data, meta }: { data: ResumeData; meta: R
         return (
           <View key="skills">
             <Text style={styles.sectionTitle}>Skills</Text>
+            {/* Mirrors the web definition list: fixed-width bold name column, keywords fill the rest */}
             {skills.map((s, i) => (
-              <Text key={i} style={styles.body}>
-                <Text style={styles.bold}>{s.name ?? ''}</Text>
-                {s.level ? <Text style={styles.small}> · {s.level}</Text> : null}
-                {(s.keywords ?? []).length > 0 ? <Text style={{ color: '#555555' }}>: {(s.keywords ?? []).join(', ')}</Text> : null}
-              </Text>
+              <View key={i} style={{ flexDirection: 'row', gap: 12, marginBottom: 1.5 }}>
+                <Text style={{ fontSize: 10, fontWeight: 'bold', minWidth: 97.5 }}>
+                  {s.name ?? ''}
+                  {s.level ? <Text style={{ fontWeight: 'normal', color: '#666666' }}> · {s.level}</Text> : null}
+                </Text>
+                {(s.keywords ?? []).length > 0 ? <Text style={{ fontSize: 10, color: '#444444', flex: 1 }}>{(s.keywords ?? []).join(', ')}</Text> : null}
+              </View>
             ))}
           </View>
         )
@@ -171,15 +194,15 @@ export function ExecutivePdfTemplate({ data, meta }: { data: ResumeData; meta: R
           <View key="volunteer">
             <Text style={styles.sectionTitle}>Volunteer</Text>
             {volunteer.map((v, i) => (
-              <View key={i} style={{ marginBottom: 8 }}>
+              <View key={i} style={{ marginBottom: 6 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{v.organization ?? ''}</Text>
-                  <Text style={styles.small}>{[v.startDate, v.endDate || 'Present'].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{[formatDate(v.startDate), formatDate(v.endDate) || 'Present'].filter(Boolean).join(' – ')}</Text>
                 </View>
                 <Text style={styles.accent}>{v.position ?? ''}</Text>
-                {renderPdfRichText(v.summary, styles.body)}
+                {renderPdfRichText(v.summary, styles.plainSummary)}
                 {(v.highlights ?? []).map((h, hi) => (
-                  <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                  <Text key={hi} style={hi === 0 ? [styles.bullet, styles.bulletFirst] : styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
                 ))}
               </View>
             ))}
@@ -208,7 +231,7 @@ export function ExecutivePdfTemplate({ data, meta }: { data: ResumeData; meta: R
               <View key={i} style={{ marginBottom: 8 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{p.name ?? ''}</Text>
-                  <Text style={styles.small}>{[p.startDate, p.endDate].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{[formatDate(p.startDate), formatDate(p.endDate)].filter(Boolean).join(' – ')}</Text>
                 </View>
                 {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
                 {(p.highlights ?? []).map((h, hi) => <Text key={hi} style={styles.bullet}>• {h}</Text>)}
@@ -222,24 +245,49 @@ export function ExecutivePdfTemplate({ data, meta }: { data: ResumeData; meta: R
     }
   }
 
+  const header = (
+    <>
+      {/* Header */}
+      <View style={{ marginBottom: 3 }}>
+        <Text style={styles.name}>{basics.name ?? ''}</Text>
+        {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
+      </View>
+
+      {/* Double rule */}
+      <View style={styles.ruleThick} />
+      <View style={styles.ruleThin} />
+
+      {/* Contact */}
+      {buildContactRow()}
+
+      {/* Summary */}
+      {basics.summary ? renderPdfRichText(basics.summary, styles.summary) : null}
+    </>
+  )
+
+  if (meta.layout === 'two-column') {
+    const ca = meta.columnAssignment ?? {}
+    const leftSections = sectionOrder.filter((s) => getColumnSide(s, ca) === 'left')
+    const rightSections = sectionOrder.filter((s) => getColumnSide(s, ca) === 'right')
+    return (
+      <Document>
+        <Page size="A4" style={styles.page}>
+          {header}
+          {/* Web two-column: 58% / 42% split with a 24px gap. Each column renders
+              top-to-bottom in full so the PDF reading order stays linear. */}
+          <View style={{ flexDirection: 'row', gap: 18 }}>
+            <View style={{ width: '58%' }}>{leftSections.map(renderPdfSection)}</View>
+            <View style={{ flex: 1 }}>{rightSections.map(renderPdfSection)}</View>
+          </View>
+        </Page>
+      </Document>
+    )
+  }
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header */}
-        <View style={{ marginBottom: 4 }}>
-          <Text style={styles.name}>{basics.name ?? ''}</Text>
-          {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
-        </View>
-
-        {/* Double rule */}
-        <View style={styles.ruleThick} />
-        <View style={styles.ruleThin} />
-
-        {/* Contact */}
-        <Text style={styles.contact}>{buildContactParts()}</Text>
-
-        {/* Summary */}
-        {basics.summary ? renderPdfRichText(basics.summary, styles.summary) : null}
+        {header}
 
         {/* Sections */}
         {sectionOrder.map(renderPdfSection)}
