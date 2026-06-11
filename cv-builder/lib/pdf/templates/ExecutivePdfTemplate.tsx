@@ -1,12 +1,12 @@
 import React from 'react'
 import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/renderer'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
-import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns } from './pdf-utils'
+import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns, pdfDocumentProps } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { getColumnSide } from '@/lib/get-column-side'
 import { formatDateRange } from '@/lib/format-date'
 
-export function ExecutivePdfTemplate({ data, meta }: { data: ResumeData; meta: ResumeMeta }) {
+export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; meta: ResumeMeta; title?: string }) {
   const { basics = {}, work = [], education = [], skills = [],
     certificates = [], awards = [], publications = [],
     volunteer = [], languages = [], interests = [], projects = [] } = data
@@ -270,7 +270,7 @@ export function ExecutivePdfTemplate({ data, meta }: { data: ResumeData; meta: R
     const leftSections = sectionOrder.filter((s) => getColumnSide(s, ca) === 'left')
     const rightSections = sectionOrder.filter((s) => getColumnSide(s, ca) === 'right')
     return (
-      <Document>
+      <Document {...pdfDocumentProps(data, title)}>
         <Page size="A4" style={styles.page}>
           {header}
           {/* Web two-column: 58% / 42% split with a 24px gap. Each column renders
@@ -285,7 +285,7 @@ export function ExecutivePdfTemplate({ data, meta }: { data: ResumeData; meta: R
   }
 
   return (
-    <Document>
+    <Document {...pdfDocumentProps(data, title)}>
       <Page size="A4" style={styles.page}>
         {header}
 

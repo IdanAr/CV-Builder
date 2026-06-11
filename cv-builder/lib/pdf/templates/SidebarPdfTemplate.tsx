@@ -1,13 +1,13 @@
 import React from 'react'
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
-import { mapToPdfFont, inToPt, resolveSectionOrder, renderPdfRichText, renderPdfRichTextRuns } from './pdf-utils'
+import { mapToPdfFont, inToPt, resolveSectionOrder, renderPdfRichText, renderPdfRichTextRuns, pdfDocumentProps } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { formatDateRange } from '@/lib/format-date'
 
 const RAIL_SECTIONS = new Set(['skills', 'languages'])
 
-export function SidebarPdfTemplate({ data, meta }: { data: ResumeData; meta: ResumeMeta }) {
+export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; meta: ResumeMeta; title?: string }) {
   const { basics = {}, work = [], education = [], skills = [],
     certificates = [], awards = [], publications = [],
     volunteer = [], languages = [], interests = [], projects = [] } = data
@@ -247,7 +247,7 @@ export function SidebarPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
   }
 
   return (
-    <Document>
+    <Document {...pdfDocumentProps(data, title)}>
       <Page size="A4" style={styles.page}>
         {/* Left rail — rendered first (column 1 top-to-bottom) */}
         <View style={styles.rail}>
