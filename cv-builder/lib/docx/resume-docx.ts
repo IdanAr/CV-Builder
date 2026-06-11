@@ -438,7 +438,7 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
   const lineRule = 'auto' as never
   const lineVal = Math.round(meta.lineSpacing * 240)
 
-  const { basics = {}, customSections = [] } = data
+  const { basics = {} } = data
 
   const DEFAULT_ORDER = ['work', 'education', 'skills', 'volunteer', 'languages']
   const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : DEFAULT_ORDER

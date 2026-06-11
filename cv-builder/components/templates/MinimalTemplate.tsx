@@ -3,7 +3,7 @@ import React from 'react'
 import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
 import { richTextToHtml } from '@/lib/rich-text'
-import { formatDate } from '@/lib/format-date'
+import { formatDateRange } from '@/lib/format-date'
 
 function rt(text: string | undefined | null): React.ReactNode {
   if (!text) return null
@@ -59,7 +59,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong style={{ fontSize: '11pt' }}>{job.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
-                    {[formatDate(job.startDate), formatDate(job.endDate) || 'Present'].filter(Boolean).join(' – ')}
+                    {formatDateRange(job.startDate, job.endDate, true)}
                   </span>
                 </div>
                 <div style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{job.position}</div>
@@ -85,7 +85,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{edu.institution}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
-                    {[formatDate(edu.startDate), formatDate(edu.endDate)].filter(Boolean).join(' – ')}
+                    {formatDateRange(edu.startDate, edu.endDate)}
                   </span>
                 </div>
                 <div style={{ fontSize: '10.5pt' }}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</div>
@@ -145,7 +145,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{v.organization}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
-                    {[formatDate(v.startDate), formatDate(v.endDate) || 'Present'].filter(Boolean).join(' – ')}
+                    {formatDateRange(v.startDate, v.endDate, true)}
                   </span>
                 </div>
                 <div style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{v.position}</div>
