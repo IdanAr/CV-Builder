@@ -3,7 +3,7 @@ import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, renderPdfRichText, renderPdfRichTextRuns } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
-import { formatDate } from '@/lib/format-date'
+import { formatDateRange } from '@/lib/format-date'
 
 const RAIL_SECTIONS = new Set(['skills', 'languages'])
 
@@ -114,7 +114,7 @@ export function SidebarPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
               <View key={i} style={{ marginBottom: 7.5 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{job.name ?? ''}</Text>
-                  <Text style={styles.small}>{[formatDate(job.startDate), formatDate(job.endDate) || 'Present'].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{formatDateRange(job.startDate, job.endDate, true)}</Text>
                 </View>
                 <Text style={styles.accent}>{job.position ?? ''}</Text>
                 {renderPdfRichText(job.summary, styles.entrySummary)}
@@ -134,7 +134,7 @@ export function SidebarPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
               <View key={i} style={{ marginBottom: 6 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{edu.institution ?? ''}</Text>
-                  <Text style={styles.small}>{[formatDate(edu.startDate), formatDate(edu.endDate)].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{formatDateRange(edu.startDate, edu.endDate)}</Text>
                 </View>
                 <Text style={styles.degree}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
                 {edu.score ? <Text style={styles.small}>Score: {edu.score}</Text> : null}
@@ -198,7 +198,7 @@ export function SidebarPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
               <View key={i} style={{ marginBottom: 6 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{v.organization ?? ''}</Text>
-                  <Text style={styles.small}>{[formatDate(v.startDate), formatDate(v.endDate) || 'Present'].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{formatDateRange(v.startDate, v.endDate, true)}</Text>
                 </View>
                 <Text style={styles.accent}>{v.position ?? ''}</Text>
                 {renderPdfRichText(v.summary, styles.entrySummary)}
@@ -232,7 +232,7 @@ export function SidebarPdfTemplate({ data, meta }: { data: ResumeData; meta: Res
               <View key={i} style={{ marginBottom: 8 }}>
                 <View style={styles.entryRow}>
                   <Text style={styles.bold}>{p.name ?? ''}</Text>
-                  <Text style={styles.small}>{[formatDate(p.startDate), formatDate(p.endDate)].filter(Boolean).join(' – ')}</Text>
+                  <Text style={styles.small}>{formatDateRange(p.startDate, p.endDate)}</Text>
                 </View>
                 {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
                 {(p.highlights ?? []).map((h, hi) => <Text key={hi} style={styles.bullet}>• {h}</Text>)}

@@ -2,7 +2,7 @@ import React from 'react'
 import { View, Text, Link } from '@react-pdf/renderer'
 import type { CustomSection } from '@/lib/schemas/resume.zod'
 import { ensureHttps, renderPdfRichText, renderPdfRichTextRuns } from './pdf-utils'
-import { formatDate } from '@/lib/format-date'
+import { formatDateRange } from '@/lib/format-date'
 
 interface PdfCustomSectionStyles {
   sectionTitle: object
@@ -30,7 +30,7 @@ export function renderPdfCustomSection(
             {item.title ? <Text style={styles.bold}>{item.title}</Text> : null}
             {enabledFields.includes('dateRange') && (item.startDate || item.endDate) ? (
               <Text style={styles.small}>
-                {[formatDate(item.startDate), formatDate(item.endDate)].filter(Boolean).join(' – ')}
+                {formatDateRange(item.startDate, item.endDate)}
               </Text>
             ) : null}
           </View>

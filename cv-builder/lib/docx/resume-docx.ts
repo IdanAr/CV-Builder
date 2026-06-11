@@ -5,7 +5,7 @@ import {
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { parseRichText, TextRun as RichTextRun } from '@/lib/rich-text'
 import { getColumnSide } from '@/lib/get-column-side'
-import { formatDate } from '@/lib/format-date'
+import { formatDate, formatDateRange } from '@/lib/format-date'
 
 function richTextRuns(
   text: string,
@@ -224,7 +224,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
       for (const item of cs.items) {
         if (item.title) {
           const dateText = cs.enabledFields.includes('dateRange') && (item.startDate || item.endDate)
-            ? [formatDate(item.startDate), formatDate(item.endDate)].filter(Boolean).join(' – ')
+            ? formatDateRange(item.startDate, item.endDate)
             : ''
           out.push(new Paragraph({
             children: [
@@ -265,7 +265,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
         if (!work.length) break
         out.push(sectionHeading('Work Experience', headFont, theme))
         for (const job of work) {
-          const dates = [formatDate(job.startDate), formatDate(job.endDate) || 'Present'].filter(Boolean).join(' – ')
+          const dates = formatDateRange(job.startDate, job.endDate, true)
           out.push(...jobEntry(job.name ?? '', job.position ?? '', dates, job.summary, job.highlights ?? [], bodyFont, theme, tabWidthTwips))
         }
         break
@@ -273,7 +273,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
         if (!education.length) break
         out.push(sectionHeading('Education', headFont, theme))
         for (const edu of education) {
-          const dates = [formatDate(edu.startDate), formatDate(edu.endDate)].filter(Boolean).join(' – ')
+          const dates = formatDateRange(edu.startDate, edu.endDate)
           out.push(
             new Paragraph({
               children: [
@@ -380,7 +380,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
         if (!volunteer.length) break
         out.push(sectionHeading('Volunteer', headFont, theme))
         for (const v of volunteer) {
-          const dates = [formatDate(v.startDate), formatDate(v.endDate) || 'Present'].filter(Boolean).join(' – ')
+          const dates = formatDateRange(v.startDate, v.endDate, true)
           out.push(...jobEntry(v.organization ?? '', v.position ?? '', dates, v.summary, v.highlights ?? [], bodyFont, theme, tabWidthTwips))
         }
         break
@@ -402,7 +402,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
         if (!projects.length) break
         out.push(sectionHeading('Projects', headFont, theme))
         for (const p of projects) {
-          const dates = [formatDate(p.startDate), formatDate(p.endDate)].filter(Boolean).join(' – ')
+          const dates = formatDateRange(p.startDate, p.endDate)
           out.push(
             new Paragraph({
               children: [
