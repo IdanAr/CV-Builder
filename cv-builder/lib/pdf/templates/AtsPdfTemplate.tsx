@@ -62,8 +62,9 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
       const id = section.slice(7)
       const cs = data.customSections?.find((s) => s.id === id)
       if (!cs) return null
+      // Built-in ATS headings are literal uppercase; mirror that for custom sections
       // entryRow deliberately has no flexDirection: title and dates stack vertically
-      return renderPdfCustomSection(cs, {
+      return renderPdfCustomSection({ ...cs, name: cs.name.toUpperCase() }, {
         sectionTitle: styles.sectionTitle,
         entryRow: { marginBottom: 2 },
         bold: { fontSize: 10.5, fontWeight: 'bold' },

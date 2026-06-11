@@ -74,4 +74,18 @@ describe('AtsPdfTemplate', () => {
     )
     expect(buffer.byteLength).toBeGreaterThan(500)
   })
+
+  it('uppercases custom section headings to match built-in sections', async () => {
+    const withCustom: ResumeData = {
+      ...data,
+      customSections: [{
+        id: 'x1', name: 'Patents', enabledFields: ['summary'],
+        items: [{ id: 'i1', title: 'Distributed Cache Patent', summary: 'Granted 2023.' }],
+      }],
+    }
+    const customMeta = { ...meta, sectionOrder: [...meta.sectionOrder, 'custom:x1'] }
+    const text = await extractText(<AtsPdfTemplate data={withCustom} meta={customMeta} />)
+    expect(text).toContain('PATENTS')
+    expect(text).toContain('Distributed Cache Patent')
+  })
 })
