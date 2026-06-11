@@ -12,6 +12,9 @@ interface PdfCustomSectionStyles {
   small: object
   body: object
   bullet: object
+  link?: object
+  keywords?: object
+  level?: object
 }
 
 export function renderPdfCustomSection(
@@ -39,7 +42,7 @@ export function renderPdfCustomSection(
           ) : null}
           {enabledFields.includes('url') && item.url ? (
             <Link src={ensureHttps(item.url)}>
-              <Text style={{ fontSize: 9, color: '#0066cc' }}>{item.url}</Text>
+              <Text style={styles.link ?? { fontSize: 9, color: '#0066cc' }}>{item.url}</Text>
             </Link>
           ) : null}
           {enabledFields.includes('summary') && item.summary
@@ -51,10 +54,10 @@ export function renderPdfCustomSection(
               ))
             : null}
           {enabledFields.includes('keywords') && (item.keywords ?? []).length > 0 ? (
-            <Text style={{ fontSize: 9, color: '#555555', marginTop: 2 }}>{(item.keywords ?? []).join(' · ')}</Text>
+            <Text style={styles.keywords ?? { fontSize: 9, color: '#555555', marginTop: 2 }}>{(item.keywords ?? []).join(' · ')}</Text>
           ) : null}
           {enabledFields.includes('level') && item.level ? (
-            <Text style={{ fontSize: 9, color: '#555555' }}>Level: {item.level}</Text>
+            <Text style={styles.level ?? { fontSize: 9, color: '#555555' }}>Level: {item.level}</Text>
           ) : null}
         </View>
       ))}

@@ -88,4 +88,36 @@ describe('AtsPdfTemplate', () => {
     expect(text).toContain('PATENTS')
     expect(text).toContain('Distributed Cache Patent')
   })
+
+  it('extracts custom section url, keywords and level fields', async () => {
+    const withCustom: ResumeData = {
+      ...data,
+      customSections: [{
+        id: 'x2', name: 'Courses', enabledFields: ['url', 'keywords', 'level'],
+        items: [{ id: 'i2', title: 'Distributed Systems', url: 'example.com/course', keywords: ['Consensus', 'Raft'], level: 'Advanced' }],
+      }],
+    }
+    const customMeta = { ...meta, sectionOrder: [...meta.sectionOrder, 'custom:x2'] }
+    const text = await extractText(<AtsPdfTemplate data={withCustom} meta={customMeta} />)
+    expect(text).toContain('COURSES')
+    expect(text).toContain('example.com/course')
+    expect(text).toContain('Consensus · Raft')
+    expect(text).toContain('Level: Advanced')
+  })
+
+  it('preserves linear reading order across page breaks', async () => {
+    const manyJobs: ResumeData = {
+      ...data,
+      work: Array.from({ length: 12 }, (_, i) => ({
+        name: `Company ${i + 1}`, position: `Role ${i + 1}`, startDate: '2010-01', endDate: '2012-01',
+        summary: 'Did substantial work on large systems for several years running.',
+        highlights: ['Improved throughput 25%', 'Mentored four engineers', 'Owned the on-call rotation'],
+      })),
+    }
+    const text = await extractText(<AtsPdfTemplate data={manyJobs} meta={meta} />)
+    assertOrdered(text, [
+      'Company 1', 'Company 5', 'Company 9', 'Company 12',
+      'EDUCATION', 'MIT', 'SKILLS', 'LANGUAGES',
+    ])
+  })
 })

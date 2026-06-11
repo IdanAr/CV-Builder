@@ -72,6 +72,9 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
         small: styles.small,
         body: styles.body,
         bullet: styles.bullet,
+        link: { fontSize: 10, color: '#333333' },
+        keywords: { fontSize: 10, color: '#333333', marginTop: 2 },
+        level: { fontSize: 10, color: '#333333' },
       })
     }
     switch (section) {
