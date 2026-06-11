@@ -27,4 +27,11 @@ describe('formatDateRange', () => {
   it('returns empty string when nothing is set', () => {
     expect(formatDateRange(undefined, undefined)).toBe('')
   })
+  it('treats null the same as undefined', () => {
+    expect(formatDateRange(null, null)).toBe('')
+    expect(formatDateRange('2020-01', null, true)).toBe('01/2020 - Present')
+  })
+  it('returns only end when start is absent', () => {
+    expect(formatDateRange(undefined, '2022-06')).toBe('06/2022')
+  })
 })
