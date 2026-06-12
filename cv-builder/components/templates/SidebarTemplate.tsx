@@ -1,10 +1,11 @@
-'use client'
+﻿'use client'
 
 import React from 'react'
 import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
 import { richTextToHtml } from '@/lib/rich-text'
 import { formatDateRange } from '@/lib/format-date'
+import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
 
 function rt(text: string | undefined | null): React.ReactNode {
   if (!text) return null
@@ -12,9 +13,6 @@ function rt(text: string | undefined | null): React.ReactNode {
 }
 
 const ALL_SECTIONS = ['work', 'education', 'skills', 'volunteer', 'languages']
-
-// Sections that belong in the sidebar rail
-const RAIL_SECTIONS = new Set(['skills', 'languages'])
 
 export function SidebarTemplate({ data, meta }: TemplateProps) {
   const { basics = {} } = data
@@ -60,8 +58,9 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
     borderBottom: `2px solid ${meta.accentColor}`,
   }
 
-  const railSections = sectionOrder.filter((s) => !s.startsWith('custom:') && RAIL_SECTIONS.has(s))
-  const mainSections = sectionOrder.filter((s) => s.startsWith('custom:') || !RAIL_SECTIONS.has(s))
+  const ca = meta.columnAssignment ?? {}
+  const railSections = sectionOrder.filter((s) => getColumnSide(s, ca, SIDEBAR_COLUMN_DEFAULTS) === 'left')
+  const mainSections = sectionOrder.filter((s) => getColumnSide(s, ca, SIDEBAR_COLUMN_DEFAULTS) === 'right')
 
   function renderMainSection(section: string): React.ReactNode {
     if (section.startsWith('custom:')) {
@@ -207,7 +206,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
               {(data.languages ?? []).map((l, i) => (
                 <div key={i}>
                   <strong>{l.language}</strong>
-                  {l.fluency && <span style={{ opacity: 0.85 }}> – {l.fluency}</span>}
+                  {l.fluency && <span style={{ opacity: 0.85 }}> - {l.fluency}</span>}
                 </div>
               ))}
             </div>
