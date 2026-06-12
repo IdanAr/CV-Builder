@@ -30,4 +30,21 @@ describe('ExportMenu', () => {
     fireEvent.click(screen.getByText('DOCX — Designed'))
     expect(screen.queryByText('PDF — Designed')).toBeNull()
   })
+
+  it('exposes menu semantics and expanded state', () => {
+    render(<ExportMenu onExport={vi.fn()} />)
+    const trigger = screen.getByRole('button', { name: /export/i })
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByRole('menu')).toBeTruthy()
+    expect(screen.getAllByRole('menuitem')).toHaveLength(4)
+  })
+
+  it('closes on Escape', () => {
+    render(<ExportMenu onExport={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: /export/i }))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
 })
