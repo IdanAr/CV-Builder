@@ -689,7 +689,7 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta, mode: ExportMode =
         ...(theme.summaryJustified ? { alignment: AlignmentType.JUSTIFIED } : {}),
         spacing: { after: 180 },
       }))
-    } else if (meta.layout === 'two-column') {
+    } else if (mode === 'designed' && meta.layout === 'two-column') {
       // Web two-column shows the summary italic under the header, without a heading
       headerParas.push(new Paragraph({
         children: richTextRuns(basics.summary, bodyFont, 20, { italics: true }),

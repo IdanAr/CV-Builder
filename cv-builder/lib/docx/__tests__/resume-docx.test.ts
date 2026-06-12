@@ -124,4 +124,16 @@ describe('buildDocx ats mode', () => {
     const xml = await docXml(buildDocx(fullData, meta))
     expect(xml).toContain('<w:tbl')
   })
+
+  it('ats mode keeps the Summary heading regardless of stored layout', async () => {
+    const withSummary = {
+      ...fullData,
+      basics: { ...fullData.basics, summary: 'Seasoned platform engineer.' },
+    }
+    const xml = await docXml(buildDocx(withSummary, { ...defaultMeta, layout: 'two-column' }, 'ats'))
+    const headingIdx = xml.indexOf('SUMMARY')
+    const textIdx = xml.indexOf('Seasoned platform engineer.')
+    expect(headingIdx).toBeGreaterThan(-1)
+    expect(textIdx).toBeGreaterThan(headingIdx)
+  })
 })
