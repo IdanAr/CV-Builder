@@ -6,7 +6,6 @@ import { formatDateRange } from '@/lib/format-date'
 
 interface PdfCustomSectionStyles {
   sectionTitle: object
-  entryRow: object
   bold: object
   accent: object
   small: object
@@ -29,14 +28,14 @@ export function renderPdfCustomSection(
       <Text style={styles.sectionTitle}>{name}</Text>
       {items.map((item, i) => (
         <View key={item.id || i} style={{ marginBottom: 7.5 }}>
-          <View style={styles.entryRow}>
-            {item.title ? <Text style={styles.bold}>{item.title}</Text> : null}
-            {enabledFields.includes('dateRange') && (item.startDate || item.endDate) ? (
-              <Text style={styles.small}>
-                {formatDateRange(item.startDate, item.endDate)}
-              </Text>
-            ) : null}
-          </View>
+          {(item.title || (enabledFields.includes('dateRange') && (item.startDate || item.endDate))) ? (
+            <Text style={{ marginBottom: 2 }}>
+              {item.title ? <Text style={styles.bold}>{item.title}</Text> : null}
+              {enabledFields.includes('dateRange') && (item.startDate || item.endDate) ? (
+                <Text style={styles.small}>{'  ·  '}{formatDateRange(item.startDate, item.endDate)}</Text>
+              ) : null}
+            </Text>
+          ) : null}
           {enabledFields.includes('subtitle') && item.subtitle ? (
             <Text style={styles.accent}>{item.subtitle}</Text>
           ) : null}
