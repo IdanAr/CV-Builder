@@ -6,6 +6,7 @@ import { formatDateRange } from '@/lib/format-date'
 
 interface PdfCustomSectionStyles {
   sectionTitle: object
+  entryRow?: object
   bold: object
   accent: object
   small: object
