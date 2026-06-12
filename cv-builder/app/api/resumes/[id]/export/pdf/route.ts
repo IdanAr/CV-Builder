@@ -27,11 +27,13 @@ export const POST = auth(async (req, ctx) => {
   const buffer = await renderToBuffer(element as React.ReactElement<never>)
 
   const baseName = resume.title.replace(/[^a-z0-9]/gi, '-')
+  const templateName = meta.templateId.charAt(0).toUpperCase() + meta.templateId.slice(1)
+  const modeSuffix = mode === 'ats' ? '-ATS' : ''
   return new Response(new Uint8Array(buffer), {
     status: 200,
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${baseName}${mode === 'ats' ? '-ATS' : ''}.pdf"`,
+      'Content-Disposition': `attachment; filename="${baseName}-${templateName}${modeSuffix}.pdf"`,
       'Content-Length': String(buffer.byteLength),
     },
   })

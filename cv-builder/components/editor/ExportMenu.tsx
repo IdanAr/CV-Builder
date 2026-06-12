@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { ExportMode } from '@/lib/export-mode'
 
 export interface ExportMenuProps {
@@ -9,13 +10,37 @@ export interface ExportMenuProps {
 
 export function ExportMenu({ onExport }: ExportMenuProps) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
     if (!open) return
-    function onPointerDown(e: PointerEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    function updatePosition() {
+      const rect = triggerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setMenuPosition({ top: rect.bottom + 8, right: window.innerWidth - rect.right })
+    }
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    function onMouseDown(e: MouseEvent) {
+      const target = e.target as Node
+      const insideTrigger = containerRef.current?.contains(target) ?? false
+      const insideMenu = menuRef.current?.contains(target) ?? false
+      if (!insideTrigger && !insideMenu) setOpen(false)
     }
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
@@ -23,10 +48,10 @@ export function ExportMenu({ onExport }: ExportMenuProps) {
         triggerRef.current?.focus()
       }
     }
-    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('mousedown', onMouseDown)
     document.addEventListener('keydown', onKeyDown)
     return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('mousedown', onMouseDown)
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [open])
@@ -44,7 +69,7 @@ export function ExportMenu({ onExport }: ExportMenuProps) {
   )
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={containerRef} className="relative">
       <button
         ref={triggerRef}
         type="button"
@@ -56,17 +81,20 @@ export function ExportMenu({ onExport }: ExportMenuProps) {
       >
         Export ▾
       </button>
-      {open && (
+      {mounted && open && menuPosition && createPortal(
         <div
+          ref={menuRef}
           role="menu"
-          className="absolute right-0 top-full mt-1 w-56 rounded border border-indigo-100 bg-white shadow-lg z-50 py-1"
+          style={{ top: menuPosition.top, right: menuPosition.right }}
+          className="fixed z-[100] w-56 overflow-hidden rounded-xl border border-white/40 bg-white/90 shadow-xl backdrop-blur-xl"
         >
           {item('PDF — Designed', 'Exact match of the preview', 'pdf', 'designed')}
           {item('PDF — ATS-optimized', 'Single-column, parser-safe', 'pdf', 'ats')}
           <div className="my-1 border-t border-indigo-100" aria-hidden="true" />
           {item('DOCX — Designed', 'Exact match of the preview', 'docx', 'designed')}
           {item('DOCX — ATS-optimized', 'Single-column, parser-safe', 'docx', 'ats')}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

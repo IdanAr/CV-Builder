@@ -122,7 +122,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
   }
 
   async function handleExport(format: 'pdf' | 'docx', mode: ExportMode = 'designed') {
-    const { resumeId: rid, title: t } = useResumeEditorStore.getState()
+    const { resumeId: rid, title: t, meta: m } = useResumeEditorStore.getState()
     try {
       const res = await fetch(`/api/resumes/${rid}/export/${format}`, {
         method: 'POST',
@@ -134,7 +134,9 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${t.replace(/\s+/g, '-')}${mode === 'ats' ? '-ATS' : ''}.${format}`
+      const templateName = m.templateId.charAt(0).toUpperCase() + m.templateId.slice(1)
+      const modeSuffix = mode === 'ats' ? '-ATS' : ''
+      a.download = `${t.replace(/\s+/g, '-')}-${templateName}${modeSuffix}.${format}`
       a.click()
       URL.revokeObjectURL(url)
     } catch {
