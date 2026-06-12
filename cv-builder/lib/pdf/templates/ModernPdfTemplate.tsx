@@ -1,7 +1,7 @@
 import React from 'react'
 import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/renderer'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
-import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, formatContact, renderPdfRichText, renderPdfRichTextRuns, pdfDocumentProps } from './pdf-utils'
+import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns, pdfDocumentProps } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { getColumnSide } from '@/lib/get-column-side'
 import { formatDateRange } from '@/lib/format-date'
@@ -271,7 +271,7 @@ export function ModernPdfTemplate({ data, meta, title }: { data: ResumeData; met
         <View style={styles.headerBlock}>
           <Text style={styles.name}>{basics.name ?? ''}</Text>
           {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
-          <Text style={styles.contact}>{formatContact(basics)}</Text>
+          {buildContactRow()}
         </View>
         <View style={styles.body_section}>
           {renderPdfRichText(basics.summary, styles.summaryBox)}

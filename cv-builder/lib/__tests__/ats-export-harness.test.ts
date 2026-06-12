@@ -44,10 +44,8 @@ const fixture: ResumeData = {
 }
 
 // Every key fact that must survive export in any mode
-// NOTE: 'janesmith.dev' omitted — modern template's single-column designed path uses formatContact()
-// which only joins email/phone/location; the URL is absent from that code path.
 const KEY_FACTS = [
-  'Jane Smith', 'jane.smith@example.com', '+1 555 0100',
+  'Jane Smith', 'jane.smith@example.com', '+1 555 0100', 'janesmith.dev',
   'Acme Corp', 'Senior Engineer', 'Cut infra costs 40%',
   'MIT', 'TypeScript', 'English', 'Distributed Cache Patent',
 ]
