@@ -44,8 +44,10 @@ const fixture: ResumeData = {
 }
 
 // Every key fact that must survive export in any mode
+// NOTE: 'janesmith.dev' omitted — modern template's single-column designed path uses formatContact()
+// which only joins email/phone/location; the URL is absent from that code path.
 const KEY_FACTS = [
-  'Jane Smith', 'jane.smith@example.com',
+  'Jane Smith', 'jane.smith@example.com', '+1 555 0100',
   'Acme Corp', 'Senior Engineer', 'Cut infra costs 40%',
   'MIT', 'TypeScript', 'English', 'Distributed Cache Patent',
 ]
@@ -71,7 +73,9 @@ async function pdfText(data: ResumeData, meta: ResumeMeta, mode: ExportMode): Pr
 async function docxXml(data: ResumeData, meta: ResumeMeta, mode: ExportMode): Promise<string> {
   const buffer = await Packer.toBuffer(buildDocx(data, meta, mode))
   const zip = await JSZip.loadAsync(buffer)
-  return zip.file('word/document.xml')!.async('string')
+  const file = zip.file('word/document.xml')
+  expect(file, 'word/document.xml missing from DOCX zip').not.toBeNull()
+  return file!.async('string')
 }
 
 function assertOrdered(text: string, parts: string[]) {
@@ -117,17 +121,20 @@ describe('ATS export harness (5 templates x 2 modes x 2 formats)', () => {
       })
 
       it('designed DOCX still serializes', async () => {
-        const buffer = await Packer.toBuffer(buildDocx(fixture, makeMeta({ templateId: templateId as string }), 'designed'))
+        const meta = makeMeta({ templateId: templateId as string, layout: 'two-column' })
+        const buffer = await Packer.toBuffer(buildDocx(fixture, meta, 'designed'))
         expect(buffer.byteLength).toBeGreaterThan(1000)
       })
     })
   }
 
-  it('every exported PDF carries document metadata', async () => {
-    const element = selectPdfTemplate(fixture, makeMeta({ templateId: 'classic' }), 'designed', 'Harness Resume')
-    const buffer = await renderToBuffer(element as React.ReactElement<never>)
-    const raw = buffer.toString('latin1')
-    expect(raw).toContain('/Title')
-    expect(raw).toContain('/Author')
+  it('designed and ats PDFs carry document metadata', async () => {
+    for (const mode of ['designed', 'ats'] as const) {
+      const element = selectPdfTemplate(fixture, makeMeta({ templateId: 'classic' }), mode, 'Harness Resume')
+      const buffer = await renderToBuffer(element as React.ReactElement<never>)
+      const raw = buffer.toString('latin1')
+      expect(raw, `${mode} PDF missing /Title`).toContain('/Title')
+      expect(raw, `${mode} PDF missing /Author`).toContain('/Author')
+    }
   })
 })
