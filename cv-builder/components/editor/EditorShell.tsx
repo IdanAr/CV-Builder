@@ -10,6 +10,8 @@ import { AtsScorePanel } from '@/components/ats/AtsScorePanel'
 import { EditorErrorBoundary } from './EditorErrorBoundary'
 import { AppNavbar } from '@/components/ui/AppNavbar'
 import { UserProfileButton } from '@/components/ui/UserProfileButton'
+import { ExportMenu } from './ExportMenu'
+import type { ExportMode } from '@/lib/export-mode'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
 type Tab = 'edit' | 'design' | 'ats'
@@ -119,16 +121,20 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
     URL.revokeObjectURL(url)
   }
 
-  async function handleExport(format: 'pdf' | 'docx') {
+  async function handleExport(format: 'pdf' | 'docx', mode: ExportMode = 'designed') {
     const { resumeId: rid, title: t } = useResumeEditorStore.getState()
     try {
-      const res = await fetch(`/api/resumes/${rid}/export/${format}`, { method: 'POST' })
+      const res = await fetch(`/api/resumes/${rid}/export/${format}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode }),
+      })
       if (!res.ok) throw new Error(`Export failed: ${res.status}`)
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${t.replace(/\s+/g, '-')}.${format}`
+      a.download = `${t.replace(/\s+/g, '-')}${mode === 'ats' ? '-ATS' : ''}.${format}`
       a.click()
       URL.revokeObjectURL(url)
     } catch {
@@ -161,18 +167,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
             >
               JSON
             </button>
-            <button
-              onClick={() => handleExport('pdf')}
-              className="text-xs bg-indigo-600 text-white rounded px-3 py-1.5 hover:bg-indigo-700 transition-colors"
-            >
-              PDF
-            </button>
-            <button
-              onClick={() => handleExport('docx')}
-              className="text-xs bg-indigo-600 text-white rounded px-3 py-1.5 hover:bg-indigo-700 transition-colors"
-            >
-              DOCX
-            </button>
+            <ExportMenu onExport={handleExport} />
             {user && (
               <>
                 <div className="w-px h-4 bg-indigo-200" />
