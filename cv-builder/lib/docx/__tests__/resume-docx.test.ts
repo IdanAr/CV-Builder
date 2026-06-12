@@ -80,6 +80,49 @@ describe('buildDocx', () => {
     expect(skillsIdx).toBeGreaterThan(-1)
     expect(workIdx).toBeLessThan(skillsIdx)
   })
+
+  it('sidebar columnAssignment moves skills to main column and work to rail', async () => {
+    const meta: ResumeMeta = {
+      ...defaultMeta,
+      templateId: 'sidebar',
+      primaryColor: '#1e3a5f',
+      columnAssignment: { skills: 'right', work: 'left' },
+      sectionOrder: ['work', 'skills'],
+    }
+    const doc = buildDocx(sampleData, meta)
+    const buffer = await Packer.toBuffer(doc)
+    const zip = await JSZip.loadAsync(buffer)
+    const xml = await zip.file('word/document.xml')!.async('string')
+    expect(xml).toContain('<w:tbl')
+    // With work overridden to left and skills to right:
+    // work heading should appear before skills heading in XML (left cell before right cell)
+    const workIdx = xml.indexOf('WORK EXPERIENCE')
+    const skillsIdx = xml.indexOf('SKILLS')
+    expect(workIdx).toBeGreaterThan(-1)
+    expect(skillsIdx).toBeGreaterThan(-1)
+    expect(workIdx).toBeLessThan(skillsIdx)
+  })
+
+  it('sidebar default columnAssignment still puts skills in rail (left) and work in main (right)', async () => {
+    const meta: ResumeMeta = {
+      ...defaultMeta,
+      templateId: 'sidebar',
+      primaryColor: '#1e3a5f',
+      columnAssignment: {},
+      sectionOrder: ['work', 'skills'],
+    }
+    const doc = buildDocx(sampleData, meta)
+    const buffer = await Packer.toBuffer(doc)
+    const zip = await JSZip.loadAsync(buffer)
+    const xml = await zip.file('word/document.xml')!.async('string')
+    // Default: skills → left (rail), work → right (main)
+    // skills heading appears before work heading in XML
+    const skillsIdx = xml.indexOf('SKILLS')
+    const workIdx = xml.indexOf('WORK EXPERIENCE')
+    expect(skillsIdx).toBeGreaterThan(-1)
+    expect(workIdx).toBeGreaterThan(-1)
+    expect(skillsIdx).toBeLessThan(workIdx)
+  })
 })
 
 describe('buildDocx ats mode', () => {
