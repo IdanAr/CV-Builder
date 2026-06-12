@@ -2,6 +2,7 @@ import { Packer } from 'docx'
 import { auth } from '@/lib/auth'
 import { getResume } from '@/lib/api/resumes'
 import { buildDocx } from '@/lib/docx/resume-docx'
+import { parseExportMode } from '@/lib/export-mode'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
 export const POST = auth(async (req, ctx) => {
@@ -15,16 +16,19 @@ export const POST = auth(async (req, ctx) => {
     return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })
   }
 
+  const body = await req.json().catch(() => null)
+  const mode = parseExportMode((body as { mode?: unknown } | null)?.mode)
+
   const data = (resume.data ?? {}) as ResumeData
   const meta = resume.meta as ResumeMeta
-  const doc = buildDocx(data, meta)
+  const doc = buildDocx(data, meta, mode)
   const buffer = await Packer.toBuffer(doc)
 
   return new Response(new Uint8Array(buffer), {
     status: 200,
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'Content-Disposition': `attachment; filename="${resume.title.replace(/[^a-z0-9]/gi, '-')}.docx"`,
+      'Content-Disposition': `attachment; filename="${resume.title.replace(/[^a-z0-9]/gi, '-')}${mode === 'ats' ? '-ATS' : ''}.docx"`,
       'Content-Length': String(buffer.byteLength),
     },
   })
