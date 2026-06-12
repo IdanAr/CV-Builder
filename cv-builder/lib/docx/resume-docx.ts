@@ -3,6 +3,7 @@ import {
   AlignmentType, BorderStyle, ShadingType, WidthType, convertInchesToTwip,
 } from 'docx'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
+import type { ExportMode } from '@/lib/export-mode'
 import { parseRichText, TextRun as RichTextRun } from '@/lib/rich-text'
 import { getColumnSide } from '@/lib/get-column-side'
 import { formatDate, formatDateRange } from '@/lib/format-date'
@@ -147,6 +148,23 @@ function buildDocxTheme(meta: ResumeMeta): DocxTheme {
         headerAlign: AlignmentType.CENTER,
         summaryHeading: true,
       }
+  }
+}
+
+// Neutral dark-on-white theme for ATS exports: no header fill, no light
+// tints, headings keep the template's primary color. Sizes per the
+// typography constraints (name 20pt, headings 13pt — half-points here).
+function buildAtsDocxTheme(meta: ResumeMeta): DocxTheme {
+  return {
+    sectionTitleColor: meta.primaryColor,
+    sectionUppercase: true,
+    sectionBorder: true,
+    sectionBorderSize: 6,
+    accentColor: '333333',
+    nameSize: 40,
+    headingSize: 26,
+    headerAlign: AlignmentType.LEFT,
+    summaryHeading: true,
   }
 }
 
@@ -431,7 +449,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
 const NO_BORDER = { style: BorderStyle.NONE, size: 0, color: 'auto' } as const
 const NO_BORDERS = { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER }
 
-export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
+export function buildDocx(data: ResumeData, meta: ResumeMeta, mode: ExportMode = 'designed'): Document {
   const bodyFont = mapFont(meta.fontFamily)
   const headFont = mapFont(meta.headerFontFamily)
   const marginTwips = convertInchesToTwip(meta.pageMargins)
@@ -443,7 +461,7 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
   const DEFAULT_ORDER = ['work', 'education', 'skills', 'volunteer', 'languages']
   const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : DEFAULT_ORDER
 
-  const theme = buildDocxTheme(meta)
+  const theme = mode === 'ats' ? buildAtsDocxTheme(meta) : buildDocxTheme(meta)
   const headerShading = theme.headerFill
     ? { type: ShadingType.CLEAR, fill: theme.headerFill, color: 'auto' as const }
     : undefined
@@ -491,7 +509,7 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
   // A flat (non-nested) table keeps the ATS reading order linear — rail
   // top-to-bottom, then main column. The sidebar has its own two-column
   // structure, so meta.layout is ignored here, matching the web preview.
-  if (meta.templateId === 'sidebar') {
+  if (mode === 'designed' && meta.templateId === 'sidebar') {
     const railSet = new Set(['skills', 'languages'])
     const mainSections = sectionOrder.filter(s => s.startsWith('custom:') || !railSet.has(s))
     const { skills = [], languages = [] } = data
@@ -690,7 +708,7 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
   // previously saved resume may still carry a stale two-column layout.
   let bodyContent: (Paragraph | Table)[]
 
-  if (meta.layout === 'two-column' && meta.templateId !== 'minimal') {
+  if (mode === 'designed' && meta.layout === 'two-column' && meta.templateId !== 'minimal') {
     const ca = meta.columnAssignment ?? {}
     const leftSections = sectionOrder.filter(s => getColumnSide(s, ca) === 'left')
     const rightSections = sectionOrder.filter(s => getColumnSide(s, ca) === 'right')

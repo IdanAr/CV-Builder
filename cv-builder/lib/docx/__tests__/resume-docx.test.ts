@@ -81,3 +81,47 @@ describe('buildDocx', () => {
     expect(workIdx).toBeLessThan(skillsIdx)
   })
 })
+
+describe('buildDocx ats mode', () => {
+  async function docXml(doc: ReturnType<typeof buildDocx>): Promise<string> {
+    const buffer = await Packer.toBuffer(doc)
+    const zip = await JSZip.loadAsync(buffer)
+    return zip.file('word/document.xml')!.async('string')
+  }
+
+  const fullData = {
+    ...sampleData,
+    languages: [{ language: 'English', fluency: 'Native' }],
+  }
+
+  it('sidebar template has no tables in ats mode', async () => {
+    const meta = { ...defaultMeta, templateId: 'sidebar', sectionOrder: ['work', 'education', 'skills', 'languages'] }
+    const xml = await docXml(buildDocx(fullData, meta, 'ats'))
+    expect(xml).not.toContain('<w:tbl')
+    // Rail content folds back inline, in sectionOrder order
+    const order = ['Jane Smith', 'WORK EXPERIENCE', 'Acme', 'EDUCATION', 'MIT', 'SKILLS', 'TypeScript', 'LANGUAGES', 'English']
+    let last = -1
+    for (const part of order) {
+      const idx = xml.indexOf(part)
+      expect(idx, `"${part}" missing or out of order`).toBeGreaterThan(last)
+      last = idx
+    }
+  })
+
+  it('two-column layout has no tables in ats mode', async () => {
+    const xml = await docXml(buildDocx(fullData, { ...defaultMeta, layout: 'two-column' }, 'ats'))
+    expect(xml).not.toContain('<w:tbl')
+  })
+
+  it('ats mode has no shading anywhere (no filled header, no rail)', async () => {
+    const meta = { ...defaultMeta, templateId: 'modern', primaryColor: '#1e3a5f' }
+    const xml = await docXml(buildDocx(fullData, meta, 'ats'))
+    expect(xml).not.toContain('<w:shd')
+  })
+
+  it('defaults to designed mode (sidebar still renders its rail table)', async () => {
+    const meta = { ...defaultMeta, templateId: 'sidebar' }
+    const xml = await docXml(buildDocx(fullData, meta))
+    expect(xml).toContain('<w:tbl')
+  })
+})
