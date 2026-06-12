@@ -17,8 +17,8 @@ export const POST = auth(async (req, ctx) => {
     return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })
   }
 
-  const body = await req.json().catch(() => ({} as Record<string, unknown>))
-  const mode = parseExportMode((body as { mode?: unknown }).mode)
+  const body = await req.json().catch(() => null)
+  const mode = parseExportMode((body as { mode?: unknown } | null)?.mode)
 
   const data = (resume.data ?? {}) as ResumeData
   const meta = resume.meta as ResumeMeta
