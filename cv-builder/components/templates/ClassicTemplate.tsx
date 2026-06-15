@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React from 'react'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
@@ -134,7 +134,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
               {langs.map((l, i) => (
                 <div key={i}>
                   <strong>{l.language}</strong>
-                  {l.fluency && <span style={{ color: '#666' }}> – {l.fluency}</span>}
+                  {l.fluency && <span style={{ color: '#666' }}> - {l.fluency}</span>}
                 </div>
               ))}
             </div>

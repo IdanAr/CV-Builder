@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import React from 'react'
 import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
@@ -127,7 +127,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
               {langs.map((l, i) => (
                 <div key={i}>
                   <strong>{l.language}</strong>
-                  {l.fluency && <span style={{ color: '#666' }}> – {l.fluency}</span>}
+                  {l.fluency && <span style={{ color: '#666' }}> - {l.fluency}</span>}
                 </div>
               ))}
             </div>
