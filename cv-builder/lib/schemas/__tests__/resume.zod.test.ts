@@ -20,11 +20,18 @@ describe('ResumeDataSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('rejects a malformed email in basics', () => {
+  it('accepts a partial/malformed email in basics (no format check at save layer)', () => {
     const result = ResumeDataSchema.safeParse({
       basics: { email: 'not-an-email' },
     })
-    expect(result.success).toBe(false)
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a partially typed email (mid-keystroke state)', () => {
+    const result = ResumeDataSchema.safeParse({
+      basics: { email: 'user@gm' },
+    })
+    expect(result.success).toBe(true)
   })
 
   it('accepts work array with highlights', () => {
