@@ -1,10 +1,11 @@
 // lib/schemas/resume.zod.ts
 import { z } from 'zod'
 
-// Form inputs clear to '' rather than undefined; treat '' as absent so that
-// z.string().url()/.email() format checks don't reject cleared fields.
+// Auto-save fires while the user is mid-typing, so format checks on URL/email
+// must not run at the schema layer — any string is accepted. Format feedback
+// belongs in the UI form layer only.
 const optionalUrl = () => z.string().optional()
-const optionalEmail = () => z.union([z.string().email(), z.literal('')]).optional()
+const optionalEmail = () => z.string().optional()
 
 const LocationSchema = z.object({
   address: z.string().optional(),

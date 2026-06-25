@@ -80,4 +80,103 @@ describe('buildDocx', () => {
     expect(skillsIdx).toBeGreaterThan(-1)
     expect(workIdx).toBeLessThan(skillsIdx)
   })
+
+  it('sidebar columnAssignment moves skills to main column and work to rail', async () => {
+    const meta: ResumeMeta = {
+      ...defaultMeta,
+      templateId: 'sidebar',
+      primaryColor: '#1e3a5f',
+      columnAssignment: { skills: 'right', work: 'left' },
+      sectionOrder: ['work', 'skills'],
+    }
+    const doc = buildDocx(sampleData, meta)
+    const buffer = await Packer.toBuffer(doc)
+    const zip = await JSZip.loadAsync(buffer)
+    const xml = await zip.file('word/document.xml')!.async('string')
+    expect(xml).toContain('<w:tbl')
+    // With work overridden to left and skills to right:
+    // work heading should appear before skills heading in XML (left cell before right cell)
+    const workIdx = xml.indexOf('WORK EXPERIENCE')
+    const skillsIdx = xml.indexOf('SKILLS')
+    expect(workIdx).toBeGreaterThan(-1)
+    expect(skillsIdx).toBeGreaterThan(-1)
+    expect(workIdx).toBeLessThan(skillsIdx)
+  })
+
+  it('sidebar default columnAssignment still puts skills in rail (left) and work in main (right)', async () => {
+    const meta: ResumeMeta = {
+      ...defaultMeta,
+      templateId: 'sidebar',
+      primaryColor: '#1e3a5f',
+      columnAssignment: {},
+      sectionOrder: ['work', 'skills'],
+    }
+    const doc = buildDocx(sampleData, meta)
+    const buffer = await Packer.toBuffer(doc)
+    const zip = await JSZip.loadAsync(buffer)
+    const xml = await zip.file('word/document.xml')!.async('string')
+    // Default: skills → left (rail), work → right (main)
+    // skills heading appears before work heading in XML
+    const skillsIdx = xml.indexOf('SKILLS')
+    const workIdx = xml.indexOf('WORK EXPERIENCE')
+    expect(skillsIdx).toBeGreaterThan(-1)
+    expect(workIdx).toBeGreaterThan(-1)
+    expect(skillsIdx).toBeLessThan(workIdx)
+  })
+})
+
+describe('buildDocx ats mode', () => {
+  async function docXml(doc: ReturnType<typeof buildDocx>): Promise<string> {
+    const buffer = await Packer.toBuffer(doc)
+    const zip = await JSZip.loadAsync(buffer)
+    return zip.file('word/document.xml')!.async('string')
+  }
+
+  const fullData = {
+    ...sampleData,
+    languages: [{ language: 'English', fluency: 'Native' }],
+  }
+
+  it('sidebar template has no tables in ats mode', async () => {
+    const meta = { ...defaultMeta, templateId: 'sidebar', sectionOrder: ['work', 'education', 'skills', 'languages'] }
+    const xml = await docXml(buildDocx(fullData, meta, 'ats'))
+    expect(xml).not.toContain('<w:tbl')
+    // Rail content folds back inline, in sectionOrder order
+    const order = ['Jane Smith', 'WORK EXPERIENCE', 'Acme', 'EDUCATION', 'MIT', 'SKILLS', 'TypeScript', 'LANGUAGES', 'English']
+    let last = -1
+    for (const part of order) {
+      const idx = xml.indexOf(part)
+      expect(idx, `"${part}" missing or out of order`).toBeGreaterThan(last)
+      last = idx
+    }
+  })
+
+  it('two-column layout has no tables in ats mode', async () => {
+    const xml = await docXml(buildDocx(fullData, { ...defaultMeta, layout: 'two-column' }, 'ats'))
+    expect(xml).not.toContain('<w:tbl')
+  })
+
+  it('ats mode has no shading anywhere (no filled header, no rail)', async () => {
+    const meta = { ...defaultMeta, templateId: 'modern', primaryColor: '#1e3a5f' }
+    const xml = await docXml(buildDocx(fullData, meta, 'ats'))
+    expect(xml).not.toContain('<w:shd')
+  })
+
+  it('defaults to designed mode (sidebar still renders its rail table)', async () => {
+    const meta = { ...defaultMeta, templateId: 'sidebar' }
+    const xml = await docXml(buildDocx(fullData, meta))
+    expect(xml).toContain('<w:tbl')
+  })
+
+  it('ats mode keeps the Summary heading regardless of stored layout', async () => {
+    const withSummary = {
+      ...fullData,
+      basics: { ...fullData.basics, summary: 'Seasoned platform engineer.' },
+    }
+    const xml = await docXml(buildDocx(withSummary, { ...defaultMeta, layout: 'two-column' }, 'ats'))
+    const headingIdx = xml.indexOf('SUMMARY')
+    const textIdx = xml.indexOf('Seasoned platform engineer.')
+    expect(headingIdx).toBeGreaterThan(-1)
+    expect(textIdx).toBeGreaterThan(headingIdx)
+  })
 })

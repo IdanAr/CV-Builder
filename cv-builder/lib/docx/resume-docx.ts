@@ -1,11 +1,12 @@
-import {
+﻿import {
   Document, Paragraph, TextRun, ExternalHyperlink, Table, TableRow, TableCell,
   AlignmentType, BorderStyle, ShadingType, WidthType, convertInchesToTwip,
 } from 'docx'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
+import type { ExportMode } from '@/lib/export-mode'
 import { parseRichText, TextRun as RichTextRun } from '@/lib/rich-text'
-import { getColumnSide } from '@/lib/get-column-side'
-import { formatDate } from '@/lib/format-date'
+import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
+import { formatDate, formatDateRange } from '@/lib/format-date'
 
 function richTextRuns(
   text: string,
@@ -150,6 +151,23 @@ function buildDocxTheme(meta: ResumeMeta): DocxTheme {
   }
 }
 
+// Neutral dark-on-white theme for ATS exports: no header fill, no light
+// tints, headings keep the template's primary color. Sizes per the
+// typography constraints (name 20pt, headings 13pt — half-points here).
+function buildAtsDocxTheme(meta: ResumeMeta): DocxTheme {
+  return {
+    sectionTitleColor: meta.primaryColor,
+    sectionUppercase: true,
+    sectionBorder: true,
+    sectionBorderSize: 6,
+    accentColor: '333333',
+    nameSize: 40,
+    headingSize: 26,
+    headerAlign: AlignmentType.LEFT,
+    summaryHeading: true,
+  }
+}
+
 function sectionHeading(text: string, font: string, theme: DocxTheme): Paragraph {
   return new Paragraph({
     children: [new TextRun({
@@ -199,6 +217,157 @@ function jobEntry(
   return paras
 }
 
+function buildRailParas(
+  basics: ResumeData['basics'],
+  sections: string[],
+  data: ResumeData,
+  headFont: string,
+  bodyFont: string,
+  nameSize: number,
+  labelSize: number,
+): Paragraph[] {
+  const railText = 'ffffff'
+  const railSoft = 'f2f2f2'
+  const railMuted = 'e8e8e8'
+
+  const paras: Paragraph[] = [
+    new Paragraph({
+      children: [new TextRun({ text: basics?.name ?? '', bold: true, font: headFont, size: nameSize, color: railText })],
+      spacing: { after: 60 },
+    }),
+  ]
+  if (basics?.label) {
+    paras.push(new Paragraph({
+      children: [new TextRun({ text: basics.label, font: bodyFont, size: labelSize, color: railMuted })],
+      spacing: { after: 40 },
+    }))
+  }
+  const contactItems = [
+    basics?.email,
+    basics?.phone,
+    basics?.url,
+    [basics?.location?.city, basics?.location?.region].filter(Boolean).join(', '),
+  ].filter(Boolean) as string[]
+  contactItems.forEach((item, idx) => {
+    paras.push(new Paragraph({
+      children: [new TextRun({ text: item, font: bodyFont, size: 18, color: railSoft })],
+      spacing: { before: idx === 0 ? 180 : 0, after: 40 },
+    }))
+  })
+
+  const railHeading = (text: string) => new Paragraph({
+    children: [new TextRun({ text: text.toUpperCase(), bold: true, font: headFont, size: 20, color: railText })],
+    spacing: { before: 270, after: 105 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'd9d9d9', space: 2 } },
+  })
+
+  const { work = [], education = [], skills = [], certificates = [], awards = [],
+    publications = [], volunteer = [], languages = [], interests = [], projects = [],
+    customSections = [] } = data
+
+  for (const section of sections) {
+    if (section.startsWith('custom:')) {
+      const id = section.slice(7)
+      const cs = customSections.find(s => s.id === id)
+      if (!cs || !cs.items.length) continue
+      paras.push(railHeading(cs.name))
+      for (const item of cs.items) {
+        if (item.title) paras.push(new Paragraph({ children: [new TextRun({ text: item.title, bold: true, font: bodyFont, size: 19, color: railText })], spacing: { after: 40 } }))
+        if (cs.enabledFields.includes('summary') && item.summary) paras.push(new Paragraph({ children: [new TextRun({ text: item.summary, font: bodyFont, size: 19, color: railSoft })], spacing: { after: 40 } }))
+      }
+      continue
+    }
+    switch (section) {
+      case 'skills':
+        if (!skills.length) break
+        paras.push(railHeading('Skills'))
+        for (const s of skills) {
+          paras.push(new Paragraph({
+            children: [new TextRun({ text: s.name ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(s.level ? [new TextRun({ text: ` · ${s.level}`, font: bodyFont, size: 19, color: railMuted })] : [])],
+            spacing: { after: (s.keywords ?? []).length ? 0 : 90 },
+          }))
+          if ((s.keywords ?? []).length) paras.push(new Paragraph({ children: [new TextRun({ text: (s.keywords ?? []).join(', '), font: bodyFont, size: 19, color: railMuted })], spacing: { after: 90 } }))
+        }
+        break
+      case 'languages':
+        if (!languages.length) break
+        paras.push(railHeading('Languages'))
+        for (const l of languages) paras.push(new Paragraph({ children: [new TextRun({ text: l.language ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(l.fluency ? [new TextRun({ text: ` - ${l.fluency}`, font: bodyFont, size: 19, color: railMuted })] : [])], spacing: { after: 30 } }))
+        break
+      case 'work':
+        if (!work.length) break
+        paras.push(railHeading('Work Experience'))
+        for (const job of work) {
+          const dates = formatDateRange(job.startDate, job.endDate, true)
+          paras.push(new Paragraph({ children: [new TextRun({ text: job.name ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(dates ? [new TextRun({ text: `  ·  ${dates}`, font: bodyFont, size: 19, color: railMuted })] : [])], spacing: { before: 100, after: 20 } }))
+          if (job.position) paras.push(new Paragraph({ children: [new TextRun({ text: job.position, font: bodyFont, size: 19, color: railSoft })], spacing: { after: 40 } }))
+          for (const h of job.highlights ?? []) paras.push(new Paragraph({ children: richTextRuns(h, bodyFont, 19), bullet: { level: 0 }, spacing: { after: 20 } }))
+        }
+        break
+      case 'education':
+        if (!education.length) break
+        paras.push(railHeading('Education'))
+        for (const edu of education) {
+          const dates = formatDateRange(edu.startDate, edu.endDate)
+          paras.push(new Paragraph({ children: [new TextRun({ text: edu.institution ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(dates ? [new TextRun({ text: `  ·  ${dates}`, font: bodyFont, size: 19, color: railMuted })] : [])], spacing: { before: 100, after: 20 } }))
+          const degree = [edu.studyType, edu.area].filter(Boolean).join(' in ')
+          if (degree) paras.push(new Paragraph({ children: [new TextRun({ text: degree, font: bodyFont, size: 19, color: railSoft })], spacing: { after: 40 } }))
+        }
+        break
+      case 'certificates':
+        if (!certificates.length) break
+        paras.push(railHeading('Certifications'))
+        for (const c of certificates) paras.push(new Paragraph({ children: [new TextRun({ text: c.name ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(c.issuer ? [new TextRun({ text: ` — ${c.issuer}`, font: bodyFont, size: 19, color: railSoft })] : []), ...(c.date ? [new TextRun({ text: `  ·  ${formatDate(c.date)}`, font: bodyFont, size: 19, color: railMuted })] : [])], spacing: { after: 40 } }))
+        break
+      case 'awards':
+        if (!awards.length) break
+        paras.push(railHeading('Awards'))
+        for (const a of awards) {
+          paras.push(new Paragraph({ children: [new TextRun({ text: a.title ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(a.date ? [new TextRun({ text: `  ·  ${formatDate(a.date)}`, font: bodyFont, size: 19, color: railMuted })] : [])], spacing: { before: 80, after: 20 } }))
+          if (a.awarder) paras.push(new Paragraph({ children: [new TextRun({ text: a.awarder, font: bodyFont, size: 19, color: railSoft })], spacing: { after: 40 } }))
+        }
+        break
+      case 'publications':
+        if (!publications.length) break
+        paras.push(railHeading('Publications'))
+        for (const p of publications) {
+          paras.push(new Paragraph({ children: [new TextRun({ text: p.name ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(p.releaseDate ? [new TextRun({ text: `  ·  ${formatDate(p.releaseDate)}`, font: bodyFont, size: 19, color: railMuted })] : [])], spacing: { before: 80, after: 20 } }))
+          if (p.publisher) paras.push(new Paragraph({ children: [new TextRun({ text: p.publisher, font: bodyFont, size: 19, color: railSoft })], spacing: { after: 40 } }))
+        }
+        break
+      case 'volunteer':
+        if (!volunteer.length) break
+        paras.push(railHeading('Volunteer'))
+        for (const v of volunteer) {
+          const dates = formatDateRange(v.startDate, v.endDate, true)
+          paras.push(new Paragraph({ children: [new TextRun({ text: v.organization ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(dates ? [new TextRun({ text: `  ·  ${dates}`, font: bodyFont, size: 19, color: railMuted })] : [])], spacing: { before: 100, after: 20 } }))
+          if (v.position) paras.push(new Paragraph({ children: [new TextRun({ text: v.position, font: bodyFont, size: 19, color: railSoft })], spacing: { after: 40 } }))
+        }
+        break
+      case 'interests':
+        if (!interests.length) break
+        paras.push(railHeading('Interests'))
+        for (const int of interests) {
+          const kw = (int.keywords ?? []).length > 0 ? `: ${(int.keywords ?? []).join(', ')}` : ''
+          paras.push(new Paragraph({ children: [new TextRun({ text: int.name ?? '', bold: true, font: bodyFont, size: 19, color: railText }), new TextRun({ text: kw, font: bodyFont, size: 19, color: railMuted })], spacing: { after: 40 } }))
+        }
+        break
+      case 'projects':
+        if (!projects.length) break
+        paras.push(railHeading('Projects'))
+        for (const p of projects) {
+          const dates = formatDateRange(p.startDate, p.endDate)
+          paras.push(new Paragraph({ children: [new TextRun({ text: p.name ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(dates ? [new TextRun({ text: `  ·  ${dates}`, font: bodyFont, size: 19, color: railMuted })] : [])], spacing: { before: 80, after: 20 } }))
+          if (p.description) paras.push(new Paragraph({ children: [new TextRun({ text: p.description, font: bodyFont, size: 19, color: railSoft })], spacing: { after: 40 } }))
+          for (const h of p.highlights ?? []) paras.push(new Paragraph({ children: richTextRuns(h, bodyFont, 19), bullet: { level: 0 }, spacing: { after: 20 } }))
+        }
+        break
+    }
+  }
+
+  return paras
+}
+
 interface SectionRenderCtx {
   data: ResumeData
   bodyFont: string
@@ -224,7 +393,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
       for (const item of cs.items) {
         if (item.title) {
           const dateText = cs.enabledFields.includes('dateRange') && (item.startDate || item.endDate)
-            ? [formatDate(item.startDate), formatDate(item.endDate)].filter(Boolean).join(' – ')
+            ? formatDateRange(item.startDate, item.endDate)
             : ''
           out.push(new Paragraph({
             children: [
@@ -265,7 +434,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
         if (!work.length) break
         out.push(sectionHeading('Work Experience', headFont, theme))
         for (const job of work) {
-          const dates = [formatDate(job.startDate), formatDate(job.endDate) || 'Present'].filter(Boolean).join(' – ')
+          const dates = formatDateRange(job.startDate, job.endDate, true)
           out.push(...jobEntry(job.name ?? '', job.position ?? '', dates, job.summary, job.highlights ?? [], bodyFont, theme, tabWidthTwips))
         }
         break
@@ -273,7 +442,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
         if (!education.length) break
         out.push(sectionHeading('Education', headFont, theme))
         for (const edu of education) {
-          const dates = [formatDate(edu.startDate), formatDate(edu.endDate)].filter(Boolean).join(' – ')
+          const dates = formatDateRange(edu.startDate, edu.endDate)
           out.push(
             new Paragraph({
               children: [
@@ -334,7 +503,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
           out.push(new Paragraph({
             children: [
               new TextRun({ text: l.language ?? '', bold: true, font: bodyFont, size: 20 }),
-              ...(l.fluency ? [new TextRun({ text: ` – ${l.fluency}`, font: bodyFont, size: 20, color: '666666' })] : []),
+              ...(l.fluency ? [new TextRun({ text: ` - ${l.fluency}`, font: bodyFont, size: 20, color: '666666' })] : []),
             ],
             spacing: { after: 40 },
           }))
@@ -380,7 +549,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
         if (!volunteer.length) break
         out.push(sectionHeading('Volunteer', headFont, theme))
         for (const v of volunteer) {
-          const dates = [formatDate(v.startDate), formatDate(v.endDate) || 'Present'].filter(Boolean).join(' – ')
+          const dates = formatDateRange(v.startDate, v.endDate, true)
           out.push(...jobEntry(v.organization ?? '', v.position ?? '', dates, v.summary, v.highlights ?? [], bodyFont, theme, tabWidthTwips))
         }
         break
@@ -402,7 +571,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
         if (!projects.length) break
         out.push(sectionHeading('Projects', headFont, theme))
         for (const p of projects) {
-          const dates = [formatDate(p.startDate), formatDate(p.endDate)].filter(Boolean).join(' – ')
+          const dates = formatDateRange(p.startDate, p.endDate)
           out.push(
             new Paragraph({
               children: [
@@ -431,19 +600,19 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
 const NO_BORDER = { style: BorderStyle.NONE, size: 0, color: 'auto' } as const
 const NO_BORDERS = { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER }
 
-export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
+export function buildDocx(data: ResumeData, meta: ResumeMeta, mode: ExportMode = 'designed'): Document {
   const bodyFont = mapFont(meta.fontFamily)
   const headFont = mapFont(meta.headerFontFamily)
   const marginTwips = convertInchesToTwip(meta.pageMargins)
   const lineRule = 'auto' as never
   const lineVal = Math.round(meta.lineSpacing * 240)
 
-  const { basics = {}, customSections = [] } = data
+  const { basics = {} } = data
 
   const DEFAULT_ORDER = ['work', 'education', 'skills', 'volunteer', 'languages']
   const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : DEFAULT_ORDER
 
-  const theme = buildDocxTheme(meta)
+  const theme = mode === 'ats' ? buildAtsDocxTheme(meta) : buildDocxTheme(meta)
   const headerShading = theme.headerFill
     ? { type: ShadingType.CLEAR, fill: theme.headerFill, color: 'auto' as const }
     : undefined
@@ -485,100 +654,28 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
   })
 
   // ─── Sidebar template: shaded left rail + main column ───
-  // Mirrors the web's colored rail with a single-row, two-cell layout table: the
-  // rail cell is shaded with the primary color and holds the name, contact,
-  // skills and languages; the main cell holds the summary and remaining sections.
-  // A flat (non-nested) table keeps the ATS reading order linear — rail
-  // top-to-bottom, then main column. The sidebar has its own two-column
-  // structure, so meta.layout is ignored here, matching the web preview.
-  if (meta.templateId === 'sidebar') {
-    const railSet = new Set(['skills', 'languages'])
-    const mainSections = sectionOrder.filter(s => s.startsWith('custom:') || !railSet.has(s))
-    const { skills = [], languages = [] } = data
+  // Uses columnAssignment (with SIDEBAR_COLUMN_DEFAULTS) so users can assign any
+  // section to either column. Rail cell is shaded with meta.primaryColor.
+  if (mode === 'designed' && meta.templateId === 'sidebar') {
+    const ca = meta.columnAssignment ?? {}
+    const leftSections  = sectionOrder.filter(s => getColumnSide(s, ca, SIDEBAR_COLUMN_DEFAULTS) === 'left')
+    const rightSections = sectionOrder.filter(s => getColumnSide(s, ca, SIDEBAR_COLUMN_DEFAULTS) === 'right')
 
-    // Web rail text is white at 0.85–0.9 opacity; DOCX has no opacity, so fixed
-    // light tints are the closest flat equivalents on the dark fill.
-    const railText = 'ffffff'
-    const railSoft = 'f2f2f2'   // opacity 0.9
-    const railMuted = 'e8e8e8'  // opacity 0.85
-
-    const railParas: Paragraph[] = [
-      new Paragraph({
-        children: [new TextRun({ text: basics.name ?? '', bold: true, font: headFont, size: theme.nameSize, color: railText })],
-        spacing: { after: 60 },
-      }),
-    ]
-    if (basics.label) {
-      railParas.push(new Paragraph({
-        children: [new TextRun({ text: basics.label, font: bodyFont, size: theme.labelSize ?? 21, color: railMuted })],
-        spacing: { after: 40 },
-      }))
-    }
-    const contactItems = [
-      basics.email, basics.phone, basics.url,
-      [basics.location?.city, basics.location?.region].filter(Boolean).join(', '),
-    ].filter(Boolean) as string[]
-    contactItems.forEach((item, i) => {
-      railParas.push(new Paragraph({
-        // Web rail contact: 9pt, one item per line, 12px gap above the block
-        children: [new TextRun({ text: item, font: bodyFont, size: 18, color: railSoft })],
-        spacing: { before: i === 0 ? 180 : 0, after: 40 },
-      }))
-    })
-
-    const railHeading = (text: string) => new Paragraph({
-      children: [new TextRun({ text: text.toUpperCase(), bold: true, font: headFont, size: 20, color: railText })],
-      spacing: { before: 270, after: 105 },
-      // Web: 1px rgba(255,255,255,0.35) underline — flat light tint fallback
-      border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'd9d9d9', space: 2 } },
-    })
-
-    if (sectionOrder.includes('skills') && skills.length) {
-      railParas.push(railHeading('Skills'))
-      for (const s of skills) {
-        railParas.push(new Paragraph({
-          children: [
-            new TextRun({ text: s.name ?? '', bold: true, font: bodyFont, size: 19, color: railText }),
-            ...(s.level ? [new TextRun({ text: ` · ${s.level}`, font: bodyFont, size: 19, color: railMuted })] : []),
-          ],
-          spacing: { after: (s.keywords ?? []).length ? 0 : 90 },
-        }))
-        if ((s.keywords ?? []).length) {
-          railParas.push(new Paragraph({
-            children: [new TextRun({ text: (s.keywords ?? []).join(', '), font: bodyFont, size: 19, color: railMuted })],
-            spacing: { after: 90 },
-          }))
-        }
-      }
-    }
-    if (sectionOrder.includes('languages') && languages.length) {
-      railParas.push(railHeading('Languages'))
-      for (const l of languages) {
-        railParas.push(new Paragraph({
-          children: [
-            new TextRun({ text: l.language ?? '', bold: true, font: bodyFont, size: 19, color: railText }),
-            ...(l.fluency ? [new TextRun({ text: ` – ${l.fluency}`, font: bodyFont, size: 19, color: railMuted })] : []),
-          ],
-          spacing: { after: 30 },
-        }))
-      }
-    }
-
-    // Web rail is 33% of the page; the shaded cell spans content height only —
-    // Word cannot full-bleed a background to the page edges within flow content.
     const railWidthTwips = Math.round(usableWidthTwips * 0.33)
     const mainWidthTwips = usableWidthTwips - railWidthTwips
-    const railPad = 220   // inner padding inside the shaded rail (~0.15")
-    const mainGap = 360   // rail-to-main gap, mirrors the web's column padding (~24px)
+    const railPad = 220
+    const mainGap = 360
 
-    const mainParas: Paragraph[] = []
+    const leftCellChildren = buildRailParas(basics, leftSections, data, headFont, bodyFont, theme.nameSize, theme.labelSize ?? 21)
+
+    const rightParas: Paragraph[] = []
     if (basics.summary) {
-      mainParas.push(new Paragraph({
+      rightParas.push(new Paragraph({
         children: richTextRuns(basics.summary, bodyFont, 20, { color: '444444' }),
         spacing: { after: 90 },
       }))
     }
-    mainParas.push(...buildSectionParas(mainSections, {
+    rightParas.push(...buildSectionParas(rightSections, {
       data, bodyFont, headFont, theme, ensureHttps,
       tabWidthTwips: mainWidthTwips - mainGap,
     }))
@@ -595,13 +692,13 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
                 borders: NO_BORDERS,
                 shading: { type: ShadingType.CLEAR, fill: meta.primaryColor, color: 'auto' },
                 margins: { top: railPad, bottom: railPad, left: railPad, right: railPad },
-                children: railParas,
+                children: leftCellChildren.length ? leftCellChildren : [new Paragraph({})],
               }),
               new TableCell({
                 width: { size: mainWidthTwips, type: WidthType.DXA },
                 borders: NO_BORDERS,
                 margins: { left: mainGap, right: 0, top: 0, bottom: 0 },
-                children: mainParas.length ? mainParas : [new Paragraph({})],
+                children: rightParas.length ? rightParas : [new Paragraph({})],
               }),
             ],
           }),
@@ -671,7 +768,7 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
         ...(theme.summaryJustified ? { alignment: AlignmentType.JUSTIFIED } : {}),
         spacing: { after: 180 },
       }))
-    } else if (meta.layout === 'two-column') {
+    } else if (mode === 'designed' && meta.layout === 'two-column') {
       // Web two-column shows the summary italic under the header, without a heading
       headerParas.push(new Paragraph({
         children: richTextRuns(basics.summary, bodyFont, 20, { italics: true }),
@@ -690,7 +787,7 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta): Document {
   // previously saved resume may still carry a stale two-column layout.
   let bodyContent: (Paragraph | Table)[]
 
-  if (meta.layout === 'two-column' && meta.templateId !== 'minimal') {
+  if (mode === 'designed' && meta.layout === 'two-column' && meta.templateId !== 'minimal') {
     const ca = meta.columnAssignment ?? {}
     const leftSections = sectionOrder.filter(s => getColumnSide(s, ca) === 'left')
     const rightSections = sectionOrder.filter(s => getColumnSide(s, ca) === 'right')

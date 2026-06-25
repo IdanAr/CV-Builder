@@ -1,7 +1,7 @@
 import React from 'react'
 import { Text } from '@react-pdf/renderer'
 import { parseRichText } from '@/lib/rich-text'
-import type { ResumeMeta } from '@/lib/schemas/resume.zod'
+import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
 export function mapToPdfFont(font: string): string {
   const serifFonts = ['Garamond', 'Georgia', 'Cambria']
@@ -10,15 +10,6 @@ export function mapToPdfFont(font: string): string {
 
 export function inToPt(inches: number): number {
   return inches * 72
-}
-
-export function formatContact(basics: {
-  email?: string
-  phone?: string
-  location?: { city?: string; region?: string }
-}): string {
-  const location = [basics.location?.city, basics.location?.region].filter(Boolean).join(', ')
-  return [basics.email, basics.phone, location].filter(Boolean).join(' · ')
 }
 
 export const DEFAULT_SECTION_ORDER = [
@@ -80,4 +71,19 @@ export function renderPdfRichTextRuns(text: string): React.ReactNode[] {
       </Text>
     )
   })
+}
+
+/**
+ * Standard <Document> metadata for all PDF exports. Untagged PDFs are all
+ * @react-pdf/renderer can produce, so title/author/language metadata is the
+ * structural signal we can give parsers.
+ */
+export function pdfDocumentProps(data: ResumeData, title?: string) {
+  const name = data.basics?.name ?? ''
+  return {
+    title: title || (name ? `${name} - Resume` : 'Resume'),
+    author: name,
+    subject: 'Resume',
+    language: 'en',
+  }
 }
