@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import type { AtsScoreResult } from '@/lib/ats/scorer'
+import type { AtsFix } from '@/lib/ai/ats-fix-pipeline'
+import { AtsFixReviewPanel } from './AtsFixReviewPanel'
 
 const VECTOR_LABELS: { key: keyof AtsScoreResult['breakdown']; label: string; max: number }[] = [
   { key: 'format', label: 'Format & Structure', max: 25 },
@@ -25,17 +27,31 @@ function ScoreBar({ value, max }: { value: number; max: number }) {
   )
 }
 
+type FixStatus = 'idle' | 'loading' | 'ready' | 'error'
+
 export function AtsScorePanel() {
   const resumeId = useResumeEditorStore((s) => s.resumeId)
+  const data = useResumeEditorStore((s) => s.data)
+  const setSectionData = useResumeEditorStore((s) => s.setSectionData)
+  const setData = useResumeEditorStore((s) => s.setData)
+
   const [jobDescription, setJobDescription] = useState('')
   const [result, setResult] = useState<AtsScoreResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [fixes, setFixes] = useState<AtsFix[]>([])
+  const [fixStatus, setFixStatus] = useState<FixStatus>('idle')
+  const [fixError, setFixError] = useState<string | null>(null)
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
+
   async function handleAnalyze() {
     if (!resumeId || !jobDescription.trim()) return
     setLoading(true)
     setError(null)
+    setFixes([])
+    setFixStatus('idle')
+    setDismissedIds(new Set())
     try {
       const res = await fetch(`/api/resumes/${resumeId}/ats-score`, {
         method: 'POST',
@@ -50,6 +66,54 @@ export function AtsScorePanel() {
       setLoading(false)
     }
   }
+
+  async function handleFixAll() {
+    if (!resumeId || !result || result.missingKeywords.length === 0) return
+    setFixStatus('loading')
+    setFixError(null)
+    setDismissedIds(new Set())
+    try {
+      const res = await fetch(`/api/resumes/${resumeId}/ats-fix`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ missingKeywords: result.missingKeywords }),
+      })
+      if (!res.ok) throw new Error('Fix generation failed')
+      const fetchedFixes: AtsFix[] = await res.json()
+      setFixes(fetchedFixes)
+      setFixStatus('ready')
+    } catch {
+      setFixError('Could not generate fixes. Please try again.')
+      setFixStatus('error')
+    }
+  }
+
+  const applyFix = useCallback((fix: AtsFix) => {
+    if (fix.section === 'summary') {
+      setData({ basics: { ...data.basics, summary: fix.suggested } })
+    } else if (fix.section === 'work' && fix.workIndex !== undefined && fix.highlightIndex !== undefined) {
+      const work = (data.work ?? []).map((job, wi) => {
+        if (wi !== fix.workIndex) return job
+        const highlights = (job.highlights ?? []).map((h, hi) =>
+          hi === fix.highlightIndex ? fix.suggested : h
+        )
+        return { ...job, highlights }
+      })
+      setSectionData('work', work)
+    }
+    setDismissedIds((prev) => new Set(prev).add(fix.id))
+  }, [data, setData, setSectionData])
+
+  const dismissFix = useCallback((id: string) => {
+    setDismissedIds((prev) => new Set(prev).add(id))
+  }, [])
+
+  const applyAll = useCallback(() => {
+    const visible = fixes.filter((f) => !dismissedIds.has(f.id))
+    for (const fix of visible) {
+      applyFix(fix)
+    }
+  }, [fixes, dismissedIds, applyFix])
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
@@ -100,9 +164,28 @@ export function AtsScorePanel() {
 
           {result.missingKeywords.length > 0 && (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm">
-              <p className="text-sm font-semibold text-red-700 mb-2">
-                Missing Keywords ({result.missingKeywords.length})
-              </p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-red-700">
+                  Missing Keywords ({result.missingKeywords.length})
+                </p>
+                {fixStatus !== 'ready' && (
+                  <button
+                    onClick={handleFixAll}
+                    disabled={fixStatus === 'loading'}
+                    className="flex items-center gap-1.5 px-3 py-1 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                  >
+                    {fixStatus === 'loading' ? (
+                      <>
+                        <span className="animate-spin inline-block">⟳</span>
+                        Generating…
+                      </>
+                    ) : (
+                      <>✨ Fix All with AI</>
+                    )}
+                  </button>
+                )}
+              </div>
+
               <div className="flex flex-wrap gap-1">
                 {result.missingKeywords.slice(0, 40).map((kw) => (
                   <span key={kw} className="inline-block rounded bg-red-100 px-2 py-0.5 text-xs text-red-700">
@@ -115,6 +198,28 @@ export function AtsScorePanel() {
                   </span>
                 )}
               </div>
+
+              {fixError && (
+                <p className="mt-2 text-xs text-red-600">{fixError}</p>
+              )}
+            </div>
+          )}
+
+          {fixStatus === 'ready' && fixes.length > 0 && (
+            <AtsFixReviewPanel
+              fixes={fixes}
+              dismissedIds={dismissedIds}
+              onApply={applyFix}
+              onDismiss={dismissFix}
+              onApplyAll={applyAll}
+            />
+          )}
+
+          {fixStatus === 'ready' && fixes.length === 0 && (
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-center">
+              <p className="text-sm text-indigo-600">
+                No specific fixes found — try re-analyzing after updating your highlights.
+              </p>
             </div>
           )}
 
