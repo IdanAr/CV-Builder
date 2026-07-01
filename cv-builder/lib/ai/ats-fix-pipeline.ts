@@ -72,7 +72,7 @@ ${sectionsText}
 
 For each missing keyword, suggest ONE targeted edit to a section that naturally incorporates the keyword. Preserve factual accuracy - do not invent metrics, numbers, or experiences not implied by the original text. Do not use em dashes (—) in the suggested text; use a regular hyphen (-) or rephrase instead.
 
-Return a JSON array. Maximum 8 fixes. Each object:
+Return a JSON array. Maximum 5 fixes. Each object:
 {
   "sectionIndex": <index from the list above>,
   "original": "<exact original text unchanged>",
