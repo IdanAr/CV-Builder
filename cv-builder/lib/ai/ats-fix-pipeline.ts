@@ -40,7 +40,7 @@ function buildEditableSections(data: ResumeData): EditableSection[] {
           workIndex: wi,
           highlightIndex: hi,
           text,
-          label: `${job.position ?? 'Role'} at ${job.name ?? 'Company'} — bullet ${hi + 1}`,
+          label: `${job.position ?? 'Role'} at ${job.name ?? 'Company'} - bullet ${hi + 1}`,
         })
       }
     }
@@ -70,7 +70,7 @@ Missing keywords to incorporate: ${keywords.join(', ')}
 Resume sections available to improve:
 ${sectionsText}
 
-For each missing keyword, suggest ONE targeted edit to a section that naturally incorporates the keyword. Preserve factual accuracy — do not invent metrics, numbers, or experiences not implied by the original text.
+For each missing keyword, suggest ONE targeted edit to a section that naturally incorporates the keyword. Preserve factual accuracy - do not invent metrics, numbers, or experiences not implied by the original text.
 
 Return a JSON array. Maximum 8 fixes. Each object:
 {
