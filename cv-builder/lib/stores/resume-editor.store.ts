@@ -31,10 +31,21 @@ export interface ResumeEditorStore {
 }
 
 const MAX_HISTORY = 50
+// Edits closer together than this are treated as one action (e.g. a typing
+// burst), so undo works at word granularity instead of per keystroke.
+const HISTORY_COALESCE_MS = 500
+
+let _lastPushAt = 0
 
 function pushHistory(
   s: ResumeEditorStore
 ): Pick<ResumeEditorStore, '_history' | '_future' | 'canUndo' | 'canRedo'> {
+  const now = Date.now()
+  const coalesce = s._history.length > 0 && now - _lastPushAt < HISTORY_COALESCE_MS
+  _lastPushAt = now
+  if (coalesce) {
+    return { _history: s._history, _future: [], canUndo: true, canRedo: false }
+  }
   const entry = { title: s.title, data: s.data, meta: s.meta }
   const history = [...s._history, entry]
   if (history.length > MAX_HISTORY) history.shift()
@@ -68,6 +79,7 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
     undo: () =>
       set((s) => {
         if (s._history.length === 0) return {}
+        _lastPushAt = 0 // next edit starts a fresh history entry
         const history = [...s._history]
         const prev = history.pop()!
         const future = [{ title: s.title, data: s.data, meta: s.meta }, ...s._future]
@@ -85,6 +97,7 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
     redo: () =>
       set((s) => {
         if (s._future.length === 0) return {}
+        _lastPushAt = 0 // next edit starts a fresh history entry
         const future = [...s._future]
         const next = future.shift()!
         const history = [...s._history, { title: s.title, data: s.data, meta: s.meta }]
@@ -150,8 +163,10 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
         },
         isDirty: true,
       })),
-    hydrate: (resumeId, title, data, meta) =>
-      set({ resumeId, title, data, meta, isDirty: false, saveError: null, _history: [], _future: [], canUndo: false, canRedo: false }),
+    hydrate: (resumeId, title, data, meta) => {
+      _lastPushAt = 0
+      set({ resumeId, title, data, meta, isDirty: false, saveError: null, _history: [], _future: [], canUndo: false, canRedo: false })
+    },
     _setIsSaving: (isSaving) => set({ isSaving }),
     _setIsDirty: (isDirty) => set({ isDirty }),
     _setSaveError: (saveError) => set({ saveError }),
@@ -168,7 +183,7 @@ export function initAutoSave(): () => void {
   _retryCount = 0
   if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null }
   if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null }
-  return useResumeEditorStore.subscribe(
+  const unsubscribe = useResumeEditorStore.subscribe(
     (s) => s.isDirty,
     (isDirty) => {
       if (!isDirty) return
@@ -176,6 +191,23 @@ export function initAutoSave(): () => void {
       _saveTimer = setTimeout(performSave, 1000)
     }
   )
+  const onBeforeUnload = (e: BeforeUnloadEvent) => {
+    if (useResumeEditorStore.getState().isDirty) {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', onBeforeUnload)
+  }
+  return () => {
+    unsubscribe()
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('beforeunload', onBeforeUnload)
+    }
+    if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null }
+    if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null }
+  }
 }
 
 async function performSave(): Promise<void> {
@@ -194,7 +226,15 @@ async function performSave(): Promise<void> {
       const detail = body?.code ?? `HTTP ${res.status}`
       throw new Error(detail, { cause: { status: res.status, body } })
     }
-    _setIsDirty(false)
+    // Only mark clean if nothing changed while the request was in flight;
+    // otherwise those edits would be silently dropped until the next keystroke.
+    const current = useResumeEditorStore.getState()
+    if (current.title === title && current.data === data && current.meta === meta) {
+      _setIsDirty(false)
+    } else {
+      if (_saveTimer) clearTimeout(_saveTimer)
+      _saveTimer = setTimeout(performSave, 1000)
+    }
     _setSaveError(null)
     _retryCount = 0
   } catch (err) {

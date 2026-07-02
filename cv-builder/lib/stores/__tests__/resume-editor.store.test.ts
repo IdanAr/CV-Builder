@@ -177,6 +177,9 @@ describe('removeCustomSection', () => {
 })
 
 describe('undo/redo', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
   it('canUndo is false initially', () => {
     const s = useResumeEditorStore.getState()
     expect(s.canUndo).toBe(false)
@@ -190,6 +193,7 @@ describe('undo/redo', () => {
 
   it('undo restores previous title', () => {
     useResumeEditorStore.getState().setTitle('A')
+    vi.advanceTimersByTime(600)
     useResumeEditorStore.getState().setTitle('B')
     useResumeEditorStore.getState().undo()
     const s = useResumeEditorStore.getState()
@@ -199,6 +203,7 @@ describe('undo/redo', () => {
 
   it('redo re-applies change', () => {
     useResumeEditorStore.getState().setTitle('A')
+    vi.advanceTimersByTime(600)
     useResumeEditorStore.getState().setTitle('B')
     useResumeEditorStore.getState().undo()
     useResumeEditorStore.getState().redo()
@@ -218,9 +223,40 @@ describe('undo/redo', () => {
 
   it('history capped at 50', () => {
     for (let i = 0; i < 51; i++) {
+      vi.advanceTimersByTime(600)
       useResumeEditorStore.getState().setTitle(`title-${i}`)
     }
     expect(useResumeEditorStore.getState()._history.length).toBe(50)
+  })
+
+  it('coalesces rapid edits into a single history entry', () => {
+    useResumeEditorStore.getState().hydrate('r1', 'CV', emptyData, defaultMeta)
+    useResumeEditorStore.getState().setTitle('A')
+    useResumeEditorStore.getState().setTitle('AB')
+    useResumeEditorStore.getState().setTitle('ABC')
+    expect(useResumeEditorStore.getState()._history.length).toBe(1)
+    useResumeEditorStore.getState().undo()
+    expect(useResumeEditorStore.getState().title).toBe('CV')
+  })
+
+  it('starts a new history entry after a 500ms pause', () => {
+    useResumeEditorStore.getState().hydrate('r1', 'CV', emptyData, defaultMeta)
+    useResumeEditorStore.getState().setTitle('A')
+    vi.advanceTimersByTime(600)
+    useResumeEditorStore.getState().setTitle('B')
+    expect(useResumeEditorStore.getState()._history.length).toBe(2)
+    useResumeEditorStore.getState().undo()
+    expect(useResumeEditorStore.getState().title).toBe('A')
+  })
+
+  it('edits right after undo push history instead of coalescing', () => {
+    useResumeEditorStore.getState().hydrate('r1', 'CV', emptyData, defaultMeta)
+    useResumeEditorStore.getState().setTitle('A')
+    useResumeEditorStore.getState().undo()
+    useResumeEditorStore.getState().setTitle('B')
+    expect(useResumeEditorStore.getState().canUndo).toBe(true)
+    useResumeEditorStore.getState().undo()
+    expect(useResumeEditorStore.getState().title).toBe('CV')
   })
 
   it('hydrate clears history', () => {
@@ -280,6 +316,31 @@ describe('initAutoSave', () => {
     useResumeEditorStore.getState().setTitle('New Title')
     await vi.runAllTimersAsync()
     expect(useResumeEditorStore.getState().saveError).toBeNull()
+    expect(useResumeEditorStore.getState().isDirty).toBe(false)
+    unsub()
+    fetchSpy.mockRestore()
+  })
+
+  it('persists edits made while a save is in flight instead of marking them clean', async () => {
+    let resolveFirst!: (r: Response) => void
+    let call = 0
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
+      call++
+      if (call === 1) return new Promise<Response>((res) => { resolveFirst = res })
+      return Promise.resolve(new Response('{}', { status: 200 }))
+    })
+    useResumeEditorStore.getState().hydrate('r1', 'CV', emptyData, defaultMeta)
+    const unsub = initAutoSave()
+
+    useResumeEditorStore.getState().setTitle('First')
+    await vi.advanceTimersByTimeAsync(1000) // debounce fires; first save now in flight
+
+    useResumeEditorStore.getState().setTitle('Second') // edit lands mid-save
+    resolveFirst(new Response('{}', { status: 200 }))
+    await vi.runAllTimersAsync()
+
+    const lastBody = JSON.parse(fetchSpy.mock.calls.at(-1)![1]!.body as string)
+    expect(lastBody.title).toBe('Second')
     expect(useResumeEditorStore.getState().isDirty).toBe(false)
     unsub()
     fetchSpy.mockRestore()
