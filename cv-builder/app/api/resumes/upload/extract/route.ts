@@ -3,10 +3,17 @@ import { auth } from '@/lib/auth'
 import { extractResume, ExtractionError } from '@/lib/upload/extract-resume'
 import { createResume } from '@/lib/api/resumes'
 import { ResumeMetaSchema } from '@/lib/schemas/resume.zod'
+import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/rate-limit'
+import { apiError, handleRouteError } from '@/lib/api/route-errors'
 
 export const POST = auth(async function POST(req) {
   if (!req.auth?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 })
+  }
+
+  const rate = checkRateLimit(`${req.auth.user.id}:ai`, AI_RATE_LIMIT)
+  if (!rate.allowed) {
+    return apiError('RATE_LIMITED', 'Too many AI requests — please wait a moment.', 429, undefined, rate.retryAfterSeconds)
   }
 
   let body: unknown
@@ -42,6 +49,6 @@ export const POST = auth(async function POST(req) {
     if (err instanceof ExtractionError) {
       return NextResponse.json({ error: err.message, code: 'EXTRACTION_FAILED' }, { status: 422 })
     }
-    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, { status: 500 })
+    return handleRouteError(err, 'POST /api/resumes/upload/extract')
   }
 })

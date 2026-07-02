@@ -2,35 +2,33 @@ import { auth } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 import { CreateResumeSchema } from '@/lib/schemas/resume.zod'
 import { listResumes, createResume } from '@/lib/api/resumes'
+import { apiError, handleRouteError } from '@/lib/api/route-errors'
 
 export const GET = auth(async function GET(req) {
   if (!req.auth?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 })
+    return apiError('UNAUTHORIZED', 'Unauthorized', 401)
   }
   try {
     const resumes = await listResumes(req.auth.user.id)
     return NextResponse.json({ resumes })
-  } catch {
-    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, { status: 500 })
+  } catch (err) {
+    return handleRouteError(err, 'GET /api/resumes')
   }
 })
 
 export const POST = auth(async function POST(req) {
   if (!req.auth?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 })
+    return apiError('UNAUTHORIZED', 'Unauthorized', 401)
   }
   try {
     const body = await req.json()
     const result = CreateResumeSchema.safeParse(body)
     if (!result.success) {
-      return NextResponse.json(
-        { error: 'Validation failed', code: 'VALIDATION_ERROR', details: result.error.issues },
-        { status: 400 }
-      )
+      return apiError('VALIDATION_ERROR', 'Validation failed', 400, result.error.issues)
     }
     const resume = await createResume(req.auth.user.id, result.data)
     return NextResponse.json({ resume }, { status: 201 })
-  } catch {
-    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, { status: 500 })
+  } catch (err) {
+    return handleRouteError(err, 'POST /api/resumes')
   }
 })

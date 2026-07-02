@@ -6,7 +6,11 @@ let _anthropic: Anthropic | null = null
 export function getAnthropic(): Anthropic {
   if (!_anthropic) {
     if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY not set')
-    _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    _anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+      timeout: 30_000,
+      maxRetries: 1,
+    })
   }
   return _anthropic
 }
