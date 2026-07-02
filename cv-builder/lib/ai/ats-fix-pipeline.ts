@@ -1,4 +1,6 @@
+import { z } from 'zod'
 import { getAnthropic } from './models'
+import { detectHallucinations } from './hallucination-guard'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 export interface AtsFix {
@@ -9,7 +11,16 @@ export interface AtsFix {
   original: string
   suggested: string
   targetKeywords: string[]
+  /** Numeric claims in `suggested` absent from the original text — require explicit user approval. */
+  pendingApprovals: string[]
 }
+
+const RawFixSchema = z.object({
+  sectionIndex: z.number().int().nonnegative(),
+  original: z.string(),
+  suggested: z.string(),
+  targetKeywords: z.array(z.string()),
+})
 
 interface EditableSection {
   section: 'work' | 'summary'
@@ -91,7 +102,7 @@ Return ONLY the JSON array, no other text.`
 
   const responseText = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : '[]'
 
-  let raw: Array<{ sectionIndex: number; original: string; suggested: string; targetKeywords: string[] }>
+  let raw: unknown
   try {
     const jsonMatch = responseText.match(/\[[\s\S]*\]/)
     raw = jsonMatch ? JSON.parse(jsonMatch[0]) : []
@@ -102,20 +113,32 @@ Return ONLY the JSON array, no other text.`
   if (!Array.isArray(raw)) return []
 
   const fixes: AtsFix[] = []
-  for (const item of raw) {
+  for (const candidate of raw) {
+    const parsed = RawFixSchema.safeParse(candidate)
+    if (!parsed.success) continue
+    const item = parsed.data
+
     const section = sections[item.sectionIndex]
     if (!section) continue
-    if (typeof item.original !== 'string' || typeof item.suggested !== 'string') continue
+    // The model must quote the current resume text verbatim — a mismatch means
+    // it targeted stale or invented content, and applying it would replace the
+    // wrong text.
+    if (item.original.trim() !== section.text.trim()) continue
     if (item.original.trim() === item.suggested.trim()) continue
 
+    const id = section.section === 'summary'
+      ? 'fix-summary'
+      : `fix-work-${section.workIndex}-${section.highlightIndex}`
+
     fixes.push({
-      id: `fix-${fixes.length}`,
+      id,
       section: section.section,
       workIndex: section.workIndex,
       highlightIndex: section.highlightIndex,
       original: item.original,
       suggested: item.suggested,
-      targetKeywords: Array.isArray(item.targetKeywords) ? item.targetKeywords : [],
+      targetKeywords: item.targetKeywords,
+      pendingApprovals: detectHallucinations(section.text, item.suggested),
     })
   }
 

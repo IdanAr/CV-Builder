@@ -59,7 +59,93 @@ describe('runAtsFixPipeline', () => {
     expect(fixes).toHaveLength(1)
     expect(fixes[0].section).toBe('summary')
     expect(fixes[0].targetKeywords).toContain('react')
-    expect(fixes[0].id).toBe('fix-0')
+  })
+
+  it('assigns stable ids based on the target location, not array position', async () => {
+    mockClaudeResponse([
+      {
+        sectionIndex: 1,
+        original: 'Built a dashboard used by 200 users',
+        suggested: 'Built a React dashboard used by 200 users',
+        targetKeywords: ['react'],
+      },
+      {
+        sectionIndex: 0,
+        original: 'Experienced developer building web applications.',
+        suggested: 'Experienced React developer building web applications.',
+        targetKeywords: ['react'],
+      },
+    ])
+
+    const fixes = await runAtsFixPipeline(sampleData, ['react'])
+    expect(fixes.map((f) => f.id)).toEqual(['fix-work-0-0', 'fix-summary'])
+  })
+
+  it('rejects fixes whose original does not match the current resume text', async () => {
+    mockClaudeResponse([
+      {
+        sectionIndex: 0,
+        original: 'Some hallucinated text that is not in the resume.',
+        suggested: 'Some hallucinated React text.',
+        targetKeywords: ['react'],
+      },
+    ])
+
+    const fixes = await runAtsFixPipeline(sampleData, ['react'])
+    expect(fixes).toHaveLength(0)
+  })
+
+  it('flags numeric claims in suggested text that are absent from the original', async () => {
+    mockClaudeResponse([
+      {
+        sectionIndex: 0,
+        original: 'Experienced developer building web applications.',
+        suggested: 'Experienced React developer who cut costs by 45% across 12 teams.',
+        targetKeywords: ['react'],
+      },
+    ])
+
+    const fixes = await runAtsFixPipeline(sampleData, ['react'])
+    expect(fixes).toHaveLength(1)
+    expect(fixes[0].pendingApprovals).toEqual(expect.arrayContaining(['45%', '12']))
+  })
+
+  it('returns empty pendingApprovals when suggested adds no new numeric claims', async () => {
+    mockClaudeResponse([
+      {
+        sectionIndex: 1,
+        original: 'Built a dashboard used by 200 users',
+        suggested: 'Built a React dashboard used by 200 users',
+        targetKeywords: ['react'],
+      },
+    ])
+
+    const fixes = await runAtsFixPipeline(sampleData, ['react'])
+    expect(fixes).toHaveLength(1)
+    expect(fixes[0].pendingApprovals).toEqual([])
+  })
+
+  it('drops malformed items that fail schema validation', async () => {
+    mockClaudeResponse([
+      {
+        sectionIndex: 'zero',
+        original: 'Experienced developer building web applications.',
+        suggested: 'Experienced React developer.',
+        targetKeywords: ['react'],
+      },
+      {
+        sectionIndex: 1,
+        original: 'Built a dashboard used by 200 users',
+        suggested: 'Built a React dashboard used by 200 users',
+        targetKeywords: 'react',
+      },
+    ])
+
+    const fixes = await runAtsFixPipeline(sampleData, ['react'])
+    // First item has a non-numeric sectionIndex; second has non-array keywords.
+    // Only structurally valid items survive; the second is salvageable if the
+    // schema coerces nothing — expect it dropped too.
+    expect(fixes).toHaveLength(0)
   })
 
   it('maps work section fixes with correct indices', async () => {
