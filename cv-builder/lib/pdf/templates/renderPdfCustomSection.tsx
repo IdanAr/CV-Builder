@@ -1,20 +1,21 @@
 import React from 'react'
 import { View, Text, Link } from '@react-pdf/renderer'
+import type { Style } from '@react-pdf/types'
 import type { CustomSection } from '@/lib/schemas/resume.zod'
 import { ensureHttps, renderPdfRichText, renderPdfRichTextRuns } from './pdf-utils'
 import { formatDateRange } from '@/lib/format-date'
 
 interface PdfCustomSectionStyles {
-  sectionTitle: object
-  entryRow?: object
-  bold: object
-  accent: object
-  small: object
-  body: object
-  bullet: object
-  link?: object
-  keywords?: object
-  level?: object
+  sectionTitle: Style
+  entryRow?: Style
+  bold: Style
+  accent: Style
+  small: Style
+  body: Style
+  bullet: Style
+  link?: Style
+  keywords?: Style
+  level?: Style
 }
 
 export function renderPdfCustomSection(

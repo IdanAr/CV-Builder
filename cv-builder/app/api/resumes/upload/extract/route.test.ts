@@ -33,7 +33,7 @@ describe('POST /api/resumes/upload/extract', () => {
     const { auth } = await import('@/lib/auth')
     vi.mocked(auth).mockImplementationOnce(
       (handler) => async (req: Request, ctx: unknown) =>
-        handler(Object.assign(req, { auth: null }), ctx)
+        handler(Object.assign(req, { auth: null }) as Parameters<typeof handler>[0], ctx as Parameters<typeof handler>[1])
     )
     const { POST } = await import('./route')
     const req = new Request('http://localhost/api/resumes/upload/extract', {

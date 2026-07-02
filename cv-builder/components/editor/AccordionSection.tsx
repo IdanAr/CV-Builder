@@ -1,12 +1,12 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { DraggableAttributes, SyntheticListenerMap } from '@dnd-kit/core'
+import type { DraggableAttributes, DraggableSyntheticListeners } from '@dnd-kit/core'
 import type { Transform } from '@dnd-kit/utilities'
 import { CSS } from '@dnd-kit/utilities'
 
 export interface DragHandleProps {
-  listeners: SyntheticListenerMap | undefined
+  listeners: DraggableSyntheticListeners
   attributes: DraggableAttributes
   setNodeRef: (el: HTMLElement | null) => void
   transform: Transform | null

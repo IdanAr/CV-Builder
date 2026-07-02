@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { CustomSectionForm } from './CustomSectionForm'
-import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
+import { useResumeEditorStore, type ResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import type { CustomSection, CustomSectionFieldType } from '@/lib/schemas/resume.zod'
 
 vi.mock('@/lib/stores/resume-editor.store', () => ({
@@ -20,10 +20,10 @@ const baseSection: CustomSection = {
 
 function mockStore(section: CustomSection) {
   const state = { data: { customSections: [section] }, updateCustomSection }
-  vi.mocked(useResumeEditorStore).mockImplementation((sel: (s: unknown) => unknown) =>
-    sel(state)
+  vi.mocked(useResumeEditorStore).mockImplementation((sel) =>
+    sel(state as unknown as ResumeEditorStore)
   )
-  vi.mocked(useResumeEditorStore.getState).mockReturnValue(state as ReturnType<typeof useResumeEditorStore.getState>)
+  vi.mocked(useResumeEditorStore.getState).mockReturnValue(state as unknown as ReturnType<typeof useResumeEditorStore.getState>)
 }
 
 beforeEach(() => {

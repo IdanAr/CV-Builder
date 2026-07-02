@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
+import type { ReactNode } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { EditTab } from './EditTab'
-import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
+import { useResumeEditorStore, type ResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import type { CustomSection, CustomSectionFieldType } from '@/lib/schemas/resume.zod'
 
 vi.mock('@/lib/stores/resume-editor.store', () => ({
@@ -28,7 +29,7 @@ vi.mock('@dnd-kit/core', async () => {
   const actual = await vi.importActual('@dnd-kit/core')
   return {
     ...(actual as object),
-    DndContext: ({ onDragEnd, children }: { onDragEnd: (e: any) => void; children: any }) => {
+    DndContext: ({ onDragEnd, children }: { onDragEnd: (event: { active: { id: string }; over: { id: string } | null }) => void; children: ReactNode }) => {
       capturedOnDragEnd = onDragEnd
       return <>{children}</>
     },
@@ -38,7 +39,7 @@ vi.mock('@dnd-kit/sortable', async () => {
   const actual = await vi.importActual('@dnd-kit/sortable')
   return {
     ...(actual as object),   // keeps arrayMove from the real package
-    SortableContext: ({ children }: { children: any }) => <>{children}</>,
+    SortableContext: ({ children }: { children: ReactNode }) => <>{children}</>,
     useSortable: () => ({
       listeners: undefined,
       attributes: {},
@@ -74,8 +75,8 @@ function setupStore(overrides: { sectionOrder?: string[]; customSections?: Custo
   const meta = { ...baseMeta, sectionOrder: overrides.sectionOrder ?? baseMeta.sectionOrder }
   const data = overrides.customSections ? { customSections: overrides.customSections } : {}
   const state = { meta, data, setMeta, addCustomSection, updateCustomSection, removeCustomSection, undo, redo }
-  vi.mocked(useResumeEditorStore).mockImplementation((sel: (s: unknown) => unknown) => sel(state))
-  ;(useResumeEditorStore as { getState: ReturnType<typeof vi.fn> }).getState.mockReturnValue(state)
+  vi.mocked(useResumeEditorStore).mockImplementation((sel) => sel(state as unknown as ResumeEditorStore))
+  ;(useResumeEditorStore as unknown as { getState: ReturnType<typeof vi.fn> }).getState.mockReturnValue(state)
 }
 
 beforeEach(() => {

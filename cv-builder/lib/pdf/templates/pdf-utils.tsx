@@ -1,5 +1,6 @@
 import React from 'react'
 import { Text } from '@react-pdf/renderer'
+import type { Style } from '@react-pdf/types'
 import { parseRichText } from '@/lib/rich-text'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
@@ -30,7 +31,7 @@ export function ensureHttps(url: string): string {
  */
 export function renderPdfRichText(
   text: string | undefined | null,
-  baseStyle?: object
+  baseStyle?: Style | Style[]
 ): React.ReactNode {
   if (!text) return null
   const runs = parseRichText(text)
