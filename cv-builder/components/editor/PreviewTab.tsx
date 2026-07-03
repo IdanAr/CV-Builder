@@ -9,9 +9,7 @@ import { MinimalTemplate } from '@/components/templates/MinimalTemplate'
 import { ExecutiveTemplate } from '@/components/templates/ExecutiveTemplate'
 import { SidebarTemplate } from '@/components/templates/SidebarTemplate'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
-
-const A4_WIDTH_PX = 794
-const A4_HEIGHT_PX = 1123
+import { computePageBreaks, A4_WIDTH_PX, A4_HEIGHT_PX } from '@/lib/preview-pagination'
 
 const TEMPLATES: Record<string, React.ComponentType<{ data: ResumeData; meta: ResumeMeta }>> = {
   classic: ClassicTemplate,
@@ -56,8 +54,7 @@ export function PreviewTab() {
 
   const Template = TEMPLATES[debouncedMeta.templateId] ?? ClassicTemplate
 
-  const pageCount = Math.floor(templateHeight / A4_HEIGHT_PX)
-  const pageBreaks = Array.from({ length: pageCount }, (_, i) => i + 1)
+  const pageBreaks = computePageBreaks(templateHeight, debouncedMeta.pageMargins * 96)
 
   return (
     <div
@@ -89,12 +86,12 @@ export function PreviewTab() {
         </div>
 
         {/* Page break indicators */}
-        {pageBreaks.map((page) => (
+        {pageBreaks.map(({ page, top }) => (
           <div
             key={page}
             style={{
               position: 'absolute',
-              top: page * A4_HEIGHT_PX * fitScale,
+              top: top * fitScale,
               left: 0,
               right: 0,
               pointerEvents: 'none',
