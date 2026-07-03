@@ -58,4 +58,72 @@ describe('extractResume', () => {
     mockCreate.mockResolvedValueOnce({ content: [{ type: 'tool_use', id: 'x' }] })
     await expect(extractResume('CV text')).rejects.toThrow(ExtractionError)
   })
+
+  it('normalizes AI-returned customSections: assigns ids and derives enabledFields', async () => {
+    mockResponse(JSON.stringify({
+      customSections: [{
+        name: 'Military Service',
+        items: [{
+          title: 'IDF — Intelligence Corps',
+          subtitle: 'Team Commander',
+          startDate: '2015-03',
+          endDate: '2018-03',
+          summary: 'Led a team of 8 analysts.',
+          highlights: ['Commander excellence award'],
+        }],
+      }],
+    }))
+    const result = await extractResume('CV text with military service section')
+    const section = result.customSections?.[0]
+    expect(section?.name).toBe('Military Service')
+    expect(section?.id).toBeTruthy()
+    expect(section?.items[0]?.id).toBeTruthy()
+    expect(section?.items[0]?.title).toBe('IDF — Intelligence Corps')
+    expect(section?.enabledFields).toEqual(
+      expect.arrayContaining(['subtitle', 'dateRange', 'summary', 'highlights'])
+    )
+  })
+
+  it('converts projects into a custom section since the editor has no projects form', async () => {
+    mockResponse(JSON.stringify({
+      basics: { name: 'Jane Smith' },
+      projects: [{
+        name: 'CV Builder',
+        description: 'AI-driven resume platform',
+        keywords: ['Next.js', 'TypeScript'],
+        startDate: '2024-01',
+      }],
+    }))
+    const result = await extractResume('CV text with projects')
+    expect(result.projects).toBeUndefined()
+    const section = result.customSections?.find((cs) => cs.name === 'Projects')
+    expect(section).toBeTruthy()
+    expect(section?.items[0]?.title).toBe('CV Builder')
+    expect(section?.items[0]?.summary).toBe('AI-driven resume platform')
+    expect(section?.items[0]?.keywords).toEqual(['Next.js', 'TypeScript'])
+    expect(section?.enabledFields).toEqual(expect.arrayContaining(['summary', 'keywords', 'dateRange']))
+  })
+
+  it('converts certificates and awards into custom sections', async () => {
+    mockResponse(JSON.stringify({
+      certificates: [{ name: 'AWS Solutions Architect', issuer: 'Amazon', date: '2023-05' }],
+      awards: [{ title: 'Employee of the Year', awarder: 'Acme', date: '2022', summary: 'Top performer.' }],
+    }))
+    const result = await extractResume('CV text')
+    expect(result.certificates).toBeUndefined()
+    expect(result.awards).toBeUndefined()
+    const certs = result.customSections?.find((cs) => cs.name === 'Certificates')
+    expect(certs?.items[0]).toMatchObject({ title: 'AWS Solutions Architect', subtitle: 'Amazon', startDate: '2023-05' })
+    const awards = result.customSections?.find((cs) => cs.name === 'Awards')
+    expect(awards?.items[0]).toMatchObject({ title: 'Employee of the Year', subtitle: 'Acme', summary: 'Top performer.' })
+  })
+
+  it('appends converted sections after AI-returned customSections', async () => {
+    mockResponse(JSON.stringify({
+      projects: [{ name: 'Side Project' }],
+      customSections: [{ name: 'Military Service', items: [{ title: 'IDF' }] }],
+    }))
+    const result = await extractResume('CV text')
+    expect(result.customSections?.map((cs) => cs.name)).toEqual(['Military Service', 'Projects'])
+  })
 })

@@ -38,11 +38,14 @@ export const POST = auth(async function POST(req) {
       ? `${name}'s CV`
       : `Uploaded CV — ${new Date().toISOString().slice(0, 10)}`
 
-    const resume = await createResume(req.auth.user.id, {
-      title,
-      data,
-      meta: ResumeMetaSchema.parse({}),
-    })
+    const meta = ResumeMetaSchema.parse({})
+    // Custom sections are only rendered when their key is in sectionOrder
+    meta.sectionOrder = [
+      ...meta.sectionOrder,
+      ...(data.customSections ?? []).map((cs) => `custom:${cs.id}`),
+    ]
+
+    const resume = await createResume(req.auth.user.id, { title, data, meta })
 
     return NextResponse.json({ resumeId: String(resume._id) }, { status: 201 })
   } catch (err) {

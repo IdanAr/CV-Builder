@@ -99,6 +99,29 @@ describe('POST /api/resumes/upload/extract', () => {
     expect(mockCreateResume.mock.calls[0][1].title).toMatch(/^Uploaded CV — \d{4}-\d{2}-\d{2}$/)
   })
 
+  it('appends custom:<id> entries to meta.sectionOrder for extracted custom sections', async () => {
+    mockExtractResume.mockResolvedValueOnce({
+      basics: { name: 'Jane Smith' },
+      customSections: [
+        { id: 'cs-military', name: 'Military Service', enabledFields: [], items: [] },
+        { id: 'cs-projects', name: 'Projects', enabledFields: [], items: [] },
+      ],
+    })
+    mockCreateResume.mockResolvedValueOnce({ _id: 'resume789' })
+    const { POST } = await import('./route')
+    const req = new Request('http://localhost/api/resumes/upload/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: 'Jane Smith — Senior Engineer' }),
+    })
+    const res = await POST(req as never, {} as never) as Response
+    expect(res.status).toBe(201)
+    const meta = mockCreateResume.mock.calls[0][1].meta
+    expect(meta.sectionOrder).toEqual(
+      ['work', 'education', 'skills', 'volunteer', 'languages', 'custom:cs-military', 'custom:cs-projects']
+    )
+  })
+
   it('returns 422 when extractResume throws ExtractionError', async () => {
     const { ExtractionError } = await import('@/lib/upload/extract-resume')
     mockExtractResume.mockRejectedValueOnce(new ExtractionError('AI returned garbage'))
