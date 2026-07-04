@@ -20,6 +20,8 @@ export interface RateLimitResult {
 export const AI_RATE_LIMIT: RateLimitOptions = { limit: 10, windowMs: 60_000 }
 /** File upload/parse endpoints: 10 requests/min per user. */
 export const UPLOAD_RATE_LIMIT: RateLimitOptions = { limit: 10, windowMs: 60_000 }
+/** Preview pagination renders (server-side react-pdf): 30 requests/min per user. */
+export const PREVIEW_RATE_LIMIT: RateLimitOptions = { limit: 30, windowMs: 60_000 }
 
 interface Bucket {
   tokens: number
