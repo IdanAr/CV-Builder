@@ -1,4 +1,4 @@
-// lib/preview-anchor.ts
+﻿// lib/preview-anchor.ts
 // Locates PDF page-start anchor texts inside the HTML preview DOM and
 // converts them to divider pixel positions. Text is the only coordinate
 // system the PDF layout engine and the browser share — see
@@ -60,13 +60,6 @@ const MIN_MATCH = 20
 const PREFIX_LENGTHS = [Infinity, 80, 40, MIN_MATCH]
 
 export function findAnchorIndex(index: TextIndex, anchorKey: string, fromIndex: number): number {
-  // If the anchor key is shorter than MIN_MATCH, try to use it directly
-  if (anchorKey.length < MIN_MATCH) {
-    const at = index.key.indexOf(anchorKey, fromIndex)
-    if (at !== -1) return at
-    return -1
-  }
-
   for (const len of PREFIX_LENGTHS) {
     const needle = anchorKey.slice(0, len)
     if (needle.length < MIN_MATCH) break

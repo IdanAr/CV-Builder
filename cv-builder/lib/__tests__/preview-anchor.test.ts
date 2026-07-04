@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
 import { buildTextIndex, findAnchorIndex, resolveAnchorTops } from '@/lib/preview-anchor'
 import { toMatchKey } from '@/lib/preview-pagination'
@@ -68,11 +68,17 @@ describe('findAnchorIndex', () => {
   })
 
   it('respects fromIndex for sequential matching', () => {
-    const index = buildTextIndex(makeRoot('<p>repeat me now</p><p>repeat me now</p>'))
-    const key = toMatchKey('repeat me now')
+    const index = buildTextIndex(makeRoot('<p>managed human resources professional expertise</p><p>managed human resources professional expertise</p>'))
+    const key = toMatchKey('managed human resources professional expertise')
     const first = findAnchorIndex(index, key, 0)
+    expect(first).toBeGreaterThan(-1)
     const second = findAnchorIndex(index, key, first + 1)
     expect(second).toBeGreaterThan(first)
+  })
+
+  it('returns -1 for anchor keys shorter than the minimum match length', () => {
+    const index = buildTextIndex(makeRoot('<p>short text appears here</p>'))
+    expect(findAnchorIndex(index, toMatchKey('short'), 0)).toBe(-1)
   })
 })
 
