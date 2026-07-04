@@ -25,3 +25,27 @@ export function computePageBreaks(templateHeightPx: number, marginPx: number): P
     top: marginPx + (i + 1) * usable,
   }))
 }
+
+/** Max characters of normalized page-start text sent as an anchor. */
+export const ANCHOR_MAX_CHARS = 120
+
+/**
+ * Normalizes text so PDF-extracted strings and DOM textContent compare equal:
+ * lowercase; strip soft hyphens, bullet glyphs, and hyphens (react-pdf
+ * hyphenates words at line ends); collapse whitespace runs to single spaces.
+ */
+export function normalizeAnchorText(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[­•·◦▪-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Fully collapsed form used for substring matching: spaces removed too,
+ * so the two engines' different word-wrapping cannot break a match.
+ */
+export function toMatchKey(s: string): string {
+  return normalizeAnchorText(s).replace(/ /g, '')
+}

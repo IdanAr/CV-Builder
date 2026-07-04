@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computePageBreaks, A4_HEIGHT_PX } from '@/lib/preview-pagination'
+import { computePageBreaks, A4_HEIGHT_PX, normalizeAnchorText, toMatchKey, ANCHOR_MAX_CHARS } from '@/lib/preview-pagination'
 
 const HALF_INCH_PX = 0.5 * 96 // 48px — default pageMargins
 
@@ -49,5 +49,36 @@ describe('computePageBreaks', () => {
   it('never places a break beyond the rendered content', () => {
     const breaks = computePageBreaks(5000, HALF_INCH_PX)
     for (const b of breaks) expect(b.top).toBeLessThan(5000)
+  })
+})
+
+describe('normalizeAnchorText', () => {
+  it('lowercases and collapses whitespace runs', () => {
+    expect(normalizeAnchorText('Israeli  Navy\n Commando')).toBe('israeli navy commando')
+  })
+
+  it('strips bullets, hyphens, and soft hyphens', () => {
+    expect(normalizeAnchorText('• Data-driven ­platform')).toBe('datadriven platform')
+  })
+
+  it('trims leading/trailing whitespace', () => {
+    expect(normalizeAnchorText('  hello world  ')).toBe('hello world')
+  })
+})
+
+describe('toMatchKey', () => {
+  it('removes all spaces on top of normalization', () => {
+    expect(toMatchKey('Data - Driven  Platform')).toBe('datadrivenplatform')
+  })
+
+  it('is stable for already-normalized input', () => {
+    expect(toMatchKey(toMatchKey('Some Text'))).toBe(toMatchKey('Some Text'))
+  })
+})
+
+describe('ANCHOR_MAX_CHARS', () => {
+  it('is long enough to be unique but bounded', () => {
+    expect(ANCHOR_MAX_CHARS).toBeGreaterThanOrEqual(80)
+    expect(ANCHOR_MAX_CHARS).toBeLessThanOrEqual(200)
   })
 })
