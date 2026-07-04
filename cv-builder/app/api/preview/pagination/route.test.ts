@@ -52,6 +52,18 @@ describe('POST /api/preview/pagination', () => {
     expect(json).toEqual({ pageCount: 3, anchors: ['anchor one', 'anchor two'] })
   })
 
+  it('returns 400 when the payload exceeds the size cap', async () => {
+    const { POST } = await import('./route')
+    const oversized = JSON.stringify({ data: { basics: { summary: 'x'.repeat(1_100_000) } }, meta: {} })
+    const req = new Request('http://localhost/api/preview/pagination', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: oversized,
+    })
+    const res = (await POST(req as never, undefined as never)) as Response
+    expect(res.status).toBe(400)
+  })
+
   it('rate limits after 30 requests per minute', async () => {
     const { POST } = await import('./route')
     for (let i = 0; i < 30; i++) {

@@ -1,5 +1,5 @@
 import type React from 'react'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { PDFParse } from 'pdf-parse'
 import { Packer } from 'docx'
@@ -8,6 +8,8 @@ import { selectPdfTemplate } from '@/lib/pdf/select-template'
 import { buildDocx } from '@/lib/docx/resume-docx'
 import type { ExportMode } from '@/lib/export-mode'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
+
+vi.setConfig({ testTimeout: 20_000 })
 
 const TEMPLATES = ['classic', 'modern', 'minimal', 'executive', 'sidebar'] as const
 

@@ -1,4 +1,4 @@
-﻿// lib/preview-anchor.ts
+// lib/preview-anchor.ts
 // Locates PDF page-start anchor texts inside the HTML preview DOM and
 // converts them to divider pixel positions. Text is the only coordinate
 // system the PDF layout engine and the browser share — see
@@ -50,7 +50,7 @@ export function buildTextIndex(root: HTMLElement): TextIndex {
       const ch = toMatchKey(raw[i])
       if (!ch) continue
       key += ch
-      refs.push({ node, offset: i })
+      for (let c = 0; c < ch.length; c++) refs.push({ node, offset: i })
     }
   }
   return { key, refs }

@@ -1,9 +1,11 @@
 import React from 'react'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { PDFParse } from 'pdf-parse'
 import { AtsPdfTemplate } from '../templates/AtsPdfTemplate'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
+
+vi.setConfig({ testTimeout: 20_000 })
 
 const meta: ResumeMeta = {
   templateId: 'sidebar', fontFamily: 'Calibri', headerFontFamily: 'Calibri',

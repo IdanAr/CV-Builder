@@ -1,4 +1,4 @@
-﻿// @vitest-environment jsdom
+// @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
 import { buildTextIndex, findAnchorIndex, resolveAnchorTops } from '@/lib/preview-anchor'
 import { toMatchKey } from '@/lib/preview-pagination'
@@ -30,6 +30,12 @@ describe('buildTextIndex', () => {
     const root = makeRoot('<li>• Cross-team   work</li>')
     const index = buildTextIndex(root)
     expect(index.key).toBe('crossteamwork')
+  })
+
+  it('keeps key and refs aligned when lowercasing expands a character', () => {
+    const root = makeRoot('<p>İstanbul experience</p>') // 'İ' lowercases to 2 code units
+    const index = buildTextIndex(root)
+    expect(index.refs).toHaveLength(index.key.length)
   })
 })
 

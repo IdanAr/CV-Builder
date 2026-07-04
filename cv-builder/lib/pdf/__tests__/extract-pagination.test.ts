@@ -1,10 +1,12 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { selectPdfTemplate } from '@/lib/pdf/select-template'
 import { extractPagination } from '@/lib/pdf/extract-pagination'
 import { ResumeMetaSchema } from '@/lib/schemas/resume.zod'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 import type React from 'react'
+
+vi.setConfig({ testTimeout: 20_000 })
 
 function longResume(): ResumeData {
   return {

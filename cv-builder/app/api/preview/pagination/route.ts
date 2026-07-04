@@ -17,6 +17,8 @@ const BodySchema = z.object({
   meta: ResumeMetaSchema,
 })
 
+const MAX_BODY_BYTES = 1_000_000 // resume JSON is a few KB; 1MB is generous headroom
+
 export const POST = auth(async (req) => {
   if (!req.auth?.user?.id) {
     return apiError('UNAUTHORIZED', 'Unauthorized', 401)
@@ -28,7 +30,16 @@ export const POST = auth(async (req) => {
   }
 
   try {
-    const body = await req.json().catch(() => null)
+    const raw = await req.text().catch(() => null)
+    if (raw === null || raw.length > MAX_BODY_BYTES) {
+      return apiError('BAD_REQUEST', 'Payload too large or unreadable', 400)
+    }
+    let body: unknown
+    try {
+      body = JSON.parse(raw)
+    } catch {
+      return apiError('BAD_REQUEST', 'Invalid resume payload', 400)
+    }
     const parsed = BodySchema.safeParse(body)
     if (!parsed.success) {
       return apiError('BAD_REQUEST', 'Invalid resume payload', 400)
