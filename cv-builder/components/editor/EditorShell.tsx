@@ -11,6 +11,7 @@ import { EditorErrorBoundary } from './EditorErrorBoundary'
 import { AppNavbar } from '@/components/ui/AppNavbar'
 import { UserProfileButton } from '@/components/ui/UserProfileButton'
 import { ExportMenu } from './ExportMenu'
+import { toast } from '@/lib/stores/toast.store'
 import type { ExportMode } from '@/lib/export-mode'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
@@ -139,8 +140,9 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
       a.download = `${t.replace(/\s+/g, '-')}-${templateName}${modeSuffix}.${format}`
       a.click()
       URL.revokeObjectURL(url)
+      toast.success(`${format.toUpperCase()} exported`)
     } catch {
-      alert('Export failed. Please try again.')
+      toast.error(`${format.toUpperCase()} export failed. Please try again.`)
     }
   }
 

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { toast } from '@/lib/stores/toast.store'
 
 interface ResumeCardProps {
   resume: {
@@ -74,9 +75,11 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
     try {
       const res = await fetch(`/api/resumes/${resume._id}/duplicate`, { method: 'POST' })
       if (!res.ok) throw new Error('Duplicate failed')
+      toast.success(`Duplicated "${resume.title}"`)
       router.refresh()
     } catch (err) {
       console.error(err)
+      toast.error(`Could not duplicate "${resume.title}". Please try again.`)
     } finally {
       setDuplicating(false)
     }
@@ -96,6 +99,7 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
       URL.revokeObjectURL(url)
     } catch (err) {
       console.error(err)
+      toast.error(`Could not download "${resume.title}" as JSON. Please try again.`)
     }
   }
 

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from '@/lib/stores/toast.store'
 
 export default function NewResumeButton() {
   const router = useRouter()
@@ -20,6 +21,7 @@ export default function NewResumeButton() {
       router.push(`/dashboard/resumes/${resume._id}`)
     } catch (err) {
       console.error(err)
+      toast.error('Could not create a new CV. Please try again.')
       setLoading(false)
     }
   }

@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import ResumeCard from './ResumeCard'
+import { useToastStore } from '@/lib/stores/toast.store'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn() }),
@@ -22,6 +23,7 @@ describe('ResumeCard', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     global.fetch = vi.fn()
+    useToastStore.setState({ toasts: [] })
   })
 
   it('shows delete button in normal state (no confirmation UI)', () => {
@@ -105,5 +107,23 @@ describe('ResumeCard', () => {
     render(<ResumeCard resume={baseResume} />)
     expect(screen.getByText('Format Score')).toBeTruthy()
     expect(screen.queryByText('ATS Score')).toBeNull()
+  })
+
+  it('shows an error toast when duplicate fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false } as Response))
+    render(<ResumeCard resume={baseResume} />)
+    fireEvent.click(screen.getByTitle('Duplicate'))
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(t => t.variant === 'error')).toBe(true)
+    })
+  })
+
+  it('shows an error toast when JSON download fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false } as Response))
+    render(<ResumeCard resume={baseResume} />)
+    fireEvent.click(screen.getByTitle('Download as JSON'))
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(t => t.variant === 'error')).toBe(true)
+    })
   })
 })
