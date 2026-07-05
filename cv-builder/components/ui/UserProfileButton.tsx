@@ -55,14 +55,12 @@ function Avatar({
 
 export function UserProfileButton({ user }: UserProfileButtonProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
   const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null)
   const [mounted, setMounted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const settingsCloseRef = useRef<HTMLButtonElement>(null)
   const termsCloseRef = useRef<HTMLButtonElement>(null)
 
   // Portals render the menu/modals into document.body so they always sit above
@@ -110,23 +108,15 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
   }, [dropdownOpen])
 
   useEffect(() => {
-    if (!settingsOpen && !termsOpen) return
+    if (!termsOpen) return
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        setSettingsOpen(false)
         setTermsOpen(false)
       }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [settingsOpen, termsOpen])
-
-  useEffect(() => {
-    if (settingsOpen) {
-      settingsCloseRef.current?.focus()
-      return () => { triggerRef.current?.focus() }
-    }
-  }, [settingsOpen])
+  }, [termsOpen])
 
   useEffect(() => {
     if (termsOpen) {
@@ -189,29 +179,6 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
               role="menuitem"
               onClick={() => {
                 setDropdownOpen(false)
-                setSettingsOpen(true)
-              }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-indigo-900 transition hover:bg-indigo-50/70"
-            >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="shrink-0 text-indigo-400"
-                aria-hidden="true"
-              >
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-              Settings
-            </button>
-            <button
-              role="menuitem"
-              onClick={() => {
-                setDropdownOpen(false)
                 setTermsOpen(true)
               }}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-indigo-900 transition hover:bg-indigo-50/70"
@@ -258,39 +225,6 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
               </svg>
               Sign Out
             </button>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Settings modal */}
-      {mounted && settingsOpen && createPortal(
-        <div
-          data-testid="settings-backdrop"
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-indigo-900/10 px-4 backdrop-blur-sm"
-          onClick={() => setSettingsOpen(false)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="settings-dialog-title"
-            className="w-full max-w-md rounded-2xl border border-white/50 bg-white/90 p-6 shadow-2xl backdrop-blur-xl"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="mb-5 flex items-center justify-between">
-              <h2 id="settings-dialog-title" className="text-base font-bold text-indigo-900">Settings</h2>
-              <button
-                ref={settingsCloseRef}
-                aria-label="Close Settings"
-                onClick={() => setSettingsOpen(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50/60 text-sm text-indigo-400 transition hover:bg-indigo-100/80"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-indigo-200/60 bg-indigo-50/30">
-              <p className="text-sm text-indigo-300">Settings content coming soon</p>
-            </div>
           </div>
         </div>,
         document.body

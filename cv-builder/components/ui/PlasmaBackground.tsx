@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Plasma } from './light-saas-hero-section'
+import { Plasma } from './Plasma'
 
 interface PlasmaBackgroundProps {
   children: ReactNode

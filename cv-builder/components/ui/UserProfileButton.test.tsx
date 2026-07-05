@@ -42,10 +42,9 @@ describe('UserProfileButton', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument()
   })
 
-  it('dropdown contains Settings, Terms & Conditions, and Sign Out', () => {
+  it('dropdown contains Terms & Conditions and Sign Out', () => {
     render(<UserProfileButton user={user} />)
     fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
-    expect(screen.getByRole('menuitem', { name: /settings/i })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /terms/i })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /sign out/i })).toBeInTheDocument()
   })
@@ -71,30 +70,6 @@ describe('UserProfileButton', () => {
     expect(vi.mocked(signOut)).toHaveBeenCalledWith({ callbackUrl: '/signin' })
   })
 
-  it('opens Settings modal when Settings is clicked', () => {
-    render(<UserProfileButton user={user} />)
-    fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /settings/i }))
-    expect(screen.getByRole('heading', { name: /^settings$/i })).toBeInTheDocument()
-    expect(screen.getByText(/settings content coming soon/i)).toBeInTheDocument()
-  })
-
-  it('closes Settings modal on backdrop click', () => {
-    render(<UserProfileButton user={user} />)
-    fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /settings/i }))
-    fireEvent.click(screen.getByTestId('settings-backdrop'))
-    expect(screen.queryByRole('heading', { name: /^settings$/i })).not.toBeInTheDocument()
-  })
-
-  it('closes Settings modal on close button', () => {
-    render(<UserProfileButton user={user} />)
-    fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /settings/i }))
-    fireEvent.click(screen.getByRole('button', { name: /close settings/i }))
-    expect(screen.queryByRole('heading', { name: /^settings$/i })).not.toBeInTheDocument()
-  })
-
   it('opens Terms modal when Terms & Conditions is clicked', () => {
     render(<UserProfileButton user={user} />)
     fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
@@ -117,14 +92,6 @@ describe('UserProfileButton', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: /terms/i }))
     fireEvent.click(screen.getByRole('button', { name: /close terms/i }))
     expect(screen.queryByRole('heading', { name: /terms & conditions/i })).not.toBeInTheDocument()
-  })
-
-  it('closes Settings modal on Escape key', () => {
-    render(<UserProfileButton user={user} />)
-    fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /settings/i }))
-    fireEvent.keyDown(document, { key: 'Escape' })
-    expect(screen.queryByRole('heading', { name: /^settings$/i })).not.toBeInTheDocument()
   })
 
   it('closes Terms modal on Escape key', () => {
