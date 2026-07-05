@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import ResumeCard from './ResumeCard'
 import { useToastStore } from '@/lib/stores/toast.store'
 
@@ -26,60 +26,46 @@ describe('ResumeCard', () => {
     useToastStore.setState({ toasts: [] })
   })
 
-  it('shows delete button in normal state (no confirmation UI)', () => {
-    render(<ResumeCard resume={baseResume} />)
-    // The delete button (✕) should be visible
-    expect(screen.getByTitle('Delete')).toBeTruthy()
-    // Confirmation UI should not be visible
-    expect(screen.queryByText('Sure?')).toBeNull()
-    expect(screen.queryByText('Yes, delete')).toBeNull()
-    expect(screen.queryByText('Cancel')).toBeNull()
-  })
-
-  it('clicking delete shows inline confirmation', () => {
+  it('hides the card and shows an undo toast on delete', () => {
     render(<ResumeCard resume={baseResume} />)
     fireEvent.click(screen.getByTitle('Delete'))
-    expect(screen.getByText('Sure?')).toBeTruthy()
-    expect(screen.getByText('Yes, delete')).toBeTruthy()
-    expect(screen.getByText('Cancel')).toBeTruthy()
-    // Original delete button (✕) should be gone
-    expect(screen.queryByTitle('Delete')).toBeNull()
+    expect(screen.queryByText(baseResume.title)).not.toBeInTheDocument()
+    const t = useToastStore.getState().toasts[0]
+    expect(t.message).toBe(`Deleted "${baseResume.title}"`)
+    expect(t.actionLabel).toBe('Undo')
   })
 
-  it('clicking Cancel hides the confirmation', () => {
+  it('restores the card when undo is invoked, without calling DELETE', () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
     render(<ResumeCard resume={baseResume} />)
     fireEvent.click(screen.getByTitle('Delete'))
-    expect(screen.getByText('Sure?')).toBeTruthy()
-    fireEvent.click(screen.getByText('Cancel'))
-    expect(screen.queryByText('Sure?')).toBeNull()
-    expect(screen.queryByText('Yes, delete')).toBeNull()
-    expect(screen.queryByText('Cancel')).toBeNull()
-    expect(screen.getByTitle('Delete')).toBeTruthy()
+    act(() => { useToastStore.getState().toasts[0].onAction!() })
+    expect(screen.getByText(baseResume.title)).toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('clicking "Yes, delete" calls the delete API', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true })
-    global.fetch = mockFetch
-
+  it('fires DELETE after the undo window expires', async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true } as Response)
+    vi.stubGlobal('fetch', fetchMock)
     render(<ResumeCard resume={baseResume} />)
     fireEvent.click(screen.getByTitle('Delete'))
-    fireEvent.click(screen.getByText('Yes, delete'))
-
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        `/api/resumes/${baseResume._id}`,
-        { method: 'DELETE' }
-      )
-    })
+    await act(async () => { vi.advanceTimersByTime(6100) })
+    expect(fetchMock).toHaveBeenCalledWith(`/api/resumes/${baseResume._id}`, { method: 'DELETE' })
+    vi.useRealTimers()
   })
 
-  it('does not call fetch when first clicking the delete button', () => {
-    const mockFetch = vi.fn()
-    global.fetch = mockFetch
-
+  it('restores the card and shows an error toast when DELETE fails', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false } as Response))
     render(<ResumeCard resume={baseResume} />)
     fireEvent.click(screen.getByTitle('Delete'))
-    expect(mockFetch).not.toHaveBeenCalled()
+    await act(async () => { vi.advanceTimersByTime(6100) })
+    await act(async () => { await vi.runAllTimersAsync() })
+    expect(screen.getByText(baseResume.title)).toBeInTheDocument()
+    expect(useToastStore.getState().toasts.some(t => t.variant === 'error')).toBe(true)
+    vi.useRealTimers()
   })
 
   it('displays format score badge with correct color for green (>=20)', () => {

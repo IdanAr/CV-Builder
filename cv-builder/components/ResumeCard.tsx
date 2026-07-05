@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { toast } from '@/lib/stores/toast.store'
+import { toast, useToastStore } from '@/lib/stores/toast.store'
 
 interface ResumeCardProps {
   resume: {
@@ -47,28 +47,50 @@ function formatRelativeTime(iso: string) {
 
 export default function ResumeCard({ resume }: ResumeCardProps) {
   const router = useRouter()
-  const [deleting, setDeleting] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState(false)
+  const deleteTimerRef = useRef<number | null>(null)
+  const undoToastIdRef = useRef<number | null>(null)
 
-  async function handleDelete() {
-    if (!confirmingDelete) {
-      setConfirmingDelete(true)
-      return
-    }
-    setDeleting(true)
+  async function commitDelete() {
     try {
       const res = await fetch(`/api/resumes/${resume._id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Delete failed')
-      setConfirmingDelete(false)
       router.refresh()
     } catch (err) {
       console.error(err)
-      setConfirmingDelete(false)
-    } finally {
-      setDeleting(false)
+      setPendingDelete(false)
+      toast.error(`Could not delete "${resume.title}". It has been restored.`)
     }
   }
+
+  function handleDelete() {
+    setPendingDelete(true)
+    undoToastIdRef.current = toast.withAction(
+      `Deleted "${resume.title}"`,
+      'Undo',
+      () => {
+        if (deleteTimerRef.current) window.clearTimeout(deleteTimerRef.current)
+        deleteTimerRef.current = null
+        setPendingDelete(false)
+      }
+    )
+    deleteTimerRef.current = window.setTimeout(() => {
+      deleteTimerRef.current = null
+      if (undoToastIdRef.current !== null) useToastStore.getState().dismiss(undoToastIdRef.current)
+      void commitDelete()
+    }, 6000)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current) {
+        window.clearTimeout(deleteTimerRef.current)
+        void fetch(`/api/resumes/${resume._id}`, { method: 'DELETE' })
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleDuplicate() {
     setDuplicating(true)
@@ -102,6 +124,8 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
       toast.error(`Could not download "${resume.title}" as JSON. Please try again.`)
     }
   }
+
+  if (pendingDelete) return null
 
   return (
     <div className="relative group rounded-xl border border-white/30 bg-white/65 backdrop-blur-xl p-4 shadow-lg hover:border-indigo-300 hover:shadow-xl transition-all">
@@ -141,33 +165,14 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
           >
             {duplicating ? '…' : '⧉'}
           </button>
-          {confirmingDelete ? (
-            <span className="flex items-center gap-1">
-              <span className="text-xs font-medium text-red-600 bg-white/80 px-1 rounded">Sure?</span>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="rounded-md border border-red-500 bg-red-50 px-2 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-100 disabled:opacity-50"
-              >
-                {deleting ? '…' : 'Yes, delete'}
-              </button>
-              <button
-                onClick={() => setConfirmingDelete(false)}
-                className="rounded-md border border-indigo-100 bg-white px-2 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50"
-              >
-                Cancel
-              </button>
-            </span>
-          ) : (
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-              title="Delete"
-            >
-              ✕
-            </button>
-          )}
+          <button
+            onClick={handleDelete}
+            aria-label={`Delete ${resume.title}`}
+            className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50"
+            title="Delete"
+          >
+            ✕
+          </button>
         </div>
       </div>
 
