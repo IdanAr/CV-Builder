@@ -23,6 +23,18 @@ export function extractKeywords(text: string): string[] {
     .filter((w, i, arr) => arr.indexOf(w) === i)
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+export function matchesKeyword(text: string, keyword: string): boolean {
+  const pattern = new RegExp(
+    `(?<![a-z0-9])${escapeRegExp(keyword.toLowerCase())}(?![a-z0-9])`,
+    'i'
+  )
+  return pattern.test(text)
+}
+
 export function keywordOverlap(
   resumeText: string,
   jdKeywords: string[]
@@ -31,7 +43,7 @@ export function keywordOverlap(
   const matched: string[] = []
   const missing: string[] = []
   for (const kw of jdKeywords) {
-    if (lower.includes(kw)) matched.push(kw)
+    if (matchesKeyword(lower, kw)) matched.push(kw)
     else missing.push(kw)
   }
   return { matched, missing }

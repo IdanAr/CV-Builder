@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractKeywords, keywordOverlap } from '../keywords'
+import { extractKeywords, keywordOverlap, matchesKeyword } from '../keywords'
 
 describe('extractKeywords', () => {
   it('removes stop words', () => {
@@ -65,5 +65,36 @@ describe('keywordOverlap', () => {
     const { matched, missing } = keywordOverlap('react python typescript', ['react', 'python'])
     expect(matched).toHaveLength(2)
     expect(missing).toHaveLength(0)
+  })
+})
+
+describe('matchesKeyword', () => {
+  it('does not match a keyword embedded in a longer word', () => {
+    expect(matchesKeyword('senior javascript developer', 'java')).toBe(false)
+    expect(matchesKeyword('built reactive pipelines', 'react')).toBe(false)
+  })
+
+  it('matches exact whole words case-insensitively', () => {
+    expect(matchesKeyword('Senior Java developer', 'java')).toBe(true)
+    expect(matchesKeyword('React and Node.js', 'react')).toBe(true)
+  })
+
+  it('handles keywords with regex-special characters', () => {
+    expect(matchesKeyword('expert in c++ and c#', 'c++')).toBe(true)
+    expect(matchesKeyword('worked with node.js daily', 'node.js')).toBe(true)
+    expect(matchesKeyword('used nodexjs once', 'node.js')).toBe(false)
+  })
+
+  it('matches at string boundaries and around punctuation', () => {
+    expect(matchesKeyword('python', 'python')).toBe(true)
+    expect(matchesKeyword('skills: python, sql.', 'python')).toBe(true)
+  })
+})
+
+describe('keywordOverlap word boundaries', () => {
+  it('does not count substring-only matches', () => {
+    const { matched, missing } = keywordOverlap('senior javascript developer', ['java', 'javascript'])
+    expect(matched).toEqual(['javascript'])
+    expect(missing).toEqual(['java'])
   })
 })

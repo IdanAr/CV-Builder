@@ -57,11 +57,10 @@ function flattenHighValueText(data: ResumeData): string {
   const b = data.basics ?? {}
   if (b.label) parts.push(b.label)
   if (b.summary) parts.push(b.summary)
-  const recentJob = (data.work ?? [])[0]
-  if (recentJob) {
-    if (recentJob.position) parts.push(recentJob.position)
-    if (recentJob.name) parts.push(recentJob.name)
-    parts.push(...(recentJob.highlights ?? []))
+  for (const job of (data.work ?? []).slice(0, 2)) {
+    if (job.position) parts.push(job.position)
+    if (job.name) parts.push(job.name)
+    parts.push(...(job.highlights ?? []))
   }
   return parts.join(' ')
 }

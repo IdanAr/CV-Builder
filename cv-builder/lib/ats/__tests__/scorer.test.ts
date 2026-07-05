@@ -98,4 +98,29 @@ describe('scoreResume', () => {
     const result = scoreResume(fullData, jd)
     expect(result.total).toBeLessThanOrEqual(100)
   })
+
+  it('placement score counts keywords found in the second most recent job', () => {
+    const data = {
+      basics: { name: 'A', email: 'a@b.c' },
+      work: [
+        { name: 'Acme', position: 'Manager', highlights: ['Led roadmap planning'] },
+        { name: 'Beta', position: 'Engineer', highlights: ['Built kubernetes clusters'] },
+      ],
+    } as ResumeData
+    const result = scoreResume(data, 'kubernetes engineer')
+    expect(result.breakdown.keywordPlacement).toBeGreaterThan(0)
+  })
+
+  it('placement score ignores jobs older than the two most recent', () => {
+    const data = {
+      basics: { name: 'A', email: 'a@b.c' },
+      work: [
+        { name: 'Acme', position: 'Manager', highlights: ['Led roadmap planning'] },
+        { name: 'Beta', position: 'Analyst', highlights: ['Wrote reports'] },
+        { name: 'Gamma', position: 'Engineer', highlights: ['Built kubernetes clusters'] },
+      ],
+    } as ResumeData
+    const result = scoreResume(data, 'kubernetes engineer')
+    expect(result.breakdown.keywordPlacement).toBe(0)
+  })
 })
