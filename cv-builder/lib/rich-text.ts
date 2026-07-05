@@ -59,11 +59,7 @@ export function parseRichText(input: string): TextRun[] {
   // We track open markers on a stack; if a closing marker is found it pops
   // the stack and emits runs with the combined formatting of the stack depth
   // at that point. Unmatched opening markers are later flushed as literal text.
-  type Frame = { marker: '__' | '**' | '*'; tokenIndex: number }
-
   const runs: TextRun[] = []
-  // frameStack holds currently-open (unmatched) marker frames
-  const frameStack: Frame[] = []
   // pendingText accumulates text/literal-markers between matched spans
   // We build the output by replaying tokens linearly and resolving matching.
 

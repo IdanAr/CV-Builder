@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import type { DraggableAttributes } from '@dnd-kit/core'
 import { AccordionSection } from './AccordionSection'
 
 // CSS.Transform.toString is from @dnd-kit/utilities; mock it for jsdom
@@ -60,7 +61,7 @@ describe('AccordionSection', () => {
   it('renders drag handle button when dragHandleProps is provided', () => {
     const dragHandleProps = {
       listeners: undefined,
-      attributes: {} as any,
+      attributes: {} as DraggableAttributes,
       setNodeRef: () => {},
       transform: null,
       transition: undefined,

@@ -94,7 +94,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
     setPanelWidth(clampPanelWidth(e.clientX))
   }
 
-  function handleDividerPointerUp(_e: React.PointerEvent<HTMLDivElement>) {
+  function handleDividerPointerUp() {
     draggingRef.current = false
     setDividerActive(false)
     setPanelWidth((w) => {
