@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { Toaster } from '@/components/ui/Toaster'
 
 export const metadata: Metadata = {
   title: 'CV Builder',
@@ -11,6 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="min-h-screen antialiased">
         {children}
+        <Toaster />
       </body>
     </html>
   )
