@@ -7,7 +7,11 @@ type Phase = 'idle' | 'parsing' | 'extracting' | 'error'
 
 const MAX_BYTES = 5 * 1024 * 1024
 
-export default function UploadCVButton() {
+interface UploadCVButtonProps {
+  variant?: 'navbar' | 'hero'
+}
+
+export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonProps) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const [phase, setPhase] = useState<Phase>('idle')
@@ -91,6 +95,11 @@ export default function UploadCVButton() {
     )
   }
 
+  const triggerClassName =
+    variant === 'hero'
+      ? 'w-full rounded-lg border border-indigo-300 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50 disabled:opacity-50'
+      : 'rounded-lg border border-indigo-300 bg-white/80 px-4 py-2 text-sm font-medium text-indigo-700 shadow-sm transition hover:bg-indigo-50'
+
   return (
     <>
       <input
@@ -100,10 +109,7 @@ export default function UploadCVButton() {
         className="hidden"
         onChange={handleFileChange}
       />
-      <button
-        onClick={() => inputRef.current?.click()}
-        className="rounded-lg border border-indigo-300 bg-white/80 px-4 py-2 text-sm font-medium text-indigo-700 shadow-sm transition hover:bg-indigo-50"
-      >
+      <button onClick={() => inputRef.current?.click()} className={triggerClassName}>
         ⬆ Upload CV
       </button>
     </>

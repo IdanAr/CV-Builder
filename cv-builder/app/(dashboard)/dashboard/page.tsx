@@ -4,6 +4,7 @@ import { listResumes } from '@/lib/api/resumes'
 import ResumeCard from '@/components/ResumeCard'
 import NewResumeButton from '@/components/NewResumeButton'
 import UploadCVButton from '@/components/UploadCVButton'
+import { EmptyDashboardState } from '@/components/EmptyDashboardState'
 import { AppNavbar } from '@/components/ui/AppNavbar'
 import { UserProfileButton } from '@/components/ui/UserProfileButton'
 
@@ -33,10 +34,7 @@ export default async function DashboardPage() {
         </div>
 
         {resumes.length === 0 ? (
-          <div className="rounded-xl border border-indigo-100 bg-white/50 backdrop-blur-sm py-16 text-center">
-            <p className="text-sm text-indigo-400">No CVs yet.</p>
-            <p className="mt-1 text-sm text-indigo-300">Click &quot;+ New CV&quot; to get started.</p>
-          </div>
+          <EmptyDashboardState />
         ) : (
           <div className="flex flex-col gap-4">
             {resumes.map((resume) => (
