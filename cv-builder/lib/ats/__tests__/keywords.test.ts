@@ -2,13 +2,58 @@ import { describe, it, expect } from 'vitest'
 import { extractKeywords, keywordOverlap, matchesKeyword } from '../keywords'
 
 describe('extractKeywords', () => {
-  it('removes stop words', () => {
-    const result = extractKeywords('the quick brown fox and the lazy dog')
+  it('removes literal stop words like articles and conjunctions', () => {
+    const result = extractKeywords('the React framework and the Node.js runtime')
     expect(result).not.toContain('the')
     expect(result).not.toContain('and')
-    expect(result).toContain('quick')
-    expect(result).toContain('brown')
-    expect(result).toContain('lazy')
+    expect(result).toContain('react')
+    expect(result).toContain('node.js')
+  })
+
+  it('excludes generic connective and objective JD language, even words that are not literal stop words', () => {
+    const result = extractKeywords(
+      'We are looking for a strong candidate with excellent communication skills and React experience'
+    )
+    expect(result).not.toContain('strong')
+    expect(result).not.toContain('excellent')
+    expect(result).not.toContain('communication')
+    expect(result).not.toContain('candidate')
+    expect(result).not.toContain('looking')
+    expect(result).toContain('react')
+  })
+
+  it('excludes generic single-mention nouns that are not technologies, acronyms, or repeated', () => {
+    const result = extractKeywords('A wonderful opportunity to grow in a friendly workplace')
+    expect(result).not.toContain('wonderful')
+    expect(result).not.toContain('friendly')
+    expect(result).not.toContain('workplace')
+  })
+
+  it('includes known technology terms even in lowercase', () => {
+    const result = extractKeywords('experience with kubernetes and terraform required')
+    expect(result).toContain('kubernetes')
+    expect(result).toContain('terraform')
+  })
+
+  it('includes Pascal-case product names not in the static dictionary via internal capitalization', () => {
+    const result = extractKeywords('Familiarity with LaunchDarkly and PagerDuty preferred')
+    expect(result).toContain('launchdarkly')
+    expect(result).toContain('pagerduty')
+  })
+
+  it('includes all-caps acronyms not in the static dictionary', () => {
+    const result = extractKeywords('SOC2 compliance experience is a plus')
+    expect(result).toContain('soc2')
+  })
+
+  it('includes a generic-looking word when it is emphasized by repetition in the JD', () => {
+    const result = extractKeywords('Onboarding is key. We run onboarding sessions weekly and track onboarding metrics.')
+    expect(result).toContain('onboarding')
+  })
+
+  it('excludes a generic word mentioned only once', () => {
+    const result = extractKeywords('This role focuses on onboarding new hires smoothly')
+    expect(result).not.toContain('onboarding')
   })
 
   it('lowercases all keywords', () => {

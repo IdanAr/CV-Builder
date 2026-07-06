@@ -53,8 +53,29 @@ describe('AtsFixReviewPanel', () => {
     )
     expect(screen.getByText('Before')).toBeInTheDocument()
     expect(screen.getByText('After')).toBeInTheDocument()
-    expect(screen.getByText('Experienced developer.')).toBeInTheDocument()
-    expect(screen.getByText('Experienced React developer.')).toBeInTheDocument()
+    // The "After" text is split across multiple <span> segments (unchanged vs.
+    // changed words) by the word-diff renderer, so match on combined textContent.
+    const byTextContent = (target: string) =>
+      screen.getByText((_, element) => element?.tagName.toLowerCase() === 'p' && element.textContent === target)
+    expect(byTextContent('Experienced developer.')).toBeInTheDocument()
+    expect(byTextContent('Experienced React developer.')).toBeInTheDocument()
+  })
+
+  it('only strikes through the words removed from the original, not the whole sentence', () => {
+    const { container } = render(
+      <AtsFixReviewPanel
+        fixes={[makeFix({
+          original: 'Built a small dashboard for users.',
+          suggested: 'Built a scalable dashboard for users.',
+        })]}
+        dismissedIds={new Set()}
+        {...noop}
+      />
+    )
+    const struck = Array.from(container.querySelectorAll('.line-through')).map(el => el.textContent)
+    expect(struck.join('')).toContain('small')
+    expect(struck.join('')).not.toContain('dashboard')
+    expect(struck.join('')).not.toContain('users')
   })
 
   describe('generate-kind fix (no original text)', () => {
