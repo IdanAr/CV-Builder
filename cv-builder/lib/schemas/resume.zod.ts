@@ -180,6 +180,7 @@ export const ResumeMetaSchema = z.object({
     ]),
   layout: z.enum(['single-column', 'two-column']).default('single-column'),
   columnAssignment: z.record(z.string(), z.enum(['left', 'right'])).default({}),
+  excludedAtsKeywords: z.array(z.string()).default([]),
 })
 
 export const CreateResumeSchema = z.object({
@@ -199,6 +200,7 @@ const ResumeMetaPatchSchema = z.object({
   sectionOrder: z.array(z.string()).optional(),
   layout: z.enum(['single-column', 'two-column']).optional(),
   columnAssignment: z.record(z.string(), z.enum(['left', 'right'])).optional(),
+  excludedAtsKeywords: z.array(z.string()).optional(),
 })
 
 export const PatchResumeSchema = z.object({

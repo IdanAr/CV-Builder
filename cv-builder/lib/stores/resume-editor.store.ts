@@ -79,6 +79,7 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
       ],
       layout: 'single-column',
       columnAssignment: {},
+      excludedAtsKeywords: [],
     },
     isDirty: false,
     isSaving: false,

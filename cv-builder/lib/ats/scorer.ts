@@ -11,9 +11,13 @@ export interface AtsScoreResult {
   }
   matchedKeywords: string[]
   missingKeywords: string[]
+  /** User-excluded JD keywords that are present in the resume — shown as muted chips, never scored. */
+  excludedMatchedKeywords: string[]
+  /** User-excluded JD keywords that are absent from the resume — shown as muted chips, never scored or sent to AI tailoring. */
+  excludedMissingKeywords: string[]
 }
 
-function flattenAllText(data: ResumeData): string {
+export function flattenAllText(data: ResumeData): string {
   const parts: string[] = []
   const b = data.basics ?? {}
   if (b.name) parts.push(b.name)
@@ -68,12 +72,42 @@ function flattenHighValueText(data: ResumeData): string {
 function scoreFormat(data: ResumeData): number {
   let score = 0
   const b = data.basics ?? {}
-  if (b.name) score += 5
-  if (b.email) score += 5
-  if (b.summary) score += 5
-  if ((data.work ?? []).length > 0) score += 5
-  if ((data.work ?? []).some(j => (j.highlights ?? []).length > 0)) score += 5
-  return score // max 25
+
+  // 1. Core identity: both name and email present
+  if (b.name && b.email) score += 5
+
+  // 2. Meaningful summary: at least 40 characters after trimming
+  if (b.summary && b.summary.trim().length >= 40) score += 5
+
+  // 3. Work entries structurally complete: name + position + startDate
+  const work = data.work ?? []
+  if (work.length > 0) {
+    const complete = work.filter(j => j.name && j.position && j.startDate)
+    score += Math.round(5 * (complete.length / work.length))
+  }
+
+  // 4. Highlights are real bullets (10-400 chars), not placeholders or paragraph-dumps
+  const highlights = [
+    ...work.flatMap(j => j.highlights ?? []),
+    ...(data.volunteer ?? []).flatMap(v => v.highlights ?? []),
+    ...(data.projects ?? []).flatMap(p => p.highlights ?? []),
+  ]
+  if (highlights.length > 0) {
+    const wellFormed = highlights.filter(h => {
+      const len = h.trim().length
+      return len >= 10 && len <= 400
+    })
+    score += Math.round(5 * (wellFormed.length / highlights.length))
+  }
+
+  // 5. Skills are structured: at least one non-empty keyword per skill
+  const skills = data.skills ?? []
+  if (skills.length > 0) {
+    const structured = skills.filter(s => (s.keywords ?? []).some(k => k.trim().length > 0))
+    score += Math.round(5 * (structured.length / skills.length))
+  }
+
+  return score // each check maxes at 5, so total is capped at 25 by construction
 }
 
 const METRIC_PATTERN = /\d+%|\$\d+|\d+[xX]|\d{2,}|\d+\s*(people|team|users|customers|members|reports|clients|projects)/i
@@ -89,7 +123,11 @@ function scoreMetrics(data: ResumeData): number {
   return Math.min(15, Math.round((withMetrics.length / highlights.length) * 30))
 }
 
-export function scoreResume(data: ResumeData, jobDescription: string): AtsScoreResult {
+export function scoreResume(
+  data: ResumeData,
+  jobDescription: string,
+  excludedKeywords: string[] = []
+): AtsScoreResult {
   const formatScore = scoreFormat(data)
   const metricsScore = scoreMetrics(data)
   const jdKeywords = extractKeywords(jobDescription)
@@ -100,17 +138,35 @@ export function scoreResume(data: ResumeData, jobDescription: string): AtsScoreR
       breakdown: { format: formatScore, keywordDensity: 0, keywordPlacement: 0, metrics: metricsScore },
       matchedKeywords: [],
       missingKeywords: [],
+      excludedMatchedKeywords: [],
+      excludedMissingKeywords: [],
     }
   }
 
+  const excluded = new Set(excludedKeywords.map(k => k.toLowerCase()))
   const allText = flattenAllText(data)
   const highValueText = flattenHighValueText(data)
 
-  const { matched, missing } = keywordOverlap(allText, jdKeywords)
-  const keywordDensityScore = Math.min(35, Math.round((matched.length / jdKeywords.length) * 35))
+  // Every JD candidate keyword is matched/missing against the full set, so
+  // excluded ones stay visible to the UI (as muted chips) instead of vanishing.
+  const { matched: allMatched, missing: allMissing } = keywordOverlap(allText, jdKeywords)
+  const matched = allMatched.filter(k => !excluded.has(k))
+  const excludedMatchedKeywords = allMatched.filter(k => excluded.has(k))
+  const missing = allMissing.filter(k => !excluded.has(k))
+  const excludedMissingKeywords = allMissing.filter(k => excluded.has(k))
 
-  const { matched: hvMatched } = keywordOverlap(highValueText, jdKeywords)
-  const keywordPlacementScore = Math.min(25, Math.round((hvMatched.length / jdKeywords.length) * 25))
+  // Scoring only considers the active (non-excluded) subset, both as the
+  // matched count and as the denominator, so an excluded word neither helps
+  // nor drags down the score.
+  const activeKeywords = jdKeywords.filter(k => !excluded.has(k))
+  const keywordDensityScore = activeKeywords.length > 0
+    ? Math.min(35, Math.round((matched.length / activeKeywords.length) * 35))
+    : 0
+
+  const { matched: hvMatched } = keywordOverlap(highValueText, activeKeywords)
+  const keywordPlacementScore = activeKeywords.length > 0
+    ? Math.min(25, Math.round((hvMatched.length / activeKeywords.length) * 25))
+    : 0
 
   const total = Math.min(100, formatScore + keywordDensityScore + keywordPlacementScore + metricsScore)
 
@@ -124,5 +180,7 @@ export function scoreResume(data: ResumeData, jobDescription: string): AtsScoreR
     },
     matchedKeywords: matched,
     missingKeywords: missing,
+    excludedMatchedKeywords,
+    excludedMissingKeywords,
   }
 }

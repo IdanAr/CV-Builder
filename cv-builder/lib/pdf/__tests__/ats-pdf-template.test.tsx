@@ -12,7 +12,7 @@ const meta: ResumeMeta = {
   primaryColor: '#1e3a5f', accentColor: '#0066cc',
   pageMargins: 0.5, lineSpacing: 1.15,
   sectionOrder: ['work', 'education', 'skills', 'languages'],
-  layout: 'two-column', columnAssignment: {},
+  layout: 'two-column', columnAssignment: {}, excludedAtsKeywords: [],
 }
 
 const data: ResumeData = {

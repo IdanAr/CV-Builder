@@ -10,17 +10,98 @@ const STOP_WORDS = new Set([
   'our', 'your', 'their', 'we', 'you', 'they', 'he', 'she', 'it',
   'who', 'which', 'what', 'how', 'when', 'where', 'why',
   'work', 'working', 'experience', 'role', 'position', 'job',
+  // Generic JD objective/connective/soft language — real, but not something a
+  // resume should be scored against as a missing "keyword."
+  'strong', 'excellent', 'ability', 'abilities', 'responsibilities', 'responsible',
+  'responsibility', 'environment', 'candidate', 'candidates', 'opportunity',
+  'opportunities', 'including', 'include', 'includes', 'included', 'years', 'year',
+  'plus', 'preferred', 'required', 'requirement', 'requirements', 'skills', 'skill',
+  'communication', 'collaborate', 'collaboration', 'collaborative', 'team', 'teams',
+  'teamwork', 'must', 'looking', 'seeking', 'join', 'growing', 'dynamic',
+  'passionate', 'similar', 'related', 'relevant', 'background', 'field',
+  'industry', 'company', 'companies', 'organization', 'organizations', 'client',
+  'clients', 'customer', 'customers', 'stakeholder', 'stakeholders', 'culture',
+  'values', 'mission', 'vision', 'benefits', 'salary', 'compensation', 'equal',
+  'employer', 'diversity', 'inclusion', 'apply', 'application', 'resume', 'cover',
+  'letter', 'detail', 'oriented', 'self', 'starter', 'fast', 'paced', 'ensure',
+  'ensuring', 'provide', 'providing', 'support', 'supporting', 'understanding',
+  'knowledge', 'familiarity', 'familiar', 'proficient', 'proficiency',
+  'demonstrate', 'demonstrated', 'strongly', 'highly', 'ideal', 'ideally',
+  'help', 'helping', 'across', 'within', 'while', 'able', 'well', 'good',
+  'new', 'make', 'making', 'take', 'taking', 'get', 'getting', 'set', 'setting',
 ])
+
+// Common technologies, tools, platforms, and hard-skill/methodology terms.
+// Any match here is always treated as crucial — deliberately not exhaustive,
+// since the heuristics in extractKeywords() below (acronym/proper-noun casing,
+// tech-punctuation, repeated emphasis) catch real terms this list misses.
+const TECH_TERMS = new Set([
+  'javascript', 'typescript', 'python', 'java', 'kotlin', 'swift', 'golang', 'go',
+  'rust', 'php', 'ruby', 'rails', 'scala', 'perl', 'c++', 'c#', 'objective-c',
+  'react', 'reactjs', 'vue', 'vuejs', 'angular', 'angularjs', 'svelte', 'nextjs',
+  'next.js', 'nuxt', 'node', 'nodejs', 'node.js', 'express', 'django', 'flask',
+  'fastapi', 'spring', 'springboot', '.net', 'dotnet', 'asp.net', 'laravel',
+  'html', 'css', 'sass', 'scss', 'tailwind', 'bootstrap', 'redux', 'graphql',
+  'rest', 'restful', 'grpc', 'websocket', 'microservices', 'webpack', 'vite',
+  'aws', 'azure', 'gcp', 'ec2', 's3', 'lambda', 'cloudformation', 'kubernetes',
+  'k8s', 'docker', 'terraform', 'ansible', 'puppet', 'chef', 'jenkins', 'gitlab',
+  'github', 'bitbucket', 'git', 'cicd', 'ci/cd', 'devops', 'sre', 'linux',
+  'unix', 'bash', 'shell', 'nginx', 'apache',
+  'sql', 'nosql', 'mysql', 'postgresql', 'postgres', 'mongodb', 'redis',
+  'cassandra', 'dynamodb', 'elasticsearch', 'kafka', 'rabbitmq', 'spark',
+  'hadoop', 'airflow', 'snowflake', 'databricks', 'bigquery', 'redshift',
+  'tableau', 'powerbi', 'looker', 'excel',
+  'tensorflow', 'pytorch', 'keras', 'scikit-learn', 'sklearn', 'pandas', 'numpy',
+  'nlp', 'llm', 'genai', 'machine-learning', 'ml', 'ai',
+  'salesforce', 'sap', 'jira', 'confluence', 'figma', 'sketch', 'photoshop',
+  'illustrator', 'agile', 'scrum', 'kanban', 'waterfall', 'lean',
+  'cybersecurity', 'networking', 'oauth', 'saml', 'jwt',
+  'ios', 'android', 'flutter', 'reactnative', 'react-native', 'xamarin',
+  'unity', 'unreal',
+  'seo', 'sem', 'crm', 'erp', 'api', 'apis', 'json', 'xml', 'yaml',
+])
+
+function tokenizeWithCase(text: string): string[] {
+  const cleaned = text.replace(/[^a-zA-Z0-9\s.+#/-]/g, ' ')
+  return cleaned
+    .split(/\s+/)
+    .map(w => w.replace(/^[.\-/]+|[.\-/]+$/g, ''))
+    .filter(Boolean)
+}
+
+/** True for tokens that look like acronyms or camel/Pascal-case product names
+ * (AWS, SQL, JavaScript, GitHub) based on internal capitalization — a strong
+ * signal of a real technical term regardless of a static dictionary. */
+function looksLikeProperNounOrAcronym(raw: string): boolean {
+  if (raw.length < 2) return false
+  const isAllCapsAcronym = /^[A-Z0-9]+$/.test(raw) && /[A-Z]/.test(raw)
+  const hasInternalCap = /[A-Z]/.test(raw.slice(1))
+  return isAllCapsAcronym || hasInternalCap
+}
 
 export function extractKeywords(text: string): string[] {
   if (!text.trim()) return []
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s.+#]/g, ' ')
-    .split(/\s+/)
-    .map(w => w.replace(/\.$/, ''))
-    .filter(w => w.length >= 3 && !STOP_WORDS.has(w))
-    .filter((w, i, arr) => arr.indexOf(w) === i)
+
+  const rawTokens = tokenizeWithCase(text)
+  const counts = new Map<string, number>()
+  const properNounSeen = new Map<string, boolean>()
+  const order: string[] = []
+
+  for (const raw of rawTokens) {
+    const lower = raw.toLowerCase()
+    if (lower.length < 3 || STOP_WORDS.has(lower)) continue
+    if (!counts.has(lower)) order.push(lower)
+    counts.set(lower, (counts.get(lower) ?? 0) + 1)
+    if (looksLikeProperNounOrAcronym(raw)) properNounSeen.set(lower, true)
+  }
+
+  return order.filter((word) => {
+    if (TECH_TERMS.has(word)) return true
+    if (properNounSeen.get(word)) return true
+    if (/[0-9+#]/.test(word) || word.includes('.') || word.includes('-')) return true
+    if ((counts.get(word) ?? 0) >= 2) return true
+    return false
+  })
 }
 
 function escapeRegExp(s: string): string {

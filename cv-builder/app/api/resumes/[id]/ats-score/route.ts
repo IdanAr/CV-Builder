@@ -19,8 +19,11 @@ export const POST = auth(async (req, ctx) => {
 
     const body = await req.json().catch(() => ({}))
     const jobDescription: string = typeof body.jobDescription === 'string' ? body.jobDescription : ''
+    const excludedKeywords: string[] = Array.isArray(body.excludedKeywords)
+      ? body.excludedKeywords.filter((k: unknown) => typeof k === 'string').slice(0, 200)
+      : []
     const data = (resume.data ?? {}) as ResumeData
-    const result = scoreResume(data, jobDescription)
+    const result = scoreResume(data, jobDescription, excludedKeywords)
 
     return NextResponse.json(result)
   } catch (err) {

@@ -28,6 +28,7 @@ const ResumeSchema = new Schema<IResume>(
         default: ['work', 'education', 'skills', 'certificates', 'awards', 'publications', 'volunteer', 'languages', 'interests', 'projects'],
       },
       layout: { type: String, enum: ['single-column', 'two-column'], default: 'single-column' },
+      excludedAtsKeywords: { type: [String], default: [] },
     },
   },
   { timestamps: true }

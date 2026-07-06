@@ -42,4 +42,102 @@ describe('AtsFixReviewPanel', () => {
     )
     expect(screen.queryByText(/not in your original text/i)).not.toBeInTheDocument()
   })
+
+  it('renders Before/After blocks for an edit-kind fix', () => {
+    render(
+      <AtsFixReviewPanel
+        fixes={[makeFix()]}
+        dismissedIds={new Set()}
+        {...noop}
+      />
+    )
+    expect(screen.getByText('Before')).toBeInTheDocument()
+    expect(screen.getByText('After')).toBeInTheDocument()
+    // The "After" text is split across multiple <span> segments (unchanged vs.
+    // changed words) by the word-diff renderer, so match on combined textContent.
+    const byTextContent = (target: string) =>
+      screen.getByText((_, element) => element?.tagName.toLowerCase() === 'p' && element.textContent === target)
+    expect(byTextContent('Experienced developer.')).toBeInTheDocument()
+    expect(byTextContent('Experienced React developer.')).toBeInTheDocument()
+  })
+
+  it('only strikes through the words removed from the original, not the whole sentence', () => {
+    const { container } = render(
+      <AtsFixReviewPanel
+        fixes={[makeFix({
+          original: 'Built a small dashboard for users.',
+          suggested: 'Built a scalable dashboard for users.',
+        })]}
+        dismissedIds={new Set()}
+        {...noop}
+      />
+    )
+    const struck = Array.from(container.querySelectorAll('.line-through')).map(el => el.textContent)
+    expect(struck.join('')).toContain('small')
+    expect(struck.join('')).not.toContain('dashboard')
+    expect(struck.join('')).not.toContain('users')
+  })
+
+  describe('generate-kind fix (no original text)', () => {
+    const generateFix = makeFix({
+      id: 'fix-summary-new',
+      kind: 'generate',
+      original: '',
+      suggested: 'React developer with a track record of shipping ATS-friendly tools.',
+      targetKeywords: ['react', 'ats'],
+    })
+
+    it('renders a "New professional summary" card with the suggested text', () => {
+      render(
+        <AtsFixReviewPanel
+          fixes={[generateFix]}
+          dismissedIds={new Set()}
+          {...noop}
+        />
+      )
+      expect(screen.getByText(/new professional summary/i)).toBeInTheDocument()
+      expect(
+        screen.getByText('React developer with a track record of shipping ATS-friendly tools.')
+      ).toBeInTheDocument()
+    })
+
+    it('does not render a Before block or any strikethrough element', () => {
+      const { container } = render(
+        <AtsFixReviewPanel
+          fixes={[generateFix]}
+          dismissedIds={new Set()}
+          {...noop}
+        />
+      )
+      expect(screen.queryByText('Before')).not.toBeInTheDocument()
+      expect(screen.queryByText('After')).not.toBeInTheDocument()
+      expect(container.querySelector('.line-through')).toBeNull()
+    })
+
+    it('still renders keyword chips, Apply and Dismiss buttons', () => {
+      render(
+        <AtsFixReviewPanel
+          fixes={[generateFix]}
+          dismissedIds={new Set()}
+          {...noop}
+        />
+      )
+      expect(screen.getByText('react')).toBeInTheDocument()
+      expect(screen.getByText('ats')).toBeInTheDocument()
+      expect(screen.getByText('Apply')).toBeInTheDocument()
+      expect(screen.getByText('Dismiss')).toBeInTheDocument()
+    })
+
+    it('still shows the unverified-claims warning when pendingApprovals is present', () => {
+      render(
+        <AtsFixReviewPanel
+          fixes={[{ ...generateFix, pendingApprovals: ['30%'] }]}
+          dismissedIds={new Set()}
+          {...noop}
+        />
+      )
+      expect(screen.getByText(/not in your original text/i)).toBeInTheDocument()
+      expect(screen.getByText('30%')).toBeInTheDocument()
+    })
+  })
 })

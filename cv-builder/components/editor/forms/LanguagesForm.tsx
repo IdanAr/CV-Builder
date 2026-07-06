@@ -4,6 +4,7 @@ import { ListFieldManager } from './ListFieldManager'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type Item = NonNullable<ResumeData['languages']>[number]
+const EMPTY_LANGUAGES: Item[] = []
 const createEmpty = (): Item => ({ language: '', fluency: '' })
 const inputClass = 'w-full border border-indigo-200 rounded-lg px-2 py-1 text-sm bg-white/70 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
 
@@ -30,7 +31,7 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
 }
 
 export function LanguagesForm() {
-  const items = useResumeEditorStore((s) => s.data.languages ?? [])
+  const items = useResumeEditorStore((s) => s.data.languages ?? EMPTY_LANGUAGES)
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
     <ListFieldManager<Item> items={items} onChange={(v) => setSectionData('languages', v)}

@@ -36,14 +36,70 @@ describe('scoreResume', () => {
     expect(result.breakdown.format).toBe(0)
   })
 
-  it('format score is 5 for name only', () => {
+  it('format score is 0 for name without email (core identity needs both)', () => {
     const result = scoreResume({ basics: { name: 'Alice' } }, '')
+    expect(result.breakdown.format).toBe(0)
+  })
+
+  it('format score is 5 for name + email (core identity check only)', () => {
+    const result = scoreResume({ basics: { name: 'Alice', email: 'alice@test.com' } }, '')
     expect(result.breakdown.format).toBe(5)
   })
 
-  it('format score is 10 for name + email', () => {
-    const result = scoreResume({ basics: { name: 'Alice', email: 'alice@test.com' } }, '')
-    expect(result.breakdown.format).toBe(10)
+  it('summary just under 40 chars earns no summary points; at 40 it earns 5', () => {
+    // 39 chars: identity (5) + summary (0) = 5
+    const short = scoreResume(
+      { basics: { name: 'Alice', email: 'a@b.co', summary: 'x'.repeat(39) } }, '')
+    expect(short.breakdown.format).toBe(5)
+    // 40 chars: identity (5) + summary (5) = 10
+    const ok = scoreResume(
+      { basics: { name: 'Alice', email: 'a@b.co', summary: 'x'.repeat(40) } }, '')
+    expect(ok.breakdown.format).toBe(10)
+  })
+
+  it('work completeness is proportional: 1 of 2 entries with startDate scores round(5 * 1/2) = 3', () => {
+    const data: ResumeData = {
+      basics: { name: 'Alice', email: 'a@b.co' },
+      work: [
+        { name: 'Acme', position: 'Engineer', startDate: '2021-01' },
+        { name: 'Beta', position: 'Analyst' },
+      ],
+    }
+    // identity 5 + summary 0 + work 3 + highlights 0 + skills 0 = 8
+    const result = scoreResume(data, '')
+    expect(result.breakdown.format).toBe(8)
+  })
+
+  it('paragraph-dump highlights are penalized: 2 of 3 valid bullets scores round(5 * 2/3) = 3', () => {
+    const data: ResumeData = {
+      basics: { name: 'Alice', email: 'a@b.co' },
+      work: [{
+        name: 'Acme',
+        position: 'Engineer',
+        startDate: '2021-01',
+        highlights: [
+          'Shipped the reporting dashboard feature',
+          'A'.repeat(600),
+          'Mentored two junior engineers on testing',
+        ],
+      }],
+    }
+    // identity 5 + summary 0 + work 5 + highlights 3 + skills 0 = 13
+    const result = scoreResume(data, '')
+    expect(result.breakdown.format).toBe(13)
+  })
+
+  it('bare skill labels are penalized: 1 of 2 skills with keywords scores round(5 * 1/2) = 3', () => {
+    const data: ResumeData = {
+      basics: { name: 'Alice', email: 'a@b.co' },
+      skills: [
+        { name: 'Frontend', keywords: ['React'] },
+        { name: 'Backend' },
+      ],
+    }
+    // identity 5 + summary 0 + work 0 + highlights 0 + skills 3 = 8
+    const result = scoreResume(data, '')
+    expect(result.breakdown.format).toBe(8)
   })
 
   it('format score is 25 for data with all required fields and highlights', () => {
@@ -122,5 +178,69 @@ describe('scoreResume', () => {
     } as ResumeData
     const result = scoreResume(data, 'kubernetes engineer')
     expect(result.breakdown.keywordPlacement).toBe(0)
+  })
+
+  it('excludedMatchedKeywords and excludedMissingKeywords are empty when no exclusions are given', () => {
+    const result = scoreResume(fullData, jd)
+    expect(result.excludedMatchedKeywords).toEqual([])
+    expect(result.excludedMissingKeywords).toEqual([])
+  })
+})
+
+describe('scoreResume — excludedKeywords', () => {
+  it('excluding a matched keyword moves it out of matchedKeywords and can lower keywordDensity when the remaining active keywords are unmatched', () => {
+    const data: ResumeData = {
+      basics: { name: 'A', email: 'a@b.c' },
+      skills: [{ name: 'Stack', keywords: ['React'] }],
+    }
+    const jdText = 'React Kubernetes developer needed'
+
+    const before = scoreResume(data, jdText)
+    expect(before.matchedKeywords).toContain('react')
+    expect(before.missingKeywords).toContain('kubernetes')
+    expect(before.breakdown.keywordDensity).toBeGreaterThan(0)
+
+    const after = scoreResume(data, jdText, ['react'])
+    expect(after.matchedKeywords).not.toContain('react')
+    expect(after.excludedMatchedKeywords).toContain('react')
+    expect(after.missingKeywords).toContain('kubernetes')
+    // Only 1 active keyword remains (kubernetes) and it's unmatched -> density 0
+    expect(after.breakdown.keywordDensity).toBe(0)
+  })
+
+  it('excluding a missing keyword moves it out of missingKeywords and stops it dragging down keywordDensity', () => {
+    const data: ResumeData = {
+      basics: { name: 'A', email: 'a@b.c' },
+      skills: [{ name: 'Stack', keywords: ['React'] }],
+    }
+    const jdText = 'React Kubernetes developer needed'
+
+    const before = scoreResume(data, jdText)
+    expect(before.breakdown.keywordDensity).toBeLessThan(35)
+
+    const after = scoreResume(data, jdText, ['kubernetes'])
+    expect(after.missingKeywords).not.toContain('kubernetes')
+    expect(after.excludedMissingKeywords).toContain('kubernetes')
+    expect(after.matchedKeywords).toContain('react')
+    // Only 1 active keyword remains (react) and it's fully matched -> full 35
+    expect(after.breakdown.keywordDensity).toBe(35)
+  })
+
+  it('excluded keyword matching is case-insensitive', () => {
+    const result = scoreResume({ basics: { name: 'A', email: 'a@b.c' } }, 'Kubernetes required', ['KUBERNETES'])
+    expect(result.missingKeywords).not.toContain('kubernetes')
+    expect(result.excludedMissingKeywords).toContain('kubernetes')
+  })
+
+  it('empty job description still returns empty excluded-keyword arrays', () => {
+    const result = scoreResume({}, '', ['react'])
+    expect(result.excludedMatchedKeywords).toEqual([])
+    expect(result.excludedMissingKeywords).toEqual([])
+  })
+
+  it('omitting excludedKeywords entirely reproduces the same result as an empty array', () => {
+    const withDefault = scoreResume(fullData, jd)
+    const withEmpty = scoreResume(fullData, jd, [])
+    expect(withDefault).toEqual(withEmpty)
   })
 })
