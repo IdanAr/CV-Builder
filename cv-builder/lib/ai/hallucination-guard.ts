@@ -1,4 +1,5 @@
 // lib/ai/hallucination-guard.ts
+import { extractTechTerms } from '@/lib/ats/keywords'
 
 // Patterns representing verifiable numeric claims
 const CLAIM_PATTERNS: RegExp[] = [
@@ -23,5 +24,11 @@ export function detectHallucinations(originalInput: string, generatedText: strin
 
   // Remove bare numbers that are substrings of a longer already-found match
   const all = Array.from(found)
-  return all.filter(candidate => !all.some(other => other !== candidate && other.includes(candidate)))
+  const numericClaims = all.filter(candidate => !all.some(other => other !== candidate && other.includes(candidate)))
+
+  // Skills/technologies mentioned in the generated text but absent from the
+  // original input are hallucinations too (e.g. inventing "Kubernetes")
+  const inventedSkills = extractTechTerms(generatedText).filter(term => !lowerOriginal.includes(term))
+
+  return Array.from(new Set([...numericClaims, ...inventedSkills]))
 }
