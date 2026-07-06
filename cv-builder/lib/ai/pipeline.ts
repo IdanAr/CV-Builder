@@ -48,8 +48,6 @@ async function critique(input: string, generated: string, field: SuggestionField
 }
 
 async function refine(input: string, generated: string, critiqueNotes: string, field: SuggestionField): Promise<string> {
-  if (critiqueNotes.toUpperCase().startsWith('APPROVED')) return generated
-
   const prompt = field === 'highlight'
     ? `Fix this CV bullet based on the feedback.\nCandidate's original notes: "${input}"\nCurrent bullet: "${generated}"\nFeedback: ${critiqueNotes}\nReturn ONLY the corrected bullet (max 20 words, no prefix character).`
     : `Fix this CV summary based on the feedback.\nCandidate's original notes: "${input}"\nCurrent summary: "${generated}"\nFeedback: ${critiqueNotes}\nReturn ONLY the corrected summary.`
@@ -57,10 +55,15 @@ async function refine(input: string, generated: string, critiqueNotes: string, f
   return callClaude(prompt)
 }
 
+const MAX_REFINE_ROUNDS = 2
+
 export async function runSuggestionPipeline(input: string, ctx: PipelineContext): Promise<PipelineResult> {
-  const generated = await generate(input, ctx)
-  const critiqueNotes = await critique(input, generated, ctx.field)
-  const suggestion = await refine(input, generated, critiqueNotes, ctx.field)
+  let suggestion = await generate(input, ctx)
+  for (let round = 0; round < MAX_REFINE_ROUNDS; round++) {
+    const critiqueNotes = await critique(input, suggestion, ctx.field)
+    if (critiqueNotes.toUpperCase().startsWith('APPROVED')) break
+    suggestion = await refine(input, suggestion, critiqueNotes, ctx.field)
+  }
   const pendingApprovals = detectHallucinations(input, suggestion)
   return { suggestion, pendingApprovals }
 }

@@ -31,11 +31,27 @@ describe('runSuggestionPipeline', () => {
       .mockResolvedValueOnce({ content: [{ type: 'text', text: 'Built React dashboard for 500 users, boosting retention by 40%' }] })
       .mockResolvedValueOnce({ content: [{ type: 'text', text: '40% is not in original notes' }] })
       .mockResolvedValueOnce({ content: [{ type: 'text', text: 'Built React dashboard for 500 users' }] })
+      .mockResolvedValueOnce({ content: [{ type: 'text', text: 'APPROVED' }] })
 
     const { runSuggestionPipeline } = await import('../pipeline')
     const result = await runSuggestionPipeline('react dashboard 500 users', { field: 'highlight' })
 
-    expect(mockAnthropicCreate).toHaveBeenCalledTimes(3)
+    expect(mockAnthropicCreate).toHaveBeenCalledTimes(4)
+    expect(result.suggestion).toBe('Built React dashboard for 500 users')
+  })
+
+  it('re-critiques after refinement and refines again if still not approved, bounded at 2 rounds', async () => {
+    mockAnthropicCreate
+      .mockResolvedValueOnce({ content: [{ type: 'text', text: 'Built React dashboard for 500 users, boosting retention by 40%' }] })
+      .mockResolvedValueOnce({ content: [{ type: 'text', text: '40% is not in original notes' }] })
+      .mockResolvedValueOnce({ content: [{ type: 'text', text: 'Built React dashboard, boosting retention' }] })
+      .mockResolvedValueOnce({ content: [{ type: 'text', text: 'Missing user count from original notes' }] })
+      .mockResolvedValueOnce({ content: [{ type: 'text', text: 'Built React dashboard for 500 users' }] })
+
+    const { runSuggestionPipeline } = await import('../pipeline')
+    const result = await runSuggestionPipeline('react dashboard 500 users', { field: 'highlight' })
+
+    expect(mockAnthropicCreate).toHaveBeenCalledTimes(5)
     expect(result.suggestion).toBe('Built React dashboard for 500 users')
   })
 
