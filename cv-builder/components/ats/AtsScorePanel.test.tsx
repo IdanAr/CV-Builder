@@ -61,7 +61,7 @@ describe('AtsScorePanel applyFix for generate-kind summary fixes', () => {
     fireEvent.click(screen.getByText('Analyze'))
     await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
 
-    fireEvent.click(screen.getByText(/fix all with ai/i))
+    fireEvent.click(screen.getByText(/tailor with ai/i))
     await waitFor(() => expect(screen.getByText('Apply')).toBeInTheDocument())
 
     expect(useResumeEditorStore.getState().data.basics?.summary).toBeUndefined()

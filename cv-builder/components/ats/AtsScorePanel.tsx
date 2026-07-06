@@ -180,7 +180,7 @@ export function AtsScorePanel() {
                         Generating…
                       </>
                     ) : (
-                      <>✨ Fix All with AI</>
+                      <>✨ Tailor with AI</>
                     )}
                   </button>
                 )}
