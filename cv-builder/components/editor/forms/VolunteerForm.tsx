@@ -6,6 +6,7 @@ import { RichTextField } from './RichTextField'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type Item = NonNullable<ResumeData['volunteer']>[number]
+const EMPTY_VOLUNTEER: Item[] = []
 const createEmpty = (): Item => ({
   organization: '', position: '', url: '', startDate: '', endDate: '', summary: '', highlights: [],
 })
@@ -66,7 +67,7 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
 }
 
 export function VolunteerForm() {
-  const items = useResumeEditorStore((s) => s.data.volunteer ?? [])
+  const items = useResumeEditorStore((s) => s.data.volunteer ?? EMPTY_VOLUNTEER)
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
     <ListFieldManager<Item> items={items} onChange={(v) => setSectionData('volunteer', v)}
