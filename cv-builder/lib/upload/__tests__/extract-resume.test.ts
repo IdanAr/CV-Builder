@@ -59,6 +59,15 @@ describe('extractResume', () => {
     await expect(extractResume('CV text')).rejects.toThrow(ExtractionError)
   })
 
+  it('throws ExtractionError when Claude returns JSON that fails schema validation instead of persisting it', async () => {
+    mockResponse(JSON.stringify({
+      basics: { name: 'Jane Smith' },
+      // startDate must be a string per WorkSchema — a number fails validation.
+      work: [{ name: 'Acme Corp', position: 'Engineer', startDate: 2020 }],
+    }))
+    await expect(extractResume('CV text')).rejects.toThrow(ExtractionError)
+  })
+
   it('normalizes AI-returned customSections: assigns ids and derives enabledFields', async () => {
     mockResponse(JSON.stringify({
       customSections: [{
