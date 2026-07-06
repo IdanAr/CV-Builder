@@ -170,12 +170,23 @@ describe('ResumeDataSchema — customSections', () => {
 })
 
 describe('ResumeMetaSchema — updated sectionOrder default', () => {
-  it('default sectionOrder no longer includes removed sections', () => {
+  // Sprint 2 promotes certificates/awards/publications/interests/projects to
+  // first-class, natively-editable sections (editor forms + template rendering
+  // now exist for all 5), so the default sectionOrder must include them —
+  // matching models/Resume.ts's Mongoose-level default exactly.
+  it('default sectionOrder includes all 10 native sections in the canonical order', () => {
     const result = ResumeMetaSchema.parse({})
-    expect(result.sectionOrder).not.toContain('certificates')
-    expect(result.sectionOrder).not.toContain('awards')
-    expect(result.sectionOrder).not.toContain('publications')
-    expect(result.sectionOrder).not.toContain('interests')
-    expect(result.sectionOrder).not.toContain('projects')
+    expect(result.sectionOrder).toEqual([
+      'work',
+      'education',
+      'skills',
+      'certificates',
+      'awards',
+      'publications',
+      'volunteer',
+      'languages',
+      'interests',
+      'projects',
+    ])
   })
 })

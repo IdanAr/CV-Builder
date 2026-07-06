@@ -16,6 +16,11 @@ vi.mock('./forms/EducationForm', () => ({ EducationForm: () => <div>EducationFor
 vi.mock('./forms/SkillsForm', () => ({ SkillsForm: () => <div>SkillsForm</div> }))
 vi.mock('./forms/LanguagesForm', () => ({ LanguagesForm: () => <div>LanguagesForm</div> }))
 vi.mock('./forms/VolunteerForm', () => ({ VolunteerForm: () => <div>VolunteerForm</div> }))
+vi.mock('./forms/CertificatesForm', () => ({ CertificatesForm: () => <div>CertificatesForm</div> }))
+vi.mock('./forms/AwardsForm', () => ({ AwardsForm: () => <div>AwardsForm</div> }))
+vi.mock('./forms/PublicationsForm', () => ({ PublicationsForm: () => <div>PublicationsForm</div> }))
+vi.mock('./forms/InterestsForm', () => ({ InterestsForm: () => <div>InterestsForm</div> }))
+vi.mock('./forms/ProjectsForm', () => ({ ProjectsForm: () => <div>ProjectsForm</div> }))
 vi.mock('./forms/CustomSectionForm', () => ({
   CustomSectionForm: ({ sectionId }: { sectionId: string }) => <div>CustomSectionForm:{sectionId}</div>,
 }))
@@ -126,15 +131,47 @@ describe('EditTab — built-in sections', () => {
   })
 })
 
-describe('EditTab — removed sections', () => {
-  it('does not render Certifications section', () => {
+describe('EditTab — sections absent from sectionOrder', () => {
+  // baseMeta's sectionOrder fixture only includes work/education/skills, so
+  // sections that exist as first-class forms (Sprint 2) but aren't listed
+  // still don't render — sectionOrder is the source of truth for visibility.
+  it('does not render Certificates section when absent from sectionOrder', () => {
     render(<EditTab />)
-    expect(screen.queryByRole('button', { name: /certifications/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^certificates/i })).toBeNull()
   })
 
-  it('does not render Awards section', () => {
+  it('does not render Awards section when absent from sectionOrder', () => {
     render(<EditTab />)
-    expect(screen.queryByRole('button', { name: /awards/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^awards/i })).toBeNull()
+  })
+})
+
+describe('EditTab — new native sections (Sprint 2)', () => {
+  it('renders Certificates, Awards, Publications, Interests, and Projects as accordion items with working forms when present in sectionOrder', () => {
+    setupStore({
+      sectionOrder: ['work', 'certificates', 'awards', 'publications', 'interests', 'projects'],
+    })
+    render(<EditTab />)
+    expect(screen.getByRole('button', { name: /^certificates/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^awards/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^publications/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^interests/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^projects/i })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /^certificates/i }))
+    expect(screen.getByText('CertificatesForm')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /^awards/i }))
+    expect(screen.getByText('AwardsForm')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /^publications/i }))
+    expect(screen.getByText('PublicationsForm')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /^interests/i }))
+    expect(screen.getByText('InterestsForm')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /^projects/i }))
+    expect(screen.getByText('ProjectsForm')).toBeTruthy()
   })
 })
 

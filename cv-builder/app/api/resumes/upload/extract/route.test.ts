@@ -117,9 +117,11 @@ describe('POST /api/resumes/upload/extract', () => {
     const res = await POST(req as never, {} as never) as Response
     expect(res.status).toBe(201)
     const meta = mockCreateResume.mock.calls[0][1].meta
-    expect(meta.sectionOrder).toEqual(
-      ['work', 'education', 'skills', 'volunteer', 'languages', 'custom:cs-military', 'custom:cs-projects']
-    )
+    expect(meta.sectionOrder).toEqual([
+      'work', 'education', 'skills', 'certificates', 'awards', 'publications',
+      'volunteer', 'languages', 'interests', 'projects',
+      'custom:cs-military', 'custom:cs-projects',
+    ])
   })
 
   it('returns 422 when extractResume throws ExtractionError', async () => {
