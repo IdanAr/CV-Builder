@@ -29,12 +29,14 @@ function ScoreBar({ value, max }: { value: number; max: number }) {
 
 type FixStatus = 'idle' | 'loading' | 'ready' | 'error'
 
+const EMPTY_EXCLUDED_KEYWORDS: string[] = []
+
 export function AtsScorePanel() {
   const resumeId = useResumeEditorStore((s) => s.resumeId)
   const data = useResumeEditorStore((s) => s.data)
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   const setData = useResumeEditorStore((s) => s.setData)
-  const excludedKeywords = useResumeEditorStore((s) => s.meta.excludedAtsKeywords ?? [])
+  const excludedKeywords = useResumeEditorStore((s) => s.meta.excludedAtsKeywords ?? EMPTY_EXCLUDED_KEYWORDS)
   const setMeta = useResumeEditorStore((s) => s.setMeta)
 
   const [jobDescription, setJobDescription] = useState('')
