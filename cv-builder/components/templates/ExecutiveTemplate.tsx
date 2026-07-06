@@ -12,7 +12,7 @@ function rt(text: string | undefined | null): React.ReactNode {
   return <span dangerouslySetInnerHTML={{ __html: richTextToHtml(text) }} />
 }
 
-const ALL_SECTIONS = ['work', 'education', 'skills', 'volunteer', 'languages']
+const ALL_SECTIONS = ['work', 'education', 'skills', 'certificates', 'awards', 'publications', 'volunteer', 'languages', 'interests', 'projects']
 
 export function ExecutiveTemplate({ data, meta }: TemplateProps) {
   const { basics = {} } = data
@@ -158,6 +158,106 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
                   <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
                     {(v.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      }
+      case 'certificates': {
+        const certificates = data.certificates ?? []
+        if (!certificates.length) return null
+        return (
+          <div key="certificates">
+            <div style={sectionTitle}>Certifications</div>
+            {certificates.map((c, i) => (
+              <div key={i} style={{ marginBottom: '6px', fontSize: '10pt' }}>
+                <strong>{c.name}</strong>
+                {c.issuer && <span style={{ color: '#666' }}> — {c.issuer}</span>}
+                {c.date && <span style={{ color: '#666' }}>  ·  {c.date}</span>}
+              </div>
+            ))}
+          </div>
+        )
+      }
+      case 'awards': {
+        const awards = data.awards ?? []
+        if (!awards.length) return null
+        return (
+          <div key="awards">
+            <div style={sectionTitle}>Awards</div>
+            {awards.map((a, i) => (
+              <div key={i} style={{ marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <strong>{a.title}</strong>
+                  <span style={{ fontSize: '10pt', color: '#666' }}>{a.date}</span>
+                </div>
+                {a.awarder && <div style={{ fontSize: '10pt', color: '#666' }}>{a.awarder}</div>}
+                {a.summary && <div style={{ fontSize: '10pt', textAlign: 'justify' }}>{a.summary}</div>}
+              </div>
+            ))}
+          </div>
+        )
+      }
+      case 'publications': {
+        const publications = data.publications ?? []
+        if (!publications.length) return null
+        return (
+          <div key="publications">
+            <div style={sectionTitle}>Publications</div>
+            {publications.map((p, i) => (
+              <div key={i} style={{ marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <strong>{p.name}</strong>
+                  <span style={{ fontSize: '10pt', color: '#666' }}>{p.releaseDate}</span>
+                </div>
+                {p.publisher && <div style={{ fontSize: '10pt', color: '#666' }}>{p.publisher}</div>}
+                {p.summary && <div style={{ fontSize: '10pt', textAlign: 'justify' }}>{p.summary}</div>}
+              </div>
+            ))}
+          </div>
+        )
+      }
+      case 'interests': {
+        const interests = data.interests ?? []
+        if (!interests.length) return null
+        return (
+          <div key="interests">
+            <div style={sectionTitle}>Interests</div>
+            <div style={{ fontSize: '10pt' }}>
+              {interests.map((int, i) => (
+                <React.Fragment key={i}>
+                  <strong>{int.name}</strong>
+                  {(int.keywords ?? []).length > 0 && <span style={{ color: '#555' }}>: {(int.keywords ?? []).join(', ')}</span>}
+                  {i < interests.length - 1 && '  |  '}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      case 'projects': {
+        const projects = data.projects ?? []
+        if (!projects.length) return null
+        return (
+          <div key="projects">
+            <div style={sectionTitle}>Projects</div>
+            {projects.map((p, i) => (
+              <div key={i} style={{ marginBottom: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <strong>{p.name}</strong>
+                  <span style={{ fontSize: '10pt', color: '#666' }}>
+                    {formatDateRange(p.startDate, p.endDate)}
+                  </span>
+                </div>
+                {p.description && <div style={{ fontSize: '10pt', marginTop: '3px', textAlign: 'justify' }}>{p.description}</div>}
+                {(p.highlights ?? []).length > 0 && (
+                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                    {(p.highlights ?? []).map((h, hi) => <li key={hi}>{h}</li>)}
+                  </ul>
+                )}
+                {(p.keywords ?? []).length > 0 && (
+                  <div style={{ fontSize: '10pt', color: '#666', marginTop: '2px' }}>{(p.keywords ?? []).join(', ')}</div>
                 )}
               </div>
             ))}

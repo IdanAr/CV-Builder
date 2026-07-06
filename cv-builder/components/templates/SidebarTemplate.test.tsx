@@ -37,6 +37,55 @@ describe('SidebarTemplate margin floor', () => {
   })
 })
 
+const newSectionsData: ResumeData = {
+  basics: { name: 'Jane Smith', label: 'Architect' },
+  certificates: [{ name: 'AWS Certified Architect', issuer: 'Amazon', date: '2022' }],
+  awards: [{ title: 'Employee of the Year', date: '2021', awarder: 'Acme Corp', summary: 'Recognized for leadership.' }],
+  publications: [{ name: 'Scaling Microservices', publisher: 'O\'Reilly', releaseDate: '2020', summary: 'A deep dive.' }],
+  interests: [{ name: 'Chess', keywords: ['Strategy', 'Puzzles'] }],
+  projects: [{ name: 'Open Source CLI', description: 'A CLI tool.', highlights: ['10k downloads'], keywords: ['Node.js'] }],
+}
+
+describe('SidebarTemplate new sections in main column', () => {
+  it('renders certificates, awards, publications, interests, and projects', () => {
+    const newSectionsMeta: ResumeMeta = {
+      ...meta,
+      sectionOrder: ['certificates', 'awards', 'publications', 'interests', 'projects'],
+    }
+    const { container } = render(<SidebarTemplate data={newSectionsData} meta={newSectionsMeta} />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('AWS Certified Architect')
+    expect(text).toContain('Employee of the Year')
+    expect(text).toContain('Scaling Microservices')
+    expect(text).toContain('Chess')
+    expect(text).toContain('Open Source CLI')
+  })
+})
+
+describe('SidebarTemplate new sections in rail', () => {
+  it('renders certificates, awards, publications, interests, and projects when assigned to the left rail', () => {
+    const newSectionsMeta: ResumeMeta = {
+      ...meta,
+      sectionOrder: ['certificates', 'awards', 'publications', 'interests', 'projects'],
+      columnAssignment: {
+        certificates: 'left',
+        awards: 'left',
+        publications: 'left',
+        interests: 'left',
+        projects: 'left',
+      },
+    }
+    const { container } = render(<SidebarTemplate data={newSectionsData} meta={newSectionsMeta} />)
+    const page = container.firstChild as HTMLElement
+    const rail = page.children[0] as HTMLElement
+    expect(rail.textContent).toContain('AWS Certified Architect')
+    expect(rail.textContent).toContain('Employee of the Year')
+    expect(rail.textContent).toContain('Scaling Microservices')
+    expect(rail.textContent).toContain('Chess')
+    expect(rail.textContent).toContain('Open Source CLI')
+  })
+})
+
 describe('SidebarTemplate rail typography bands', () => {
   it('renders rail section titles at 12pt', () => {
     const { getByText } = render(<SidebarTemplate data={data} meta={meta} />)
