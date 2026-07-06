@@ -110,12 +110,27 @@ describe('runAtsFixPipeline', () => {
     expect(fixes[0].pendingApprovals).toEqual(expect.arrayContaining(['45%', '12']))
   })
 
-  it('returns empty pendingApprovals when suggested adds no new numeric claims', async () => {
+  it('flags a technology injected into suggested text that is absent from the original', async () => {
     mockClaudeResponse([
       {
         sectionIndex: 1,
         original: 'Built a dashboard used by 200 users',
         suggested: 'Built a React dashboard used by 200 users',
+        targetKeywords: ['react'],
+      },
+    ])
+
+    const fixes = await runAtsFixPipeline(sampleData, ['react'])
+    expect(fixes).toHaveLength(1)
+    expect(fixes[0].pendingApprovals).toEqual(['react'])
+  })
+
+  it('returns empty pendingApprovals when suggested adds no new claims', async () => {
+    mockClaudeResponse([
+      {
+        sectionIndex: 1,
+        original: 'Built a dashboard used by 200 users',
+        suggested: 'Built a dashboard that was adopted by 200 users',
         targetKeywords: ['react'],
       },
     ])

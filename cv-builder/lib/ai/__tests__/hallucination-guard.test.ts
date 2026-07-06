@@ -63,4 +63,28 @@ describe('detectHallucinations', () => {
     )
     expect(result).not.toContain('5')
   })
+
+  it('flags a technology in generated text that is absent from the original input', () => {
+    const result = detectHallucinations(
+      'built a data pipeline for reporting',
+      'Built a Kubernetes data pipeline for reporting'
+    )
+    expect(result).toContain('kubernetes')
+  })
+
+  it('does not flag a technology already present in the original input', () => {
+    const result = detectHallucinations(
+      'built a kubernetes data pipeline for reporting',
+      'Built a Kubernetes data pipeline for reporting'
+    )
+    expect(result).toHaveLength(0)
+  })
+
+  it('does not flag ordinary hyphenated phrases as invented skills', () => {
+    const result = detectHallucinations(
+      'led a small team',
+      'Led a cross-functional team to deliver the project on time'
+    )
+    expect(result).toHaveLength(0)
+  })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractKeywords, keywordOverlap, matchesKeyword } from '../keywords'
+import { extractKeywords, extractTechTerms, keywordOverlap, matchesKeyword } from '../keywords'
 
 describe('extractKeywords', () => {
   it('removes literal stop words like articles and conjunctions', () => {
@@ -133,6 +133,39 @@ describe('matchesKeyword', () => {
   it('matches at string boundaries and around punctuation', () => {
     expect(matchesKeyword('python', 'python')).toBe(true)
     expect(matchesKeyword('skills: python, sql.', 'python')).toBe(true)
+  })
+})
+
+describe('extractTechTerms', () => {
+  it('detects a known dictionary term in lowercase text', () => {
+    const result = extractTechTerms('migrated legacy services to kubernetes for autoscaling')
+    expect(result).toContain('kubernetes')
+  })
+
+  it('detects a PascalCase product name not in the dictionary', () => {
+    const result = extractTechTerms('Rolled out feature flags with LaunchDarkly across three squads')
+    expect(result).toContain('launchdarkly')
+  })
+
+  it('does not flag ordinary hyphenated business phrases in a short generated sentence', () => {
+    const result = extractTechTerms(
+      'Led a cross-functional team to deliver a customer-facing portal on time'
+    )
+    expect(result).not.toContain('cross-functional')
+    expect(result).not.toContain('customer-facing')
+    expect(result).not.toContain('cross')
+    expect(result).not.toContain('functional')
+    expect(result).toEqual([])
+  })
+
+  it('does not flag sentence-initial capitalized ordinary words', () => {
+    const result = extractTechTerms('Delivered the project ahead of schedule')
+    expect(result).toEqual([])
+  })
+
+  it('returns unique lowercase terms', () => {
+    const result = extractTechTerms('Kubernetes deployment on kubernetes clusters')
+    expect(result.filter(t => t === 'kubernetes')).toHaveLength(1)
   })
 })
 

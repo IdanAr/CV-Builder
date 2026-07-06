@@ -14,7 +14,7 @@ export interface AtsFix {
   original: string
   suggested: string
   targetKeywords: string[]
-  /** Numeric claims in `suggested` absent from the original text — require explicit user approval. */
+  /** Numeric claims and skill/technology terms in `suggested` absent from the original text — require explicit user approval. */
   pendingApprovals: string[]
 }
 
