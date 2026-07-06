@@ -1,6 +1,6 @@
 # Sprint 4 — AI Pipeline Quality Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Two of the three items from the original Sprint 4 scope (multi-model routing to Groq was explicitly deferred by the user — it needs an external API key/account they haven't set up, unlike these two, which are self-contained improvements to the existing Claude-only pipeline):
 1. `lib/ai/pipeline.ts`'s Teacher-Student Council currently refines once and never re-checks the fix — a bounded re-critique loop closes that gap.
@@ -52,14 +52,14 @@ This bounds the pipeline at 1 generate + up to 2 critique + up to 2 refine = 5 c
 **Test updates required (read carefully — this changes an existing test's expected call count, not just adds new tests):**
 - The existing test `'calls refinement (third Anthropic call) when critique finds issues'` mocks exactly 3 responses (generate, critique-fail, refine-fix) and asserts `toHaveBeenCalledTimes(3)`. Under the new loop, after that refine the code now calls `critique` a second time (round 2) — the mock queue has no 4th response queued, so this test will now throw/fail. Update it: add a 4th mocked response of `'APPROVED'` (the second critique approving the refined text), and change the assertion to `toHaveBeenCalledTimes(4)`.
 
-- [ ] **Step 1: Write/update failing tests first.**
+- [x] **Step 1: Write/update failing tests first.**
   - Update the test above to the 4-call/APPROVED-on-round-2 scenario.
   - Add a new test: `'re-critiques after refinement and refines again if still not approved, bounded at 2 rounds'` — mock 5 responses (generate → critique-fail → refine → critique-fail-again → refine-again), assert `toHaveBeenCalledTimes(5)` and that `result.suggestion` equals the final (5th) refine's output — proving the loop runs a genuine second refine round and then stops (doesn't attempt a 3rd critique).
   - Confirm the existing `'returns generated text when critique is APPROVED (no refinement call)'` test still passes unmodified (it should — first-critique-approves is unaffected by this change) and still asserts exactly 2 calls.
-- [ ] **Step 2: Run `lib/ai/__tests__/pipeline.test.ts`, confirm the updated/new tests fail** against the current one-shot implementation.
-- [ ] **Step 3: Apply the code change above.**
-- [ ] **Step 4: Run tests, confirm all pass**, including the other existing tests in this file (jobTitle/company passthrough, summary field, pendingApprovals cases) — none of those should need changes.
-- [ ] **Step 5: Commit.**
+- [x] **Step 2: Run `lib/ai/__tests__/pipeline.test.ts`, confirm the updated/new tests fail** against the current one-shot implementation.
+- [x] **Step 3: Apply the code change above.**
+- [x] **Step 4: Run tests, confirm all pass**, including the other existing tests in this file (jobTitle/company passthrough, summary field, pendingApprovals cases) — none of those should need changes.
+- [x] **Step 5: Commit.**
 
 ---
 
@@ -127,21 +127,21 @@ export function detectHallucinations(originalInput: string, generatedText: strin
 }
 ```
 
-- [ ] **Step 1: Write failing tests.**
+- [x] **Step 1: Write failing tests.**
   - In `lib/ats/__tests__/keywords.test.ts`: add tests for `extractTechTerms` — a known dictionary term (e.g. "kubernetes") is detected in lowercase text; a PascalCase term not in the dictionary (e.g. "LaunchDarkly") is detected; an ordinary hyphenated business phrase (e.g. "cross-functional", "customer-facing") is NOT detected (this is the specific false-positive this task exists to avoid) — this is the test that would have caught the design mistake of reusing `extractKeywords` wholesale.
   - In `lib/ai/__tests__/hallucination-guard.test.ts`: add a test that a technology mentioned in generated text but absent from original input is flagged (e.g. original `'built a data pipeline for reporting'`, generated `'Built a Kubernetes data pipeline for reporting'`, expect result to contain `'kubernetes'`); add a test that a technology already present in the original input is NOT flagged; add a test using an ordinary hyphenated phrase (matching the audit's own example) confirming it's still not flagged as an invented skill (e.g. original `'led a small team'`, generated `'Led a cross-functional team to deliver the project on time'`, expect `result` to be empty).
   - Run all existing tests in both files first and confirm they still pass unmodified before adding new ones (sanity check that the existing numeric-claim tests are unaffected) — do not weaken any existing assertion.
-- [ ] **Step 2: Run tests, confirm the new ones fail** (function/behavior doesn't exist yet).
-- [ ] **Step 3: Implement `extractTechTerms` and the `detectHallucinations` change above.**
-- [ ] **Step 4: Run tests, confirm all pass.** Then run the full `lib/ai` and `lib/ats` test directories (not just these two files) — `detectHallucinations` is called from `ats-fix-pipeline.ts` too, and its existing tests may now surface previously-uncaught `pendingApprovals` if any test fixture's "suggested" text happens to contain a recognizable tech term absent from its "original" text. If any such test needs updating, update its expectations to reflect the new, correct, more-thorough behavior — don't weaken the new detection to make an old fixture pass.
-- [ ] **Step 5: Commit.**
+- [x] **Step 2: Run tests, confirm the new ones fail** (function/behavior doesn't exist yet).
+- [x] **Step 3: Implement `extractTechTerms` and the `detectHallucinations` change above.**
+- [x] **Step 4: Run tests, confirm all pass.** Then run the full `lib/ai` and `lib/ats` test directories (not just these two files) — `detectHallucinations` is called from `ats-fix-pipeline.ts` too, and its existing tests may now surface previously-uncaught `pendingApprovals` if any test fixture's "suggested" text happens to contain a recognizable tech term absent from its "original" text. If any such test needs updating, update its expectations to reflect the new, correct, more-thorough behavior — don't weaken the new detection to make an old fixture pass.
+- [x] **Step 5: Commit.**
 
 ---
 
 ### Task 3: Final verification gate
 
-- [ ] Run `npx vitest run` from `cv-builder/` — full suite must be green. Note before/after test counts (baseline going into this sprint: 58 files / 498 tests, per the current state of `feat/sprint3-job-tailoring-workspace` — but this sprint branches from `main`, so the true baseline will be lower; report the actual starting number, don't assume it matches Sprint 3's branch).
-- [ ] Run `npx tsc --noEmit` — must be clean.
-- [ ] Run `npm run build` — must succeed.
-- [ ] Write a task-by-task report: commit hashes, test counts before/after per task, any deviations from this plan, and open decisions for the human (e.g. whether `MAX_REFINE_ROUNDS = 2` is the right bound, or whether the deferred Groq routing should be its own future sprint).
-- [ ] **No push, merge, or PR** — stop here and report, exactly as in Sprints 1–3.
+- [x] Run `npx vitest run` from `cv-builder/` — full suite must be green. Note before/after test counts (baseline going into this sprint: 58 files / 498 tests, per the current state of `feat/sprint3-job-tailoring-workspace` — but this sprint branches from `main`, so the true baseline will be lower; report the actual starting number, don't assume it matches Sprint 3's branch).
+- [x] Run `npx tsc --noEmit` — must be clean.
+- [x] Run `npm run build` — must succeed.
+- [x] Write a task-by-task report: commit hashes, test counts before/after per task, any deviations from this plan, and open decisions for the human (e.g. whether `MAX_REFINE_ROUNDS = 2` is the right bound, or whether the deferred Groq routing should be its own future sprint).
+- [x] **No push, merge, or PR** — stop here and report, exactly as in Sprints 1–3.
