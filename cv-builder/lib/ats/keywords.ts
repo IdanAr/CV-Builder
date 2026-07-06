@@ -104,11 +104,16 @@ export function extractKeywords(text: string): string[] {
   })
 }
 
-// Curated dictionary of well-known technology/skill terms (lowercase).
-// Deliberately excludes tokens that double as ordinary English words in
-// resume prose (e.g. "rest", "spring", "express", "chef", "puppet") —
-// precision matters more than recall for the hallucination guard.
-const TECH_TERMS = new Set([
+// Curated dictionary of well-known technology/skill terms (lowercase), used
+// only by extractTechTerms() below — deliberately a separate, narrower set
+// from TECH_TERMS above (which powers extractKeywords() for JD parsing).
+// This one excludes tokens that double as ordinary English words in resume
+// prose (e.g. "rest", "spring", "express", "chef", "puppet" — all present in
+// the broader TECH_TERMS set) because precision matters more than recall for
+// the hallucination guard: flagging "took a well-deserved rest" as an
+// invented technology would be a worse failure than missing an occasional
+// real one.
+const SKILL_TERMS = new Set([
   'kubernetes', 'docker', 'terraform', 'ansible', 'jenkins', 'helm',
   'aws', 'azure', 'gcp', 'lambda', 'ec2', 'cloudformation',
   'react', 'angular', 'vue', 'svelte', 'nextjs', 'next.js', 'nuxt',
@@ -130,23 +135,14 @@ const TECH_TERMS = new Set([
   'html', 'css', 'json', 'xml', 'yaml', 'matlab',
 ])
 
-// Tokenizer that preserves original casing so downstream checks can use
-// casing signals (acronyms, PascalCase). Keeps ., +, # inside tokens for
-// terms like "node.js", "c++", "c#"; strips leading/trailing dots.
-function tokenizeWithCase(text: string): string[] {
-  return text
-    .replace(/[^a-zA-Z0-9\s.+#]/g, ' ')
-    .split(/\s+/)
-    .map(w => w.replace(/^\.+|\.+$/g, ''))
-    .filter(Boolean)
-}
-
-// Strict casing signal for product/technology names. Deliberately does NOT
-// count plain Capitalized words — those are usually just sentence-initial
-// ("Led", "Built") — only all-caps acronyms (AWS, SQL) and mixed-case names
-// with an internal capital following a lowercase letter (LaunchDarkly,
-// GitHub, PostgreSQL).
-function looksLikeProperNounOrAcronym(token: string): boolean {
+// Strict casing signal for product/technology names, used only by
+// extractTechTerms() — deliberately separate (and stricter) than
+// looksLikeProperNounOrAcronym() above, which extractKeywords() uses for JD
+// parsing. This one does NOT count plain Capitalized words — those are
+// usually just sentence-initial ("Led", "Built") — only all-caps acronyms of
+// 3+ chars (AWS, SQL) and mixed-case names with an internal capital
+// following a lowercase letter (LaunchDarkly, GitHub, PostgreSQL).
+function looksLikeStrictAcronymOrCamelCase(token: string): boolean {
   if (/^[A-Z][A-Z0-9]{2,}$/.test(token)) return true
   if (/[a-z][A-Z]/.test(token)) return true
   return false
@@ -156,7 +152,7 @@ function looksLikeProperNounOrAcronym(token: string): boolean {
  * Conservative technology/skill-term detector for short AI-generated text
  * (a single bullet or summary), used by the hallucination guard. Unlike
  * extractKeywords() — tuned for parsing long job descriptions — this only
- * matches the curated TECH_TERMS dictionary or a strict proper-noun/acronym
+ * matches the curated SKILL_TERMS dictionary or a strict proper-noun/acronym
  * casing signal. It deliberately skips the hyphen/digit/repetition
  * heuristics extractKeywords uses, since those produce false positives on
  * short text (e.g. flagging the ordinary phrase "cross-functional" as an
@@ -169,7 +165,7 @@ export function extractTechTerms(text: string): string[] {
   for (const raw of rawTokens) {
     const lower = raw.toLowerCase()
     if (lower.length < 3 || seen.has(lower)) continue
-    if (TECH_TERMS.has(lower) || looksLikeProperNounOrAcronym(raw)) {
+    if (SKILL_TERMS.has(lower) || looksLikeStrictAcronymOrCamelCase(raw)) {
       seen.add(lower)
       found.push(lower)
     }
