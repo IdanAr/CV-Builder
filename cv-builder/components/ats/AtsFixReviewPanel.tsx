@@ -59,16 +59,25 @@ export function AtsFixReviewPanel({
             </div>
           )}
 
-          <div className="space-y-1 text-sm">
-            <div className="rounded bg-red-50 border border-red-100 px-3 py-2">
-              <p className="text-xs text-red-500 font-medium mb-0.5">Before</p>
-              <p className="text-red-800 leading-relaxed line-through opacity-70">{fix.original}</p>
+          {fix.kind === 'generate' ? (
+            <div className="text-sm">
+              <div className="rounded bg-green-50 border border-green-100 px-3 py-2">
+                <p className="text-xs text-green-600 font-medium mb-0.5">New professional summary</p>
+                <p className="text-green-900 leading-relaxed">{fix.suggested}</p>
+              </div>
             </div>
-            <div className="rounded bg-green-50 border border-green-100 px-3 py-2">
-              <p className="text-xs text-green-600 font-medium mb-0.5">After</p>
-              <p className="text-green-900 leading-relaxed">{fix.suggested}</p>
+          ) : (
+            <div className="space-y-1 text-sm">
+              <div className="rounded bg-red-50 border border-red-100 px-3 py-2">
+                <p className="text-xs text-red-500 font-medium mb-0.5">Before</p>
+                <p className="text-red-800 leading-relaxed line-through opacity-70">{fix.original}</p>
+              </div>
+              <div className="rounded bg-green-50 border border-green-100 px-3 py-2">
+                <p className="text-xs text-green-600 font-medium mb-0.5">After</p>
+                <p className="text-green-900 leading-relaxed">{fix.suggested}</p>
+              </div>
             </div>
-          </div>
+          )}
 
           {fix.pendingApprovals.length > 0 && (
             <div className="rounded bg-amber-50 border border-amber-200 px-3 py-2">
