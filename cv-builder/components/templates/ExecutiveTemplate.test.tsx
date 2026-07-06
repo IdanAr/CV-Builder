@@ -23,6 +23,32 @@ const data: ResumeData = {
   skills: [{ name: 'Leadership' }],
 }
 
+const newSectionsData: ResumeData = {
+  basics: { name: 'Jane Smith', label: 'CTO' },
+  certificates: [{ name: 'AWS Certified Architect', issuer: 'Amazon', date: '2022' }],
+  awards: [{ title: 'Employee of the Year', date: '2021', awarder: 'Acme Corp', summary: 'Recognized for leadership.' }],
+  publications: [{ name: 'Scaling Microservices', publisher: 'O\'Reilly', releaseDate: '2020', summary: 'A deep dive.' }],
+  interests: [{ name: 'Chess', keywords: ['Strategy', 'Puzzles'] }],
+  projects: [{ name: 'Open Source CLI', description: 'A CLI tool.', highlights: ['10k downloads'], keywords: ['Node.js'] }],
+}
+
+const newSectionsMeta: ResumeMeta = {
+  ...meta,
+  sectionOrder: ['certificates', 'awards', 'publications', 'interests', 'projects'],
+}
+
+describe('ExecutiveTemplate new sections', () => {
+  it('renders certificates, awards, publications, interests, and projects', () => {
+    const { container } = render(<ExecutiveTemplate data={newSectionsData} meta={newSectionsMeta} />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('AWS Certified Architect')
+    expect(text).toContain('Employee of the Year')
+    expect(text).toContain('Scaling Microservices')
+    expect(text).toContain('Chess')
+    expect(text).toContain('Open Source CLI')
+  })
+})
+
 describe('ExecutiveTemplate layout', () => {
   it('renders a single column by default', () => {
     const { container } = render(<ExecutiveTemplate data={data} meta={meta} />)

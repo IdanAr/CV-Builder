@@ -13,7 +13,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
 
   const bodyFont = mapToPdfFont(meta.fontFamily)
   const headFont = mapToPdfFont(meta.headerFontFamily)
-  const margin = inToPt(Math.max(meta.pageMargins * 0.7, 0.35))
+  const margin = inToPt(Math.max(meta.pageMargins * 0.7, 0.5))
   const sectionOrder = resolveSectionOrder(meta)
 
   const ca = meta.columnAssignment ?? {}
@@ -28,18 +28,18 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
     railName: { fontFamily: headFont, fontSize: 18, fontWeight: 'bold', color: '#ffffff', lineHeight: 1.1 },
     railLabel: { fontSize: 10.5, color: 'rgba(255,255,255,0.85)', marginTop: 2.25 },
     railContact: { marginTop: 9 },
-    railContactLine: { fontSize: 9, color: 'rgba(255,255,255,0.9)', lineHeight: 1.9 },
+    railContactLine: { fontSize: 10, color: 'rgba(255,255,255,0.9)', lineHeight: 1.9 },
     railSectionTitle: {
-      fontFamily: headFont, fontSize: 10, fontWeight: 'bold', color: '#ffffff',
+      fontFamily: headFont, fontSize: 12, fontWeight: 'bold', color: '#ffffff',
       textTransform: 'uppercase', letterSpacing: 1,
       borderBottomWidth: 0.75, borderBottomColor: 'rgba(255,255,255,0.35)',
       paddingBottom: 2.25, marginTop: 13.5, marginBottom: 5.25,
     },
-    railBody: { fontSize: 9.5, color: 'rgba(255,255,255,0.9)', lineHeight: 1.6 },
-    railLang: { fontSize: 9.5, color: '#ffffff', lineHeight: 1.7 },
-    railBold: { fontWeight: 'bold', color: '#ffffff', fontSize: 9.5 },
-    railMuted: { color: 'rgba(255,255,255,0.8)', fontSize: 9.5 },
-    railKeywords: { color: 'rgba(255,255,255,0.85)', fontSize: 9.5 },
+    railBody: { fontSize: 10, color: 'rgba(255,255,255,0.9)', lineHeight: 1.6 },
+    railLang: { fontSize: 10, color: '#ffffff', lineHeight: 1.7 },
+    railBold: { fontWeight: 'bold', color: '#ffffff', fontSize: 10 },
+    railMuted: { color: 'rgba(255,255,255,0.8)', fontSize: 10 },
+    railKeywords: { color: 'rgba(255,255,255,0.85)', fontSize: 10 },
 
     // Main column
     main: { flex: 1, padding: margin, paddingTop: margin },

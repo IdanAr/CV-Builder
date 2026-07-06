@@ -166,7 +166,18 @@ export const ResumeMetaSchema = z.object({
   lineSpacing: z.number().min(1.0).max(1.15).default(1.15),
   sectionOrder: z
     .array(z.string())
-    .default(['work', 'education', 'skills', 'volunteer', 'languages']),
+    .default([
+      'work',
+      'education',
+      'skills',
+      'certificates',
+      'awards',
+      'publications',
+      'volunteer',
+      'languages',
+      'interests',
+      'projects',
+    ]),
   layout: z.enum(['single-column', 'two-column']).default('single-column'),
   columnAssignment: z.record(z.string(), z.enum(['left', 'right'])).default({}),
 })

@@ -125,6 +125,49 @@ describe('buildDocx', () => {
   })
 })
 
+describe('buildDocx ATS typography bands (Sidebar rail + Executive name)', () => {
+  async function docXml(doc: ReturnType<typeof buildDocx>): Promise<string> {
+    const buffer = await Packer.toBuffer(doc)
+    const zip = await JSZip.loadAsync(buffer)
+    return zip.file('word/document.xml')!.async('string')
+  }
+
+  it('sidebar rail section headings render at 12pt (w:sz 24, half-points)', async () => {
+    const meta: ResumeMeta = { ...defaultMeta, templateId: 'sidebar', primaryColor: '#1e3a5f' }
+    const xml = await docXml(buildDocx({ ...sampleData, languages: [{ language: 'English', fluency: 'Native' }] }, meta))
+    // The rail heading run for "SKILLS" must carry sz=24 (12pt), not the old sz=20 (10pt)
+    const skillsHeadingRunMatch = xml.match(/<w:r>(?:(?!<w:r>)[\s\S])*?SKILLS(?:(?!<w:r>)[\s\S])*?<\/w:r>/)
+    expect(skillsHeadingRunMatch).not.toBeNull()
+    expect(skillsHeadingRunMatch![0]).toContain('w:sz w:val="24"')
+    expect(skillsHeadingRunMatch![0]).not.toContain('w:sz w:val="20"')
+  })
+
+  it('sidebar rail body/contact text renders at 10pt (w:sz 20, half-points), never below', async () => {
+    const meta: ResumeMeta = { ...defaultMeta, templateId: 'sidebar', primaryColor: '#1e3a5f' }
+    const xml = await docXml(buildDocx({ ...sampleData, languages: [{ language: 'English', fluency: 'Native' }] }, meta))
+    // Rail contact text (email) must not use the old 9pt (sz=18) size
+    const emailRunMatch = xml.match(/<w:r>(?:(?!<w:r>)[\s\S])*?jane@test\.com(?:(?!<w:r>)[\s\S])*?<\/w:r>/)
+    expect(emailRunMatch).not.toBeNull()
+    expect(emailRunMatch![0]).not.toContain('w:sz w:val="18"')
+    expect(emailRunMatch![0]).toContain('w:sz w:val="20"')
+    // Rail body text (skills keywords, which sit in the rail by default) must not
+    // use the old 9.5pt (sz=19) size
+    const keywordsRunMatch = xml.match(/<w:r>(?:(?!<w:r>)[\s\S])*?Node\.js(?:(?!<w:r>)[\s\S])*?<\/w:r>/)
+    expect(keywordsRunMatch).not.toBeNull()
+    expect(keywordsRunMatch![0]).not.toContain('w:sz w:val="19"')
+    expect(keywordsRunMatch![0]).toContain('w:sz w:val="20"')
+  })
+
+  it('executive name renders at 22pt (w:sz 44, half-points), not the old 26pt', async () => {
+    const meta: ResumeMeta = { ...defaultMeta, templateId: 'executive' }
+    const xml = await docXml(buildDocx(sampleData, meta))
+    const nameRunMatch = xml.match(/<w:r>(?:(?!<w:r>)[\s\S])*?Jane Smith(?:(?!<w:r>)[\s\S])*?<\/w:r>/)
+    expect(nameRunMatch).not.toBeNull()
+    expect(nameRunMatch![0]).toContain('w:sz w:val="44"')
+    expect(nameRunMatch![0]).not.toContain('w:sz w:val="52"')
+  })
+})
+
 describe('buildDocx ats mode', () => {
   async function docXml(doc: ReturnType<typeof buildDocx>): Promise<string> {
     const buffer = await Packer.toBuffer(doc)

@@ -12,11 +12,11 @@ function rt(text: string | undefined | null): React.ReactNode {
   return <span dangerouslySetInnerHTML={{ __html: richTextToHtml(text) }} />
 }
 
-const ALL_SECTIONS = ['work', 'education', 'skills', 'volunteer', 'languages']
+const ALL_SECTIONS = ['work', 'education', 'skills', 'certificates', 'awards', 'publications', 'volunteer', 'languages', 'interests', 'projects']
 
 export function SidebarTemplate({ data, meta }: TemplateProps) {
   const { basics = {} } = data
-  const pad = Math.max(meta.pageMargins * 96 * 0.7, 34)
+  const pad = Math.max(meta.pageMargins * 96 * 0.7, 48)
   const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : ALL_SECTIONS
 
   const page: React.CSSProperties = {
@@ -34,7 +34,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
 
   const railTitleStyle: React.CSSProperties = {
     fontFamily: `${meta.headerFontFamily}, Arial, sans-serif`,
-    fontSize: '10pt',
+    fontSize: '12pt',
     fontWeight: 700,
     color: '#fff',
     textTransform: 'uppercase',
@@ -143,6 +143,106 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
           </div>
         )
       }
+      case 'certificates': {
+        const certificates = data.certificates ?? []
+        if (!certificates.length) return null
+        return (
+          <div key="certificates">
+            <div style={mainTitleStyle}>Certifications</div>
+            {certificates.map((c, i) => (
+              <div key={i} style={{ marginBottom: '6px', fontSize: '10pt' }}>
+                <strong>{c.name}</strong>
+                {c.issuer && <span style={{ color: '#666' }}> — {c.issuer}</span>}
+                {c.date && <span style={{ color: '#666' }}>  ·  {c.date}</span>}
+              </div>
+            ))}
+          </div>
+        )
+      }
+      case 'awards': {
+        const awards = data.awards ?? []
+        if (!awards.length) return null
+        return (
+          <div key="awards">
+            <div style={mainTitleStyle}>Awards</div>
+            {awards.map((a, i) => (
+              <div key={i} style={{ marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <strong>{a.title}</strong>
+                  <span style={{ fontSize: '10pt', color: '#666' }}>{a.date}</span>
+                </div>
+                {a.awarder && <div style={{ fontSize: '10pt', color: '#666' }}>{a.awarder}</div>}
+                {a.summary && <div style={{ fontSize: '10pt' }}>{a.summary}</div>}
+              </div>
+            ))}
+          </div>
+        )
+      }
+      case 'publications': {
+        const publications = data.publications ?? []
+        if (!publications.length) return null
+        return (
+          <div key="publications">
+            <div style={mainTitleStyle}>Publications</div>
+            {publications.map((p, i) => (
+              <div key={i} style={{ marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <strong>{p.name}</strong>
+                  <span style={{ fontSize: '10pt', color: '#666' }}>{p.releaseDate}</span>
+                </div>
+                {p.publisher && <div style={{ fontSize: '10pt', color: '#666' }}>{p.publisher}</div>}
+                {p.summary && <div style={{ fontSize: '10pt' }}>{p.summary}</div>}
+              </div>
+            ))}
+          </div>
+        )
+      }
+      case 'interests': {
+        const interests = data.interests ?? []
+        if (!interests.length) return null
+        return (
+          <div key="interests">
+            <div style={mainTitleStyle}>Interests</div>
+            <div style={{ fontSize: '10pt' }}>
+              {interests.map((int, i) => (
+                <React.Fragment key={i}>
+                  <strong>{int.name}</strong>
+                  {(int.keywords ?? []).length > 0 && <span style={{ color: '#555' }}>: {(int.keywords ?? []).join(', ')}</span>}
+                  {i < interests.length - 1 && '  |  '}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      case 'projects': {
+        const projects = data.projects ?? []
+        if (!projects.length) return null
+        return (
+          <div key="projects">
+            <div style={mainTitleStyle}>Projects</div>
+            {projects.map((p, i) => (
+              <div key={i} style={{ marginBottom: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <strong>{p.name}</strong>
+                  <span style={{ fontSize: '10pt', color: '#666' }}>
+                    {formatDateRange(p.startDate, p.endDate)}
+                  </span>
+                </div>
+                {p.description && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{p.description}</div>}
+                {(p.highlights ?? []).length > 0 && (
+                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                    {(p.highlights ?? []).map((h, hi) => <li key={hi}>{h}</li>)}
+                  </ul>
+                )}
+                {(p.keywords ?? []).length > 0 && (
+                  <div style={{ fontSize: '10pt', color: '#666', marginTop: '2px' }}>{(p.keywords ?? []).join(', ')}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      }
       default:
         return null
     }
@@ -169,7 +269,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         {basics.label && (
           <div style={{ fontSize: '10.5pt', opacity: 0.85, marginTop: '3px' }}>{basics.label}</div>
         )}
-        <div style={{ fontSize: '9pt', opacity: 0.9, marginTop: '12px', lineHeight: 1.9, wordBreak: 'break-word' }}>
+        <div style={{ fontSize: '10pt', opacity: 0.9, marginTop: '12px', lineHeight: 1.9, wordBreak: 'break-word' }}>
           {[
             basics.email,
             basics.phone,
@@ -182,7 +282,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         {railSections.includes('skills') && (data.skills ?? []).length > 0 && (
           <div>
             <div style={railTitleStyle}>Skills</div>
-            <div style={{ fontSize: '9.5pt', lineHeight: 1.6 }}>
+            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
               {(data.skills ?? []).map((s, i) => (
                 <div key={i} style={{ marginBottom: '6px' }}>
                   <div style={{ fontWeight: 600 }}>
@@ -202,11 +302,93 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         {railSections.includes('languages') && (data.languages ?? []).length > 0 && (
           <div>
             <div style={railTitleStyle}>Languages</div>
-            <div style={{ fontSize: '9.5pt', lineHeight: 1.7 }}>
+            <div style={{ fontSize: '10pt', lineHeight: 1.7 }}>
               {(data.languages ?? []).map((l, i) => (
                 <div key={i}>
                   <strong>{l.language}</strong>
                   {l.fluency && <span style={{ opacity: 0.85 }}> - {l.fluency}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Rail: certificates */}
+        {railSections.includes('certificates') && (data.certificates ?? []).length > 0 && (
+          <div>
+            <div style={railTitleStyle}>Certifications</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
+              {(data.certificates ?? []).map((c, i) => (
+                <div key={i} style={{ marginBottom: '6px' }}>
+                  <strong>{c.name}</strong>
+                  {c.issuer && <span style={{ opacity: 0.85 }}> — {c.issuer}</span>}
+                  {c.date && <span style={{ opacity: 0.8 }}>  ·  {c.date}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Rail: awards */}
+        {railSections.includes('awards') && (data.awards ?? []).length > 0 && (
+          <div>
+            <div style={railTitleStyle}>Awards</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
+              {(data.awards ?? []).map((a, i) => (
+                <div key={i} style={{ marginBottom: '6px' }}>
+                  <strong>{a.title}</strong>
+                  {a.date && <span style={{ opacity: 0.8 }}>  ·  {a.date}</span>}
+                  {a.awarder && <div style={{ opacity: 0.85 }}>{a.awarder}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Rail: publications */}
+        {railSections.includes('publications') && (data.publications ?? []).length > 0 && (
+          <div>
+            <div style={railTitleStyle}>Publications</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
+              {(data.publications ?? []).map((p, i) => (
+                <div key={i} style={{ marginBottom: '6px' }}>
+                  <strong>{p.name}</strong>
+                  {p.releaseDate && <span style={{ opacity: 0.8 }}>  ·  {p.releaseDate}</span>}
+                  {p.publisher && <div style={{ opacity: 0.85 }}>{p.publisher}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Rail: interests */}
+        {railSections.includes('interests') && (data.interests ?? []).length > 0 && (
+          <div>
+            <div style={railTitleStyle}>Interests</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
+              {(data.interests ?? []).map((int, i) => (
+                <div key={i}>
+                  <strong>{int.name}</strong>
+                  {(int.keywords ?? []).length > 0 && <span style={{ opacity: 0.85 }}>: {(int.keywords ?? []).join(', ')}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Rail: projects */}
+        {railSections.includes('projects') && (data.projects ?? []).length > 0 && (
+          <div>
+            <div style={railTitleStyle}>Projects</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
+              {(data.projects ?? []).map((p, i) => (
+                <div key={i} style={{ marginBottom: '6px' }}>
+                  <strong>{p.name}</strong>
+                  {formatDateRange(p.startDate, p.endDate) && (
+                    <span style={{ opacity: 0.8 }}>  ·  {formatDateRange(p.startDate, p.endDate)}</span>
+                  )}
+                  {p.description && <div style={{ opacity: 0.9 }}>{p.description}</div>}
+                  {(p.highlights ?? []).map((h, hi) => <div key={hi} style={{ opacity: 0.9 }}>• {h}</div>)}
                 </div>
               ))}
             </div>

@@ -68,7 +68,10 @@ export async function extractResume(text: string): Promise<ResumeData> {
 
   const normalized = normalizeCustomSections(sanitizeForSchema(parsed))
   const result = ResumeDataSchema.safeParse(normalized)
-  return result.success ? result.data : (normalized as ResumeData)
+  if (!result.success) {
+    throw new ExtractionError('AI returned data that did not match the expected resume format. Please try again.')
+  }
+  return result.data
 }
 
 // The editor and templates only render work/education/skills/volunteer/languages

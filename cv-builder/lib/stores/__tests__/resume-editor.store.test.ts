@@ -360,3 +360,27 @@ describe('initAutoSave', () => {
     fetchSpy.mockRestore()
   })
 })
+
+describe('module default meta — updated sectionOrder default', () => {
+  // Sprint 2 promotes certificates/awards/publications/interests/projects to
+  // first-class, natively-editable sections (editor forms + template rendering
+  // now exist for all 5), so the store's built-in initial meta.sectionOrder
+  // must include them — matching models/Resume.ts's Mongoose-level default
+  // and lib/schemas/resume.zod.ts's ResumeMetaSchema default exactly.
+  it('default sectionOrder includes all 10 native sections in the canonical order', async () => {
+    vi.resetModules()
+    const fresh = await import('../resume-editor.store')
+    expect(fresh.useResumeEditorStore.getState().meta.sectionOrder).toEqual([
+      'work',
+      'education',
+      'skills',
+      'certificates',
+      'awards',
+      'publications',
+      'volunteer',
+      'languages',
+      'interests',
+      'projects',
+    ])
+  })
+})

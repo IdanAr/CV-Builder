@@ -12,6 +12,11 @@ import { SkillsForm } from './forms/SkillsForm'
 import { LanguagesForm } from './forms/LanguagesForm'
 import { VolunteerForm } from './forms/VolunteerForm'
 import { CustomSectionForm } from './forms/CustomSectionForm'
+import { CertificatesForm } from './forms/CertificatesForm'
+import { AwardsForm } from './forms/AwardsForm'
+import { PublicationsForm } from './forms/PublicationsForm'
+import { InterestsForm } from './forms/InterestsForm'
+import { ProjectsForm } from './forms/ProjectsForm'
 import type { ResumeData, CustomSection } from '@/lib/schemas/resume.zod'
 
 const SECTION_LABELS: Record<string, string> = {
@@ -21,6 +26,11 @@ const SECTION_LABELS: Record<string, string> = {
   skills: 'Skills',
   languages: 'Languages',
   volunteer: 'Volunteer',
+  certificates: 'Certificates',
+  awards: 'Awards',
+  publications: 'Publications',
+  interests: 'Interests',
+  projects: 'Projects',
 }
 
 const SECTION_FORMS: Record<string, React.ComponentType> = {
@@ -30,6 +40,11 @@ const SECTION_FORMS: Record<string, React.ComponentType> = {
   skills: SkillsForm,
   languages: LanguagesForm,
   volunteer: VolunteerForm,
+  certificates: CertificatesForm,
+  awards: AwardsForm,
+  publications: PublicationsForm,
+  interests: InterestsForm,
+  projects: ProjectsForm,
 }
 
 function getBadge(section: string, data: ResumeData): string {
@@ -84,7 +99,18 @@ export function EditTab() {
 
   const orderedSections = (meta.sectionOrder?.length > 0
     ? meta.sectionOrder
-    : ['work', 'education', 'skills', 'volunteer', 'languages']
+    : [
+        'work',
+        'education',
+        'skills',
+        'certificates',
+        'awards',
+        'publications',
+        'volunteer',
+        'languages',
+        'interests',
+        'projects',
+      ]
   ).filter((s) => (s in SECTION_FORMS && s !== 'basics') || s.startsWith('custom:'))
 
   function handleDragEnd({ active, over }: DragEndEvent) {
