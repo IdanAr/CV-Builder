@@ -11,6 +11,10 @@ export interface AtsScoreResult {
   }
   matchedKeywords: string[]
   missingKeywords: string[]
+  /** User-excluded JD keywords that are present in the resume — shown as muted chips, never scored. */
+  excludedMatchedKeywords: string[]
+  /** User-excluded JD keywords that are absent from the resume — shown as muted chips, never scored or sent to AI tailoring. */
+  excludedMissingKeywords: string[]
 }
 
 export function flattenAllText(data: ResumeData): string {
@@ -119,7 +123,11 @@ function scoreMetrics(data: ResumeData): number {
   return Math.min(15, Math.round((withMetrics.length / highlights.length) * 30))
 }
 
-export function scoreResume(data: ResumeData, jobDescription: string): AtsScoreResult {
+export function scoreResume(
+  data: ResumeData,
+  jobDescription: string,
+  excludedKeywords: string[] = []
+): AtsScoreResult {
   const formatScore = scoreFormat(data)
   const metricsScore = scoreMetrics(data)
   const jdKeywords = extractKeywords(jobDescription)
@@ -130,17 +138,35 @@ export function scoreResume(data: ResumeData, jobDescription: string): AtsScoreR
       breakdown: { format: formatScore, keywordDensity: 0, keywordPlacement: 0, metrics: metricsScore },
       matchedKeywords: [],
       missingKeywords: [],
+      excludedMatchedKeywords: [],
+      excludedMissingKeywords: [],
     }
   }
 
+  const excluded = new Set(excludedKeywords.map(k => k.toLowerCase()))
   const allText = flattenAllText(data)
   const highValueText = flattenHighValueText(data)
 
-  const { matched, missing } = keywordOverlap(allText, jdKeywords)
-  const keywordDensityScore = Math.min(35, Math.round((matched.length / jdKeywords.length) * 35))
+  // Every JD candidate keyword is matched/missing against the full set, so
+  // excluded ones stay visible to the UI (as muted chips) instead of vanishing.
+  const { matched: allMatched, missing: allMissing } = keywordOverlap(allText, jdKeywords)
+  const matched = allMatched.filter(k => !excluded.has(k))
+  const excludedMatchedKeywords = allMatched.filter(k => excluded.has(k))
+  const missing = allMissing.filter(k => !excluded.has(k))
+  const excludedMissingKeywords = allMissing.filter(k => excluded.has(k))
 
-  const { matched: hvMatched } = keywordOverlap(highValueText, jdKeywords)
-  const keywordPlacementScore = Math.min(25, Math.round((hvMatched.length / jdKeywords.length) * 25))
+  // Scoring only considers the active (non-excluded) subset, both as the
+  // matched count and as the denominator, so an excluded word neither helps
+  // nor drags down the score.
+  const activeKeywords = jdKeywords.filter(k => !excluded.has(k))
+  const keywordDensityScore = activeKeywords.length > 0
+    ? Math.min(35, Math.round((matched.length / activeKeywords.length) * 35))
+    : 0
+
+  const { matched: hvMatched } = keywordOverlap(highValueText, activeKeywords)
+  const keywordPlacementScore = activeKeywords.length > 0
+    ? Math.min(25, Math.round((hvMatched.length / activeKeywords.length) * 25))
+    : 0
 
   const total = Math.min(100, formatScore + keywordDensityScore + keywordPlacementScore + metricsScore)
 
@@ -154,5 +180,7 @@ export function scoreResume(data: ResumeData, jobDescription: string): AtsScoreR
     },
     matchedKeywords: matched,
     missingKeywords: missing,
+    excludedMatchedKeywords,
+    excludedMissingKeywords,
   }
 }

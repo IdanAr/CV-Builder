@@ -34,6 +34,8 @@ export function AtsScorePanel() {
   const data = useResumeEditorStore((s) => s.data)
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   const setData = useResumeEditorStore((s) => s.setData)
+  const excludedKeywords = useResumeEditorStore((s) => s.meta.excludedAtsKeywords ?? [])
+  const setMeta = useResumeEditorStore((s) => s.setMeta)
 
   const [jobDescription, setJobDescription] = useState('')
   const [result, setResult] = useState<AtsScoreResult | null>(null)
@@ -45,7 +47,7 @@ export function AtsScorePanel() {
   const [fixError, setFixError] = useState<string | null>(null)
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
 
-  async function handleAnalyze() {
+  async function handleAnalyze(excludedOverride?: string[]) {
     if (!resumeId || !jobDescription.trim()) return
     setLoading(true)
     setError(null)
@@ -56,7 +58,7 @@ export function AtsScorePanel() {
       const res = await fetch(`/api/resumes/${resumeId}/ats-score`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobDescription }),
+        body: JSON.stringify({ jobDescription, excludedKeywords: excludedOverride ?? excludedKeywords }),
       })
       if (!res.ok) throw new Error('Analysis failed')
       setResult(await res.json())
@@ -64,6 +66,16 @@ export function AtsScorePanel() {
       setError('Analysis failed. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  function toggleExcluded(kw: string) {
+    const next = excludedKeywords.includes(kw)
+      ? excludedKeywords.filter((k) => k !== kw)
+      : [...excludedKeywords, kw]
+    setMeta({ excludedAtsKeywords: next })
+    if (jobDescription.trim()) {
+      handleAnalyze(next)
     }
   }
 
@@ -128,7 +140,7 @@ export function AtsScorePanel() {
           className="w-full h-40 rounded-lg border border-indigo-200 bg-white/70 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <button
-          onClick={handleAnalyze}
+          onClick={() => handleAnalyze()}
           disabled={loading || !jobDescription.trim()}
           className="mt-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
         >
@@ -162,7 +174,7 @@ export function AtsScorePanel() {
             ))}
           </div>
 
-          {result.missingKeywords.length > 0 && (
+          {(result.missingKeywords.length > 0 || result.excludedMissingKeywords.length > 0) && (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-semibold text-red-700">
@@ -187,14 +199,27 @@ export function AtsScorePanel() {
               </div>
 
               <div className="flex flex-wrap gap-1">
-                {result.missingKeywords.slice(0, 40).map((kw) => (
-                  <span key={kw} className="inline-block rounded bg-red-100 px-2 py-0.5 text-xs text-red-700">
+                {[
+                  ...result.missingKeywords.map((kw) => ({ kw, excluded: false })),
+                  ...result.excludedMissingKeywords.map((kw) => ({ kw, excluded: true })),
+                ].slice(0, 40).map(({ kw, excluded }) => (
+                  <button
+                    key={kw}
+                    type="button"
+                    onClick={() => toggleExcluded(kw)}
+                    aria-label={excluded ? `Include "${kw}" in scoring` : `Exclude "${kw}" from scoring`}
+                    className={
+                      excluded
+                        ? 'inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-400 line-through hover:bg-gray-200 transition-colors'
+                        : 'inline-block rounded bg-red-100 px-2 py-0.5 text-xs text-red-700 hover:bg-red-200 transition-colors'
+                    }
+                  >
                     {kw}
-                  </span>
+                  </button>
                 ))}
-                {result.missingKeywords.length > 40 && (
+                {result.missingKeywords.length + result.excludedMissingKeywords.length > 40 && (
                   <span className="text-xs text-red-500 self-center">
-                    +{result.missingKeywords.length - 40} more
+                    +{result.missingKeywords.length + result.excludedMissingKeywords.length - 40} more
                   </span>
                 )}
               </div>
@@ -223,17 +248,35 @@ export function AtsScorePanel() {
             </div>
           )}
 
-          {result.matchedKeywords.length > 0 && (
+          {(result.matchedKeywords.length > 0 || result.excludedMatchedKeywords.length > 0) && (
             <div className="rounded-xl border border-green-200 bg-green-50 p-4 shadow-sm">
               <p className="text-sm font-semibold text-green-700 mb-2">
                 Matched Keywords ({result.matchedKeywords.length})
               </p>
               <div className="flex flex-wrap gap-1">
-                {result.matchedKeywords.slice(0, 40).map((kw) => (
-                  <span key={kw} className="inline-block rounded bg-green-100 px-2 py-0.5 text-xs text-green-700">
+                {[
+                  ...result.matchedKeywords.map((kw) => ({ kw, excluded: false })),
+                  ...result.excludedMatchedKeywords.map((kw) => ({ kw, excluded: true })),
+                ].slice(0, 40).map(({ kw, excluded }) => (
+                  <button
+                    key={kw}
+                    type="button"
+                    onClick={() => toggleExcluded(kw)}
+                    aria-label={excluded ? `Include "${kw}" in scoring` : `Exclude "${kw}" from scoring`}
+                    className={
+                      excluded
+                        ? 'inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-400 line-through hover:bg-gray-200 transition-colors'
+                        : 'inline-block rounded bg-green-100 px-2 py-0.5 text-xs text-green-700 hover:bg-green-200 transition-colors'
+                    }
+                  >
                     {kw}
-                  </span>
+                  </button>
                 ))}
+                {result.matchedKeywords.length + result.excludedMatchedKeywords.length > 40 && (
+                  <span className="text-xs text-green-500 self-center">
+                    +{result.matchedKeywords.length + result.excludedMatchedKeywords.length - 40} more
+                  </span>
+                )}
               </div>
             </div>
           )}

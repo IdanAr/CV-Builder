@@ -179,3 +179,25 @@ describe('ResumeMetaSchema — updated sectionOrder default', () => {
     expect(result.sectionOrder).not.toContain('projects')
   })
 })
+
+describe('ResumeMetaSchema — excludedAtsKeywords', () => {
+  it('defaults to an empty array', () => {
+    const result = ResumeMetaSchema.parse({})
+    expect(result.excludedAtsKeywords).toEqual([])
+  })
+
+  it('accepts a provided list of excluded keywords', () => {
+    const result = ResumeMetaSchema.parse({ excludedAtsKeywords: ['strong', 'excellent'] })
+    expect(result.excludedAtsKeywords).toEqual(['strong', 'excellent'])
+  })
+})
+
+describe('ResumeMetaPatchSchema — excludedAtsKeywords', () => {
+  it('accepts a partial patch containing only excludedAtsKeywords', () => {
+    const result = PatchResumeSchema.safeParse({ meta: { excludedAtsKeywords: ['strong'] } })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.meta?.excludedAtsKeywords).toEqual(['strong'])
+    }
+  })
+})

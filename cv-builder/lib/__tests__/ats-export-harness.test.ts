@@ -19,7 +19,7 @@ function makeMeta(overrides: Partial<ResumeMeta> = {}): ResumeMeta {
     primaryColor: '#1e3a5f', accentColor: '#0066cc',
     pageMargins: 0.75, lineSpacing: 1.1,
     sectionOrder: ['work', 'education', 'skills', 'languages', 'custom:extra1'],
-    layout: 'single-column', columnAssignment: {},
+    layout: 'single-column', columnAssignment: {}, excludedAtsKeywords: [],
     ...overrides,
   }
 }

@@ -99,6 +99,7 @@ describe('createResume', () => {
         sectionOrder: [] as string[],
         layout: 'single-column' as const,
         columnAssignment: {},
+        excludedAtsKeywords: [],
       },
     }
     const created = { _id: 'r2', userId: 'u1', ...input }

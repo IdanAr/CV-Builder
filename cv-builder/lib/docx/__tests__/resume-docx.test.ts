@@ -11,6 +11,7 @@ const defaultMeta: ResumeMeta = {
   sectionOrder: ['work', 'education', 'skills'],
   layout: 'single-column',
   columnAssignment: {},
+  excludedAtsKeywords: [],
 }
 
 const sampleData: ResumeData = {

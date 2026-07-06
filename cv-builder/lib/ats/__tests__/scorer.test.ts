@@ -179,4 +179,68 @@ describe('scoreResume', () => {
     const result = scoreResume(data, 'kubernetes engineer')
     expect(result.breakdown.keywordPlacement).toBe(0)
   })
+
+  it('excludedMatchedKeywords and excludedMissingKeywords are empty when no exclusions are given', () => {
+    const result = scoreResume(fullData, jd)
+    expect(result.excludedMatchedKeywords).toEqual([])
+    expect(result.excludedMissingKeywords).toEqual([])
+  })
+})
+
+describe('scoreResume — excludedKeywords', () => {
+  it('excluding a matched keyword moves it out of matchedKeywords and can lower keywordDensity when the remaining active keywords are unmatched', () => {
+    const data: ResumeData = {
+      basics: { name: 'A', email: 'a@b.c' },
+      skills: [{ name: 'Stack', keywords: ['React'] }],
+    }
+    const jdText = 'React Kubernetes developer needed'
+
+    const before = scoreResume(data, jdText)
+    expect(before.matchedKeywords).toContain('react')
+    expect(before.missingKeywords).toContain('kubernetes')
+    expect(before.breakdown.keywordDensity).toBeGreaterThan(0)
+
+    const after = scoreResume(data, jdText, ['react'])
+    expect(after.matchedKeywords).not.toContain('react')
+    expect(after.excludedMatchedKeywords).toContain('react')
+    expect(after.missingKeywords).toContain('kubernetes')
+    // Only 1 active keyword remains (kubernetes) and it's unmatched -> density 0
+    expect(after.breakdown.keywordDensity).toBe(0)
+  })
+
+  it('excluding a missing keyword moves it out of missingKeywords and stops it dragging down keywordDensity', () => {
+    const data: ResumeData = {
+      basics: { name: 'A', email: 'a@b.c' },
+      skills: [{ name: 'Stack', keywords: ['React'] }],
+    }
+    const jdText = 'React Kubernetes developer needed'
+
+    const before = scoreResume(data, jdText)
+    expect(before.breakdown.keywordDensity).toBeLessThan(35)
+
+    const after = scoreResume(data, jdText, ['kubernetes'])
+    expect(after.missingKeywords).not.toContain('kubernetes')
+    expect(after.excludedMissingKeywords).toContain('kubernetes')
+    expect(after.matchedKeywords).toContain('react')
+    // Only 1 active keyword remains (react) and it's fully matched -> full 35
+    expect(after.breakdown.keywordDensity).toBe(35)
+  })
+
+  it('excluded keyword matching is case-insensitive', () => {
+    const result = scoreResume({ basics: { name: 'A', email: 'a@b.c' } }, 'Kubernetes required', ['KUBERNETES'])
+    expect(result.missingKeywords).not.toContain('kubernetes')
+    expect(result.excludedMissingKeywords).toContain('kubernetes')
+  })
+
+  it('empty job description still returns empty excluded-keyword arrays', () => {
+    const result = scoreResume({}, '', ['react'])
+    expect(result.excludedMatchedKeywords).toEqual([])
+    expect(result.excludedMissingKeywords).toEqual([])
+  })
+
+  it('omitting excludedKeywords entirely reproduces the same result as an empty array', () => {
+    const withDefault = scoreResume(fullData, jd)
+    const withEmpty = scoreResume(fullData, jd, [])
+    expect(withDefault).toEqual(withEmpty)
+  })
 })

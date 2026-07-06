@@ -68,6 +68,7 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
       sectionOrder: ['work', 'education', 'skills', 'volunteer', 'languages'],
       layout: 'single-column',
       columnAssignment: {},
+      excludedAtsKeywords: [],
     },
     isDirty: false,
     isSaving: false,
