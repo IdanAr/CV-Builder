@@ -175,7 +175,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
       <div style={{ marginBottom: '4px' }}>
         <div style={{
           fontFamily: `${meta.headerFontFamily}, 'Times New Roman', serif`,
-          fontSize: '26pt',
+          fontSize: '22pt',
           fontWeight: 700,
           letterSpacing: '0.01em',
           color: meta.primaryColor,

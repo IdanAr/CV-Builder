@@ -18,7 +18,7 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
 
   const styles = StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: 11, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
-    name: { fontFamily: headFont, fontSize: 26, fontWeight: 'bold', color: meta.primaryColor, letterSpacing: 0.25 },
+    name: { fontFamily: headFont, fontSize: 22, fontWeight: 'bold', color: meta.primaryColor, letterSpacing: 0.25 },
     subtitle: { fontSize: 12, color: meta.accentColor, fontStyle: 'italic', marginTop: 0.75 },
     // Web double rule: 2px top + 0.75px bottom with 3px between, 6px above / 8px below
     ruleThick: { borderTopWidth: 1.5, borderTopColor: meta.primaryColor, marginTop: 4.5, marginBottom: 2.25 },

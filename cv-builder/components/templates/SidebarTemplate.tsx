@@ -16,7 +16,7 @@ const ALL_SECTIONS = ['work', 'education', 'skills', 'volunteer', 'languages']
 
 export function SidebarTemplate({ data, meta }: TemplateProps) {
   const { basics = {} } = data
-  const pad = Math.max(meta.pageMargins * 96 * 0.7, 34)
+  const pad = Math.max(meta.pageMargins * 96 * 0.7, 48)
   const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : ALL_SECTIONS
 
   const page: React.CSSProperties = {
@@ -34,7 +34,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
 
   const railTitleStyle: React.CSSProperties = {
     fontFamily: `${meta.headerFontFamily}, Arial, sans-serif`,
-    fontSize: '10pt',
+    fontSize: '12pt',
     fontWeight: 700,
     color: '#fff',
     textTransform: 'uppercase',
@@ -169,7 +169,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         {basics.label && (
           <div style={{ fontSize: '10.5pt', opacity: 0.85, marginTop: '3px' }}>{basics.label}</div>
         )}
-        <div style={{ fontSize: '9pt', opacity: 0.9, marginTop: '12px', lineHeight: 1.9, wordBreak: 'break-word' }}>
+        <div style={{ fontSize: '10pt', opacity: 0.9, marginTop: '12px', lineHeight: 1.9, wordBreak: 'break-word' }}>
           {[
             basics.email,
             basics.phone,
@@ -182,7 +182,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         {railSections.includes('skills') && (data.skills ?? []).length > 0 && (
           <div>
             <div style={railTitleStyle}>Skills</div>
-            <div style={{ fontSize: '9.5pt', lineHeight: 1.6 }}>
+            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
               {(data.skills ?? []).map((s, i) => (
                 <div key={i} style={{ marginBottom: '6px' }}>
                   <div style={{ fontWeight: 600 }}>
@@ -202,7 +202,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         {railSections.includes('languages') && (data.languages ?? []).length > 0 && (
           <div>
             <div style={railTitleStyle}>Languages</div>
-            <div style={{ fontSize: '9.5pt', lineHeight: 1.7 }}>
+            <div style={{ fontSize: '10pt', lineHeight: 1.7 }}>
               {(data.languages ?? []).map((l, i) => (
                 <div key={i}>
                   <strong>{l.language}</strong>

@@ -97,7 +97,7 @@ function buildDocxTheme(meta: ResumeMeta): DocxTheme {
         contactSeparator: '  ·  ',
       }
     case 'executive':
-      // Web executive: left-aligned header with primary-color 26pt name, double rule,
+      // Web executive: left-aligned header with primary-color 22pt name, double rule,
       // italic accent label/positions, justified 10.5pt summary without a heading
       return {
         sectionTitleColor: meta.primaryColor,
@@ -105,7 +105,7 @@ function buildDocxTheme(meta: ResumeMeta): DocxTheme {
         sectionBorder: true,
         sectionBorderSize: 6, // 1px web rule
         accentColor: meta.accentColor,
-        nameSize: 52,
+        nameSize: 44,
         headingSize: 23,
         headerAlign: AlignmentType.LEFT,
         summaryHeading: false,
@@ -250,13 +250,13 @@ function buildRailParas(
   ].filter(Boolean) as string[]
   contactItems.forEach((item, idx) => {
     paras.push(new Paragraph({
-      children: [new TextRun({ text: item, font: bodyFont, size: 18, color: railSoft })],
+      children: [new TextRun({ text: item, font: bodyFont, size: 20, color: railSoft })],
       spacing: { before: idx === 0 ? 180 : 0, after: 40 },
     }))
   })
 
   const railHeading = (text: string) => new Paragraph({
-    children: [new TextRun({ text: text.toUpperCase(), bold: true, font: headFont, size: 20, color: railText })],
+    children: [new TextRun({ text: text.toUpperCase(), bold: true, font: headFont, size: 24, color: railText })],
     spacing: { before: 270, after: 105 },
     border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'd9d9d9', space: 2 } },
   })
@@ -272,8 +272,8 @@ function buildRailParas(
       if (!cs || !cs.items.length) continue
       paras.push(railHeading(cs.name))
       for (const item of cs.items) {
-        if (item.title) paras.push(new Paragraph({ children: [new TextRun({ text: item.title, bold: true, font: bodyFont, size: 19, color: railText })], spacing: { after: 40 } }))
-        if (cs.enabledFields.includes('summary') && item.summary) paras.push(new Paragraph({ children: [new TextRun({ text: item.summary, font: bodyFont, size: 19, color: railSoft })], spacing: { after: 40 } }))
+        if (item.title) paras.push(new Paragraph({ children: [new TextRun({ text: item.title, bold: true, font: bodyFont, size: 20, color: railText })], spacing: { after: 40 } }))
+        if (cs.enabledFields.includes('summary') && item.summary) paras.push(new Paragraph({ children: [new TextRun({ text: item.summary, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 40 } }))
       }
       continue
     }
@@ -283,25 +283,25 @@ function buildRailParas(
         paras.push(railHeading('Skills'))
         for (const s of skills) {
           paras.push(new Paragraph({
-            children: [new TextRun({ text: s.name ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(s.level ? [new TextRun({ text: ` · ${s.level}`, font: bodyFont, size: 19, color: railMuted })] : [])],
+            children: [new TextRun({ text: s.name ?? '', bold: true, font: bodyFont, size: 20, color: railText }), ...(s.level ? [new TextRun({ text: ` · ${s.level}`, font: bodyFont, size: 20, color: railMuted })] : [])],
             spacing: { after: (s.keywords ?? []).length ? 0 : 90 },
           }))
-          if ((s.keywords ?? []).length) paras.push(new Paragraph({ children: [new TextRun({ text: (s.keywords ?? []).join(', '), font: bodyFont, size: 19, color: railMuted })], spacing: { after: 90 } }))
+          if ((s.keywords ?? []).length) paras.push(new Paragraph({ children: [new TextRun({ text: (s.keywords ?? []).join(', '), font: bodyFont, size: 20, color: railMuted })], spacing: { after: 90 } }))
         }
         break
       case 'languages':
         if (!languages.length) break
         paras.push(railHeading('Languages'))
-        for (const l of languages) paras.push(new Paragraph({ children: [new TextRun({ text: l.language ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(l.fluency ? [new TextRun({ text: ` - ${l.fluency}`, font: bodyFont, size: 19, color: railMuted })] : [])], spacing: { after: 30 } }))
+        for (const l of languages) paras.push(new Paragraph({ children: [new TextRun({ text: l.language ?? '', bold: true, font: bodyFont, size: 20, color: railText }), ...(l.fluency ? [new TextRun({ text: ` - ${l.fluency}`, font: bodyFont, size: 20, color: railMuted })] : [])], spacing: { after: 30 } }))
         break
       case 'work':
         if (!work.length) break
         paras.push(railHeading('Work Experience'))
         for (const job of work) {
           const dates = formatDateRange(job.startDate, job.endDate, true)
-          paras.push(new Paragraph({ children: [new TextRun({ text: job.name ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(dates ? [new TextRun({ text: `  ·  ${dates}`, font: bodyFont, size: 19, color: railMuted })] : [])], spacing: { before: 100, after: 20 } }))
-          if (job.position) paras.push(new Paragraph({ children: [new TextRun({ text: job.position, font: bodyFont, size: 19, color: railSoft })], spacing: { after: 40 } }))
-          for (const h of job.highlights ?? []) paras.push(new Paragraph({ children: richTextRuns(h, bodyFont, 19), bullet: { level: 0 }, spacing: { after: 20 } }))
+          paras.push(new Paragraph({ children: [new TextRun({ text: job.name ?? '', bold: true, font: bodyFont, size: 20, color: railText }), ...(dates ? [new TextRun({ text: `  ·  ${dates}`, font: bodyFont, size: 20, color: railMuted })] : [])], spacing: { before: 100, after: 20 } }))
+          if (job.position) paras.push(new Paragraph({ children: [new TextRun({ text: job.position, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 40 } }))
+          for (const h of job.highlights ?? []) paras.push(new Paragraph({ children: richTextRuns(h, bodyFont, 20), bullet: { level: 0 }, spacing: { after: 20 } }))
         }
         break
       case 'education':
@@ -309,30 +309,30 @@ function buildRailParas(
         paras.push(railHeading('Education'))
         for (const edu of education) {
           const dates = formatDateRange(edu.startDate, edu.endDate)
-          paras.push(new Paragraph({ children: [new TextRun({ text: edu.institution ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(dates ? [new TextRun({ text: `  ·  ${dates}`, font: bodyFont, size: 19, color: railMuted })] : [])], spacing: { before: 100, after: 20 } }))
+          paras.push(new Paragraph({ children: [new TextRun({ text: edu.institution ?? '', bold: true, font: bodyFont, size: 20, color: railText }), ...(dates ? [new TextRun({ text: `  ·  ${dates}`, font: bodyFont, size: 20, color: railMuted })] : [])], spacing: { before: 100, after: 20 } }))
           const degree = [edu.studyType, edu.area].filter(Boolean).join(' in ')
-          if (degree) paras.push(new Paragraph({ children: [new TextRun({ text: degree, font: bodyFont, size: 19, color: railSoft })], spacing: { after: 40 } }))
+          if (degree) paras.push(new Paragraph({ children: [new TextRun({ text: degree, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 40 } }))
         }
         break
       case 'certificates':
         if (!certificates.length) break
         paras.push(railHeading('Certifications'))
-        for (const c of certificates) paras.push(new Paragraph({ children: [new TextRun({ text: c.name ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(c.issuer ? [new TextRun({ text: ` — ${c.issuer}`, font: bodyFont, size: 19, color: railSoft })] : []), ...(c.date ? [new TextRun({ text: `  ·  ${formatDate(c.date)}`, font: bodyFont, size: 19, color: railMuted })] : [])], spacing: { after: 40 } }))
+        for (const c of certificates) paras.push(new Paragraph({ children: [new TextRun({ text: c.name ?? '', bold: true, font: bodyFont, size: 20, color: railText }), ...(c.issuer ? [new TextRun({ text: ` — ${c.issuer}`, font: bodyFont, size: 20, color: railSoft })] : []), ...(c.date ? [new TextRun({ text: `  ·  ${formatDate(c.date)}`, font: bodyFont, size: 20, color: railMuted })] : [])], spacing: { after: 40 } }))
         break
       case 'awards':
         if (!awards.length) break
         paras.push(railHeading('Awards'))
         for (const a of awards) {
-          paras.push(new Paragraph({ children: [new TextRun({ text: a.title ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(a.date ? [new TextRun({ text: `  ·  ${formatDate(a.date)}`, font: bodyFont, size: 19, color: railMuted })] : [])], spacing: { before: 80, after: 20 } }))
-          if (a.awarder) paras.push(new Paragraph({ children: [new TextRun({ text: a.awarder, font: bodyFont, size: 19, color: railSoft })], spacing: { after: 40 } }))
+          paras.push(new Paragraph({ children: [new TextRun({ text: a.title ?? '', bold: true, font: bodyFont, size: 20, color: railText }), ...(a.date ? [new TextRun({ text: `  ·  ${formatDate(a.date)}`, font: bodyFont, size: 20, color: railMuted })] : [])], spacing: { before: 80, after: 20 } }))
+          if (a.awarder) paras.push(new Paragraph({ children: [new TextRun({ text: a.awarder, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 40 } }))
         }
         break
       case 'publications':
         if (!publications.length) break
         paras.push(railHeading('Publications'))
         for (const p of publications) {
-          paras.push(new Paragraph({ children: [new TextRun({ text: p.name ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(p.releaseDate ? [new TextRun({ text: `  ·  ${formatDate(p.releaseDate)}`, font: bodyFont, size: 19, color: railMuted })] : [])], spacing: { before: 80, after: 20 } }))
-          if (p.publisher) paras.push(new Paragraph({ children: [new TextRun({ text: p.publisher, font: bodyFont, size: 19, color: railSoft })], spacing: { after: 40 } }))
+          paras.push(new Paragraph({ children: [new TextRun({ text: p.name ?? '', bold: true, font: bodyFont, size: 20, color: railText }), ...(p.releaseDate ? [new TextRun({ text: `  ·  ${formatDate(p.releaseDate)}`, font: bodyFont, size: 20, color: railMuted })] : [])], spacing: { before: 80, after: 20 } }))
+          if (p.publisher) paras.push(new Paragraph({ children: [new TextRun({ text: p.publisher, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 40 } }))
         }
         break
       case 'volunteer':
@@ -340,8 +340,8 @@ function buildRailParas(
         paras.push(railHeading('Volunteer'))
         for (const v of volunteer) {
           const dates = formatDateRange(v.startDate, v.endDate, true)
-          paras.push(new Paragraph({ children: [new TextRun({ text: v.organization ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(dates ? [new TextRun({ text: `  ·  ${dates}`, font: bodyFont, size: 19, color: railMuted })] : [])], spacing: { before: 100, after: 20 } }))
-          if (v.position) paras.push(new Paragraph({ children: [new TextRun({ text: v.position, font: bodyFont, size: 19, color: railSoft })], spacing: { after: 40 } }))
+          paras.push(new Paragraph({ children: [new TextRun({ text: v.organization ?? '', bold: true, font: bodyFont, size: 20, color: railText }), ...(dates ? [new TextRun({ text: `  ·  ${dates}`, font: bodyFont, size: 20, color: railMuted })] : [])], spacing: { before: 100, after: 20 } }))
+          if (v.position) paras.push(new Paragraph({ children: [new TextRun({ text: v.position, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 40 } }))
         }
         break
       case 'interests':
@@ -349,7 +349,7 @@ function buildRailParas(
         paras.push(railHeading('Interests'))
         for (const int of interests) {
           const kw = (int.keywords ?? []).length > 0 ? `: ${(int.keywords ?? []).join(', ')}` : ''
-          paras.push(new Paragraph({ children: [new TextRun({ text: int.name ?? '', bold: true, font: bodyFont, size: 19, color: railText }), new TextRun({ text: kw, font: bodyFont, size: 19, color: railMuted })], spacing: { after: 40 } }))
+          paras.push(new Paragraph({ children: [new TextRun({ text: int.name ?? '', bold: true, font: bodyFont, size: 20, color: railText }), new TextRun({ text: kw, font: bodyFont, size: 20, color: railMuted })], spacing: { after: 40 } }))
         }
         break
       case 'projects':
@@ -357,9 +357,9 @@ function buildRailParas(
         paras.push(railHeading('Projects'))
         for (const p of projects) {
           const dates = formatDateRange(p.startDate, p.endDate)
-          paras.push(new Paragraph({ children: [new TextRun({ text: p.name ?? '', bold: true, font: bodyFont, size: 19, color: railText }), ...(dates ? [new TextRun({ text: `  ·  ${dates}`, font: bodyFont, size: 19, color: railMuted })] : [])], spacing: { before: 80, after: 20 } }))
-          if (p.description) paras.push(new Paragraph({ children: [new TextRun({ text: p.description, font: bodyFont, size: 19, color: railSoft })], spacing: { after: 40 } }))
-          for (const h of p.highlights ?? []) paras.push(new Paragraph({ children: richTextRuns(h, bodyFont, 19), bullet: { level: 0 }, spacing: { after: 20 } }))
+          paras.push(new Paragraph({ children: [new TextRun({ text: p.name ?? '', bold: true, font: bodyFont, size: 20, color: railText }), ...(dates ? [new TextRun({ text: `  ·  ${dates}`, font: bodyFont, size: 20, color: railMuted })] : [])], spacing: { before: 80, after: 20 } }))
+          if (p.description) paras.push(new Paragraph({ children: [new TextRun({ text: p.description, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 40 } }))
+          for (const h of p.highlights ?? []) paras.push(new Paragraph({ children: richTextRuns(h, bodyFont, 20), bullet: { level: 0 }, spacing: { after: 20 } }))
         }
         break
     }
