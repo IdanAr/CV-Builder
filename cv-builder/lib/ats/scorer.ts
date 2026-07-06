@@ -13,7 +13,7 @@ export interface AtsScoreResult {
   missingKeywords: string[]
 }
 
-function flattenAllText(data: ResumeData): string {
+export function flattenAllText(data: ResumeData): string {
   const parts: string[] = []
   const b = data.basics ?? {}
   if (b.name) parts.push(b.name)

@@ -211,4 +211,123 @@ describe('runAtsFixPipeline', () => {
     const prompt: string = call?.messages[0]?.content ?? ''
     expect(prompt).not.toContain('keyword20')
   })
+
+  it('allows up to 12 fixes in the prompt ceiling', async () => {
+    mockClaudeResponse([])
+    await runAtsFixPipeline(sampleData, ['react'])
+
+    const call = mockCreate.mock.calls[0]?.[0]
+    const prompt: string = call?.messages[0]?.content ?? ''
+    expect(prompt).toContain('Maximum 12 fixes')
+    expect(prompt).not.toContain('Maximum 5 fixes')
+    expect(call?.max_tokens).toBe(3000)
+  })
+
+  it('marks edit-kind fixes explicitly with kind: "edit"', async () => {
+    mockClaudeResponse([
+      {
+        sectionIndex: 0,
+        original: 'Experienced developer building web applications.',
+        suggested: 'Experienced React developer building web applications.',
+        targetKeywords: ['react'],
+      },
+    ])
+
+    const fixes = await runAtsFixPipeline(sampleData, ['react'])
+    expect(fixes).toHaveLength(1)
+    expect(fixes[0].kind).toBe('edit')
+  })
+
+  describe('generate-kind summary fix (sectionIndex -1)', () => {
+    const noSummaryData: ResumeData = {
+      basics: {
+        name: 'Jane Smith',
+      },
+      work: [{
+        name: 'Acme Corp',
+        position: 'Frontend Engineer',
+        highlights: [
+          'Built a dashboard used by 200 users',
+          'Improved page load speed by 30%',
+        ],
+      }],
+    }
+
+    it('builds a generate-kind summary fix when summary is empty and model emits sectionIndex -1', async () => {
+      mockClaudeResponse([
+        {
+          sectionIndex: -1,
+          original: '',
+          suggested: 'Frontend engineer experienced in React, building dashboards for enterprise users.',
+          targetKeywords: ['react'],
+        },
+      ])
+
+      const fixes = await runAtsFixPipeline(noSummaryData, ['react'])
+      expect(fixes).toHaveLength(1)
+      expect(fixes[0].kind).toBe('generate')
+      expect(fixes[0].original).toBe('')
+      expect(fixes[0].section).toBe('summary')
+      expect(fixes[0].id).toBe('fix-summary-new')
+      expect(fixes[0].targetKeywords).toContain('react')
+    })
+
+    it('checks hallucinations against the full resume text, not the empty original', async () => {
+      mockClaudeResponse([
+        {
+          sectionIndex: -1,
+          original: '',
+          suggested: 'Frontend engineer who built dashboards used by 200 users and improved load speed by 30%.',
+          targetKeywords: ['react'],
+        },
+      ])
+
+      const fixes = await runAtsFixPipeline(noSummaryData, ['react'])
+      expect(fixes).toHaveLength(1)
+      // 200 and 30% exist in the work highlights — if the guard compared
+      // against the empty original, they would be flagged.
+      expect(fixes[0].pendingApprovals).toEqual([])
+    })
+
+    it('flags numbers in a generated summary that appear nowhere in the resume', async () => {
+      mockClaudeResponse([
+        {
+          sectionIndex: -1,
+          original: '',
+          suggested: 'Frontend engineer who cut costs by 45% across 12 teams.',
+          targetKeywords: ['react'],
+        },
+      ])
+
+      const fixes = await runAtsFixPipeline(noSummaryData, ['react'])
+      expect(fixes).toHaveLength(1)
+      expect(fixes[0].pendingApprovals).toEqual(expect.arrayContaining(['45%', '12']))
+    })
+
+    it('drops a sectionIndex -1 entry when a summary already exists', async () => {
+      mockClaudeResponse([
+        {
+          sectionIndex: -1,
+          original: '',
+          suggested: 'A brand new summary the model should not have generated.',
+          targetKeywords: ['react'],
+        },
+      ])
+
+      const fixes = await runAtsFixPipeline(sampleData, ['react'])
+      expect(fixes).toHaveLength(0)
+    })
+
+    it('includes the new-summary instruction in the prompt only when summary is empty', async () => {
+      mockClaudeResponse([])
+      await runAtsFixPipeline(noSummaryData, ['react'])
+      const promptWithout: string = mockCreate.mock.calls[0]?.[0]?.messages[0]?.content ?? ''
+      expect(promptWithout).toContain('-1')
+
+      mockClaudeResponse([])
+      await runAtsFixPipeline(sampleData, ['react'])
+      const promptWith: string = mockCreate.mock.calls[1]?.[0]?.messages[0]?.content ?? ''
+      expect(promptWith).not.toContain('sectionIndex: -1')
+    })
+  })
 })

@@ -1,11 +1,14 @@
 import { z } from 'zod'
 import { getAnthropic } from './models'
 import { detectHallucinations } from './hallucination-guard'
+import { flattenAllText } from '@/lib/ats/scorer'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 export interface AtsFix {
   id: string
   section: 'work' | 'summary'
+  /** 'edit' rewrites existing text; 'generate' drafts new content (e.g. a missing summary). Absence means 'edit'. */
+  kind?: 'edit' | 'generate'
   workIndex?: number
   highlightIndex?: number
   original: string
@@ -16,7 +19,8 @@ export interface AtsFix {
 }
 
 const RawFixSchema = z.object({
-  sectionIndex: z.number().int().nonnegative(),
+  // -1 is a sentinel reserved for drafting a brand-new summary.
+  sectionIndex: z.number().int().min(-1),
   original: z.string(),
   suggested: z.string(),
   targetKeywords: z.array(z.string()),
@@ -74,6 +78,14 @@ export async function runAtsFixPipeline(
     .map((s, i) => `[${i}] ${s.label}: "${s.text}"`)
     .join('\n')
 
+  const summaryMissing = !data.basics?.summary?.trim()
+
+  const newSummaryInstruction = summaryMissing
+    ? `
+
+This resume has no professional summary. In addition to the edits above, you may include ONE entry with "sectionIndex": -1 to draft a brand-new 2-3 sentence professional summary tailored to the target job, grounded ONLY in facts already present in the resume sections listed above (skills, work history, highlights). Do not invent employers, job titles, dates, or metrics that are not already stated in the sections above. For that entry, set "original" to an empty string "".`
+    : ''
+
   const prompt = `You are an expert resume writer optimizing a CV for ATS keyword coverage.
 
 Missing keywords to incorporate: ${keywords.join(', ')}
@@ -81,9 +93,9 @@ Missing keywords to incorporate: ${keywords.join(', ')}
 Resume sections available to improve:
 ${sectionsText}
 
-For each missing keyword, suggest ONE targeted edit to a section that naturally incorporates the keyword. Preserve factual accuracy - do not invent metrics, numbers, or experiences not implied by the original text. Do not use em dashes (—) in the suggested text; use a regular hyphen (-) or rephrase instead.
+Propose up to 12 targeted edits across the sections above to naturally work in as many of the missing keywords as fit well - prioritize the summary and the two most recent roles, since those carry the most ATS weight. Not every keyword needs its own edit; a single strong edit may incorporate more than one keyword, and some low-value keywords may not fit anywhere naturally - skip those rather than forcing them in. Preserve factual accuracy - do not invent metrics, numbers, or experiences not implied by the original text. Do not use em dashes (—) in the suggested text; use a regular hyphen (-) or rephrase instead.${newSummaryInstruction}
 
-Return a JSON array. Maximum 5 fixes. Each object:
+Return a JSON array. Maximum 12 fixes. Each object:
 {
   "sectionIndex": <index from the list above>,
   "original": "<exact original text unchanged>",
@@ -96,7 +108,7 @@ Return ONLY the JSON array, no other text.`
   const anthropic = getAnthropic()
   const msg = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1500,
+    max_tokens: 3000,
     messages: [{ role: 'user', content: prompt }],
   })
 
@@ -118,6 +130,27 @@ Return ONLY the JSON array, no other text.`
     if (!parsed.success) continue
     const item = parsed.data
 
+    if (item.sectionIndex === -1) {
+      // Sentinel for drafting a brand-new summary. Only honored when the
+      // resume genuinely lacks one — the prompt's conditionality is a
+      // request, not a guarantee, so guard here too.
+      if (!summaryMissing) continue
+      if (!item.suggested.trim()) continue
+      // No `original` exists to quote-match, so hallucination detection runs
+      // against the full resume text instead.
+      const fullText = flattenAllText(data)
+      fixes.push({
+        id: 'fix-summary-new',
+        section: 'summary',
+        kind: 'generate',
+        original: '',
+        suggested: item.suggested,
+        targetKeywords: item.targetKeywords,
+        pendingApprovals: detectHallucinations(fullText, item.suggested),
+      })
+      continue
+    }
+
     const section = sections[item.sectionIndex]
     if (!section) continue
     // The model must quote the current resume text verbatim — a mismatch means
@@ -133,6 +166,7 @@ Return ONLY the JSON array, no other text.`
     fixes.push({
       id,
       section: section.section,
+      kind: 'edit',
       workIndex: section.workIndex,
       highlightIndex: section.highlightIndex,
       original: item.original,
