@@ -68,12 +68,42 @@ function flattenHighValueText(data: ResumeData): string {
 function scoreFormat(data: ResumeData): number {
   let score = 0
   const b = data.basics ?? {}
-  if (b.name) score += 5
-  if (b.email) score += 5
-  if (b.summary) score += 5
-  if ((data.work ?? []).length > 0) score += 5
-  if ((data.work ?? []).some(j => (j.highlights ?? []).length > 0)) score += 5
-  return score // max 25
+
+  // 1. Core identity: both name and email present
+  if (b.name && b.email) score += 5
+
+  // 2. Meaningful summary: at least 40 characters after trimming
+  if (b.summary && b.summary.trim().length >= 40) score += 5
+
+  // 3. Work entries structurally complete: name + position + startDate
+  const work = data.work ?? []
+  if (work.length > 0) {
+    const complete = work.filter(j => j.name && j.position && j.startDate)
+    score += Math.round(5 * (complete.length / work.length))
+  }
+
+  // 4. Highlights are real bullets (10-400 chars), not placeholders or paragraph-dumps
+  const highlights = [
+    ...work.flatMap(j => j.highlights ?? []),
+    ...(data.volunteer ?? []).flatMap(v => v.highlights ?? []),
+    ...(data.projects ?? []).flatMap(p => p.highlights ?? []),
+  ]
+  if (highlights.length > 0) {
+    const wellFormed = highlights.filter(h => {
+      const len = h.trim().length
+      return len >= 10 && len <= 400
+    })
+    score += Math.round(5 * (wellFormed.length / highlights.length))
+  }
+
+  // 5. Skills are structured: at least one non-empty keyword per skill
+  const skills = data.skills ?? []
+  if (skills.length > 0) {
+    const structured = skills.filter(s => (s.keywords ?? []).some(k => k.trim().length > 0))
+    score += Math.round(5 * (structured.length / skills.length))
+  }
+
+  return score // each check maxes at 5, so total is capped at 25 by construction
 }
 
 const METRIC_PATTERN = /\d+%|\$\d+|\d+[xX]|\d{2,}|\d+\s*(people|team|users|customers|members|reports|clients|projects)/i

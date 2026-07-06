@@ -36,14 +36,70 @@ describe('scoreResume', () => {
     expect(result.breakdown.format).toBe(0)
   })
 
-  it('format score is 5 for name only', () => {
+  it('format score is 0 for name without email (core identity needs both)', () => {
     const result = scoreResume({ basics: { name: 'Alice' } }, '')
+    expect(result.breakdown.format).toBe(0)
+  })
+
+  it('format score is 5 for name + email (core identity check only)', () => {
+    const result = scoreResume({ basics: { name: 'Alice', email: 'alice@test.com' } }, '')
     expect(result.breakdown.format).toBe(5)
   })
 
-  it('format score is 10 for name + email', () => {
-    const result = scoreResume({ basics: { name: 'Alice', email: 'alice@test.com' } }, '')
-    expect(result.breakdown.format).toBe(10)
+  it('summary just under 40 chars earns no summary points; at 40 it earns 5', () => {
+    // 39 chars: identity (5) + summary (0) = 5
+    const short = scoreResume(
+      { basics: { name: 'Alice', email: 'a@b.co', summary: 'x'.repeat(39) } }, '')
+    expect(short.breakdown.format).toBe(5)
+    // 40 chars: identity (5) + summary (5) = 10
+    const ok = scoreResume(
+      { basics: { name: 'Alice', email: 'a@b.co', summary: 'x'.repeat(40) } }, '')
+    expect(ok.breakdown.format).toBe(10)
+  })
+
+  it('work completeness is proportional: 1 of 2 entries with startDate scores round(5 * 1/2) = 3', () => {
+    const data: ResumeData = {
+      basics: { name: 'Alice', email: 'a@b.co' },
+      work: [
+        { name: 'Acme', position: 'Engineer', startDate: '2021-01' },
+        { name: 'Beta', position: 'Analyst' },
+      ],
+    }
+    // identity 5 + summary 0 + work 3 + highlights 0 + skills 0 = 8
+    const result = scoreResume(data, '')
+    expect(result.breakdown.format).toBe(8)
+  })
+
+  it('paragraph-dump highlights are penalized: 2 of 3 valid bullets scores round(5 * 2/3) = 3', () => {
+    const data: ResumeData = {
+      basics: { name: 'Alice', email: 'a@b.co' },
+      work: [{
+        name: 'Acme',
+        position: 'Engineer',
+        startDate: '2021-01',
+        highlights: [
+          'Shipped the reporting dashboard feature',
+          'A'.repeat(600),
+          'Mentored two junior engineers on testing',
+        ],
+      }],
+    }
+    // identity 5 + summary 0 + work 5 + highlights 3 + skills 0 = 13
+    const result = scoreResume(data, '')
+    expect(result.breakdown.format).toBe(13)
+  })
+
+  it('bare skill labels are penalized: 1 of 2 skills with keywords scores round(5 * 1/2) = 3', () => {
+    const data: ResumeData = {
+      basics: { name: 'Alice', email: 'a@b.co' },
+      skills: [
+        { name: 'Frontend', keywords: ['React'] },
+        { name: 'Backend' },
+      ],
+    }
+    // identity 5 + summary 0 + work 0 + highlights 0 + skills 3 = 8
+    const result = scoreResume(data, '')
+    expect(result.breakdown.format).toBe(8)
   })
 
   it('format score is 25 for data with all required fields and highlights', () => {
