@@ -15,6 +15,7 @@ const meta: ResumeMeta = {
   sectionOrder: ['certificates', 'awards', 'publications', 'interests', 'projects'],
   layout: 'single-column',
   columnAssignment: {},
+  excludedAtsKeywords: [],
 }
 
 const data: ResumeData = {
