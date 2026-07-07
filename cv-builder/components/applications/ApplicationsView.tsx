@@ -6,10 +6,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast, useToastStore } from '@/lib/stores/toast.store'
 import { onToastPause, onToastResume } from '@/components/ui/Toaster'
-import type { BoardColumn, CustomFieldValue } from '@/lib/schemas/application.zod'
+import type { BoardColumn, CustomFieldValue, SortEntry } from '@/lib/schemas/application.zod'
 import type { ApplicationRow, BoardConfigData, ResumeOption } from '@/lib/applications/types'
 import { buildCellPatch } from '@/lib/applications/cells'
+import { sortApplications, toggleSort } from '@/lib/applications/sort'
 import ApplicationsTable from './ApplicationsTable'
+import { ColumnHeader } from './ColumnHeader'
 import { EmptyApplicationsState } from './EmptyApplicationsState'
 
 const UNDO_DELETE_DURATION = 6000
@@ -60,9 +62,31 @@ export default function ApplicationsView({
   resumes,
 }: ApplicationsViewProps) {
   const [applications, setApplications] = useState(initialApplications)
-  const [boardConfig] = useState(initialBoardConfig)
+  const [boardConfig, setBoardConfig] = useState(initialBoardConfig)
   const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(new Set())
   const pendingDeletesRef = useRef(new Map<string, PendingDelete>())
+
+  // --- Board config persistence (optimistic, reverts on failure) ------------
+  async function persistBoardConfig(patch: { columns?: BoardColumn[]; sort?: SortEntry[] }) {
+    const previous = boardConfig
+    setBoardConfig((cfg) => ({ ...cfg, ...patch }))
+    try {
+      const res = await fetch('/api/applications/board-config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      })
+      if (!res.ok) throw new Error('Board config update failed')
+    } catch (err) {
+      console.error(err)
+      setBoardConfig(previous)
+      toast.error('Could not save the board settings. Please try again.')
+    }
+  }
+
+  function handleToggleSort(columnId: string, additive: boolean) {
+    void persistBoardConfig({ sort: toggleSort(boardConfig.sort, columnId, additive) })
+  }
 
   // --- Inline cell editing (optimistic, reverts on failure) -----------------
   async function handleCellChange(appId: string, column: BoardColumn, value: CustomFieldValue) {
@@ -207,6 +231,7 @@ export default function ApplicationsView({
 
   const visibleApplications = applications.filter((a) => !hiddenIds.has(a._id))
   const columns = boardConfig.columns
+  const sortedApplications = sortApplications(visibleApplications, boardConfig.sort, columns)
 
   if (applications.length === 0) {
     return <EmptyApplicationsState onCreate={handleAddRow} />
@@ -215,12 +240,15 @@ export default function ApplicationsView({
   return (
     <div className="flex flex-col gap-3">
       <ApplicationsTable
-        applications={visibleApplications}
+        applications={sortedApplications}
         columns={columns}
         resumes={resumes}
         onCellChange={handleCellChange}
         onDeleteRow={handleDeleteRow}
         onAddRow={handleAddRow}
+        renderHeaderCell={(column) => (
+          <ColumnHeader column={column} sort={boardConfig.sort} onToggleSort={handleToggleSort} />
+        )}
       />
     </div>
   )
