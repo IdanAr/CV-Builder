@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
+import { useMediaQuery } from '@/lib/hooks/use-media-query'
 import { useResumeEditorStore, initAutoSave } from '@/lib/stores/resume-editor.store'
 import { EditTab } from './EditTab'
 import { PreviewTab } from './PreviewTab'
@@ -21,6 +22,12 @@ const TAB_LABELS: Record<Tab, string> = { edit: 'Edit', design: 'Design', ats: '
 
 const PANEL_WIDTH_KEY = 'cv-builder:panel-width'
 const DEFAULT_PANEL_WIDTH = 500 // Increased to give the UI breathing room initially
+
+// Below this width, the resizable side-by-side layout is replaced by a
+// single full-width panel with an Edit/Preview switcher (matches Tailwind's `md`).
+const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)'
+
+type MobileView = 'edit' | 'preview'
 
 function clampPanelWidth(x: number): number {
   // Safety check for Next.js SSR
@@ -50,8 +57,10 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
   const [previewExpanded, setPreviewExpanded] = useState(false)
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
   const [dividerActive, setDividerActive] = useState(false)
+  const [mobileView, setMobileView] = useState<MobileView>('edit')
   const draggingRef = useRef(false)
   const dragStartWidthRef = useRef(DEFAULT_PANEL_WIDTH)
+  const isMobile = useMediaQuery(MOBILE_BREAKPOINT_QUERY)
 
   const storeTitle = useResumeEditorStore((s) => s.title)
   const isDirty = useResumeEditorStore((s) => s.isDirty)
@@ -148,6 +157,102 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
 
   const saveStatus = isSaving ? 'Saving…' : isDirty ? '● Unsaved' : 'Saved'
 
+  // Shared between the desktop side-by-side layout and the mobile
+  // single-panel view — the editor panel's contents never change,
+  // only how much of the screen it occupies.
+  const editPanelBody = (
+    <>
+      {/* Title */}
+      <div className="flex items-center gap-3 px-4 h-12 border-b border-indigo-100 shrink-0 bg-white/50">
+        <input
+          type="text"
+          value={storeTitle}
+          onChange={(e) => setTitle(e.target.value)}
+          className="font-semibold text-sm bg-transparent border-none outline-none focus:ring-1 focus:ring-indigo-400 rounded px-1 min-w-0 flex-1 text-indigo-900"
+        />
+      </div>
+
+      {/* Tab bar */}
+      <div className="flex border-b border-indigo-100 shrink-0 bg-white/50">
+        {(['edit', 'design', 'ats'] as Tab[]).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={`flex items-center justify-center min-h-[44px] px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              activeTab === tab
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-indigo-400 hover:text-indigo-600'
+            }`}
+          >
+            {TAB_LABELS[tab]}
+          </button>
+        ))}
+      </div>
+
+      {/* Sticky Undo/Redo — only on Edit tab */}
+      {activeTab === 'edit' && (
+        <div className="flex items-center gap-1 px-3 py-1.5 border-b border-indigo-100 shrink-0 bg-indigo-50/60">
+          <button
+            onClick={undo}
+            disabled={!canUndo}
+            className="flex items-center justify-center gap-1 min-h-[40px] px-2 py-1 text-xs rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            ↩ Undo
+          </button>
+          <button
+            onClick={redo}
+            disabled={!canRedo}
+            className="flex items-center justify-center gap-1 min-h-[40px] px-2 py-1 text-xs rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Redo ↪
+          </button>
+        </div>
+      )}
+
+      {/* Tab content */}
+      <div className="flex-1 overflow-auto">
+        <div className={activeTab === 'edit' ? 'block' : 'hidden'}>
+          <EditorErrorBoundary><EditTab /></EditorErrorBoundary>
+        </div>
+        <div className={activeTab === 'design' ? 'block' : 'hidden'}>
+          <EditorErrorBoundary><DesignPanel /></EditorErrorBoundary>
+        </div>
+        <div className={activeTab === 'ats' ? 'block' : 'hidden'}>
+          <EditorErrorBoundary><AtsScorePanel /></EditorErrorBoundary>
+        </div>
+      </div>
+    </>
+  )
+
+  // `showExpandToggle` is only offered on desktop — on mobile, the
+  // Edit/Preview switcher already gives the preview the full screen.
+  function renderPreviewPanelBody(showExpandToggle: boolean) {
+    return (
+      <>
+        <div className="flex items-center gap-2 px-3 h-12 border-b border-indigo-100 bg-white/50 shrink-0">
+          <span className="text-xs font-medium text-indigo-500 flex-1">Live Preview</span>
+          {showExpandToggle && (
+            <button
+              onClick={() => setPreviewExpanded((v) => !v)}
+              title={previewExpanded ? 'Collapse preview' : 'Expand preview'}
+              className={`flex items-center justify-center min-h-[40px] min-w-[40px] text-sm border rounded px-2 py-1 transition-colors ${
+                previewExpanded
+                  ? 'border-indigo-400 bg-indigo-50 text-indigo-600'
+                  : 'border-indigo-200 text-indigo-500 hover:bg-indigo-50'
+              }`}
+            >
+              ⛶
+            </button>
+          )}
+        </div>
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <EditorErrorBoundary><PreviewTab /></EditorErrorBoundary>
+        </div>
+      </>
+    )
+  }
+
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       {/* Top navbar */}
@@ -167,7 +272,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
             <div className="w-px h-4 bg-indigo-200 mx-1" />
             <button
               onClick={handleJsonExport}
-              className="text-xs border border-indigo-200 text-indigo-600 rounded px-3 py-1.5 hover:bg-indigo-50 transition-colors"
+              className="flex items-center justify-center min-h-[40px] text-xs border border-indigo-200 text-indigo-600 rounded px-3 hover:bg-indigo-50 transition-colors"
             >
               JSON
             </button>
@@ -184,122 +289,98 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
 
       {/* Editor body */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left panel */}
-        {previewExpanded ? (
-          <div className="w-9 min-w-[36px] bg-indigo-900 flex flex-col items-center py-3 gap-4 border-r border-indigo-800 shrink-0">
-            {(['edit', 'design', 'ats'] as Tab[]).map((tab) => (
+        {isMobile ? (
+          <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+            {/* Edit/Preview switcher — replaces the side-by-side layout below the breakpoint */}
+            <div
+              role="tablist"
+              aria-label="View"
+              className="flex gap-1 p-1 border-b border-indigo-100 bg-white/50 shrink-0"
+            >
               <button
-                key={tab}
                 type="button"
-                onClick={() => { setPreviewExpanded(false); setActiveTab(tab) }}
-                className="text-xs text-indigo-300 hover:text-white transition-colors"
-                style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+                role="tab"
+                aria-selected={mobileView === 'edit'}
+                onClick={() => setMobileView('edit')}
+                className={`flex-1 min-h-[40px] rounded text-sm font-medium transition-colors ${
+                  mobileView === 'edit'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-indigo-500 hover:bg-indigo-50'
+                }`}
               >
-                {TAB_LABELS[tab]}
+                Edit
               </button>
-            ))}
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mobileView === 'preview'}
+                onClick={() => setMobileView('preview')}
+                className={`flex-1 min-h-[40px] rounded text-sm font-medium transition-colors ${
+                  mobileView === 'preview'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-indigo-500 hover:bg-indigo-50'
+                }`}
+              >
+                Preview
+              </button>
+            </div>
+
+            {mobileView === 'edit' ? (
+              <div className="flex flex-col flex-1 min-w-0 bg-white/40 backdrop-blur-xl overflow-hidden">
+                {editPanelBody}
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col min-w-0 bg-white/30 backdrop-blur-sm overflow-hidden">
+                {renderPreviewPanelBody(false)}
+              </div>
+            )}
           </div>
         ) : (
-          <div
-            className="flex flex-col border-r border-white/20 bg-white/40 backdrop-blur-xl shrink-0"
-            style={{ width: panelWidth }}
-          >
-            {/* Title */}
-            <div className="flex items-center gap-3 px-4 h-12 border-b border-indigo-100 shrink-0 bg-white/50">
-              <input
-                type="text"
-                value={storeTitle}
-                onChange={(e) => setTitle(e.target.value)}
-                className="font-semibold text-sm bg-transparent border-none outline-none focus:ring-1 focus:ring-indigo-400 rounded px-1 min-w-0 flex-1 text-indigo-900"
-              />
-            </div>
-
-            {/* Tab bar */}
-            <div className="flex border-b border-indigo-100 shrink-0 bg-white/50">
-              {(['edit', 'design', 'ats'] as Tab[]).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                    activeTab === tab
-                      ? 'border-indigo-600 text-indigo-600'
-                      : 'border-transparent text-indigo-400 hover:text-indigo-600'
-                  }`}
-                >
-                  {TAB_LABELS[tab]}
-                </button>
-              ))}
-            </div>
-
-            {/* Sticky Undo/Redo — only on Edit tab */}
-            {activeTab === 'edit' && (
-              <div className="flex items-center gap-1 px-3 py-1.5 border-b border-indigo-100 shrink-0 bg-indigo-50/60">
-                <button
-                  onClick={undo}
-                  disabled={!canUndo}
-                  className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  ↩ Undo
-                </button>
-                <button
-                  onClick={redo}
-                  disabled={!canRedo}
-                  className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Redo ↪
-                </button>
+          <>
+            {/* Left panel */}
+            {previewExpanded ? (
+              <div className="w-9 min-w-[36px] bg-indigo-900 flex flex-col items-center py-3 gap-4 border-r border-indigo-800 shrink-0">
+                {(['edit', 'design', 'ats'] as Tab[]).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => { setPreviewExpanded(false); setActiveTab(tab) }}
+                    className="text-xs text-indigo-300 hover:text-white transition-colors"
+                    style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+                  >
+                    {TAB_LABELS[tab]}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div
+                className="flex flex-col border-r border-white/20 bg-white/40 backdrop-blur-xl shrink-0"
+                style={{ width: panelWidth }}
+              >
+                {editPanelBody}
               </div>
             )}
 
-            {/* Tab content */}
-            <div className="flex-1 overflow-auto">
-              <div className={activeTab === 'edit' ? 'block' : 'hidden'}>
-                <EditorErrorBoundary><EditTab /></EditorErrorBoundary>
-              </div>
-              <div className={activeTab === 'design' ? 'block' : 'hidden'}>
-                <EditorErrorBoundary><DesignPanel /></EditorErrorBoundary>
-              </div>
-              <div className={activeTab === 'ats' ? 'block' : 'hidden'}>
-                <EditorErrorBoundary><AtsScorePanel /></EditorErrorBoundary>
-              </div>
+            {/* Resize divider — only when panel is not collapsed */}
+            {!previewExpanded && (
+              <div
+                data-testid="panel-resize-divider"
+                className={`w-1 shrink-0 cursor-col-resize select-none transition-colors ${
+                  dividerActive ? 'bg-indigo-400/40' : 'hover:bg-indigo-400/40 bg-transparent'
+                }`}
+                onPointerDown={handleDividerPointerDown}
+                onPointerMove={handleDividerPointerMove}
+                onPointerUp={handleDividerPointerUp}
+                onPointerCancel={handleDividerPointerCancel}
+              />
+            )}
+
+            {/* Right panel — preview */}
+            <div className="flex-1 flex flex-col min-w-0 bg-white/30 backdrop-blur-sm">
+              {renderPreviewPanelBody(true)}
             </div>
-          </div>
+          </>
         )}
-
-        {/* Resize divider — only when panel is not collapsed */}
-        {!previewExpanded && (
-          <div
-            className={`w-1 shrink-0 cursor-col-resize select-none transition-colors ${
-              dividerActive ? 'bg-indigo-400/40' : 'hover:bg-indigo-400/40 bg-transparent'
-            }`}
-            onPointerDown={handleDividerPointerDown}
-            onPointerMove={handleDividerPointerMove}
-            onPointerUp={handleDividerPointerUp}
-            onPointerCancel={handleDividerPointerCancel}
-          />
-        )}
-
-        {/* Right panel — preview */}
-        <div className="flex-1 flex flex-col min-w-0 bg-white/30 backdrop-blur-sm">
-         <div className="flex items-center gap-2 px-3 h-12 border-b border-indigo-100 bg-white/50 shrink-0">
-            <span className="text-xs font-medium text-indigo-500 flex-1">Live Preview</span>
-            <button
-              onClick={() => setPreviewExpanded((v) => !v)}
-              title={previewExpanded ? 'Collapse preview' : 'Expand preview'}
-              className={`text-sm border rounded px-2 py-1 transition-colors ${
-                previewExpanded
-                  ? 'border-indigo-400 bg-indigo-50 text-indigo-600'
-                  : 'border-indigo-200 text-indigo-500 hover:bg-indigo-50'
-              }`}
-            >
-              ⛶
-            </button>
-          </div>
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <EditorErrorBoundary><PreviewTab /></EditorErrorBoundary>
-          </div>
-        </div>
       </div>
     </div>
   )
