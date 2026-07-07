@@ -29,20 +29,29 @@ const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)'
 
 type MobileView = 'edit' | 'preview'
 
-function clampPanelWidth(x: number): number {
+/** The effective min/max a panel width can be clamped to, given the current viewport. */
+function getPanelWidthBounds(): { min: number; max: number } {
   // Safety check for Next.js SSR
-  if (typeof window === 'undefined') return DEFAULT_PANEL_WIDTH
+  if (typeof window === 'undefined') return { min: DEFAULT_PANEL_WIDTH, max: DEFAULT_PANEL_WIDTH }
 
   // 1. Prevent squishing on desktop: hard minimum of 500px.
   // 2. Prevent breaking on mobile: if screen is < 500px, limit the minimum to the screen width.
-  const dynamicMinWidth = Math.min(500, window.innerWidth)
+  const min = Math.min(500, window.innerWidth)
 
   // 3. Max width: 60% of the screen, but ensure it never drops below the minimum width.
-  const maxAllowed = Math.max(dynamicMinWidth, Math.floor(window.innerWidth * 0.6))
+  const max = Math.max(min, Math.floor(window.innerWidth * 0.6))
 
-  // Clamp the dragged width (x) between our dynamic bounds
-  return Math.max(dynamicMinWidth, Math.min(maxAllowed, x))
+  return { min, max }
 }
+
+function clampPanelWidth(x: number): number {
+  const { min, max } = getPanelWidthBounds()
+  return Math.max(min, Math.min(max, x))
+}
+
+// Keyboard resize step sizes for the divider (arrow key / shift+arrow key).
+const RESIZE_STEP = 16
+const RESIZE_STEP_LARGE = 64
 
 export interface EditorShellProps {
   resumeId: string
@@ -116,6 +125,21 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
     draggingRef.current = false
     setDividerActive(false)
     setPanelWidth(dragStartWidthRef.current)
+  }
+
+  function handleDividerKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const step = e.shiftKey ? RESIZE_STEP_LARGE : RESIZE_STEP
+    let delta = 0
+    if (e.key === 'ArrowLeft') delta = -step
+    else if (e.key === 'ArrowRight') delta = step
+    else return
+
+    e.preventDefault()
+    setPanelWidth((w) => {
+      const next = clampPanelWidth(w + delta)
+      localStorage.setItem(PANEL_WIDTH_KEY, String(next))
+      return next
+    })
   }
 
   function handleJsonExport() {
@@ -236,6 +260,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
             <button
               onClick={() => setPreviewExpanded((v) => !v)}
               title={previewExpanded ? 'Collapse preview' : 'Expand preview'}
+              aria-label={previewExpanded ? 'Collapse preview' : 'Expand preview'}
               className={`flex items-center justify-center min-h-[40px] min-w-[40px] text-sm border rounded px-2 py-1 transition-colors ${
                 previewExpanded
                   ? 'border-indigo-400 bg-indigo-50 text-indigo-600'
@@ -365,13 +390,21 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
             {!previewExpanded && (
               <div
                 data-testid="panel-resize-divider"
-                className={`w-1 shrink-0 cursor-col-resize select-none transition-colors ${
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize editor panel"
+                aria-valuenow={panelWidth}
+                aria-valuemin={getPanelWidthBounds().min}
+                aria-valuemax={getPanelWidthBounds().max}
+                tabIndex={0}
+                className={`w-1 shrink-0 cursor-col-resize select-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
                   dividerActive ? 'bg-indigo-400/40' : 'hover:bg-indigo-400/40 bg-transparent'
                 }`}
                 onPointerDown={handleDividerPointerDown}
                 onPointerMove={handleDividerPointerMove}
                 onPointerUp={handleDividerPointerUp}
                 onPointerCancel={handleDividerPointerCancel}
+                onKeyDown={handleDividerKeyDown}
               />
             )}
 

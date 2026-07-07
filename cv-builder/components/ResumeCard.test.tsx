@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import ResumeCard from './ResumeCard'
+import { Toaster } from '@/components/ui/Toaster'
 import { useToastStore } from '@/lib/stores/toast.store'
 
 vi.mock('next/navigation', () => ({
@@ -111,5 +112,74 @@ describe('ResumeCard', () => {
     await waitFor(() => {
       expect(useToastStore.getState().toasts.some(t => t.variant === 'error')).toBe(true)
     })
+  })
+
+  it('has an aria-label on the Download button matching the Delete button convention', () => {
+    render(<ResumeCard resume={baseResume} />)
+    expect(screen.getByLabelText(`Download "${baseResume.title}" as JSON`)).toBeInTheDocument()
+  })
+
+  it('has an aria-label on the Duplicate button matching the Delete button convention', () => {
+    render(<ResumeCard resume={baseResume} />)
+    expect(screen.getByLabelText(`Duplicate "${baseResume.title}"`)).toBeInTheDocument()
+  })
+
+  it('pauses the undo-delete countdown while the toast is hovered, resuming with remaining time (not a full reset)', async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true } as Response)
+    vi.stubGlobal('fetch', fetchMock)
+    render(
+      <>
+        <ResumeCard resume={baseResume} />
+        <Toaster />
+      </>
+    )
+    fireEvent.click(screen.getByTitle('Delete'))
+
+    // Let 4s of the 6s undo window elapse (2s remaining).
+    await act(async () => { vi.advanceTimersByTime(4000) })
+
+    const toastEl = screen.getByText(`Deleted "${baseResume.title}"`).parentElement!
+    fireEvent.mouseEnter(toastEl)
+
+    // Advance well past the 2s that was remaining — should NOT fire while paused.
+    await act(async () => { vi.advanceTimersByTime(5000) })
+    expect(fetchMock).not.toHaveBeenCalledWith(`/api/resumes/${baseResume._id}`, { method: 'DELETE' })
+
+    fireEvent.mouseLeave(toastEl)
+
+    // Resumes with ~2s remaining, not a fresh 6s window.
+    await act(async () => { vi.advanceTimersByTime(2100) })
+    expect(fetchMock).toHaveBeenCalledWith(`/api/resumes/${baseResume._id}`, { method: 'DELETE' })
+
+    vi.useRealTimers()
+  })
+
+  it('pauses the undo-delete countdown while the toast has focus', async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true } as Response)
+    vi.stubGlobal('fetch', fetchMock)
+    render(
+      <>
+        <ResumeCard resume={baseResume} />
+        <Toaster />
+      </>
+    )
+    fireEvent.click(screen.getByTitle('Delete'))
+
+    await act(async () => { vi.advanceTimersByTime(4000) })
+
+    const dismissBtn = screen.getByRole('button', { name: 'Dismiss notification' })
+    fireEvent.focus(dismissBtn)
+
+    await act(async () => { vi.advanceTimersByTime(5000) })
+    expect(fetchMock).not.toHaveBeenCalledWith(`/api/resumes/${baseResume._id}`, { method: 'DELETE' })
+
+    fireEvent.blur(dismissBtn)
+
+    await act(async () => { vi.advanceTimersByTime(2100) })
+    expect(fetchMock).toHaveBeenCalledWith(`/api/resumes/${baseResume._id}`, { method: 'DELETE' })
+
+    vi.useRealTimers()
   })
 })

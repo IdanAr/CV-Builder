@@ -51,6 +51,7 @@ beforeEach(() => {
     saveError: null,
   })
   setViewport(false) // default to desktop unless a test overrides it
+  localStorage.clear()
 })
 
 afterEach(() => {
@@ -93,6 +94,53 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
     const input = screen.getByDisplayValue('CV')
     fireEvent.change(input, { target: { value: 'New Title' } })
     expect(useResumeEditorStore.getState().title).toBe('New Title')
+  })
+
+  it('expand/collapse toggle exposes an aria-label that reflects current state', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    const btn = screen.getByRole('button', { name: 'Expand preview' })
+    expect(btn).toBeInTheDocument()
+    fireEvent.click(btn)
+    expect(screen.getByRole('button', { name: 'Collapse preview' })).toBeInTheDocument()
+  })
+
+  it('resize divider exposes separator role and aria-value attributes', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    const divider = screen.getByTestId('panel-resize-divider')
+    expect(divider).toHaveAttribute('role', 'separator')
+    expect(divider).toHaveAttribute('aria-orientation', 'vertical')
+    expect(divider).toHaveAttribute('tabIndex', '0')
+    expect(divider.getAttribute('aria-valuenow')).not.toBeNull()
+    expect(divider.getAttribute('aria-valuemin')).not.toBeNull()
+    expect(divider.getAttribute('aria-valuemax')).not.toBeNull()
+  })
+
+  it('pressing arrow keys while the divider is focused resizes the panel within bounds', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    const divider = screen.getByTestId('panel-resize-divider')
+    const initial = Number(divider.getAttribute('aria-valuenow'))
+
+    fireEvent.keyDown(divider, { key: 'ArrowRight' })
+    expect(Number(divider.getAttribute('aria-valuenow'))).toBe(initial + 16)
+
+    fireEvent.keyDown(divider, { key: 'ArrowRight', shiftKey: true })
+    expect(Number(divider.getAttribute('aria-valuenow'))).toBe(initial + 16 + 64)
+
+    fireEvent.keyDown(divider, { key: 'ArrowLeft' })
+    expect(Number(divider.getAttribute('aria-valuenow'))).toBe(initial + 64)
+
+    const min = Number(divider.getAttribute('aria-valuemin'))
+    const max = Number(divider.getAttribute('aria-valuemax'))
+    expect(Number(divider.getAttribute('aria-valuenow'))).toBeGreaterThanOrEqual(min)
+    expect(Number(divider.getAttribute('aria-valuenow'))).toBeLessThanOrEqual(max)
+  })
+
+  it('persists panel width to localStorage after a keyboard resize, like pointer-drag release does', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    const divider = screen.getByTestId('panel-resize-divider')
+    const initial = Number(divider.getAttribute('aria-valuenow'))
+    fireEvent.keyDown(divider, { key: 'ArrowRight' })
+    expect(localStorage.getItem('cv-builder:panel-width')).toBe(String(initial + 16))
   })
 })
 
