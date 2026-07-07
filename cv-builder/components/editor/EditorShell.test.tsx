@@ -81,6 +81,26 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
     expect(screen.getByText('DesignPanelContent')).toBeInTheDocument()
   })
 
+  it('shows the Undo/Redo controls on the Edit tab', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    expect(screen.getByRole('button', { name: /Undo/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Redo/i })).toBeInTheDocument()
+  })
+
+  it('shows the Undo/Redo controls on the Design tab', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Design' }))
+    expect(screen.getByRole('button', { name: /Undo/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Redo/i })).toBeInTheDocument()
+  })
+
+  it('hides the Undo/Redo controls on the ATS tab', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    fireEvent.click(screen.getByRole('button', { name: 'ATS' }))
+    expect(screen.queryByRole('button', { name: /Undo/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Redo/i })).not.toBeInTheDocument()
+  })
+
   it('still supports the preview expand/collapse toggle', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
     fireEvent.click(screen.getByTitle('Expand preview'))

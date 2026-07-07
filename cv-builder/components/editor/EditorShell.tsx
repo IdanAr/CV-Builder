@@ -214,8 +214,9 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
         ))}
       </div>
 
-      {/* Sticky Undo/Redo — only on Edit tab */}
-      {activeTab === 'edit' && (
+      {/* Sticky Undo/Redo — on Edit and Design tabs (both mutate the shared
+          data/meta history; ATS is read-only and has nothing to undo) */}
+      {(activeTab === 'edit' || activeTab === 'design') && (
         <div className="flex items-center gap-1 px-3 py-1.5 border-b border-indigo-100 shrink-0 bg-indigo-50/60">
           <button
             onClick={undo}
