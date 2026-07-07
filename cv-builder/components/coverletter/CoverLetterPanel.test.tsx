@@ -1,0 +1,141 @@
+// @vitest-environment jsdom
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
+import { CoverLetterPanel } from './CoverLetterPanel'
+import type { ResumeMeta } from '@/lib/schemas/resume.zod'
+
+const defaultMeta: ResumeMeta = {
+  templateId: 'classic', fontFamily: 'Calibri', headerFontFamily: 'Calibri',
+  primaryColor: '#000000', accentColor: '#0066cc',
+  pageMargins: 1.0, lineSpacing: 1.15, sectionOrder: [], layout: 'single-column',
+  columnAssignment: {}, excludedAtsKeywords: [],
+}
+
+function jsonResponse(body: unknown) {
+  return { ok: true, json: async () => body }
+}
+
+beforeEach(() => {
+  useResumeEditorStore.setState({
+    resumeId: 'r1',
+    title: 'CV',
+    data: { basics: { name: 'Jane Doe' } },
+    meta: defaultMeta,
+    isDirty: false,
+    isSaving: false,
+    saveError: null,
+  })
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+describe('CoverLetterPanel', () => {
+  it('renders the JD textarea and a disabled Generate button when there is no JD text', () => {
+    render(<CoverLetterPanel />)
+    expect(screen.getByPlaceholderText(/paste the job description/i)).toBeInTheDocument()
+    expect(screen.getByText('Generate')).toBeDisabled()
+  })
+
+  it('clicking Generate with no JD text does nothing (fetch is never called)', () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByText('Generate'))
+
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('a successful generate call updates the store data.coverLetter and renders it in the editable textarea', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse({ content: 'Dear Hiring Manager, ...', pendingApprovals: [] })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<CoverLetterPanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the job description/i), {
+      target: { value: 'We are looking for a Software Engineer.' },
+    })
+    fireEvent.click(screen.getByText('Generate'))
+
+    await waitFor(() =>
+      expect(useResumeEditorStore.getState().data.coverLetter).toBe('Dear Hiring Manager, ...')
+    )
+
+    const letterTextarea = screen.getByDisplayValue('Dear Hiring Manager, ...')
+    expect(letterTextarea).toBeInTheDocument()
+
+    const [url, opts] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/resumes/r1/cover-letter')
+    const body = JSON.parse(opts.body)
+    expect(body.jobDescription).toBe('We are looking for a Software Engineer.')
+  })
+
+  it('a response with pendingApprovals renders warning chips', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse({ content: 'Grew revenue by 45%.', pendingApprovals: ['45%'] })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<CoverLetterPanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the job description/i), {
+      target: { value: 'We are looking for a Software Engineer.' },
+    })
+    fireEvent.click(screen.getByText('Generate'))
+
+    await waitFor(() => expect(screen.getByText(/double-check these/i)).toBeInTheDocument())
+    expect(screen.getByText('45%')).toBeInTheDocument()
+  })
+
+  it('editing the textarea directly updates data.coverLetter in the store', () => {
+    useResumeEditorStore.setState({
+      data: { basics: { name: 'Jane Doe' }, coverLetter: 'Existing letter text.' },
+    })
+    render(<CoverLetterPanel />)
+
+    const letterTextarea = screen.getByDisplayValue('Existing letter text.')
+    fireEvent.change(letterTextarea, { target: { value: 'Hand-edited letter text.' } })
+
+    expect(useResumeEditorStore.getState().data.coverLetter).toBe('Hand-edited letter text.')
+  })
+
+  it('a failed fetch shows an inline error message', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: false, status: 500 })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<CoverLetterPanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the job description/i), {
+      target: { value: 'We are looking for a Software Engineer.' },
+    })
+    fireEvent.click(screen.getByText('Generate'))
+
+    await waitFor(() => expect(screen.getByText(/could not generate|failed/i)).toBeInTheDocument())
+  })
+
+  it('accepts optional company name and role name inputs and includes them in the request', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse({ content: 'Dear Hiring Manager, ...', pendingApprovals: [] })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<CoverLetterPanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the job description/i), {
+      target: { value: 'We are looking for a Software Engineer.' },
+    })
+    fireEvent.change(screen.getByPlaceholderText(/company name/i), {
+      target: { value: 'Acme Corp' },
+    })
+    fireEvent.change(screen.getByPlaceholderText(/role/i), {
+      target: { value: 'Senior Engineer' },
+    })
+    fireEvent.click(screen.getByText('Generate'))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.companyName).toBe('Acme Corp')
+    expect(body.roleName).toBe('Senior Engineer')
+  })
+})

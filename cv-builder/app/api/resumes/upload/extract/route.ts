@@ -45,7 +45,7 @@ export const POST = auth(async function POST(req) {
       ...(data.customSections ?? []).map((cs) => `custom:${cs.id}`),
     ]
 
-    const resume = await createResume(req.auth.user.id, { title, data, meta })
+    const resume = await createResume(req.auth.user.id, { title, data, meta, applicationStatus: 'draft' })
 
     return NextResponse.json({ resumeId: String(resume._id) }, { status: 201 })
   } catch (err) {

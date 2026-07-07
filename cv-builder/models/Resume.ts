@@ -1,11 +1,15 @@
 import mongoose, { Schema, model, models, type Document } from 'mongoose'
-import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
+import type { ApplicationStatus, ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
 export interface IResume extends Document {
   userId: string
   title: string
   data: ResumeData
   meta: ResumeMeta
+  applicationStatus: ApplicationStatus
+  targetCompany?: string
+  targetRole?: string
+  parentResumeId?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -30,6 +34,10 @@ const ResumeSchema = new Schema<IResume>(
       layout: { type: String, enum: ['single-column', 'two-column'], default: 'single-column' },
       excludedAtsKeywords: { type: [String], default: [] },
     },
+    applicationStatus: { type: String, enum: ['draft', 'applied', 'interviewing', 'offer', 'rejected'], default: 'draft' },
+    targetCompany: { type: String, maxlength: 200 },
+    targetRole: { type: String, maxlength: 200 },
+    parentResumeId: { type: String },
   },
   { timestamps: true }
 )

@@ -7,6 +7,7 @@ import { EditTab } from './EditTab'
 import { PreviewTab } from './PreviewTab'
 import { DesignPanel } from './DesignPanel'
 import { AtsScorePanel } from '@/components/ats/AtsScorePanel'
+import { CoverLetterPanel } from '@/components/coverletter/CoverLetterPanel'
 import { EditorErrorBoundary } from './EditorErrorBoundary'
 import { AppNavbar } from '@/components/ui/AppNavbar'
 import { UserProfileButton } from '@/components/ui/UserProfileButton'
@@ -15,9 +16,9 @@ import { toast } from '@/lib/stores/toast.store'
 import type { ExportMode } from '@/lib/export-mode'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
-type Tab = 'edit' | 'design' | 'ats'
+type Tab = 'edit' | 'design' | 'ats' | 'coverLetter'
 
-const TAB_LABELS: Record<Tab, string> = { edit: 'Edit', design: 'Design', ats: 'ATS' }
+const TAB_LABELS: Record<Tab, string> = { edit: 'Edit', design: 'Design', ats: 'ATS', coverLetter: 'Cover Letter' }
 
 const PANEL_WIDTH_KEY = 'cv-builder:panel-width'
 const DEFAULT_PANEL_WIDTH = 500 // Increased to give the UI breathing room initially
@@ -187,7 +188,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
         {/* Left panel */}
         {previewExpanded ? (
           <div className="w-9 min-w-[36px] bg-indigo-900 flex flex-col items-center py-3 gap-4 border-r border-indigo-800 shrink-0">
-            {(['edit', 'design', 'ats'] as Tab[]).map((tab) => (
+            {(['edit', 'design', 'ats', 'coverLetter'] as Tab[]).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -216,7 +217,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
 
             {/* Tab bar */}
             <div className="flex border-b border-indigo-100 shrink-0 bg-white/50">
-              {(['edit', 'design', 'ats'] as Tab[]).map((tab) => (
+              {(['edit', 'design', 'ats', 'coverLetter'] as Tab[]).map((tab) => (
                 <button
                   key={tab}
                   type="button"
@@ -262,6 +263,9 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
               </div>
               <div className={activeTab === 'ats' ? 'block' : 'hidden'}>
                 <EditorErrorBoundary><AtsScorePanel /></EditorErrorBoundary>
+              </div>
+              <div className={activeTab === 'coverLetter' ? 'block' : 'hidden'}>
+                <EditorErrorBoundary><CoverLetterPanel /></EditorErrorBoundary>
               </div>
             </div>
           </div>

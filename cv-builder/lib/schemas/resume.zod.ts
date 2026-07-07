@@ -141,6 +141,9 @@ export const CustomSectionSchema = z.object({
   items: z.array(CustomSectionItemSchema),
 })
 
+export const ApplicationStatusEnum = z.enum(['draft', 'applied', 'interviewing', 'offer', 'rejected'])
+export type ApplicationStatus = z.infer<typeof ApplicationStatusEnum>
+
 export const ResumeDataSchema = z.object({
   basics: BasicsSchema.optional(),
   work: z.array(WorkSchema).optional(),
@@ -154,6 +157,7 @@ export const ResumeDataSchema = z.object({
   interests: z.array(InterestSchema).optional(),
   projects: z.array(ProjectSchema).optional(),
   customSections: z.array(CustomSectionSchema).optional(),
+  coverLetter: z.string().optional(),
 })
 
 export const ResumeMetaSchema = z.object({
@@ -187,6 +191,9 @@ export const CreateResumeSchema = z.object({
   title: z.string().trim().min(1, 'Title is required').max(200),
   data: ResumeDataSchema.optional().default({}),
   meta: ResumeMetaSchema.optional().default(() => ResumeMetaSchema.parse({})),
+  applicationStatus: ApplicationStatusEnum.optional().default('draft'),
+  targetCompany: z.string().trim().max(200).optional(),
+  targetRole: z.string().trim().max(200).optional(),
 })
 
 const ResumeMetaPatchSchema = z.object({
@@ -207,6 +214,9 @@ export const PatchResumeSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   data: ResumeDataSchema.optional(),
   meta: ResumeMetaPatchSchema.optional(),
+  applicationStatus: ApplicationStatusEnum.optional(),
+  targetCompany: z.string().trim().max(200).optional(),
+  targetRole: z.string().trim().max(200).optional(),
 })
 
 export type ResumeData = z.infer<typeof ResumeDataSchema>

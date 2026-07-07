@@ -63,6 +63,35 @@ describe('listResumes', () => {
     expect(result[0].sectionsFilledCount).toBe(2)
     expect(result[0].formatScore).toBeDefined()
   })
+
+  it('attaches parentResumeTitle when the parent is present in the same result set', async () => {
+    const fakeResumes = [
+      { _id: 'r1', userId: 'u1', title: 'Original CV', data: {}, meta: {} },
+      { _id: 'r2', userId: 'u1', title: 'Copy of Original CV', data: {}, meta: {}, parentResumeId: 'r1' },
+    ]
+    mockSort.mockReturnValue({ lean: mockLean })
+    mockLean.mockResolvedValue(fakeResumes)
+
+    const result = await listResumes('u1')
+
+    expect(result[0].parentResumeTitle).toBeUndefined()
+    expect(result[1].parentResumeTitle).toBe('Original CV')
+    // No extra DB query/lookup should be issued for resolving parent titles.
+    expect(mockFind).toHaveBeenCalledTimes(1)
+    expect(mockFindOne).not.toHaveBeenCalled()
+  })
+
+  it('resolves parentResumeTitle to undefined when the parent was since deleted', async () => {
+    const fakeResumes = [
+      { _id: 'r2', userId: 'u1', title: 'Copy of Deleted CV', data: {}, meta: {}, parentResumeId: 'gone' },
+    ]
+    mockSort.mockReturnValue({ lean: mockLean })
+    mockLean.mockResolvedValue(fakeResumes)
+
+    const result = await listResumes('u1')
+
+    expect(result[0].parentResumeTitle).toBeUndefined()
+  })
 })
 
 describe('getResume', () => {
@@ -101,6 +130,7 @@ describe('createResume', () => {
         columnAssignment: {},
         excludedAtsKeywords: [],
       },
+      applicationStatus: 'draft' as const,
     }
     const created = { _id: 'r2', userId: 'u1', ...input }
     mockCreate.mockResolvedValue({ toObject: () => created })
@@ -143,6 +173,30 @@ describe('patchResume', () => {
     mockFindOneAndUpdate.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) })
     const result = await patchResume('u1', 'nonexistent', { title: 'X' })
     expect(result).toBeNull()
+  })
+
+  it('sets applicationStatus via $set the same way title is handled', async () => {
+    mockFindOneAndUpdate.mockReturnValue({ lean: vi.fn().mockResolvedValue({}) })
+
+    await patchResume('u1', 'r1', { applicationStatus: 'applied' })
+
+    expect(mockFindOneAndUpdate).toHaveBeenCalledWith(
+      { _id: 'r1', userId: 'u1' },
+      { $set: { applicationStatus: 'applied' } },
+      { new: true }
+    )
+  })
+
+  it('sets targetCompany and targetRole via $set the same way title is handled', async () => {
+    mockFindOneAndUpdate.mockReturnValue({ lean: vi.fn().mockResolvedValue({}) })
+
+    await patchResume('u1', 'r1', { targetCompany: 'Acme Inc', targetRole: 'Engineer' })
+
+    expect(mockFindOneAndUpdate).toHaveBeenCalledWith(
+      { _id: 'r1', userId: 'u1' },
+      { $set: { targetCompany: 'Acme Inc', targetRole: 'Engineer' } },
+      { new: true }
+    )
   })
 })
 
@@ -189,5 +243,69 @@ describe('duplicateResume', () => {
     mockFindOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) })
     const result = await duplicateResume('u1', 'nonexistent')
     expect(result).toBeNull()
+  })
+
+  it('sets parentResumeId to the source id and resets applicationStatus to draft even if the source had a different status', async () => {
+    const source = {
+      _id: 'r1',
+      userId: 'u1',
+      title: 'My CV',
+      data: { work: [] },
+      meta: {},
+      applicationStatus: 'applied',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      __v: 0,
+    }
+    mockFindOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(source) })
+    mockCreate.mockResolvedValue({ toObject: () => ({}) })
+
+    await duplicateResume('u1', 'r1')
+
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ parentResumeId: 'r1', applicationStatus: 'draft' })
+    )
+  })
+
+  it('applies overrides.targetCompany/targetRole when provided', async () => {
+    const source = {
+      _id: 'r1',
+      userId: 'u1',
+      title: 'My CV',
+      data: {},
+      meta: {},
+      applicationStatus: 'draft',
+      targetCompany: 'Old Co',
+      targetRole: 'Old Role',
+    }
+    mockFindOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(source) })
+    mockCreate.mockResolvedValue({ toObject: () => ({}) })
+
+    await duplicateResume('u1', 'r1', { targetCompany: 'New Co', targetRole: 'New Role' })
+
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ targetCompany: 'New Co', targetRole: 'New Role' })
+    )
+  })
+
+  it('falls back to the source own targetCompany/targetRole when overrides are not provided', async () => {
+    const source = {
+      _id: 'r1',
+      userId: 'u1',
+      title: 'My CV',
+      data: {},
+      meta: {},
+      applicationStatus: 'draft',
+      targetCompany: 'Existing Co',
+      targetRole: 'Existing Role',
+    }
+    mockFindOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(source) })
+    mockCreate.mockResolvedValue({ toObject: () => ({}) })
+
+    await duplicateResume('u1', 'r1')
+
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ targetCompany: 'Existing Co', targetRole: 'Existing Role' })
+    )
   })
 })
