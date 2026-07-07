@@ -33,6 +33,8 @@ const TEMPLATES = [
   { id: 'sidebar', label: 'Sidebar', desc: 'Colored left rail, skills & languages in panel' },
 ]
 
+const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}){1,2}$/
+
 const SECTION_LABELS: Record<string, string> = {
   work: 'Work',
   education: 'Education',
@@ -118,6 +120,57 @@ export function DesignPanel() {
   const setMeta = useResumeEditorStore((s) => s.setMeta)
 
   const sensors = useSensors(useSensor(PointerSensor))
+
+  const [primaryColorDraft, setPrimaryColorDraft] = React.useState(meta.primaryColor)
+  const [primaryColorTouched, setPrimaryColorTouched] = React.useState(false)
+  const [accentColorDraft, setAccentColorDraft] = React.useState(meta.accentColor)
+  const [accentColorTouched, setAccentColorTouched] = React.useState(false)
+
+  function handlePrimaryColorSwatchChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value
+    setMeta({ primaryColor: value })
+    setPrimaryColorDraft(value)
+    setPrimaryColorTouched(false)
+  }
+
+  function handlePrimaryColorTextChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value
+    setPrimaryColorDraft(value)
+    setPrimaryColorTouched(true)
+    if (HEX_COLOR_RE.test(value)) {
+      setMeta({ primaryColor: value })
+    }
+  }
+
+  function handlePrimaryColorTextBlur() {
+    if (!HEX_COLOR_RE.test(primaryColorDraft)) {
+      setPrimaryColorDraft(meta.primaryColor)
+      setPrimaryColorTouched(false)
+    }
+  }
+
+  function handleAccentColorSwatchChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value
+    setMeta({ accentColor: value })
+    setAccentColorDraft(value)
+    setAccentColorTouched(false)
+  }
+
+  function handleAccentColorTextChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value
+    setAccentColorDraft(value)
+    setAccentColorTouched(true)
+    if (HEX_COLOR_RE.test(value)) {
+      setMeta({ accentColor: value })
+    }
+  }
+
+  function handleAccentColorTextBlur() {
+    if (!HEX_COLOR_RE.test(accentColorDraft)) {
+      setAccentColorDraft(meta.accentColor)
+      setAccentColorTouched(false)
+    }
+  }
 
   const selectClass = 'w-full border border-indigo-200 rounded-lg px-2 py-1.5 text-sm bg-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
   const labelClass = 'block text-xs font-medium text-indigo-600 mb-1'
@@ -243,23 +296,31 @@ export function DesignPanel() {
           <label className={labelClass}>Primary color</label>
           <div className="flex gap-2 items-center">
             <input type="color" value={meta.primaryColor}
-              onChange={(e) => setMeta({ primaryColor: e.target.value })}
+              onChange={handlePrimaryColorSwatchChange}
               className="h-8 w-10 rounded border border-indigo-200 cursor-pointer p-0.5" />
-            <input type="text" value={meta.primaryColor}
-              onChange={(e) => setMeta({ primaryColor: e.target.value })}
+            <input type="text" value={primaryColorDraft}
+              onChange={handlePrimaryColorTextChange}
+              onBlur={handlePrimaryColorTextBlur}
               placeholder="#000000" className="flex-1 border border-indigo-200 rounded px-2 py-1 text-xs font-mono bg-white/70 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
           </div>
+          {primaryColorTouched && !HEX_COLOR_RE.test(primaryColorDraft) && (
+            <p className="text-sm text-red-500">Enter a valid hex color (e.g. #0066cc)</p>
+          )}
         </div>
         <div>
           <label className={labelClass}>Accent color</label>
           <div className="flex gap-2 items-center">
             <input type="color" value={meta.accentColor}
-              onChange={(e) => setMeta({ accentColor: e.target.value })}
+              onChange={handleAccentColorSwatchChange}
               className="h-8 w-10 rounded border border-indigo-200 cursor-pointer p-0.5" />
-            <input type="text" value={meta.accentColor}
-              onChange={(e) => setMeta({ accentColor: e.target.value })}
+            <input type="text" value={accentColorDraft}
+              onChange={handleAccentColorTextChange}
+              onBlur={handleAccentColorTextBlur}
               placeholder="#0066cc" className="flex-1 border border-indigo-200 rounded px-2 py-1 text-xs font-mono bg-white/70 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
           </div>
+          {accentColorTouched && !HEX_COLOR_RE.test(accentColorDraft) && (
+            <p className="text-sm text-red-500">Enter a valid hex color (e.g. #0066cc)</p>
+          )}
         </div>
       </div>
 

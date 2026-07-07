@@ -102,4 +102,78 @@ describe('DesignPanel', () => {
     fireEvent.click(rightBtns[0])
     expect(useResumeEditorStore.getState().meta.columnAssignment?.work).toBe('right')
   })
+
+  describe('color input validation', () => {
+    const errorText = 'Enter a valid hex color (e.g. #0066cc)'
+
+    it('typing a valid hex into the primary color text input calls setMeta', () => {
+      render(<DesignPanel />)
+      const input = screen.getByPlaceholderText('#000000') as HTMLInputElement
+      fireEvent.change(input, { target: { value: '#123abc' } })
+      expect(useResumeEditorStore.getState().meta.primaryColor).toBe('#123abc')
+      expect(screen.queryByText(errorText)).toBeNull()
+    })
+
+    it('typing an invalid hex into the primary color text input shows an error and does not call setMeta', () => {
+      render(<DesignPanel />)
+      const input = screen.getByPlaceholderText('#000000') as HTMLInputElement
+      fireEvent.change(input, { target: { value: 'purple' } })
+      expect(screen.getByText(errorText)).toBeTruthy()
+      expect(useResumeEditorStore.getState().meta.primaryColor).toBe('#000000')
+    })
+
+    it('does not show an error before the primary color text input has been interacted with', () => {
+      render(<DesignPanel />)
+      expect(screen.queryByText(errorText)).toBeNull()
+    })
+
+    it('blurring the primary color text input while invalid reverts the displayed value and clears the error', () => {
+      render(<DesignPanel />)
+      const input = screen.getByPlaceholderText('#000000') as HTMLInputElement
+      fireEvent.change(input, { target: { value: 'purple' } })
+      fireEvent.blur(input)
+      expect(input.value).toBe('#000000')
+      expect(screen.queryByText(errorText)).toBeNull()
+    })
+
+    it('using the primary color swatch still updates meta immediately and syncs the text draft', () => {
+      const { container } = render(<DesignPanel />)
+      const swatch = container.querySelectorAll('input[type="color"]')[0] as HTMLInputElement
+      fireEvent.change(swatch, { target: { value: '#abcdef' } })
+      expect(useResumeEditorStore.getState().meta.primaryColor).toBe('#abcdef')
+      const textInput = screen.getByPlaceholderText('#000000') as HTMLInputElement
+      expect(textInput.value).toBe('#abcdef')
+    })
+
+    it('typing a valid hex into the accent color text input calls setMeta', () => {
+      render(<DesignPanel />)
+      const input = screen.getByPlaceholderText('#0066cc') as HTMLInputElement
+      fireEvent.change(input, { target: { value: '#654321' } })
+      expect(useResumeEditorStore.getState().meta.accentColor).toBe('#654321')
+    })
+
+    it('typing an invalid hex into the accent color text input shows an error and does not call setMeta', () => {
+      render(<DesignPanel />)
+      const input = screen.getByPlaceholderText('#0066cc') as HTMLInputElement
+      fireEvent.change(input, { target: { value: '#12' } })
+      expect(screen.getByText(errorText)).toBeTruthy()
+      expect(useResumeEditorStore.getState().meta.accentColor).toBe('#0066cc')
+    })
+
+    it('blurring the accent color text input while invalid reverts the displayed value', () => {
+      render(<DesignPanel />)
+      const input = screen.getByPlaceholderText('#0066cc') as HTMLInputElement
+      fireEvent.change(input, { target: { value: 'nope' } })
+      fireEvent.blur(input)
+      expect(input.value).toBe('#0066cc')
+      expect(screen.queryByText(errorText)).toBeNull()
+    })
+
+    it('using the accent color swatch still updates meta immediately', () => {
+      const { container } = render(<DesignPanel />)
+      const swatch = container.querySelectorAll('input[type="color"]')[1] as HTMLInputElement
+      fireEvent.change(swatch, { target: { value: '#fedcba' } })
+      expect(useResumeEditorStore.getState().meta.accentColor).toBe('#fedcba')
+    })
+  })
 })
