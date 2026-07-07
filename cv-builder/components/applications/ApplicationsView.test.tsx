@@ -54,6 +54,37 @@ beforeEach(() => {
   )
 })
 
+describe('ApplicationsView view toggle', () => {
+  it('defaults to the table and switches to the Kanban board, persisting the choice', () => {
+    renderView()
+    expect(screen.getByRole('table', { name: 'Applications' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Board' }))
+
+    expect(screen.queryByRole('table', { name: 'Applications' })).not.toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Applied column' })).toBeInTheDocument()
+    expect(localStorage.getItem('cv-builder:applications-view')).toBe('kanban')
+  })
+
+  it('restores the persisted kanban preference on mount', () => {
+    localStorage.setItem('cv-builder:applications-view', 'kanban')
+    renderView()
+    expect(screen.queryByRole('table', { name: 'Applications' })).not.toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Offer column' })).toBeInTheDocument()
+  })
+
+  it('applies active filters to the board view too', () => {
+    localStorage.setItem('cv-builder:applications-view', 'kanban')
+    localStorage.setItem(
+      'cv-builder:applications-filters',
+      JSON.stringify([{ columnId: 'company', kind: 'text', query: 'acme' }])
+    )
+    renderView()
+    expect(screen.getByText('Acme')).toBeInTheDocument()
+    expect(screen.queryByText('Zeta')).not.toBeInTheDocument()
+  })
+})
+
 describe('ApplicationsView filtering', () => {
   it('applies a text filter, shows a removable chip, and persists to localStorage', async () => {
     renderView()

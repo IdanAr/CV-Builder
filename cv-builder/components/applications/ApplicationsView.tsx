@@ -14,6 +14,7 @@ import { computeMovedOrder } from '@/lib/applications/order'
 import { applyFilters, type ColumnFilter } from '@/lib/applications/filter'
 import { FilterBar } from './FilterBar'
 import ApplicationsTable from './ApplicationsTable'
+import ApplicationsBoard from './ApplicationsBoard'
 import { ColumnHeader } from './ColumnHeader'
 import { ColumnForm, type ColumnFormResult } from './ColumnForm'
 import { ActivityLog } from './ActivityLog'
@@ -23,6 +24,9 @@ const UNDO_DELETE_DURATION = 6000
 // Display preference, not board config — localStorage, same convention as
 // EditorShell's PANEL_WIDTH_KEY.
 const FILTERS_KEY = 'cv-builder:applications-filters'
+const VIEW_KEY = 'cv-builder:applications-view'
+
+type ViewMode = 'table' | 'kanban'
 
 interface PendingDelete {
   timer: number | null
@@ -76,7 +80,19 @@ export default function ApplicationsView({
     { mode: 'add' } | { mode: 'edit'; column: BoardColumn } | null
   >(null)
   const [filters, setFilters] = useState<ColumnFilter[]>([])
+  const [view, setView] = useState<ViewMode>('table')
   const pendingDeletesRef = useRef(new Map<string, PendingDelete>())
+
+  // Restore the persisted view preference after mount (SSR-safe).
+  useEffect(() => {
+    const saved = localStorage.getItem(VIEW_KEY)
+    if (saved === 'kanban' || saved === 'table') setView(saved)
+  }, [])
+
+  function handleViewChange(next: ViewMode) {
+    setView(next)
+    localStorage.setItem(VIEW_KEY, next)
+  }
 
   // Restore persisted filters after mount (SSR-safe), then persist changes.
   const filtersLoadedRef = useRef(false)
@@ -200,6 +216,51 @@ export default function ApplicationsView({
     void persistBoardConfig({
       columns: boardConfig.columns.map((c) => (c.id === activeId ? { ...c, order: newOrder } : c)),
     })
+  }
+
+  // --- Kanban card drop: status change + within-column position -------------
+  async function handleCardMove(appId: string, targetStatus: string, overCardId: string | null) {
+    const app = applications.find((a) => a._id === appId)
+    if (!app) return
+
+    const patch: { status?: string; order?: number } = {}
+    if (app.status !== targetStatus) patch.status = targetStatus
+
+    if (overCardId) {
+      // Dropped on a card: take its slot within that column's order sequence.
+      const laneCards = applications.filter(
+        (a) => a.status === targetStatus || a._id === appId
+      )
+      const newOrder = computeMovedOrder(
+        laneCards.map((a) => ({ id: a._id, order: a.order })),
+        appId,
+        overCardId
+      )
+      if (newOrder !== null) patch.order = newOrder
+    } else if (patch.status) {
+      // Dropped on a column's empty area: append after the lane's last card.
+      const laneOrders = applications
+        .filter((a) => a.status === targetStatus)
+        .map((a) => a.order)
+      if (laneOrders.length > 0) patch.order = Math.max(...laneOrders) + 1000
+    }
+
+    if (patch.status === undefined && patch.order === undefined) return
+
+    const previous = applications
+    setApplications((apps) => apps.map((a) => (a._id === appId ? { ...a, ...patch } : a)))
+    try {
+      const res = await fetch(`/api/applications/${appId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      })
+      if (!res.ok) throw new Error('Card move failed')
+    } catch (err) {
+      console.error(err)
+      setApplications(previous)
+      toast.error('Could not move the card. Please try again.')
+    }
   }
 
   // --- Inline cell editing (optimistic, reverts on failure) -----------------
@@ -356,43 +417,77 @@ export default function ApplicationsView({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <FilterBar columns={columns} filters={filters} onChange={handleFiltersChange} />
-        {filters.length > 0 && (
-          <p className="text-xs text-indigo-400">
-            Showing {filteredApplications.length} of {visibleApplications.length} applications
-          </p>
-        )}
-      </div>
-      <ApplicationsTable
-        applications={sortedApplications}
-        columns={columns}
-        resumes={resumes}
-        onCellChange={handleCellChange}
-        onDeleteRow={handleDeleteRow}
-        onAddRow={handleAddRow}
-        onRowMove={handleRowMove}
-        onColumnMove={handleColumnMove}
-        rowDragEnabled={boardConfig.sort.length === 0}
-        renderRowAccessory={(app) => <ActivityLog applicationId={app._id} company={app.company} />}
-        renderHeaderCell={(column) => (
-          <ColumnHeader
-            column={column}
-            sort={boardConfig.sort}
-            onToggleSort={handleToggleSort}
-            onEdit={(col) => setColumnModal({ mode: 'edit', column: col })}
-            onDelete={handleDeleteColumn}
-          />
-        )}
-        headerAccessory={
-          <button
-            type="button"
-            onClick={() => setColumnModal({ mode: 'add' })}
-            title="Add a custom column"
-            className="whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium text-indigo-500 hover:bg-indigo-50 hover:text-indigo-700"
+        <div className="flex items-center gap-3">
+          {filters.length > 0 && (
+            <p className="text-xs text-indigo-400">
+              Showing {filteredApplications.length} of {visibleApplications.length} applications
+            </p>
+          )}
+          <div
+            role="group"
+            aria-label="View mode"
+            className="flex rounded-lg border border-indigo-200 bg-white/60 p-0.5"
           >
-            + Column
-          </button>
-        }
-      />
+            {(['table', 'kanban'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={view === mode}
+                onClick={() => handleViewChange(mode)}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium capitalize transition ${
+                  view === mode
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-indigo-500 hover:text-indigo-700'
+                }`}
+              >
+                {mode === 'table' ? 'Table' : 'Board'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {view === 'table' ? (
+        <ApplicationsTable
+          applications={sortedApplications}
+          columns={columns}
+          resumes={resumes}
+          onCellChange={handleCellChange}
+          onDeleteRow={handleDeleteRow}
+          onAddRow={handleAddRow}
+          onRowMove={handleRowMove}
+          onColumnMove={handleColumnMove}
+          rowDragEnabled={boardConfig.sort.length === 0}
+          renderRowAccessory={(app) => (
+            <ActivityLog applicationId={app._id} company={app.company} />
+          )}
+          renderHeaderCell={(column) => (
+            <ColumnHeader
+              column={column}
+              sort={boardConfig.sort}
+              onToggleSort={handleToggleSort}
+              onEdit={(col) => setColumnModal({ mode: 'edit', column: col })}
+              onDelete={handleDeleteColumn}
+            />
+          )}
+          headerAccessory={
+            <button
+              type="button"
+              onClick={() => setColumnModal({ mode: 'add' })}
+              title="Add a custom column"
+              className="whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium text-indigo-500 hover:bg-indigo-50 hover:text-indigo-700"
+            >
+              + Column
+            </button>
+          }
+        />
+      ) : (
+        <ApplicationsBoard
+          applications={filteredApplications}
+          columns={columns}
+          onCardMove={handleCardMove}
+        />
+      )}
 
       {columnModal && (
         <div
