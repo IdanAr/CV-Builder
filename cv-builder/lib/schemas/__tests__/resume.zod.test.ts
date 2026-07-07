@@ -191,6 +191,34 @@ describe('ResumeMetaSchema — updated sectionOrder default', () => {
   })
 })
 
+describe('Application tracking fields', () => {
+  it('CreateResumeSchema defaults applicationStatus to "draft" when omitted', () => {
+    const result = CreateResumeSchema.parse({ title: 'My CV' })
+    expect(result.applicationStatus).toBe('draft')
+  })
+
+  it('PatchResumeSchema accepts a partial patch with just applicationStatus', () => {
+    const result = PatchResumeSchema.safeParse({ applicationStatus: 'applied' })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.applicationStatus).toBe('applied')
+    }
+  })
+
+  it('ResumeDataSchema accepts and preserves a coverLetter string', () => {
+    const result = ResumeDataSchema.safeParse({ coverLetter: 'Dear Hiring Manager,\n\nI am excited to apply.' })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.coverLetter).toBe('Dear Hiring Manager,\n\nI am excited to apply.')
+    }
+  })
+
+  it('PatchResumeSchema rejects an invalid applicationStatus value', () => {
+    const result = PatchResumeSchema.safeParse({ applicationStatus: 'ghosted' })
+    expect(result.success).toBe(false)
+  })
+})
+
 describe('ResumeMetaSchema — excludedAtsKeywords', () => {
   it('defaults to an empty array', () => {
     const result = ResumeMetaSchema.parse({})

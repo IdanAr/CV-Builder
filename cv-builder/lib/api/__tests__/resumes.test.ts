@@ -101,6 +101,7 @@ describe('createResume', () => {
         columnAssignment: {},
         excludedAtsKeywords: [],
       },
+      applicationStatus: 'draft' as const,
     }
     const created = { _id: 'r2', userId: 'u1', ...input }
     mockCreate.mockResolvedValue({ toObject: () => created })
