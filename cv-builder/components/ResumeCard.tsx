@@ -4,6 +4,9 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast, useToastStore } from '@/lib/stores/toast.store'
+import { onToastPause, onToastResume } from '@/components/ui/Toaster'
+
+const UNDO_DELETE_DURATION = 6000
 
 interface ResumeCardProps {
   resume: {
@@ -48,9 +51,15 @@ function formatRelativeTime(iso: string) {
 export default function ResumeCard({ resume }: ResumeCardProps) {
   const router = useRouter()
   const [duplicating, setDuplicating] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(false)
   const deleteTimerRef = useRef<number | null>(null)
   const undoToastIdRef = useRef<number | null>(null)
+  // Tracks the undo window's remaining time so a hover/focus pause on the
+  // toast (see Toaster.tsx) can resume the countdown instead of resetting it.
+  const remainingRef = useRef(UNDO_DELETE_DURATION)
+  const startedAtRef = useRef(0)
+  const cancelledRef = useRef(false)
 
   async function commitDelete() {
     try {
@@ -64,23 +73,63 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
     }
   }
 
+  function startDeleteTimer(ms: number) {
+    startedAtRef.current = Date.now()
+    remainingRef.current = ms
+    deleteTimerRef.current = window.setTimeout(() => {
+      deleteTimerRef.current = null
+      if (undoToastIdRef.current !== null) useToastStore.getState().dismiss(undoToastIdRef.current)
+      void commitDelete()
+    }, ms)
+  }
+
+  function pauseDeleteTimer() {
+    if (deleteTimerRef.current === null) return
+    const elapsed = Date.now() - startedAtRef.current
+    remainingRef.current = Math.max(0, remainingRef.current - elapsed)
+    window.clearTimeout(deleteTimerRef.current)
+    deleteTimerRef.current = null
+  }
+
+  function resumeDeleteTimer() {
+    if (deleteTimerRef.current !== null) return
+    if (cancelledRef.current) return
+    startDeleteTimer(remainingRef.current)
+  }
+
   function handleDelete() {
+    cancelledRef.current = false
     setPendingDelete(true)
     undoToastIdRef.current = toast.withAction(
       `Deleted "${resume.title}"`,
       'Undo',
       () => {
+        cancelledRef.current = true
         if (deleteTimerRef.current) window.clearTimeout(deleteTimerRef.current)
         deleteTimerRef.current = null
         setPendingDelete(false)
       }
     )
-    deleteTimerRef.current = window.setTimeout(() => {
-      deleteTimerRef.current = null
-      if (undoToastIdRef.current !== null) useToastStore.getState().dismiss(undoToastIdRef.current)
-      void commitDelete()
-    }, 6000)
+    startDeleteTimer(UNDO_DELETE_DURATION)
   }
+
+  // Subscribe once to the Toaster's pause/resume bus so a hover or focus on
+  // the undo-delete toast pauses this component's own deletion countdown
+  // (the toast's own visual dismiss timer lives in Toaster.tsx and is paused
+  // independently, in lockstep, via the same hover/focus interaction).
+  useEffect(() => {
+    const unsubPause = onToastPause((id) => {
+      if (undoToastIdRef.current === id) pauseDeleteTimer()
+    })
+    const unsubResume = onToastResume((id) => {
+      if (undoToastIdRef.current === id) resumeDeleteTimer()
+    })
+    return () => {
+      unsubPause()
+      unsubResume()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -108,6 +157,8 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
   }
 
   async function handleDownload() {
+    if (downloading) return
+    setDownloading(true)
     try {
       const res = await fetch(`/api/resumes/${resume._id}`)
       if (!res.ok) throw new Error('Fetch failed')
@@ -122,6 +173,8 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
     } catch (err) {
       console.error(err)
       toast.error(`Could not download "${resume.title}" as JSON. Please try again.`)
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -141,8 +194,10 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
           </p>
         </div>
         
-        {/* Added 'relative z-10' to lift these buttons above the invisible link */}
-        <div className="relative z-10 flex shrink-0 gap-2">
+        {/* Added 'relative z-10' to lift these buttons above the invisible link.
+            'flex-wrap' lets buttons wrap onto a second line on narrow viewports
+            instead of compressing against the truncated title/role text. */}
+        <div className="relative z-10 flex flex-wrap shrink-0 gap-2">
           
           <span
             className="rounded-md border border-indigo-300 bg-white/50 px-3 py-1.5 text-xs font-medium text-indigo-700 transition group-hover:bg-indigo-50 pointer-events-none"
@@ -152,14 +207,17 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
           
           <button
             onClick={handleDownload}
-            className="rounded-md border border-indigo-100 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50"
+            disabled={downloading}
+            aria-label={`Download "${resume.title}" as JSON`}
+            className="rounded-md border border-indigo-100 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50"
             title="Download as JSON"
           >
-            ↓ JSON
+            {downloading ? '…' : '↓ JSON'}
           </button>
           <button
             onClick={handleDuplicate}
             disabled={duplicating}
+            aria-label={`Duplicate "${resume.title}"`}
             className="rounded-md border border-indigo-100 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50"
             title="Duplicate"
           >

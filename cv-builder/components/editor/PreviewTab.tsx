@@ -21,6 +21,16 @@ const TEMPLATES: Record<string, React.ComponentType<{ data: ResumeData; meta: Re
   sidebar: SidebarTemplate,
 }
 
+const ZOOM_STORAGE_KEY = 'cv-builder:preview-zoom'
+const MIN_ZOOM = 0.25
+const MAX_ZOOM = 2.0
+const ZOOM_STEP = 0.1
+const ZOOM_PRESETS = [0.5, 0.75, 1.0, 1.25, 1.5]
+
+function clampZoom(z: number): number {
+  return Math.round(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z)) * 100) / 100
+}
+
 export function PreviewTab() {
   const data = useResumeEditorStore((s) => s.data)
   const meta = useResumeEditorStore((s) => s.meta)
@@ -34,6 +44,10 @@ export function PreviewTab() {
   const [fitScale, setFitScale] = useState(0.75)
   const [templateHeight, setTemplateHeight] = useState(A4_HEIGHT_PX)
   const [breaks, setBreaks] = useState<ResolvedBreak[]>([])
+  // null = auto-fit (tracks fitScale via the ResizeObserver below); a number
+  // is a user-set override that takes precedence everywhere fitScale is used.
+  const [zoomOverride, setZoomOverride] = useState<number | null>(null)
+  const [zoomMenuOpen, setZoomMenuOpen] = useState(false)
 
   // Track container width → fitScale
   useEffect(() => {
@@ -44,6 +58,16 @@ export function PreviewTab() {
     })
     ro.observe(el)
     return () => ro.disconnect()
+  }, [])
+
+  // Restore a previously-persisted zoom level. Absent or 'fit' → leave
+  // zoomOverride at its default null so first-time users get auto-fit.
+  useEffect(() => {
+    const saved = localStorage.getItem(ZOOM_STORAGE_KEY)
+    if (saved && saved !== 'fit') {
+      const z = parseFloat(saved)
+      if (!isNaN(z)) setZoomOverride(clampZoom(z))
+    }
   }, [])
 
   // Track rendered template height
@@ -59,10 +83,32 @@ export function PreviewTab() {
 
   const Template = TEMPLATES[debouncedMeta.templateId] ?? ClassicTemplate
 
+  // Effective scale used everywhere fitScale was previously referenced: a
+  // user zoom override wins over the auto-fit scale when set.
+  const scale = zoomOverride ?? fitScale
+
   const marginPx = debouncedMeta.pageMargins * 96
   const usablePx = A4_HEIGHT_PX - 2 * marginPx
   const estimates = computePageBreaks(templateHeight, marginPx)
   const estimatedPageCount = estimates.length + 1
+
+  function handleZoomIn() {
+    applyZoom(clampZoom((zoomOverride ?? fitScale) + ZOOM_STEP))
+  }
+
+  function handleZoomOut() {
+    applyZoom(clampZoom((zoomOverride ?? fitScale) - ZOOM_STEP))
+  }
+
+  function applyZoom(z: number | null) {
+    setZoomOverride(z)
+    localStorage.setItem(ZOOM_STORAGE_KEY, z === null ? 'fit' : String(z))
+  }
+
+  function handlePresetSelect(z: number | null) {
+    applyZoom(z)
+    setZoomMenuOpen(false)
+  }
 
   // Resolve divider positions after the DOM has the debounced content.
   // Synced → pin to PDF anchor lines (estimate fallback per break inside
@@ -75,17 +121,17 @@ export function PreviewTab() {
       setBreaks(
         resolveAnchorTops(wrapper, content, {
           anchors: pagination.anchors,
-          estimateTopFor: (k) => (marginPx + (k + 1) * usablePx) * fitScale,
-          maxTop: templateHeight * fitScale,
+          estimateTopFor: (k) => (marginPx + (k + 1) * usablePx) * scale,
+          maxTop: templateHeight * scale,
         })
       )
     } else {
       setBreaks(
-        estimates.map((b) => ({ page: b.page, top: b.top * fitScale, source: 'estimate' as const }))
+        estimates.map((b) => ({ page: b.page, top: b.top * scale, source: 'estimate' as const }))
       )
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination.status, pagination.anchors, templateHeight, fitScale, debouncedData, debouncedMeta])
+  }, [pagination.status, pagination.anchors, templateHeight, scale, debouncedData, debouncedMeta])
 
   const badgeText =
     pagination.status === 'synced' && pagination.pageCount !== null
@@ -95,56 +141,123 @@ export function PreviewTab() {
         : 'Calculating pages…'
 
   return (
-    <div className="relative flex-1 min-h-0">
-      {/* Pagination status badge — floats over the preview, does not scroll */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 8,
-          right: 16,
-          zIndex: 20,
-          background: 'rgba(99, 102, 241, 0.10)',
-          color: 'rgba(67, 56, 202, 0.9)',
-          fontSize: '11px',
-          padding: '3px 10px',
-          borderRadius: '9999px',
-          fontFamily: 'sans-serif',
-          userSelect: 'none',
-          pointerEvents: 'none',
-          backdropFilter: 'blur(4px)',
-        }}
-      >
-        {badgeText}
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* Zoom controls — adjacent to the "Live Preview" header rendered by EditorShell */}
+      <div className="flex items-center justify-end gap-1 px-3 h-9 border-b border-indigo-100 bg-white/50 shrink-0">
+        <button
+          type="button"
+          aria-label="Zoom out"
+          data-testid="zoom-out"
+          onClick={handleZoomOut}
+          disabled={scale <= MIN_ZOOM}
+          className="flex items-center justify-center min-h-[28px] min-w-[28px] text-sm border border-indigo-200 rounded text-indigo-600 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          −
+        </button>
+        <div className="relative">
+          <button
+            type="button"
+            aria-haspopup="listbox"
+            aria-expanded={zoomMenuOpen}
+            data-testid="zoom-percentage"
+            onClick={() => setZoomMenuOpen((v) => !v)}
+            className="flex items-center justify-center min-h-[28px] px-2 text-xs border border-indigo-200 rounded text-indigo-600 hover:bg-indigo-50 tabular-nums"
+          >
+            {zoomOverride === null ? 'Fit' : `${Math.round(zoomOverride * 100)}%`}
+          </button>
+          {zoomMenuOpen && (
+            <div
+              role="listbox"
+              data-testid="zoom-menu"
+              className="absolute right-0 top-full mt-1 z-30 bg-white border border-indigo-200 rounded shadow-md py-1 min-w-[80px]"
+            >
+              {ZOOM_PRESETS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  role="option"
+                  aria-selected={zoomOverride === p}
+                  onClick={() => handlePresetSelect(p)}
+                  className="block w-full text-left px-3 py-1 text-xs text-indigo-600 hover:bg-indigo-50"
+                >
+                  {Math.round(p * 100)}%
+                </button>
+              ))}
+              <button
+                type="button"
+                role="option"
+                aria-selected={zoomOverride === null}
+                onClick={() => handlePresetSelect(null)}
+                className="block w-full text-left px-3 py-1 text-xs text-indigo-600 hover:bg-indigo-50 border-t border-indigo-100"
+              >
+                Fit
+              </button>
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          aria-label="Zoom in"
+          data-testid="zoom-in"
+          onClick={handleZoomIn}
+          disabled={scale >= MAX_ZOOM}
+          className="flex items-center justify-center min-h-[28px] min-w-[28px] text-sm border border-indigo-200 rounded text-indigo-600 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          +
+        </button>
       </div>
 
-      <div
-        ref={containerRef}
-        className="h-full overflow-auto bg-white/20 backdrop-blur-sm flex justify-center py-8"
-      >
-        {/* Outer wrapper sized to post-scale visual dimensions so the scroll container tracks content correctly */}
+      <div className="relative flex-1 min-h-0">
+        {/* Pagination status badge — floats over the preview, does not scroll */}
         <div
-          ref={wrapperRef}
           style={{
-            position: 'relative',
-            width: A4_WIDTH_PX * fitScale,
-            height: templateHeight * fitScale,
-            flexShrink: 0,
+            position: 'absolute',
+            top: 8,
+            right: 16,
+            zIndex: 20,
+            background: 'rgba(99, 102, 241, 0.10)',
+            color: 'rgba(67, 56, 202, 0.9)',
+            fontSize: '11px',
+            padding: '3px 10px',
+            borderRadius: '9999px',
+            fontFamily: 'sans-serif',
+            userSelect: 'none',
+            pointerEvents: 'none',
+            backdropFilter: 'blur(4px)',
           }}
         >
-          {/* Inner div absolutely positioned and CSS-scaled — transform does not affect layout flow */}
+          {badgeText}
+        </div>
+
+        <div
+          ref={containerRef}
+          className="h-full overflow-auto bg-white/20 backdrop-blur-sm flex justify-center py-8"
+        >
+          {/* Outer wrapper sized to post-scale visual dimensions so the scroll container tracks content correctly */}
           <div
-            ref={innerRef}
+            ref={wrapperRef}
             style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: A4_WIDTH_PX,
-              transformOrigin: 'top left',
-              transform: `scale(${fitScale})`,
+              position: 'relative',
+              width: A4_WIDTH_PX * scale,
+              height: templateHeight * scale,
+              flexShrink: 0,
             }}
           >
-            <Template data={debouncedData} meta={debouncedMeta} />
-          </div>
+            {/* Inner div absolutely positioned and CSS-scaled — transform does not affect layout flow */}
+            <div
+              ref={innerRef}
+              data-testid="preview-scaled-content"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: A4_WIDTH_PX,
+                transformOrigin: 'top left',
+                transform: `scale(${scale})`,
+              }}
+            >
+              <Template data={debouncedData} meta={debouncedMeta} />
+            </div>
 
           {/* Page break indicators — solid when pinned to real PDF breaks, dashed while estimating */}
           {breaks.map(({ page, top, source }) => (
@@ -185,6 +298,7 @@ export function PreviewTab() {
               </div>
             </div>
           ))}
+        </div>
         </div>
       </div>
     </div>

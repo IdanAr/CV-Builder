@@ -9,18 +9,77 @@ const VARIANT_STYLES: Record<Toast['variant'], string> = {
   info: 'border-indigo-200 bg-white/95 text-indigo-900',
 }
 
+type ToastTimerListener = (id: number) => void
+const pauseListeners = new Set<ToastTimerListener>()
+const resumeListeners = new Set<ToastTimerListener>()
+
+/**
+ * Lets other components that own side effects tied to a toast's lifetime
+ * (e.g. the resume card's undo-delete countdown) react when this toast's
+ * own dismiss timer is paused/resumed on hover or focus, so both stay in sync.
+ */
+export function onToastPause(cb: ToastTimerListener): () => void {
+  pauseListeners.add(cb)
+  return () => pauseListeners.delete(cb)
+}
+
+export function onToastResume(cb: ToastTimerListener): () => void {
+  resumeListeners.add(cb)
+  return () => resumeListeners.delete(cb)
+}
+
 function ToastItem({ toast: t }: { toast: Toast }) {
   const dismiss = useToastStore((s) => s.dismiss)
   const timerRef = useRef<number | null>(null)
+  const remainingRef = useRef(t.duration)
+  const startedAtRef = useRef(0)
+  // Tracks which kinds of interaction are currently keeping the timer paused,
+  // so leaving hover while still focused (or vice versa) doesn't resume early.
+  const activeInteractionsRef = useRef<Set<'hover' | 'focus'>>(new Set())
+
+  function start(ms: number) {
+    startedAtRef.current = Date.now()
+    remainingRef.current = ms
+    timerRef.current = window.setTimeout(() => dismiss(t.id), ms)
+  }
+
+  function clear() {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }
 
   useEffect(() => {
-    timerRef.current = window.setTimeout(() => dismiss(t.id), t.duration)
-    return () => { if (timerRef.current) window.clearTimeout(timerRef.current) }
+    start(t.duration)
+    return clear
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t.id, t.duration, dismiss])
+
+  function pause(kind: 'hover' | 'focus') {
+    const wasEmpty = activeInteractionsRef.current.size === 0
+    activeInteractionsRef.current.add(kind)
+    if (!wasEmpty) return
+    const elapsed = Date.now() - startedAtRef.current
+    remainingRef.current = Math.max(0, remainingRef.current - elapsed)
+    clear()
+    pauseListeners.forEach((cb) => cb(t.id))
+  }
+
+  function resume(kind: 'hover' | 'focus') {
+    activeInteractionsRef.current.delete(kind)
+    if (activeInteractionsRef.current.size > 0) return
+    start(remainingRef.current)
+    resumeListeners.forEach((cb) => cb(t.id))
+  }
 
   return (
     <div
       className={`pointer-events-auto flex items-center gap-3 rounded-xl border px-4 py-3 shadow-lg backdrop-blur-xl ${VARIANT_STYLES[t.variant]}`}
+      onMouseEnter={() => pause('hover')}
+      onMouseLeave={() => resume('hover')}
+      onFocus={() => pause('focus')}
+      onBlur={() => resume('focus')}
     >
       <p className="text-sm font-medium">{t.message}</p>
       {t.actionLabel && (

@@ -8,12 +8,14 @@ export function AppNavbar({ actions }: AppNavbarProps) {
   return (
     <nav className="w-full bg-white/55 backdrop-blur-xl border-b border-white/30 shadow-sm">
       <div className="w-full px-4 sm:px-6 lg:px-8">
-        {/* Added 'relative' and 'w-full' to this wrapper so the absolute logo positions correctly */}
-        <div className="relative flex h-20 items-center w-full">
-          
-          {/* Actions Container: Now spans the entire width (z-10 to stay clickable above the logo area) */}
+        {/* Added 'relative' and 'w-full' to this wrapper so the absolute logo positions correctly.
+            Below md, height is allowed to grow (min-h + py) so a wrapped actions row has room. */}
+        <div className="relative flex flex-wrap items-center w-full min-h-[64px] py-2 md:h-20 md:py-0 md:flex-nowrap">
+
+          {/* Actions Container: Now spans the entire width (z-10 to stay clickable above the logo area).
+              Wraps below md instead of overflowing — simpler than a collapse-into-menu pattern. */}
           {actions && (
-            <div className="flex flex-1 items-center w-full z-10">
+            <div className="flex flex-1 flex-wrap items-center gap-y-2 w-full z-10">
               {actions}
             </div>
           )}
@@ -38,7 +40,7 @@ export function AppNavbar({ actions }: AppNavbarProps) {
               <path d="M 42 42 L 48 42 L 50 38 L 52 42 L 58 42 L 54 48 L 56 54 L 50 50 L 44 54 L 46 48 Z"
                 fill="#FFFFFF" opacity="0.9" />
             </svg>
-            <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 whitespace-nowrap">
+            <span className="hidden md:inline text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 whitespace-nowrap">
               CV Builder
             </span>
           </div>
