@@ -4,8 +4,10 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import ResumeCard from './ResumeCard'
 import { useToastStore } from '@/lib/stores/toast.store'
 
+const { refreshMock } = vi.hoisted(() => ({ refreshMock: vi.fn() }))
+
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh: vi.fn() }),
+  useRouter: () => ({ refresh: refreshMock }),
 }))
 
 const baseResume = {
@@ -15,6 +17,7 @@ const baseResume = {
   meta: { templateId: 'classic', layout: 'single-column', columnAssignment: {} },
   sectionsFilledCount: 3,
   formatScore: 20,
+  applicationStatus: 'draft' as const,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 }
@@ -111,5 +114,65 @@ describe('ResumeCard', () => {
     await waitFor(() => {
       expect(useToastStore.getState().toasts.some(t => t.variant === 'error')).toBe(true)
     })
+  })
+
+  it.each([
+    ['draft', 'bg-gray-100'],
+    ['applied', 'bg-blue-100'],
+    ['interviewing', 'bg-amber-100'],
+    ['offer', 'bg-green-100'],
+    ['rejected', 'bg-red-100'],
+  ])('renders the %s status select with the correct value and color class', (status, colorClass) => {
+    render(<ResumeCard resume={{ ...baseResume, applicationStatus: status as typeof baseResume.applicationStatus }} />)
+    const select = screen.getByLabelText(/application status/i) as HTMLSelectElement
+    expect(select.value).toBe(status)
+    expect(select.className).toContain(colorClass)
+  })
+
+  it('fires a PATCH with the new status and refreshes when the select changes', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true } as Response)
+    vi.stubGlobal('fetch', fetchMock)
+    render(<ResumeCard resume={baseResume} />)
+    const select = screen.getByLabelText(/application status/i)
+    fireEvent.change(select, { target: { value: 'applied' } })
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(`/api/resumes/${baseResume._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ applicationStatus: 'applied' }),
+      })
+    })
+    await waitFor(() => expect(refreshMock).toHaveBeenCalled())
+  })
+
+  it('reverts the select and shows an error toast when the status PATCH fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false } as Response))
+    render(<ResumeCard resume={baseResume} />)
+    const select = screen.getByLabelText(/application status/i) as HTMLSelectElement
+    fireEvent.change(select, { target: { value: 'applied' } })
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(t => t.variant === 'error')).toBe(true)
+    })
+    await waitFor(() => expect(select.value).toBe('draft'))
+  })
+
+  it('shows target company and role when set', () => {
+    render(<ResumeCard resume={{ ...baseResume, targetCompany: 'Acme Corp', targetRole: 'Senior Engineer' }} />)
+    expect(screen.getByText('Acme Corp · Senior Engineer')).toBeInTheDocument()
+  })
+
+  it('omits the company/role row when neither is set', () => {
+    render(<ResumeCard resume={baseResume} />)
+    expect(screen.queryByTestId('target-company-role')).not.toBeInTheDocument()
+  })
+
+  it('shows the "Version of" tag when parentResumeTitle is present', () => {
+    render(<ResumeCard resume={{ ...baseResume, parentResumeTitle: 'Original Resume' }} />)
+    expect(screen.getByText(/Version of "Original Resume"/)).toBeInTheDocument()
+  })
+
+  it('omits the "Version of" tag when parentResumeTitle is absent', () => {
+    render(<ResumeCard resume={baseResume} />)
+    expect(screen.queryByText(/Version of/)).not.toBeInTheDocument()
   })
 })
