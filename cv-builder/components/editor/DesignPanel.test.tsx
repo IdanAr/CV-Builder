@@ -203,4 +203,62 @@ describe('DesignPanel', () => {
       expect(screen.queryByText(errorText)).toBeNull()
     })
   })
+
+  describe('color preset palette', () => {
+    it('renders a labeled preset swatch group for primary and accent colors', () => {
+      render(<DesignPanel />)
+      expect(screen.getByRole('group', { name: /primary color presets/i })).toBeInTheDocument()
+      expect(screen.getByRole('group', { name: /accent color presets/i })).toBeInTheDocument()
+    })
+
+    it('renders more than one clickable preset swatch per palette', () => {
+      render(<DesignPanel />)
+      const primaryGroup = screen.getByRole('group', { name: /primary color presets/i })
+      const accentGroup = screen.getByRole('group', { name: /accent color presets/i })
+      expect(primaryGroup.querySelectorAll('button').length).toBeGreaterThan(1)
+      expect(accentGroup.querySelectorAll('button').length).toBeGreaterThan(1)
+    })
+
+    it('clicking a primary color preset updates meta and the text draft', () => {
+      render(<DesignPanel />)
+      const primaryGroup = screen.getByRole('group', { name: /primary color presets/i })
+      const navyBtn = primaryGroup.querySelector('button[title="Navy"]') as HTMLButtonElement
+      fireEvent.click(navyBtn)
+      expect(useResumeEditorStore.getState().meta.primaryColor).toBe('#1e3a8a')
+      const textInput = screen.getByPlaceholderText('#000000') as HTMLInputElement
+      expect(textInput.value).toBe('#1e3a8a')
+    })
+
+    it('clicking an accent color preset updates meta and the text draft', () => {
+      render(<DesignPanel />)
+      const accentGroup = screen.getByRole('group', { name: /accent color presets/i })
+      const tealBtn = accentGroup.querySelector('button[title="Teal"]') as HTMLButtonElement
+      fireEvent.click(tealBtn)
+      expect(useResumeEditorStore.getState().meta.accentColor).toBe('#0f766e')
+      const textInput = screen.getByPlaceholderText('#0066cc') as HTMLInputElement
+      expect(textInput.value).toBe('#0f766e')
+    })
+
+    it('marks the preset matching the current primary color as pressed', () => {
+      render(<DesignPanel />)
+      const primaryGroup = screen.getByRole('group', { name: /primary color presets/i })
+      const blackBtn = primaryGroup.querySelector('button[title="Black"]') as HTMLButtonElement
+      expect(blackBtn).toHaveAttribute('aria-pressed', 'true')
+      const navyBtn = primaryGroup.querySelector('button[title="Navy"]') as HTMLButtonElement
+      expect(navyBtn).toHaveAttribute('aria-pressed', 'false')
+    })
+
+    it('marks the preset matching the current accent color as pressed', () => {
+      render(<DesignPanel />)
+      const accentGroup = screen.getByRole('group', { name: /accent color presets/i })
+      const classicBlueBtn = accentGroup.querySelector('button[title="Classic Blue"]') as HTMLButtonElement
+      expect(classicBlueBtn).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('the custom color picker input still has an accessible label', () => {
+      render(<DesignPanel />)
+      expect(screen.getByLabelText(/custom primary color/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/custom accent color/i)).toBeInTheDocument()
+    })
+  })
 })

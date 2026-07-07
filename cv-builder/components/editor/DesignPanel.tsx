@@ -35,6 +35,21 @@ const TEMPLATES = [
 
 const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}){1,2}$/
 
+// A curated set of professional, resume-appropriate colors shown as a quick-pick
+// palette, so the color controls visually read as "a palette to choose from"
+// rather than a single opaque swatch + hex box. Free-form custom colors are
+// still available via the native picker and the hex text input.
+const PRESET_COLORS: Array<{ name: string; hex: string }> = [
+  { name: 'Black', hex: '#000000' },
+  { name: 'Charcoal', hex: '#1f2937' },
+  { name: 'Navy', hex: '#1e3a8a' },
+  { name: 'Classic Blue', hex: '#0066cc' },
+  { name: 'Teal', hex: '#0f766e' },
+  { name: 'Forest Green', hex: '#15803d' },
+  { name: 'Burgundy', hex: '#9f1239' },
+  { name: 'Violet', hex: '#7c3aed' },
+]
+
 const SECTION_LABELS: Record<string, string> = {
   work: 'Work',
   education: 'Education',
@@ -165,6 +180,12 @@ export function DesignPanel() {
     }
   }
 
+  function handlePrimaryColorPresetSelect(hex: string) {
+    setMeta({ primaryColor: hex })
+    setPrimaryColorDraft(hex)
+    setPrimaryColorTouched(false)
+  }
+
   function handleAccentColorSwatchChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value
     setMeta({ accentColor: value })
@@ -186,6 +207,12 @@ export function DesignPanel() {
       setAccentColorDraft(meta.accentColor)
       setAccentColorTouched(false)
     }
+  }
+
+  function handleAccentColorPresetSelect(hex: string) {
+    setMeta({ accentColor: hex })
+    setAccentColorDraft(hex)
+    setAccentColorTouched(false)
   }
 
   const selectClass = 'w-full border border-indigo-200 rounded-lg px-2 py-1.5 text-sm bg-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
@@ -310,32 +337,74 @@ export function DesignPanel() {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className={labelClass}>Primary color</label>
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center mb-2">
             <input type="color" value={meta.primaryColor}
               onChange={handlePrimaryColorSwatchChange}
-              className="h-8 w-10 rounded border border-indigo-200 cursor-pointer p-0.5" />
+              aria-label="Custom primary color"
+              title="Custom color"
+              className="h-9 w-9 shrink-0 rounded-full border-2 border-white shadow ring-1 ring-indigo-200 cursor-pointer p-0 overflow-hidden" />
             <input type="text" value={primaryColorDraft}
               onChange={handlePrimaryColorTextChange}
               onBlur={handlePrimaryColorTextBlur}
               placeholder="#000000" className="flex-1 border border-indigo-200 rounded px-2 py-1 text-xs font-mono bg-white/70 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
           </div>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Primary color presets">
+            {PRESET_COLORS.map(({ name, hex }) => {
+              const isActive = meta.primaryColor.toLowerCase() === hex.toLowerCase()
+              return (
+                <button
+                  key={hex}
+                  type="button"
+                  title={name}
+                  aria-label={`Set primary color to ${name}`}
+                  aria-pressed={isActive}
+                  onClick={() => handlePrimaryColorPresetSelect(hex)}
+                  style={{ backgroundColor: hex }}
+                  className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-1 ${
+                    isActive ? 'border-indigo-600 ring-2 ring-indigo-300 ring-offset-1' : 'border-white shadow-sm'
+                  }`}
+                />
+              )
+            })}
+          </div>
           {primaryColorTouched && !HEX_COLOR_RE.test(primaryColorDraft) && (
-            <p className="text-sm text-red-500">Enter a valid hex color (e.g. #0066cc)</p>
+            <p className="text-sm text-red-500 mt-1">Enter a valid hex color (e.g. #0066cc)</p>
           )}
         </div>
         <div>
           <label className={labelClass}>Accent color</label>
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center mb-2">
             <input type="color" value={meta.accentColor}
               onChange={handleAccentColorSwatchChange}
-              className="h-8 w-10 rounded border border-indigo-200 cursor-pointer p-0.5" />
+              aria-label="Custom accent color"
+              title="Custom color"
+              className="h-9 w-9 shrink-0 rounded-full border-2 border-white shadow ring-1 ring-indigo-200 cursor-pointer p-0 overflow-hidden" />
             <input type="text" value={accentColorDraft}
               onChange={handleAccentColorTextChange}
               onBlur={handleAccentColorTextBlur}
               placeholder="#0066cc" className="flex-1 border border-indigo-200 rounded px-2 py-1 text-xs font-mono bg-white/70 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
           </div>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Accent color presets">
+            {PRESET_COLORS.map(({ name, hex }) => {
+              const isActive = meta.accentColor.toLowerCase() === hex.toLowerCase()
+              return (
+                <button
+                  key={hex}
+                  type="button"
+                  title={name}
+                  aria-label={`Set accent color to ${name}`}
+                  aria-pressed={isActive}
+                  onClick={() => handleAccentColorPresetSelect(hex)}
+                  style={{ backgroundColor: hex }}
+                  className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-1 ${
+                    isActive ? 'border-indigo-600 ring-2 ring-indigo-300 ring-offset-1' : 'border-white shadow-sm'
+                  }`}
+                />
+              )
+            })}
+          </div>
           {accentColorTouched && !HEX_COLOR_RE.test(accentColorDraft) && (
-            <p className="text-sm text-red-500">Enter a valid hex color (e.g. #0066cc)</p>
+            <p className="text-sm text-red-500 mt-1">Enter a valid hex color (e.g. #0066cc)</p>
           )}
         </div>
       </div>
