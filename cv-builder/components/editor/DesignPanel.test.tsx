@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { DesignPanel } from './DesignPanel'
 import type { ResumeMeta } from '@/lib/schemas/resume.zod'
@@ -174,6 +174,33 @@ describe('DesignPanel', () => {
       const swatch = container.querySelectorAll('input[type="color"]')[1] as HTMLInputElement
       fireEvent.change(swatch, { target: { value: '#fedcba' } })
       expect(useResumeEditorStore.getState().meta.accentColor).toBe('#fedcba')
+    })
+
+    it('syncs the primary color text draft when meta.primaryColor changes externally (e.g. undo/redo)', () => {
+      render(<DesignPanel />)
+      const input = screen.getByPlaceholderText('#000000') as HTMLInputElement
+      expect(input.value).toBe('#000000')
+
+      // Simulate an external change to meta (undo/redo, not this component's own inputs).
+      act(() => {
+        useResumeEditorStore.setState((s) => ({ meta: { ...s.meta, primaryColor: '#ff0000' } }))
+      })
+
+      expect(input.value).toBe('#ff0000')
+      expect(screen.queryByText(errorText)).toBeNull()
+    })
+
+    it('syncs the accent color text draft when meta.accentColor changes externally (e.g. undo/redo)', () => {
+      render(<DesignPanel />)
+      const input = screen.getByPlaceholderText('#0066cc') as HTMLInputElement
+      expect(input.value).toBe('#0066cc')
+
+      act(() => {
+        useResumeEditorStore.setState((s) => ({ meta: { ...s.meta, accentColor: '#00ff00' } }))
+      })
+
+      expect(input.value).toBe('#00ff00')
+      expect(screen.queryByText(errorText)).toBeNull()
     })
   })
 })

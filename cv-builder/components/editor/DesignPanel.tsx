@@ -126,6 +126,22 @@ export function DesignPanel() {
   const [accentColorDraft, setAccentColorDraft] = React.useState(meta.accentColor)
   const [accentColorTouched, setAccentColorTouched] = React.useState(false)
 
+  // Keep the drafts in sync when meta changes from *outside* this component's
+  // own inputs (undo/redo, loading a different resume, etc.) — without this,
+  // the text field would keep showing a stale value after an external change
+  // even though the swatch (which reads meta directly) updates correctly.
+  // This is a no-op when the change originated from this component's own
+  // valid-hex commit, since the draft already equals the new meta value.
+  React.useEffect(() => {
+    setPrimaryColorDraft(meta.primaryColor)
+    setPrimaryColorTouched(false)
+  }, [meta.primaryColor])
+
+  React.useEffect(() => {
+    setAccentColorDraft(meta.accentColor)
+    setAccentColorTouched(false)
+  }, [meta.accentColor])
+
   function handlePrimaryColorSwatchChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value
     setMeta({ primaryColor: value })
