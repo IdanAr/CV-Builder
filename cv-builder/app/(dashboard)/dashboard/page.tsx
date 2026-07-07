@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { listResumes } from '@/lib/api/resumes'
 import ResumeCard from '@/components/ResumeCard'
-import type { ApplicationStatus } from '@/lib/schemas/resume.zod'
 import NewResumeButton from '@/components/NewResumeButton'
 import UploadCVButton from '@/components/UploadCVButton'
 import { EmptyDashboardState } from '@/components/EmptyDashboardState'
@@ -48,10 +47,6 @@ export default async function DashboardPage() {
                   meta: resume.meta as { templateId?: string; layout?: string },
                   sectionsFilledCount: resume.sectionsFilledCount,
                   formatScore: resume.formatScore ?? 0,
-                  applicationStatus: (resume.applicationStatus ?? 'draft') as ApplicationStatus,
-                  targetCompany: resume.targetCompany,
-                  targetRole: resume.targetRole,
-                  parentResumeTitle: resume.parentResumeTitle,
                   createdAt: resume.createdAt.toISOString(),
                   updatedAt: resume.updatedAt.toISOString(),
                 }}
