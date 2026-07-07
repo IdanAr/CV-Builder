@@ -14,6 +14,7 @@ import { computeMovedOrder } from '@/lib/applications/order'
 import ApplicationsTable from './ApplicationsTable'
 import { ColumnHeader } from './ColumnHeader'
 import { ColumnForm, type ColumnFormResult } from './ColumnForm'
+import { ActivityLog } from './ActivityLog'
 import { EmptyApplicationsState } from './EmptyApplicationsState'
 
 const UNDO_DELETE_DURATION = 6000
@@ -333,6 +334,7 @@ export default function ApplicationsView({
         onRowMove={handleRowMove}
         onColumnMove={handleColumnMove}
         rowDragEnabled={boardConfig.sort.length === 0}
+        renderRowAccessory={(app) => <ActivityLog applicationId={app._id} company={app.company} />}
         renderHeaderCell={(column) => (
           <ColumnHeader
             column={column}
