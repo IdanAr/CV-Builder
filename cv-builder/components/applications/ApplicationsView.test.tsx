@@ -85,6 +85,44 @@ describe('ApplicationsView view toggle', () => {
   })
 })
 
+describe('ApplicationsView quick add', () => {
+  it('renders the "+ New Application" CTA outside the table and creates a row on click', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        application: {
+          _id: 'a3',
+          company: '',
+          role: '',
+          status: 'applied',
+          order: 3000,
+          customFields: {},
+          createdAt: '2026-07-03T10:00:00.000Z',
+          updatedAt: '2026-07-03T10:00:00.000Z',
+        },
+      }),
+    } as Response)
+    renderView()
+
+    const cta = screen.getByRole('button', { name: '+ New Application' })
+    // The CTA lives in the toolbar above the grid, not as a row inside it.
+    expect(screen.getByRole('table', { name: 'Applications' }).contains(cta)).toBe(false)
+
+    fireEvent.click(cta)
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/applications',
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
+    // Header row + 2 existing + 1 newly created.
+    await waitFor(() => {
+      expect(screen.getAllByRole('row')).toHaveLength(4)
+    })
+  })
+})
+
 describe('ApplicationsView filtering', () => {
   it('applies a text filter, shows a removable chip, and persists to localStorage', async () => {
     renderView()

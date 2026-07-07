@@ -182,7 +182,6 @@ export interface ApplicationsTableProps {
   resumes: ResumeOption[]
   onCellChange: (appId: string, column: BoardColumn, value: CustomFieldValue) => void
   onDeleteRow: (appId: string) => void
-  onAddRow: () => void
   /** Drop handlers for drag reordering. Row dragging only fires when rowDragEnabled. */
   onRowMove?: (activeId: string, overId: string) => void
   onColumnMove?: (activeId: string, overId: string) => void
@@ -202,7 +201,6 @@ export default function ApplicationsTable({
   resumes,
   onCellChange,
   onDeleteRow,
-  onAddRow,
   onRowMove,
   onColumnMove,
   rowDragEnabled = false,
@@ -223,7 +221,7 @@ export default function ApplicationsTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-white/30 bg-white/65 shadow-lg backdrop-blur-xl">
+    <div className="min-h-[28rem] overflow-x-auto rounded-xl border border-white/30 bg-white/65 shadow-lg backdrop-blur-xl">
       <div role="table" aria-label="Applications" className="min-w-max">
         {/* Header (columns are drag-reorderable) */}
         <DndContext collisionDetection={closestCenter} onDragEnd={handleColumnDragEnd}>
@@ -292,17 +290,6 @@ export default function ApplicationsTable({
             ))}
           </SortableContext>
         </DndContext>
-
-        {/* Quick-add row */}
-        <div role="row" className="flex">
-          <button
-            type="button"
-            onClick={onAddRow}
-            className="w-full px-3 py-2 text-left text-sm font-medium text-indigo-500 transition hover:bg-indigo-50/60 hover:text-indigo-700"
-          >
-            + New application
-          </button>
-        </div>
       </div>
     </div>
   )

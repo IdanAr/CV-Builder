@@ -36,20 +36,25 @@ export default async function ApplicationsPage() {
         }
       />
 
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-indigo-700">Applications</h1>
-          <p className="mt-1 text-sm text-indigo-400">
-            Every application you&apos;re tracking, in one customizable table.
-          </p>
-        </div>
+<div className="mx-auto flex h-[calc(100vh-8rem)] max-w-7xl flex-col px-4 py-8">
+  <div className="mb-6">
+    <h1 className="text-3xl font-bold text-indigo-700">Applications</h1>
+    <p className="mt-1 text-md text-indigo-500">
+      Every application you&apos;re tracking, in one customizable table.
+    </p>
+    <p className="mt-1 text-xs text-indigo-500">
+      Create, edit, and manage your applications to keep your job search focused
+    </p>
+  </div>
 
-        <ApplicationsView
-          initialApplications={JSON.parse(JSON.stringify(applications)) as ApplicationRow[]}
-          initialBoardConfig={JSON.parse(JSON.stringify(boardConfig)) as BoardConfigData}
-          resumes={resumes}
-        />
-      </div>
+  <div className="mt-6 flex-1">
+    <ApplicationsView
+      initialApplications={JSON.parse(JSON.stringify(applications)) as ApplicationRow[]}
+      initialBoardConfig={JSON.parse(JSON.stringify(boardConfig)) as BoardConfigData}
+      resumes={resumes}
+    />
+  </div>
+</div>
     </>
   )
 }

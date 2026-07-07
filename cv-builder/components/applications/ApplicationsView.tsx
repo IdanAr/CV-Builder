@@ -444,6 +444,13 @@ export default function ApplicationsView({
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={handleAddRow}
+            className="whitespace-nowrap rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
+          >
+            + New Application
+          </button>
         </div>
       </div>
 
@@ -454,7 +461,6 @@ export default function ApplicationsView({
           resumes={resumes}
           onCellChange={handleCellChange}
           onDeleteRow={handleDeleteRow}
-          onAddRow={handleAddRow}
           onRowMove={handleRowMove}
           onColumnMove={handleColumnMove}
           rowDragEnabled={boardConfig.sort.length === 0}

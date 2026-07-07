@@ -45,7 +45,6 @@ const columns = [
 function renderTable(overrides: Partial<React.ComponentProps<typeof ApplicationsTable>> = {}) {
   const onCellChange = vi.fn()
   const onDeleteRow = vi.fn()
-  const onAddRow = vi.fn()
   render(
     <ApplicationsTable
       applications={apps}
@@ -53,11 +52,10 @@ function renderTable(overrides: Partial<React.ComponentProps<typeof Applications
       resumes={[{ id: 'r1', title: 'Backend CV' }]}
       onCellChange={onCellChange}
       onDeleteRow={onDeleteRow}
-      onAddRow={onAddRow}
       {...overrides}
     />
   )
-  return { onCellChange, onDeleteRow, onAddRow }
+  return { onCellChange, onDeleteRow }
 }
 
 describe('ApplicationsTable', () => {
@@ -156,13 +154,10 @@ describe('ApplicationsTable', () => {
     expect(value).toBe('r1')
   })
 
-  it('fires onDeleteRow and onAddRow', () => {
-    const { onDeleteRow, onAddRow } = renderTable()
+  it('fires onDeleteRow', () => {
+    const { onDeleteRow } = renderTable()
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete application at Acme' }))
     expect(onDeleteRow).toHaveBeenCalledWith('a1')
-
-    fireEvent.click(screen.getByRole('button', { name: '+ New application' }))
-    expect(onAddRow).toHaveBeenCalled()
   })
 })
