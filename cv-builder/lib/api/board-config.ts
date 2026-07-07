@@ -22,6 +22,14 @@ export async function getOrCreateBoardConfig(userId: string) {
   return created.toObject()
 }
 
+/** Thrown for column-invariant violations; routes map it to a 400, not a 500. */
+export class BoardConfigValidationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'BoardConfigValidationError'
+  }
+}
+
 /**
  * Validates invariants a raw Zod shape-check can't express:
  * built-ins are never deleted, ids stay unique, select/status columns keep at
@@ -31,20 +39,20 @@ export async function getOrCreateBoardConfig(userId: string) {
 function assertColumnsValid(columns: BoardColumn[]): void {
   const ids = new Set(columns.map((c) => c.id))
   if (ids.size !== columns.length) {
-    throw new Error('Board config contains duplicate column ids')
+    throw new BoardConfigValidationError('Board config contains duplicate column ids')
   }
   for (const builtInId of BUILT_IN_COLUMN_IDS) {
     if (!ids.has(builtInId)) {
-      throw new Error(`Built-in column "${builtInId}" cannot be deleted`)
+      throw new BoardConfigValidationError(`Built-in column "${builtInId}" cannot be deleted`)
     }
   }
   for (const col of columns) {
     if ((col.type === 'select' || col.type === 'status') && !(col.options && col.options.length > 0)) {
-      throw new Error(`Column "${col.label}" needs at least one option`)
+      throw new BoardConfigValidationError(`Column "${col.label}" needs at least one option`)
     }
   }
   if (!columns.some((c) => c.type === 'status')) {
-    throw new Error('At least one status column is required')
+    throw new BoardConfigValidationError('At least one status column is required')
   }
 }
 
