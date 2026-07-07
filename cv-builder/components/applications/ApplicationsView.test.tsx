@@ -47,10 +47,49 @@ function rowTexts() {
 
 beforeEach(() => {
   vi.restoreAllMocks()
+  localStorage.clear()
   vi.stubGlobal(
     'fetch',
     vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) })
   )
+})
+
+describe('ApplicationsView filtering', () => {
+  it('applies a text filter, shows a removable chip, and persists to localStorage', async () => {
+    renderView()
+
+    fireEvent.click(screen.getByRole('button', { name: '+ Filter' }))
+    fireEvent.change(screen.getByLabelText(/filter by/i), { target: { value: 'company' } })
+    fireEvent.change(screen.getByLabelText('Company contains'), { target: { value: 'zeta' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filter' }))
+
+    // Acme row filtered out, chip visible, count line shown.
+    expect(rowTexts().join(' ')).not.toContain('Acme')
+    expect(screen.getByText('Company contains "zeta"')).toBeInTheDocument()
+    expect(screen.getByText(/Showing 1 of 2 applications/)).toBeInTheDocument()
+    expect(
+      JSON.parse(localStorage.getItem('cv-builder:applications-filters') ?? '[]')
+    ).toEqual([{ columnId: 'company', kind: 'text', query: 'zeta' }])
+
+    // Removing the chip restores the rows and clears persistence.
+    fireEvent.click(screen.getByRole('button', { name: 'Remove filter on Company' }))
+    expect(rowTexts().join(' ')).toContain('Acme')
+    expect(
+      JSON.parse(localStorage.getItem('cv-builder:applications-filters') ?? 'null')
+    ).toEqual([])
+  })
+
+  it('restores persisted filters on mount', () => {
+    localStorage.setItem(
+      'cv-builder:applications-filters',
+      JSON.stringify([{ columnId: 'status', kind: 'options', optionIds: ['offer'] }])
+    )
+    renderView()
+
+    expect(rowTexts().join(' ')).not.toContain('Zeta') // Zeta is 'applied'
+    expect(rowTexts().join(' ')).toContain('Acme') // Acme is 'offer'
+    expect(screen.getByText('Status: Offer')).toBeInTheDocument()
+  })
 })
 
 describe('ApplicationsView sorting', () => {

@@ -11,6 +11,8 @@ import type { ApplicationRow, BoardConfigData, ResumeOption } from '@/lib/applic
 import { buildCellPatch } from '@/lib/applications/cells'
 import { sortApplications, toggleSort } from '@/lib/applications/sort'
 import { computeMovedOrder } from '@/lib/applications/order'
+import { applyFilters, type ColumnFilter } from '@/lib/applications/filter'
+import { FilterBar } from './FilterBar'
 import ApplicationsTable from './ApplicationsTable'
 import { ColumnHeader } from './ColumnHeader'
 import { ColumnForm, type ColumnFormResult } from './ColumnForm'
@@ -18,6 +20,9 @@ import { ActivityLog } from './ActivityLog'
 import { EmptyApplicationsState } from './EmptyApplicationsState'
 
 const UNDO_DELETE_DURATION = 6000
+// Display preference, not board config — localStorage, same convention as
+// EditorShell's PANEL_WIDTH_KEY.
+const FILTERS_KEY = 'cv-builder:applications-filters'
 
 interface PendingDelete {
   timer: number | null
@@ -70,7 +75,31 @@ export default function ApplicationsView({
   const [columnModal, setColumnModal] = useState<
     { mode: 'add' } | { mode: 'edit'; column: BoardColumn } | null
   >(null)
+  const [filters, setFilters] = useState<ColumnFilter[]>([])
   const pendingDeletesRef = useRef(new Map<string, PendingDelete>())
+
+  // Restore persisted filters after mount (SSR-safe), then persist changes.
+  const filtersLoadedRef = useRef(false)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(FILTERS_KEY)
+      if (saved) setFilters(JSON.parse(saved))
+    } catch (err) {
+      console.error(err)
+    }
+    filtersLoadedRef.current = true
+  }, [])
+
+  function handleFiltersChange(next: ColumnFilter[]) {
+    setFilters(next)
+    if (filtersLoadedRef.current) {
+      try {
+        localStorage.setItem(FILTERS_KEY, JSON.stringify(next))
+      } catch (err) {
+        console.error(err)
+      }
+    }
+  }
 
   // --- Board config persistence (optimistic, reverts on failure) ------------
   async function persistBoardConfig(patch: { columns?: BoardColumn[]; sort?: SortEntry[] }) {
@@ -316,7 +345,8 @@ export default function ApplicationsView({
 
   const visibleApplications = applications.filter((a) => !hiddenIds.has(a._id))
   const columns = boardConfig.columns
-  const sortedApplications = sortApplications(visibleApplications, boardConfig.sort, columns)
+  const filteredApplications = applyFilters(visibleApplications, filters, columns)
+  const sortedApplications = sortApplications(filteredApplications, boardConfig.sort, columns)
 
   if (applications.length === 0) {
     return <EmptyApplicationsState onCreate={handleAddRow} />
@@ -324,6 +354,14 @@ export default function ApplicationsView({
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <FilterBar columns={columns} filters={filters} onChange={handleFiltersChange} />
+        {filters.length > 0 && (
+          <p className="text-xs text-indigo-400">
+            Showing {filteredApplications.length} of {visibleApplications.length} applications
+          </p>
+        )}
+      </div>
       <ApplicationsTable
         applications={sortedApplications}
         columns={columns}
