@@ -13,6 +13,7 @@ import { sortApplications, toggleSort } from '@/lib/applications/sort'
 import { computeMovedOrder } from '@/lib/applications/order'
 import ApplicationsTable from './ApplicationsTable'
 import { ColumnHeader } from './ColumnHeader'
+import { ColumnForm, type ColumnFormResult } from './ColumnForm'
 import { EmptyApplicationsState } from './EmptyApplicationsState'
 
 const UNDO_DELETE_DURATION = 6000
@@ -65,6 +66,9 @@ export default function ApplicationsView({
   const [applications, setApplications] = useState(initialApplications)
   const [boardConfig, setBoardConfig] = useState(initialBoardConfig)
   const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(new Set())
+  const [columnModal, setColumnModal] = useState<
+    { mode: 'add' } | { mode: 'edit'; column: BoardColumn } | null
+  >(null)
   const pendingDeletesRef = useRef(new Map<string, PendingDelete>())
 
   // --- Board config persistence (optimistic, reverts on failure) ------------
@@ -111,6 +115,49 @@ export default function ApplicationsView({
       setApplications(previous)
       toast.error('Could not save the new order. Please try again.')
     }
+  }
+
+  // --- Column management (add / edit / delete) -------------------------------
+  function handleColumnFormSubmit(result: ColumnFormResult) {
+    if (!columnModal) return
+    if (columnModal.mode === 'add') {
+      const id = `col-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+      const maxOrder = Math.max(0, ...boardConfig.columns.map((c) => c.order))
+      void persistBoardConfig({
+        columns: [
+          ...boardConfig.columns,
+          {
+            id,
+            key: id,
+            label: result.label,
+            type: result.type,
+            isBuiltIn: false,
+            order: maxOrder + 1000,
+            options: result.options,
+          },
+        ],
+      })
+    } else {
+      const editedId = columnModal.column.id
+      void persistBoardConfig({
+        columns: boardConfig.columns.map((c) =>
+          c.id === editedId ? { ...c, label: result.label, options: result.options } : c
+        ),
+      })
+    }
+    setColumnModal(null)
+  }
+
+  function handleDeleteColumn(column: BoardColumn) {
+    // A real confirm (not an undo toast): deleting a column silently discards
+    // that field across every row, which an undo window handles poorly.
+    const confirmed = window.confirm(
+      `Delete the "${column.label}" column? Its values will no longer be shown on any application.`
+    )
+    if (!confirmed) return
+    void persistBoardConfig({
+      columns: boardConfig.columns.filter((c) => c.id !== column.id),
+    })
   }
 
   function handleColumnMove(activeId: string, overId: string) {
@@ -287,9 +334,48 @@ export default function ApplicationsView({
         onColumnMove={handleColumnMove}
         rowDragEnabled={boardConfig.sort.length === 0}
         renderHeaderCell={(column) => (
-          <ColumnHeader column={column} sort={boardConfig.sort} onToggleSort={handleToggleSort} />
+          <ColumnHeader
+            column={column}
+            sort={boardConfig.sort}
+            onToggleSort={handleToggleSort}
+            onEdit={(col) => setColumnModal({ mode: 'edit', column: col })}
+            onDelete={handleDeleteColumn}
+          />
         )}
+        headerAccessory={
+          <button
+            type="button"
+            onClick={() => setColumnModal({ mode: 'add' })}
+            title="Add a custom column"
+            className="whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium text-indigo-500 hover:bg-indigo-50 hover:text-indigo-700"
+          >
+            + Column
+          </button>
+        }
       />
+
+      {columnModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={columnModal.mode === 'add' ? 'Add column' : 'Edit column'}
+          className="fixed inset-0 z-40 flex items-center justify-center bg-indigo-950/30 p-4 backdrop-blur-sm"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setColumnModal(null)
+          }}
+        >
+          <div className="rounded-xl border border-indigo-100 bg-white p-4 shadow-xl">
+            <h2 className="mb-3 text-sm font-semibold text-indigo-900">
+              {columnModal.mode === 'add' ? 'Add column' : `Edit "${columnModal.column.label}"`}
+            </h2>
+            <ColumnForm
+              initial={columnModal.mode === 'edit' ? columnModal.column : undefined}
+              onSubmit={handleColumnFormSubmit}
+              onCancel={() => setColumnModal(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
