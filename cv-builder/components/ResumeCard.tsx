@@ -51,6 +51,7 @@ function formatRelativeTime(iso: string) {
 export default function ResumeCard({ resume }: ResumeCardProps) {
   const router = useRouter()
   const [duplicating, setDuplicating] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(false)
   const deleteTimerRef = useRef<number | null>(null)
   const undoToastIdRef = useRef<number | null>(null)
@@ -156,6 +157,8 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
   }
 
   async function handleDownload() {
+    if (downloading) return
+    setDownloading(true)
     try {
       const res = await fetch(`/api/resumes/${resume._id}`)
       if (!res.ok) throw new Error('Fetch failed')
@@ -170,6 +173,8 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
     } catch (err) {
       console.error(err)
       toast.error(`Could not download "${resume.title}" as JSON. Please try again.`)
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -189,8 +194,10 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
           </p>
         </div>
         
-        {/* Added 'relative z-10' to lift these buttons above the invisible link */}
-        <div className="relative z-10 flex shrink-0 gap-2">
+        {/* Added 'relative z-10' to lift these buttons above the invisible link.
+            'flex-wrap' lets buttons wrap onto a second line on narrow viewports
+            instead of compressing against the truncated title/role text. */}
+        <div className="relative z-10 flex flex-wrap shrink-0 gap-2">
           
           <span
             className="rounded-md border border-indigo-300 bg-white/50 px-3 py-1.5 text-xs font-medium text-indigo-700 transition group-hover:bg-indigo-50 pointer-events-none"
@@ -200,11 +207,12 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
           
           <button
             onClick={handleDownload}
+            disabled={downloading}
             aria-label={`Download "${resume.title}" as JSON`}
-            className="rounded-md border border-indigo-100 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50"
+            className="rounded-md border border-indigo-100 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50"
             title="Download as JSON"
           >
-            ↓ JSON
+            {downloading ? '…' : '↓ JSON'}
           </button>
           <button
             onClick={handleDuplicate}

@@ -155,6 +155,42 @@ describe('ResumeCard', () => {
     vi.useRealTimers()
   })
 
+  it('makes the action-button row wrap onto a second line on narrow viewports', () => {
+    render(<ResumeCard resume={baseResume} />)
+    const openSpan = screen.getByText('Open')
+    const buttonRow = openSpan.parentElement!
+    expect(buttonRow.className).toContain('flex-wrap')
+  })
+
+  it('disables the Download button and shows a loading indicator while a download is in flight', async () => {
+    let resolveFetch: (value: unknown) => void = () => {}
+    const fetchMock = vi.fn(() => new Promise((resolve) => { resolveFetch = resolve }))
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: vi.fn(() => 'blob:mock'),
+      revokeObjectURL: vi.fn(),
+    })
+
+    render(<ResumeCard resume={baseResume} />)
+    const btn = screen.getByTitle('Download as JSON')
+
+    fireEvent.click(btn)
+    expect(btn).toBeDisabled()
+    expect(btn.textContent).not.toBe('↓ JSON')
+
+    // A second click while the first fetch is still in flight must not fire another fetch.
+    fireEvent.click(btn)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      resolveFetch({ ok: true, json: async () => ({ resume: { data: {} } }) })
+    })
+
+    expect(btn).not.toBeDisabled()
+    expect(btn.textContent).toBe('↓ JSON')
+  })
+
   it('pauses the undo-delete countdown while the toast has focus', async () => {
     vi.useFakeTimers()
     const fetchMock = vi.fn().mockResolvedValue({ ok: true } as Response)
