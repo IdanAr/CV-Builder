@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { listResumes } from '@/lib/api/resumes'
@@ -22,6 +23,12 @@ export default async function DashboardPage() {
           <div className="flex items-center gap-3 ml-auto">
             <NewResumeButton />
             <UploadCVButton />
+            <Link
+              href="/dashboard/applications"
+              className="rounded-md border border-indigo-200 bg-white/50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50"
+            >
+              Applications
+            </Link>
             <div className="w-px h-4 bg-indigo-200" />
             <UserProfileButton user={session.user} />
           </div>

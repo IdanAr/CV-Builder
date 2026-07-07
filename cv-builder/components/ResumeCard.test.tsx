@@ -5,8 +5,9 @@ import ResumeCard from './ResumeCard'
 import { Toaster } from '@/components/ui/Toaster'
 import { useToastStore } from '@/lib/stores/toast.store'
 
+const routerPush = vi.fn()
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh: vi.fn() }),
+  useRouter: () => ({ refresh: vi.fn(), push: routerPush }),
 }))
 
 const baseResume = {
@@ -67,6 +68,40 @@ describe('ResumeCard', () => {
     expect(screen.getByText(baseResume.title)).toBeInTheDocument()
     expect(useToastStore.getState().toasts.some(t => t.variant === 'error')).toBe(true)
     vi.useRealTimers()
+  })
+
+  it('creates a linked application and navigates on "Track application"', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ application: { _id: 'app1' } }) })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<ResumeCard resume={baseResume} />)
+
+    fireEvent.click(screen.getByTitle('Track application'))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/applications',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ resumeId: baseResume._id }),
+        })
+      )
+      expect(routerPush).toHaveBeenCalledWith('/dashboard/applications')
+    })
+  })
+
+  it('shows an error toast and stays put when tracking fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
+    render(<ResumeCard resume={baseResume} />)
+
+    fireEvent.click(screen.getByTitle('Track application'))
+
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some((t) => t.variant === 'error')).toBe(true)
+    })
+    expect(routerPush).not.toHaveBeenCalled()
   })
 
   it('displays format score badge with correct color for green (>=20)', () => {
