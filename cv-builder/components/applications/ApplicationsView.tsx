@@ -10,6 +10,7 @@ import type { BoardColumn, CustomFieldValue, SortEntry } from '@/lib/schemas/app
 import type { ApplicationRow, BoardConfigData, ResumeOption } from '@/lib/applications/types'
 import { buildCellPatch } from '@/lib/applications/cells'
 import { sortApplications, toggleSort } from '@/lib/applications/sort'
+import { computeMovedOrder } from '@/lib/applications/order'
 import ApplicationsTable from './ApplicationsTable'
 import { ColumnHeader } from './ColumnHeader'
 import { EmptyApplicationsState } from './EmptyApplicationsState'
@@ -86,6 +87,42 @@ export default function ApplicationsView({
 
   function handleToggleSort(columnId: string, additive: boolean) {
     void persistBoardConfig({ sort: toggleSort(boardConfig.sort, columnId, additive) })
+  }
+
+  // --- Drag reordering (fractional index: only the moved item changes) ------
+  async function handleRowMove(activeId: string, overId: string) {
+    const newOrder = computeMovedOrder(
+      applications.map((a) => ({ id: a._id, order: a.order })),
+      activeId,
+      overId
+    )
+    if (newOrder === null) return
+    const previous = applications
+    setApplications((apps) => apps.map((a) => (a._id === activeId ? { ...a, order: newOrder } : a)))
+    try {
+      const res = await fetch(`/api/applications/${activeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: newOrder }),
+      })
+      if (!res.ok) throw new Error('Reorder failed')
+    } catch (err) {
+      console.error(err)
+      setApplications(previous)
+      toast.error('Could not save the new order. Please try again.')
+    }
+  }
+
+  function handleColumnMove(activeId: string, overId: string) {
+    const newOrder = computeMovedOrder(
+      boardConfig.columns.map((c) => ({ id: c.id, order: c.order })),
+      activeId,
+      overId
+    )
+    if (newOrder === null) return
+    void persistBoardConfig({
+      columns: boardConfig.columns.map((c) => (c.id === activeId ? { ...c, order: newOrder } : c)),
+    })
   }
 
   // --- Inline cell editing (optimistic, reverts on failure) -----------------
@@ -246,6 +283,9 @@ export default function ApplicationsView({
         onCellChange={handleCellChange}
         onDeleteRow={handleDeleteRow}
         onAddRow={handleAddRow}
+        onRowMove={handleRowMove}
+        onColumnMove={handleColumnMove}
+        rowDragEnabled={boardConfig.sort.length === 0}
         renderHeaderCell={(column) => (
           <ColumnHeader column={column} sort={boardConfig.sort} onToggleSort={handleToggleSort} />
         )}

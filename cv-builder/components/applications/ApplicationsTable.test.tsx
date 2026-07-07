@@ -64,7 +64,9 @@ describe('ApplicationsTable', () => {
   it('renders one column header per configured column, in order', () => {
     renderTable()
     const headers = screen.getAllByRole('columnheader')
-    expect(headers.map((h) => h.textContent)).toEqual([
+    // Leading grip-spacer + one per column (each contains its drag grip) + actions.
+    expect(headers.map((h) => h.textContent?.replace('⠿', ''))).toEqual([
+      '',
       'Company',
       'Role',
       'Status',
@@ -73,6 +75,23 @@ describe('ApplicationsTable', () => {
       'Notes',
       '', // actions column
     ])
+  })
+
+  it('disables row drag handles while a column sort is active, with an explanatory tooltip', () => {
+    renderTable({ rowDragEnabled: false })
+    const grip = screen.getByRole('button', { name: 'Reorder application at Acme' })
+    expect(grip).toBeDisabled()
+    expect(grip).toHaveAttribute('title', expect.stringMatching(/sort/i))
+  })
+
+  it('enables row drag handles when no column sort is active', () => {
+    renderTable({ rowDragEnabled: true })
+    expect(screen.getByRole('button', { name: 'Reorder application at Acme' })).toBeEnabled()
+  })
+
+  it('renders a drag grip on every column header', () => {
+    renderTable()
+    expect(screen.getByRole('button', { name: 'Reorder Notes column' })).toBeInTheDocument()
   })
 
   it('renders built-in and custom field values, including the status option label', () => {
