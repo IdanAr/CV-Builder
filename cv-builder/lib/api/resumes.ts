@@ -16,6 +16,13 @@ export async function listResumes(userId: string) {
   }))
 }
 
+/** Lightweight id/title pairs for pickers (applications table resume column). */
+export async function listResumeOptions(userId: string) {
+  await dbConnect()
+  const resumes = await Resume.find({ userId }, 'title').sort({ updatedAt: -1 }).lean()
+  return resumes.map((r) => ({ id: String(r._id), title: r.title }))
+}
+
 export async function getResume(userId: string, id: string) {
   await dbConnect()
   return Resume.findOne({ _id: id, userId }).lean()

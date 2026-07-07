@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast, useToastStore } from '@/lib/stores/toast.store'
 import { onToastPause, onToastResume } from '@/components/ui/Toaster'
+import { formatAbsoluteDate, formatRelativeTime } from '@/lib/format-relative-time'
 
 const UNDO_DELETE_DURATION = 6000
 
@@ -26,32 +27,13 @@ interface ResumeCardProps {
   }
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
-function formatRelativeTime(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime()
-  const minutes = Math.floor(diff / 60_000)
-  const hours = Math.floor(minutes / 60)
-  const days = Math.floor(hours / 24)
-  if (days > 7) return formatDate(iso)
-  if (days > 1) return `${days} days ago`
-  if (days === 1) return 'Yesterday'
-  if (hours > 1) return `${hours} hours ago`
-  if (hours === 1) return '1 hour ago'
-  if (minutes > 1) return `${minutes} minutes ago`
-  return 'Just now'
-}
+const formatDate = formatAbsoluteDate
 
 export default function ResumeCard({ resume }: ResumeCardProps) {
   const router = useRouter()
   const [duplicating, setDuplicating] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [tracking, setTracking] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(false)
   const deleteTimerRef = useRef<number | null>(null)
   const undoToastIdRef = useRef<number | null>(null)
@@ -141,6 +123,26 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Creates an Application pre-filled from this resume (the server pulls its
+  // targetCompany/targetRole) and jumps to the applications supertable.
+  async function handleTrack() {
+    if (tracking) return
+    setTracking(true)
+    try {
+      const res = await fetch('/api/applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeId: resume._id }),
+      })
+      if (!res.ok) throw new Error('Track failed')
+      router.push('/dashboard/applications')
+    } catch (err) {
+      console.error(err)
+      toast.error(`Could not start tracking an application for "${resume.title}". Please try again.`)
+      setTracking(false)
+    }
+  }
+
   async function handleDuplicate() {
     setDuplicating(true)
     try {
@@ -213,6 +215,15 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
             title="Download as JSON"
           >
             {downloading ? '…' : '↓ JSON'}
+          </button>
+          <button
+            onClick={handleTrack}
+            disabled={tracking}
+            aria-label={`Track an application using "${resume.title}"`}
+            className="rounded-md border border-indigo-100 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50"
+            title="Track application"
+          >
+            {tracking ? '…' : '📋 Track'}
           </button>
           <button
             onClick={handleDuplicate}
