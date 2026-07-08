@@ -1,4 +1,4 @@
-### MongoDB - Cluster0 configuration credentials: ###
-# MONGO_USER=admin
-# MONGO_PASSWORD=Gntmi1956!
-# IP address: 62.56.149.60
+.env.local
+
+# Ignore the build folder
+Archived/
