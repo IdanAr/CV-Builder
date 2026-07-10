@@ -129,4 +129,13 @@ describe('AccordionSection', () => {
     fireEvent.click(deleteBtn)
     expect(onDelete).toHaveBeenCalledOnce()
   })
+
+  it('renders the provided icon before the title', () => {
+    render(
+      <AccordionSection title="Work" isOpen={false} onToggle={() => {}} icon={<span data-testid="section-icon" />}>
+        <p>body</p>
+      </AccordionSection>
+    )
+    expect(screen.getByTestId('section-icon')).toBeInTheDocument()
+  })
 })

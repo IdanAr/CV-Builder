@@ -5,6 +5,7 @@ import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { AccordionSection, type DragHandleProps } from './AccordionSection'
+import { SectionIcon } from '@/components/ui/SectionIcon'
 import { BasicsForm } from './forms/BasicsForm'
 import { WorkForm } from './forms/WorkForm'
 import { EducationForm } from './forms/EducationForm'
@@ -140,6 +141,7 @@ export function EditTab() {
         badge={getBadge('basics', data)}
         isOpen={openSection === 'basics'}
         onToggle={() => setOpenSection((prev) => (prev === 'basics' ? null : 'basics'))}
+        icon={<SectionIcon section="basics" />}
       >
         <BasicsForm />
       </AccordionSection>
@@ -162,6 +164,7 @@ export function EditTab() {
                       onRename={(name) => updateCustomSection(customId, { name })}
                       onDelete={() => removeCustomSection(customId)}
                       dragHandleProps={dragHandleProps}
+                      icon={<SectionIcon section="custom" />}
                     >
                       <CustomSectionForm sectionId={customId} />
                     </AccordionSection>
@@ -180,6 +183,7 @@ export function EditTab() {
                     isOpen={openSection === section}
                     onToggle={() => setOpenSection((prev) => (prev === section ? null : section))}
                     dragHandleProps={dragHandleProps}
+                    icon={<SectionIcon section={section} />}
                   >
                     <FormComponent />
                   </AccordionSection>

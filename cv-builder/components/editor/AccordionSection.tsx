@@ -4,6 +4,8 @@ import type { ReactNode } from 'react'
 import type { DraggableAttributes, DraggableSyntheticListeners } from '@dnd-kit/core'
 import type { Transform } from '@dnd-kit/utilities'
 import { CSS } from '@dnd-kit/utilities'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Collapsible } from '@/components/ui/motion/Collapsible'
 
 export interface DragHandleProps {
   listeners: DraggableSyntheticListeners
@@ -23,6 +25,7 @@ interface AccordionSectionProps {
   onRename?: (name: string) => void
   onDelete?: () => void
   dragHandleProps?: DragHandleProps
+  icon?: ReactNode
 }
 
 export function AccordionSection({
@@ -34,7 +37,9 @@ export function AccordionSection({
   onRename,
   onDelete,
   dragHandleProps,
+  icon,
 }: AccordionSectionProps) {
+  const reduceMotion = useReducedMotion()
   return (
     <div
       ref={dragHandleProps?.setNodeRef}
@@ -42,7 +47,7 @@ export function AccordionSection({
         transform: CSS.Transform.toString(dragHandleProps?.transform ?? null),
         transition: dragHandleProps?.transition,
       }}
-      className={`border border-indigo-100 rounded-xl overflow-hidden bg-white/60 backdrop-blur-sm shadow-sm group${
+      className={`border border-indigo-100 rounded-xl overflow-hidden bg-white/60 backdrop-blur-sm shadow-sm transition-shadow duration-200 hover:shadow-md group${
         dragHandleProps?.isDragging ? ' opacity-60 border-dashed border-indigo-400' : ''
       }`}
     >
@@ -59,13 +64,20 @@ export function AccordionSection({
           </button>
         )}
         {onRename ? (
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => onRename(e.target.value)}
-            aria-label={`Rename ${title}`}
-            className="flex-1 font-medium text-sm text-indigo-900 bg-transparent border-none outline-none focus:ring-1 focus:ring-indigo-300 rounded px-4 py-3 min-w-0"
-          />
+          <>
+            {icon && (
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
+                {icon}
+              </span>
+            )}
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => onRename(e.target.value)}
+              aria-label={`Rename ${title}`}
+              className="flex-1 font-medium text-sm text-indigo-900 bg-transparent border-none outline-none focus:ring-1 focus:ring-indigo-300 rounded px-4 py-3 min-w-0"
+            />
+          </>
         ) : (
           <button
             type="button"
@@ -73,6 +85,11 @@ export function AccordionSection({
             aria-expanded={isOpen}
             className="flex-1 flex items-center gap-2 px-4 py-3 text-left min-w-0"
           >
+            {icon && (
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
+                {icon}
+              </span>
+            )}
             <span className="font-medium text-sm text-indigo-900">{title}</span>
             {badge && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-500 shrink-0">
@@ -103,12 +120,18 @@ export function AccordionSection({
           aria-label={`Toggle ${title}`}
           className="text-indigo-300 text-xs px-3 py-3"
         >
-          {isOpen ? '▲' : '▼'}
+          <motion.span
+            animate={{ rotate: isOpen ? 180 : 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.2 }}
+            className="inline-block"
+          >
+            ▼
+          </motion.span>
         </button>
       </div>
-      {isOpen && (
+      <Collapsible open={isOpen}>
         <div className="px-4 pb-4 pt-2 border-t border-indigo-100 bg-white/50">{children}</div>
-      )}
+      </Collapsible>
     </div>
   )
 }
