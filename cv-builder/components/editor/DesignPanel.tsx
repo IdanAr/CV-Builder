@@ -29,7 +29,7 @@ function TemplateThumb({ id, active }: { id: string; active: boolean }) {
   const ink = active ? '#4f46e5' : '#a5b4fc'
   const soft = active ? '#c7d2fe' : '#e0e7ff'
   return (
-    <svg aria-hidden="true" viewBox="0 0 40 52" className="h-13 w-10 shrink-0 rounded-[3px] bg-white shadow-sm ring-1 ring-indigo-100">
+    <svg aria-hidden="true" viewBox="0 0 40 52" className="h-14 w-10 shrink-0 rounded-[3px] bg-white shadow-sm ring-1 ring-indigo-100">
       {id === 'classic' && (<>
         <rect x="6" y="6" width="28" height="3" rx="1" fill={ink} />
         <rect x="6" y="12" width="28" height="1" fill={soft} />
