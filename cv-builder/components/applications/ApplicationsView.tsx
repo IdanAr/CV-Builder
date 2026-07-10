@@ -416,7 +416,16 @@ export default function ApplicationsView({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <FilterBar columns={columns} filters={filters} onChange={handleFiltersChange} />
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleAddRow}
+            className="whitespace-nowrap rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
+          >
+            + New Application
+          </button>
+          <FilterBar columns={columns} filters={filters} onChange={handleFiltersChange} />
+        </div>
         <div className="flex items-center gap-3">
           {filters.length > 0 && (
             <p className="text-xs text-indigo-400">
@@ -444,13 +453,6 @@ export default function ApplicationsView({
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={handleAddRow}
-            className="whitespace-nowrap rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
-          >
-            + New Application
-          </button>
         </div>
       </div>
 

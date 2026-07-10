@@ -19,13 +19,14 @@ export default async function DashboardPage() {
     <>
  <AppNavbar
         actions={
-          // FIX: Replaced the <> fragment with this styling div
-          <div className="flex items-center gap-3 ml-auto">
+          // CV actions sit on the left; ml-auto on the Applications link pushes
+          // the navigation/profile cluster to the right edge.
+          <div className="flex items-center gap-3 flex-1">
             <NewResumeButton />
             <UploadCVButton />
             <Link
               href="/dashboard/applications"
-              className="rounded-md border border-indigo-200 bg-white/50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50"
+              className="ml-auto rounded-md border border-indigo-200 bg-white/50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50"
             >
               Applications
             </Link>
