@@ -51,45 +51,43 @@ export function AccordionSection({
         dragHandleProps?.isDragging ? ' opacity-60 border-dashed border-indigo-400' : ''
       }`}
     >
-      <div className="flex items-center gap-1 pr-2 bg-white/70 hover:bg-white/90 transition-colors">
-        {dragHandleProps && (
+      {/* Header layout is a fixed left rail so the icon chip lands at the same
+          x-position in every variant: [handle slot] [icon chip] [title/rename].
+          Non-draggable sections (Personal Info) get a same-width spacer. */}
+      <div className="flex items-center gap-1 pl-2 pr-2 bg-white/70 hover:bg-white/90 transition-colors">
+        {dragHandleProps ? (
           <button
             type="button"
-            className="pl-2 pr-1 py-3 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab text-indigo-300 hover:text-indigo-500 select-none"
+            className="w-5 shrink-0 py-3 text-center opacity-0 group-hover:opacity-100 transition-opacity cursor-grab text-indigo-300 hover:text-indigo-500 select-none"
             {...dragHandleProps.listeners}
             {...dragHandleProps.attributes}
             aria-label="Drag to reorder"
           >
             ⠿
           </button>
+        ) : (
+          <span className="w-5 shrink-0" aria-hidden="true" />
+        )}
+        {icon && (
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
+            {icon}
+          </span>
         )}
         {onRename ? (
-          <>
-            {icon && (
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
-                {icon}
-              </span>
-            )}
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => onRename(e.target.value)}
-              aria-label={`Rename ${title}`}
-              className="flex-1 font-medium text-sm text-indigo-900 bg-transparent border-none outline-none focus:ring-1 focus:ring-indigo-300 rounded px-4 py-3 min-w-0"
-            />
-          </>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => onRename(e.target.value)}
+            aria-label={`Rename ${title}`}
+            className="flex-1 font-medium text-sm text-indigo-900 bg-transparent border-none outline-none focus:ring-1 focus:ring-indigo-300 rounded px-2 py-3 min-w-0"
+          />
         ) : (
           <button
             type="button"
             onClick={onToggle}
             aria-expanded={isOpen}
-            className="flex-1 flex items-center gap-2 px-4 py-3 text-left min-w-0"
+            className="flex-1 flex items-center gap-2 px-2 py-3 text-left min-w-0"
           >
-            {icon && (
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
-                {icon}
-              </span>
-            )}
             <span className="font-medium text-sm text-indigo-900">{title}</span>
             {badge && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-500 shrink-0">
