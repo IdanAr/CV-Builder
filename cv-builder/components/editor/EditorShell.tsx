@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useMediaQuery } from '@/lib/hooks/use-media-query'
 import { useResumeEditorStore, initAutoSave } from '@/lib/stores/resume-editor.store'
 import { EditTab } from './EditTab'
@@ -72,6 +72,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
   const draggingRef = useRef(false)
   const dragStartWidthRef = useRef(DEFAULT_PANEL_WIDTH)
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT_QUERY)
+  const reduceMotion = useReducedMotion()
 
   const storeTitle = useResumeEditorStore((s) => s.title)
   const isDirty = useResumeEditorStore((s) => s.isDirty)
@@ -214,7 +215,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
               <motion.span
                 layoutId="editor-tab-underline"
                 className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-indigo-600"
-                transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+                transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 40 }}
               />
             )}
           </button>
