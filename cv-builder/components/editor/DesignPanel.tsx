@@ -424,7 +424,7 @@ export function DesignPanel() {
             <p className="text-sm text-red-500 mt-1">Enter a valid hex color (e.g. #0066cc)</p>
           )}
         </div>
-        <div>
+        <div className="border-l border-indigo-100 pl-3">
           <label className={labelClass}>Accent color</label>
           <div className="flex gap-2 items-center mb-2">
             <input type="color" value={meta.accentColor}
