@@ -386,8 +386,9 @@ export function DesignPanel() {
         </div>
       </div>
 
-      {/* Colors */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Colors — stacked vertically so each picker's swatch row and preset
+          palette get the panel's full width */}
+      <div className="space-y-5">
         <div>
           <label className={labelClass}>Primary color</label>
           <div className="flex gap-2 items-center mb-2">
@@ -424,7 +425,7 @@ export function DesignPanel() {
             <p className="text-sm text-red-500 mt-1">Enter a valid hex color (e.g. #0066cc)</p>
           )}
         </div>
-        <div className="border-l border-indigo-100 pl-3">
+        <div>
           <label className={labelClass}>Accent color</label>
           <div className="flex gap-2 items-center mb-2">
             <input type="color" value={meta.accentColor}
