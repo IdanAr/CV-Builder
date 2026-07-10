@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import { useMediaQuery } from '@/lib/hooks/use-media-query'
 import { useResumeEditorStore, initAutoSave } from '@/lib/stores/resume-editor.store'
 import { EditTab } from './EditTab'
@@ -204,13 +205,18 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            className={`flex items-center justify-center min-h-[44px] px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              activeTab === tab
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-indigo-400 hover:text-indigo-600'
+            className={`relative flex items-center justify-center min-h-[44px] px-4 py-2 text-sm font-medium transition-colors ${
+              activeTab === tab ? 'text-indigo-600' : 'text-indigo-400 hover:text-indigo-600'
             }`}
           >
             {TAB_LABELS[tab]}
+            {activeTab === tab && (
+              <motion.span
+                layoutId="editor-tab-underline"
+                className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-indigo-600"
+                transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+              />
+            )}
           </button>
         ))}
       </div>
@@ -222,14 +228,14 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
           <button
             onClick={undo}
             disabled={!canUndo}
-            className="flex items-center justify-center gap-1 min-h-[40px] px-2 py-1 text-xs rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-1 min-h-[40px] px-2 py-1 text-xs rounded-lg shadow-sm border border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:shadow disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
           >
             ↩ Undo
           </button>
           <button
             onClick={redo}
             disabled={!canRedo}
-            className="flex items-center justify-center gap-1 min-h-[40px] px-2 py-1 text-xs rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-1 min-h-[40px] px-2 py-1 text-xs rounded-lg shadow-sm border border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:shadow disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
           >
             Redo ↪
           </button>
@@ -284,7 +290,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col h-screen overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-violet-50">
       {/* Top navbar */}
       <AppNavbar
         actions={
@@ -302,7 +308,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
             <div className="w-px h-4 bg-indigo-200 mx-1" />
             <button
               onClick={handleJsonExport}
-              className="flex items-center justify-center min-h-[40px] text-xs border border-indigo-200 text-indigo-600 rounded px-3 hover:bg-indigo-50 transition-colors"
+              className="flex items-center justify-center min-h-[40px] text-xs border border-indigo-200 text-indigo-600 rounded-lg px-3 hover:bg-indigo-50 hover:shadow-sm transition-all"
             >
               JSON
             </button>
@@ -384,7 +390,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
               </div>
             ) : (
               <div
-                className="flex flex-col border-r border-white/20 bg-white/40 backdrop-blur-xl shrink-0"
+                className="flex flex-col border-r border-white/30 bg-white/50 backdrop-blur-xl shadow-md shrink-0 rounded-r-none"
                 style={{ width: panelWidth }}
               >
                 {editPanelBody}
@@ -402,8 +408,8 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
                 aria-valuemin={getPanelWidthBounds().min}
                 aria-valuemax={getPanelWidthBounds().max}
                 tabIndex={0}
-                className={`w-1 shrink-0 cursor-col-resize select-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
-                  dividerActive ? 'bg-indigo-400/40' : 'hover:bg-indigo-400/40 bg-transparent'
+                className={`group/divider w-1.5 shrink-0 cursor-col-resize select-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
+                  dividerActive ? 'bg-indigo-400/60' : 'hover:bg-indigo-400/40 bg-indigo-200/30'
                 }`}
                 onPointerDown={handleDividerPointerDown}
                 onPointerMove={handleDividerPointerMove}
@@ -414,7 +420,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
             )}
 
             {/* Right panel — preview */}
-            <div className="flex-1 flex flex-col min-w-0 bg-white/30 backdrop-blur-sm">
+            <div className="flex-1 flex flex-col min-w-0 bg-slate-100/60">
               {renderPreviewPanelBody(true)}
             </div>
           </>
