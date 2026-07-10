@@ -25,6 +25,47 @@ const ATS_FONTS = [
   'Lato', 'Roboto', 'IBM Plex Sans',
 ]
 
+function TemplateThumb({ id, active }: { id: string; active: boolean }) {
+  const ink = active ? '#4f46e5' : '#a5b4fc'
+  const soft = active ? '#c7d2fe' : '#e0e7ff'
+  return (
+    <svg aria-hidden="true" viewBox="0 0 40 52" className="h-13 w-10 shrink-0 rounded-[3px] bg-white shadow-sm ring-1 ring-indigo-100">
+      {id === 'classic' && (<>
+        <rect x="6" y="6" width="28" height="3" rx="1" fill={ink} />
+        <rect x="6" y="12" width="28" height="1" fill={soft} />
+        <rect x="6" y="17" width="20" height="2" rx="1" fill={soft} />
+        <rect x="6" y="22" width="24" height="2" rx="1" fill={soft} />
+        <rect x="6" y="27" width="18" height="2" rx="1" fill={soft} />
+      </>)}
+      {id === 'modern' && (<>
+        <rect x="0" y="0" width="40" height="12" fill={ink} />
+        <rect x="6" y="17" width="20" height="2" rx="1" fill={soft} />
+        <rect x="6" y="22" width="24" height="2" rx="1" fill={soft} />
+        <rect x="6" y="27" width="18" height="2" rx="1" fill={soft} />
+      </>)}
+      {id === 'minimal' && (<>
+        <rect x="6" y="8" width="18" height="3" rx="1" fill={ink} />
+        <rect x="6" y="16" width="26" height="1.5" rx="0.75" fill={soft} />
+        <rect x="6" y="20" width="22" height="1.5" rx="0.75" fill={soft} />
+        <rect x="6" y="24" width="24" height="1.5" rx="0.75" fill={soft} />
+      </>)}
+      {id === 'executive' && (<>
+        <rect x="6" y="6" width="28" height="3" rx="1" fill={ink} />
+        <rect x="6" y="11" width="28" height="0.8" fill={ink} />
+        <rect x="6" y="13" width="28" height="0.8" fill={ink} />
+        <rect x="6" y="19" width="22" height="2" rx="1" fill={soft} />
+        <rect x="6" y="24" width="26" height="2" rx="1" fill={soft} />
+      </>)}
+      {id === 'sidebar' && (<>
+        <rect x="0" y="0" width="13" height="52" fill={ink} />
+        <rect x="17" y="8" width="18" height="3" rx="1" fill={soft} />
+        <rect x="17" y="15" width="16" height="2" rx="1" fill={soft} />
+        <rect x="17" y="20" width="18" height="2" rx="1" fill={soft} />
+      </>)}
+    </svg>
+  )
+}
+
 const TEMPLATES = [
   { id: 'classic', label: 'Classic', desc: 'Clean, professional, thin dividers' },
   { id: 'modern', label: 'Modern', desc: 'Bold header block, accent titles' },
@@ -83,13 +124,14 @@ function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumn
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    boxShadow: isDragging ? '0 4px 12px rgba(79,70,229,0.15)' : undefined,
   }
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 px-2.5 py-1.5 border-b border-indigo-50 last:border-b-0"
+      className="flex items-center gap-2 px-2.5 py-1.5 border-b border-indigo-50 last:border-b-0 transition-colors hover:bg-indigo-50/50"
     >
       <span
         {...attributes}
@@ -244,14 +286,17 @@ export function DesignPanel() {
               key={t.id}
               type="button"
               onClick={() => setMeta({ templateId: t.id })}
-              className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors ${
+              className={`w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-xl border transition-all duration-200 ${
                 meta.templateId === t.id
-                  ? 'border-indigo-500 bg-indigo-50'
-                  : 'border-indigo-100 hover:border-indigo-300'
+                  ? 'border-indigo-500 bg-indigo-50 shadow-sm'
+                  : 'border-indigo-100 hover:border-indigo-300 hover:shadow-sm hover:-translate-y-px'
               }`}
             >
-              <div className="font-medium text-sm">{t.label}</div>
-              <div className="text-xs text-indigo-400 mt-0.5">{t.desc}</div>
+              <TemplateThumb id={t.id} active={meta.templateId === t.id} />
+              <div className="min-w-0">
+                <div className="font-medium text-sm">{t.label}</div>
+                <div className="text-xs text-indigo-400 mt-0.5">{t.desc}</div>
+              </div>
             </button>
           ))}
         </div>
@@ -269,12 +314,20 @@ export function DesignPanel() {
               key={layout}
               type="button"
               onClick={() => setMeta({ layout })}
-              className={`flex-1 py-2 text-sm rounded-lg border transition-colors ${
+              className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 text-sm rounded-xl border transition-all duration-200 ${
                 meta.layout === layout
-                  ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-medium'
-                  : 'border-indigo-100 text-indigo-500 hover:border-indigo-300'
+                  ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-medium shadow-sm'
+                  : 'border-indigo-100 text-indigo-500 hover:border-indigo-300 hover:shadow-sm'
               }`}
             >
+              <svg aria-hidden="true" viewBox="0 0 28 20" className="h-5 w-7">
+                {layout === 'single-column' ? (
+                  <rect x="4" y="2" width="20" height="16" rx="2" fill="currentColor" opacity="0.35" />
+                ) : (<>
+                  <rect x="3" y="2" width="9" height="16" rx="2" fill="currentColor" opacity="0.35" />
+                  <rect x="16" y="2" width="9" height="16" rx="2" fill="currentColor" opacity="0.35" />
+                </>)}
+              </svg>
               {layout === 'single-column' ? 'Single column' : 'Two columns'}
             </button>
           ))}
