@@ -142,71 +142,6 @@ export function PreviewTab() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      {/* Zoom controls — adjacent to the "Live Preview" header rendered by EditorShell */}
-      <div className="flex items-center justify-end gap-1 px-3 h-9 border-b border-indigo-100 bg-white/50 shrink-0">
-        <button
-          type="button"
-          aria-label="Zoom out"
-          data-testid="zoom-out"
-          onClick={handleZoomOut}
-          disabled={scale <= MIN_ZOOM}
-          className="flex items-center justify-center min-h-[28px] min-w-[28px] text-sm border border-indigo-200 rounded text-indigo-600 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          −
-        </button>
-        <div className="relative">
-          <button
-            type="button"
-            aria-haspopup="listbox"
-            aria-expanded={zoomMenuOpen}
-            data-testid="zoom-percentage"
-            onClick={() => setZoomMenuOpen((v) => !v)}
-            className="flex items-center justify-center min-h-[28px] px-2 text-xs border border-indigo-200 rounded text-indigo-600 hover:bg-indigo-50 tabular-nums"
-          >
-            {zoomOverride === null ? 'Fit' : `${Math.round(zoomOverride * 100)}%`}
-          </button>
-          {zoomMenuOpen && (
-            <div
-              role="listbox"
-              data-testid="zoom-menu"
-              className="absolute right-0 top-full mt-1 z-30 bg-white border border-indigo-200 rounded shadow-md py-1 min-w-[80px]"
-            >
-              {ZOOM_PRESETS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  role="option"
-                  aria-selected={zoomOverride === p}
-                  onClick={() => handlePresetSelect(p)}
-                  className="block w-full text-left px-3 py-1 text-xs text-indigo-600 hover:bg-indigo-50"
-                >
-                  {Math.round(p * 100)}%
-                </button>
-              ))}
-              <button
-                type="button"
-                role="option"
-                aria-selected={zoomOverride === null}
-                onClick={() => handlePresetSelect(null)}
-                className="block w-full text-left px-3 py-1 text-xs text-indigo-600 hover:bg-indigo-50 border-t border-indigo-100"
-              >
-                Fit
-              </button>
-            </div>
-          )}
-        </div>
-        <button
-          type="button"
-          aria-label="Zoom in"
-          data-testid="zoom-in"
-          onClick={handleZoomIn}
-          disabled={scale >= MAX_ZOOM}
-          className="flex items-center justify-center min-h-[28px] min-w-[28px] text-sm border border-indigo-200 rounded text-indigo-600 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          +
-        </button>
-      </div>
-
       <div className="relative flex-1 min-h-0">
         {/* Pagination status badge — floats over the preview, does not scroll */}
         <div
@@ -229,13 +164,79 @@ export function PreviewTab() {
           {badgeText}
         </div>
 
+        {/* Floating zoom toolbar — overlays the preview */}
+        <div className="absolute bottom-4 right-4 z-30 flex items-center gap-1 rounded-full bg-white/85 backdrop-blur-md shadow-lg ring-1 ring-indigo-100 px-2 py-1.5">
+          <button
+            type="button"
+            aria-label="Zoom out"
+            data-testid="zoom-out"
+            onClick={handleZoomOut}
+            disabled={scale <= MIN_ZOOM}
+            className="flex items-center justify-center min-h-[28px] min-w-[28px] text-sm rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            −
+          </button>
+          <div className="relative">
+            <button
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded={zoomMenuOpen}
+              data-testid="zoom-percentage"
+              onClick={() => setZoomMenuOpen((v) => !v)}
+              className="flex items-center justify-center min-h-[28px] px-2 text-xs rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors tabular-nums"
+            >
+              {zoomOverride === null ? 'Fit' : `${Math.round(zoomOverride * 100)}%`}
+            </button>
+            {zoomMenuOpen && (
+              <div
+                role="listbox"
+                data-testid="zoom-menu"
+                className="absolute right-0 bottom-full mb-1 z-30 bg-white border border-indigo-200 rounded shadow-md py-1 min-w-[80px]"
+              >
+                {ZOOM_PRESETS.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    role="option"
+                    aria-selected={zoomOverride === p}
+                    onClick={() => handlePresetSelect(p)}
+                    className="block w-full text-left px-3 py-1 text-xs text-indigo-600 hover:bg-indigo-50"
+                  >
+                    {Math.round(p * 100)}%
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={zoomOverride === null}
+                  onClick={() => handlePresetSelect(null)}
+                  className="block w-full text-left px-3 py-1 text-xs text-indigo-600 hover:bg-indigo-50 border-t border-indigo-100"
+                >
+                  Fit
+                </button>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            aria-label="Zoom in"
+            data-testid="zoom-in"
+            onClick={handleZoomIn}
+            disabled={scale >= MAX_ZOOM}
+            className="flex items-center justify-center min-h-[28px] min-w-[28px] text-sm rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            +
+          </button>
+        </div>
+
         <div
           ref={containerRef}
-          className="h-full overflow-auto bg-white/20 backdrop-blur-sm flex justify-center py-8"
+          className="h-full overflow-auto bg-slate-200/60 flex justify-center py-10"
         >
           {/* Outer wrapper sized to post-scale visual dimensions so the scroll container tracks content correctly */}
           <div
             ref={wrapperRef}
+            className="shadow-2xl ring-1 ring-gray-900/10 bg-white"
             style={{
               position: 'relative',
               width: A4_WIDTH_PX * scale,
