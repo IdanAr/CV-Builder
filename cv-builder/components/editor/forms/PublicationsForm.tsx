@@ -3,6 +3,7 @@ import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { MonthYearPicker } from './MonthYearPicker'
 import { RichTextField } from './RichTextField'
+import { inputClass } from './field-styles'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type Item = NonNullable<ResumeData['publications']>[number]
@@ -10,7 +11,6 @@ const EMPTY_ITEMS: Item[] = []
 const createEmpty = (): Item => ({
   name: '', publisher: '', releaseDate: '', url: '', summary: '',
 })
-const inputClass = 'w-full border border-indigo-200 rounded-lg px-2 py-1 text-sm bg-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
 
 function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item) => void; onRemove: () => void }) {
   const set = (f: keyof Item, v: string) => onUpdate({ ...item, [f]: v })

@@ -2,6 +2,7 @@
 
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
+import { inputClass as sharedInputClass } from './field-styles'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type SkillItem = NonNullable<ResumeData['skills']>[number]
@@ -10,7 +11,7 @@ const EMPTY_SKILLS: SkillItem[] = []
 
 const createEmpty = (): SkillItem => ({ name: '', level: '', keywords: [] })
 
-const inputClass = 'w-full border border-indigo-200 rounded-lg px-2 py-1 text-sm bg-white/70 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+const inputClass = `${sharedInputClass} appearance-none`
 
 function SkillItemForm({ item, onUpdate, onRemove }: { item: SkillItem; onUpdate: (v: SkillItem) => void; onRemove: () => void }) {
   const set = (field: keyof SkillItem, value: string) => onUpdate({ ...item, [field as keyof SkillItem]: value as never })

@@ -5,6 +5,7 @@ import { ListFieldManager } from './ListFieldManager'
 import { MonthYearPicker } from './MonthYearPicker'
 import { RichTextField } from './RichTextField'
 import { CUSTOM_SECTION_FIELDS } from '@/lib/schemas/resume.zod'
+import { inputClass as sharedInputClass } from './field-styles'
 import type { CustomSection, CustomSectionItem, CustomSectionFieldType } from '@/lib/schemas/resume.zod'
 
 const FIELD_LABELS: Record<CustomSectionFieldType, string> = {
@@ -17,8 +18,7 @@ const FIELD_LABELS: Record<CustomSectionFieldType, string> = {
   level: 'Level',
 }
 
-const inputClass =
-  'w-full border border-indigo-200 rounded-lg px-2 py-1 text-sm bg-white/70 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+const inputClass = `${sharedInputClass} appearance-none`
 
 function createEmptyItem(): CustomSectionItem {
   return { id: crypto.randomUUID() }

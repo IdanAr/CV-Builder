@@ -4,6 +4,7 @@
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { AiSuggestButton } from '@/components/ai/AiSuggestButton'
 import { RichTextField } from './RichTextField'
+import { inputClass, labelClass } from './field-styles'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type Basics = NonNullable<ResumeData['basics']>
@@ -21,55 +22,52 @@ export function BasicsForm() {
   const setLocation = (field: string, value: string) =>
     setSectionData('basics', { ...basics, location: { ...basics.location, [field]: value } })
 
-  const inputClass =
-    'w-full border border-indigo-200 rounded-lg px-3 py-1.5 text-sm bg-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
-
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-indigo-600 mb-1">Full Name</label>
+          <label className={labelClass}>Full Name</label>
           <input type="text" value={basics.name ?? ''} onChange={(e) => set('name', e.target.value)}
             placeholder="Jane Smith" className={inputClass} />
         </div>
         <div>
-          <label className="block text-xs font-medium text-indigo-600 mb-1">Job Title</label>
+          <label className={labelClass}>Job Title</label>
           <input type="text" value={basics.label ?? ''} onChange={(e) => set('label', e.target.value)}
             placeholder="Software Engineer" className={inputClass} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-indigo-600 mb-1">Email</label>
+          <label className={labelClass}>Email</label>
           <input type="email" value={basics.email ?? ''} onChange={(e) => set('email', e.target.value)}
             placeholder="jane@example.com" className={inputClass} />
         </div>
         <div>
-          <label className="block text-xs font-medium text-indigo-600 mb-1">Phone</label>
+          <label className={labelClass}>Phone</label>
           <input type="tel" value={basics.phone ?? ''} onChange={(e) => set('phone', e.target.value)}
             placeholder="+1 555 123 4567" className={inputClass} />
         </div>
       </div>
       <div>
-        <label className="block text-xs font-medium text-indigo-600 mb-1">Website URL</label>
+        <label className={labelClass}>Website URL</label>
         <input type="url" value={basics.url ?? ''} onChange={(e) => set('url', e.target.value)}
           placeholder="https://janesmith.dev" className={inputClass} />
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <label className="block text-xs font-medium text-indigo-600 mb-1">City</label>
+          <label className={labelClass}>City</label>
           <input type="text" value={basics.location?.city ?? ''}
             onChange={(e) => setLocation('city', e.target.value)}
             placeholder="San Francisco" className={inputClass} />
         </div>
         <div>
-          <label className="block text-xs font-medium text-indigo-600 mb-1">Region</label>
+          <label className={labelClass}>Region</label>
           <input type="text" value={basics.location?.region ?? ''}
             onChange={(e) => setLocation('region', e.target.value)}
             placeholder="CA" className={inputClass} />
         </div>
         <div>
-          <label className="block text-xs font-medium text-indigo-600 mb-1">Country</label>
+          <label className={labelClass}>Country</label>
           <input type="text" value={basics.location?.countryCode ?? ''}
             onChange={(e) => setLocation('countryCode', e.target.value)}
             placeholder="US" className={inputClass} />

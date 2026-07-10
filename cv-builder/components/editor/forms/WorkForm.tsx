@@ -6,6 +6,7 @@ import { ListFieldManager } from './ListFieldManager'
 import { AiSuggestButton } from '@/components/ai/AiSuggestButton'
 import { MonthYearPicker } from './MonthYearPicker'
 import { RichTextField } from './RichTextField'
+import { inputClass } from './field-styles'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type WorkItem = NonNullable<ResumeData['work']>[number]
@@ -15,8 +16,6 @@ const EMPTY_WORK: WorkItem[] = []
 const createEmpty = (): WorkItem => ({
   name: '', position: '', url: '', startDate: '', endDate: '', summary: '', highlights: [],
 })
-
-const inputClass = 'w-full border border-indigo-200 rounded-lg px-2 py-1 text-sm bg-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
 
 function WorkItemForm({
   item,

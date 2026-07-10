@@ -3,6 +3,7 @@
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { MonthYearPicker } from './MonthYearPicker'
+import { inputClass } from './field-styles'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type EduItem = NonNullable<ResumeData['education']>[number]
@@ -12,8 +13,6 @@ const EMPTY_EDUCATION: EduItem[] = []
 const createEmpty = (): EduItem => ({
   institution: '', url: '', area: '', studyType: '', startDate: '', endDate: '', score: '', courses: [],
 })
-
-const inputClass = 'w-full border border-indigo-200 rounded-lg px-2 py-1 text-sm bg-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
 
 function EduItemForm({ item, onUpdate, onRemove }: { item: EduItem; onUpdate: (v: EduItem) => void; onRemove: () => void }) {
   const set = (field: keyof EduItem, value: string) => onUpdate({ ...item, [field as keyof EduItem]: value as never })

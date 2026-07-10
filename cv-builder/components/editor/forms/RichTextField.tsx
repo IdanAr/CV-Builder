@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
+import { inputClass } from './field-styles'
 
 export interface RichTextFieldProps {
   value: string
@@ -95,8 +96,7 @@ export function RichTextField({
     })
   }
 
-  const textareaClass =
-    'w-full border border-indigo-200 rounded-lg px-3 py-1.5 text-sm bg-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y'
+  const textareaClass = `${inputClass} resize-y`
 
   return (
     <div className={className}>
