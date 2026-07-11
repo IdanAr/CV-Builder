@@ -503,11 +503,23 @@ git commit -m "test: add unauthenticated-request coverage for /api/applications/
 
 ```typescript
 // cv-builder/middleware.test.ts
-import { describe, it, expect } from 'vitest'
-import { config } from './middleware'
+import { describe, it, expect, vi } from 'vitest'
+
+// next-auth's default export pulls in `next-auth/lib/env.js`, which imports
+// `next/server` in a way vitest's node test environment cannot resolve
+// (verified experimentally: importing middleware.ts unmocked fails with
+// "Cannot find module '.../node_modules/next/server'"). Mock next-auth and
+// its providers so importing middleware.ts only evaluates the local
+// `config` export, not real next-auth internals.
+vi.mock('next-auth', () => ({
+  default: vi.fn(() => ({ auth: vi.fn() })),
+}))
+vi.mock('next-auth/providers/github', () => ({ default: vi.fn() }))
+vi.mock('next-auth/providers/google', () => ({ default: vi.fn() }))
 
 describe('middleware matcher', () => {
-  it('covers /dashboard, /api/resumes, /api/applications, and /api/preview', () => {
+  it('covers /dashboard, /api/resumes, /api/applications, and /api/preview', async () => {
+    const { config } = await import('./middleware')
     expect(config.matcher).toEqual([
       '/dashboard/:path*',
       '/api/resumes/:path*',
@@ -516,7 +528,8 @@ describe('middleware matcher', () => {
     ])
   })
 
-  it('does not include the OAuth handshake route', () => {
+  it('does not include the OAuth handshake route', async () => {
+    const { config } = await import('./middleware')
     expect(config.matcher).not.toContain('/api/auth/:path*')
   })
 })
