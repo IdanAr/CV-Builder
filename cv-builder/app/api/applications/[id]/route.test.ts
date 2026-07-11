@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 
+let mockSession: { user: { id: string } } | null = { user: { id: 'user-1' } }
+
 vi.mock('@/lib/auth', () => ({
   auth: vi.fn((handler) => async (req: Request, ctx: unknown) => {
-    return handler(Object.assign(req, { auth: { user: { id: 'user-1' } } }), ctx)
+    return handler(Object.assign(req, { auth: mockSession }), ctx)
   }),
 }))
 
@@ -15,9 +17,24 @@ vi.mock('@/lib/api/applications', () => ({
 afterEach(() => {
   vi.resetModules()
   vi.restoreAllMocks()
+  mockSession = { user: { id: 'user-1' } }
 })
 
 describe('PATCH /api/applications/[id]', () => {
+  it('returns 401 when not authenticated', async () => {
+    mockSession = null
+    const { PATCH } = await import('./route')
+    const req = new Request('http://localhost/api/applications/a1', {
+      method: 'PATCH',
+      body: JSON.stringify({ company: 'Acme' }),
+    })
+    const res = (await PATCH(req as never, {
+      params: Promise.resolve({ id: 'a1' }),
+    } as never)) as Response
+    expect(res.status).toBe(401)
+    expect((await res.json()).code).toBe('UNAUTHORIZED')
+  })
+
   it('validates the body and returns 400 on a bad patch', async () => {
     const { PATCH } = await import('./route')
     const req = new Request('http://localhost/api/applications/a1', {
@@ -85,6 +102,17 @@ describe('PATCH /api/applications/[id]', () => {
 })
 
 describe('DELETE /api/applications/[id]', () => {
+  it('returns 401 when not authenticated', async () => {
+    mockSession = null
+    const { DELETE } = await import('./route')
+    const req = new Request('http://localhost/api/applications/a1', { method: 'DELETE' })
+    const res = (await DELETE(req as never, {
+      params: Promise.resolve({ id: 'a1' }),
+    } as never)) as Response
+    expect(res.status).toBe(401)
+    expect((await res.json()).code).toBe('UNAUTHORIZED')
+  })
+
   it('returns success when deleted and 404 when missing', async () => {
     const { deleteApplication } = await import('@/lib/api/applications')
     vi.mocked(deleteApplication).mockResolvedValueOnce(true).mockResolvedValueOnce(false)
