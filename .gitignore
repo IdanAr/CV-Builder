@@ -2,3 +2,6 @@
 
 # Ignore the build folder
 Archived/
+
+# Claude Code harness-managed worktrees
+.claude/worktrees/
