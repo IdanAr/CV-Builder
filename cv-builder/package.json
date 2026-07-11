@@ -17,6 +17,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@react-pdf/renderer": "^4.5.1",
+    "clsx": "^2.1.1",
     "docx": "^9.7.1",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.24.0",
@@ -27,8 +28,10 @@
     "next-auth": "^5.0.0-beta.31",
     "ogl": "^1.0.11",
     "pdf-parse": "^2.4.5",
+    "radix-ui": "^1.6.2",
     "react": "^18",
     "react-dom": "^18",
+    "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
