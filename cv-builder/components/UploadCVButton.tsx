@@ -2,10 +2,12 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import UploadProgressModal, { type UploadStage } from './UploadProgressModal'
 
-type Phase = 'idle' | 'parsing' | 'extracting' | 'error'
+type Stage = 'idle' | UploadStage
 
 const MAX_BYTES = 5 * 1024 * 1024
+const DONE_DISPLAY_MS = 400
 
 interface UploadCVButtonProps {
   variant?: 'navbar' | 'hero'
@@ -14,9 +16,15 @@ interface UploadCVButtonProps {
 export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonProps) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
-  const [phase, setPhase] = useState<Phase>('idle')
+  const [stage, setStage] = useState<Stage>('idle')
   const [filename, setFilename] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+
+  function reset() {
+    setStage('idle')
+    setErrorMsg('')
+    setFilename('')
+  }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -24,13 +32,14 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
     if (!file) return
 
     if (file.size > MAX_BYTES) {
+      setFilename(file.name)
       setErrorMsg('File must be 5 MB or smaller.')
-      setPhase('error')
+      setStage('error')
       return
     }
 
     setFilename(file.name)
-    setPhase('parsing')
+    setStage('reading')
     setErrorMsg('')
 
     try {
@@ -41,9 +50,9 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
         const json = await parseRes.json().catch(() => ({}))
         throw new Error((json as { error?: string }).error ?? 'Could not read the file.')
       }
-      const { text } = await parseRes.json() as { text: string }
+      const { text } = (await parseRes.json()) as { text: string }
 
-      setPhase('extracting')
+      setStage('extracting')
       const extractRes = await fetch('/api/resumes/upload/extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -55,44 +64,14 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
           (json as { error?: string }).error ?? 'Could not extract information from this CV.'
         )
       }
-      const { resumeId } = await extractRes.json() as { resumeId: string }
-      router.push(`/dashboard/resumes/${resumeId}`)
+      const { resumeId } = (await extractRes.json()) as { resumeId: string }
+
+      setStage('done')
+      window.setTimeout(() => router.push(`/dashboard/resumes/${resumeId}`), DONE_DISPLAY_MS)
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
-      setPhase('error')
+      setStage('error')
     }
-  }
-
-  if (phase === 'error') {
-    return (
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-red-600">{errorMsg}</span>
-        <button
-          onClick={() => { setPhase('idle'); setErrorMsg(''); setFilename('') }}
-          className="rounded-lg border border-indigo-200 px-3 py-2 text-sm text-indigo-700 hover:bg-indigo-50"
-        >
-          Try another file
-        </button>
-      </div>
-    )
-  }
-
-  if (phase === 'parsing' || phase === 'extracting') {
-    return (
-      <div className="flex items-center gap-3">
-        <svg className="h-4 w-4 animate-spin text-indigo-600" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-        </svg>
-        <span className="text-sm text-indigo-600">
-          {phase === 'parsing' ? `Reading ${filename}…` : 'Extracting information…'}
-        </span>
-        <div className="flex gap-1">
-          <span className="h-2 w-2 rounded-full bg-indigo-600" />
-          <span className={`h-2 w-2 rounded-full ${phase === 'extracting' ? 'bg-indigo-600' : 'bg-indigo-100'}`} />
-        </div>
-      </div>
-    )
   }
 
   const triggerClassName =
@@ -102,16 +81,18 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
 
   return (
     <>
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".pdf,.docx"
-        className="hidden"
-        onChange={handleFileChange}
-      />
+      <input ref={inputRef} type="file" accept=".pdf,.docx" className="hidden" onChange={handleFileChange} />
       <button onClick={() => inputRef.current?.click()} className={triggerClassName}>
         ⬆ Upload CV
       </button>
+      <UploadProgressModal
+        open={stage !== 'idle'}
+        filename={filename}
+        stage={stage === 'idle' ? 'reading' : stage}
+        errorMessage={errorMsg}
+        onRetry={reset}
+        onClose={reset}
+      />
     </>
   )
 }
