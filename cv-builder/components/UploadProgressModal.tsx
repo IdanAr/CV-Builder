@@ -72,6 +72,8 @@ export default function UploadProgressModal({
 
     clearTimers()
 
+    if (!open) return clearTimers
+
     if (stage === 'reading') {
       setPercent(READING_PHASE.start)
       setLabel(`Reading ${filename}…`)
@@ -86,7 +88,7 @@ export default function UploadProgressModal({
     }
 
     return clearTimers
-  }, [stage, filename])
+  }, [open, stage, filename])
 
   if (!open) return null
 

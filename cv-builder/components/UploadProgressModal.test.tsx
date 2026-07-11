@@ -25,6 +25,29 @@ describe('UploadProgressModal', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('does not start the fake-progress animation while closed', () => {
+    const { rerender } = render(
+      <UploadProgressModal
+        open={false}
+        filename="cv.pdf"
+        stage="reading"
+        onRetry={() => {}}
+        onClose={() => {}}
+      />
+    )
+    act(() => { vi.advanceTimersByTime(5000) })
+    rerender(
+      <UploadProgressModal
+        open
+        filename="cv.pdf"
+        stage="reading"
+        onRetry={() => {}}
+        onClose={() => {}}
+      />
+    )
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
+  })
+
   it('shows the filename and "Reading…" immediately at 0%, in a dialog', () => {
     render(
       <UploadProgressModal
