@@ -183,6 +183,23 @@ describe('UploadProgressModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('portals the dialog to document.body, so ancestor CSS (e.g. backdrop-filter) cannot break its fixed positioning', () => {
+    const { container } = render(
+      <div data-testid="ancestor-with-filter">
+        <UploadProgressModal
+          open
+          filename="cv.pdf"
+          stage="reading"
+          onRetry={() => {}}
+          onClose={() => {}}
+        />
+      </div>
+    )
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.parentElement).toBe(document.body)
+    expect(container.querySelector('[role="dialog"]')).toBeNull()
+  })
+
   it('calls onClose when the backdrop is clicked in the error state', () => {
     const onClose = vi.fn()
     render(

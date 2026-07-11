@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Progress } from '@/components/ui/progress'
 
 export type UploadStage = 'reading' | 'extracting' | 'done' | 'error'
@@ -94,7 +95,7 @@ export default function UploadProgressModal({
 
   const dismissible = stage === 'error'
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -133,6 +134,7 @@ export default function UploadProgressModal({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
