@@ -23,28 +23,30 @@ describe('UploadCVButton', () => {
     vi.stubGlobal('fetch', vi.fn())
   })
 
-  it('renders the Upload CV button in idle state', () => {
+  it('renders the Upload CV button in idle state, with no modal open', () => {
     render(<UploadCVButton />)
     expect(screen.getByRole('button', { name: /upload cv/i })).toBeTruthy()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('shows "Reading filename…" (phase 1) while parse request is in flight', async () => {
+  it('opens the modal on stage "reading" while the parse request is in flight', async () => {
     vi.mocked(fetch).mockImplementationOnce(() => new Promise(() => {}))
     render(<UploadCVButton />)
     triggerFileChange(makeFile('my-cv.pdf'))
-    await waitFor(() => expect(screen.getByText(/Reading my-cv\.pdf/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
+    expect(screen.getByText('Reading my-cv.pdf…')).toBeTruthy()
   })
 
-  it('shows "Extracting information…" (phase 2) while extract request is in flight', async () => {
+  it('moves the modal to stage "extracting" once the parse request resolves', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({ ok: true, json: async () => ({ text: 'cv text' }) } as Response)
       .mockImplementationOnce(() => new Promise(() => {}))
     render(<UploadCVButton />)
     triggerFileChange(makeFile())
-    await waitFor(() => expect(screen.getByText(/Extracting information/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Extracting information…')).toBeTruthy())
   })
 
-  it('redirects to editor on successful upload', async () => {
+  it('redirects to the editor after the extract request resolves', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({ ok: true, json: async () => ({ text: 'cv text' }) } as Response)
       .mockResolvedValueOnce({ ok: true, json: async () => ({ resumeId: 'abc123' }) } as Response)
@@ -53,17 +55,17 @@ describe('UploadCVButton', () => {
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dashboard/resumes/abc123'))
   })
 
-  it('shows error message when parse API fails', async () => {
+  it('shows an error dialog when the parse API fails', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: false,
       json: async () => ({ error: 'Could not read the file.' }),
     } as Response)
     render(<UploadCVButton />)
     triggerFileChange(makeFile())
-    await waitFor(() => expect(screen.getByText(/Could not read the file/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Could not read the file.')).toBeTruthy())
   })
 
-  it('shows error and "Try another file" button when extract API fails', async () => {
+  it('shows an error dialog with "Try another file" when the extract API fails', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({ ok: true, json: async () => ({ text: 'cv text' }) } as Response)
       .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'AI failed.' }) } as Response)
@@ -72,7 +74,19 @@ describe('UploadCVButton', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /try another file/i })).toBeTruthy())
   })
 
-  it('rejects oversized file client-side before any fetch', async () => {
+  it('clicking "Try another file" after an error closes the modal, ready for another upload', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: 'Could not read the file.' }),
+    } as Response)
+    render(<UploadCVButton />)
+    triggerFileChange(makeFile())
+    await waitFor(() => screen.getByRole('button', { name: /try another file/i }))
+    fireEvent.click(screen.getByRole('button', { name: /try another file/i }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('rejects an oversized file client-side before any fetch, showing the error in the modal', async () => {
     render(<UploadCVButton />)
     triggerFileChange(makeFile('big.pdf', 'application/pdf', 5 * 1024 * 1024 + 1))
     await waitFor(() => expect(screen.getByText(/5 MB/i)).toBeTruthy())
