@@ -201,11 +201,13 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
             instead of compressing against the truncated title/role text. */}
         <div className="relative z-10 flex flex-wrap shrink-0 gap-2">
           
-          <span
-            className="rounded-md border border-indigo-300 bg-white/50 px-3 py-1.5 text-xs font-medium text-indigo-700 transition group-hover:bg-indigo-50 pointer-events-none"
+          <Link
+            href={`/dashboard/resumes/${resume._id}`}
+            aria-label={`Open ${resume.title}`}
+            className="rounded-md border border-indigo-300 bg-white/50 px-3 py-1.5 text-xs font-medium text-indigo-700 transition group-hover:bg-indigo-50"
           >
             Open
-          </span>
+          </Link>
           
           <button
             onClick={handleDownload}

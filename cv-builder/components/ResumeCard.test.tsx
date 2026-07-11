@@ -190,6 +190,12 @@ describe('ResumeCard', () => {
     vi.useRealTimers()
   })
 
+  it('routes to the CV editor when "Open" is clicked', () => {
+    render(<ResumeCard resume={baseResume} />)
+    const openLink = screen.getByText('Open')
+    expect(openLink).toHaveAttribute('href', `/dashboard/resumes/${baseResume._id}`)
+  })
+
   it('makes the action-button row wrap onto a second line on narrow viewports', () => {
     render(<ResumeCard resume={baseResume} />)
     const openSpan = screen.getByText('Open')
