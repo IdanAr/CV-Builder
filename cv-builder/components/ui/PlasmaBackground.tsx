@@ -11,7 +11,7 @@ interface PlasmaBackgroundProps {
 
 export function PlasmaBackground({ children, opacity = 0.2, mouseInteractive = false }: PlasmaBackgroundProps) {
   return (
-    <div className="relative bg-gradient-to-br from-indigo-50 via-purple-50 to-white">
+    <div className="relative min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-white">
       <div className="absolute inset-0 z-0">
         <Plasma
           color="#4f46e5"

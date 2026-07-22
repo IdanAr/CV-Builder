@@ -22,6 +22,7 @@ export default async function ApplicationsPage() {
   return (
     <>
       <AppNavbar
+        containerClassName="mx-auto w-full max-w-7xl px-4"
         actions={
           <div className="ml-auto flex items-center gap-3">
             <Link
@@ -36,7 +37,7 @@ export default async function ApplicationsPage() {
         }
       />
 
-<div className="mx-auto flex h-[calc(100vh-8rem)] max-w-7xl flex-col px-4 py-8">
+<div className="mx-auto max-w-7xl px-4 py-8">
   <div className="mb-6">
     <h1 className="text-3xl font-bold text-indigo-700">Applications</h1>
     <p className="mt-1 text-md text-indigo-500">
@@ -47,7 +48,7 @@ export default async function ApplicationsPage() {
     </p>
   </div>
 
-  <div className="mt-6 flex-1">
+  <div className="mt-6">
     <ApplicationsView
       initialApplications={JSON.parse(JSON.stringify(applications)) as ApplicationRow[]}
       initialBoardConfig={JSON.parse(JSON.stringify(boardConfig)) as BoardConfigData}
