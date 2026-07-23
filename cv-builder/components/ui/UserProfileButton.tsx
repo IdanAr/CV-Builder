@@ -67,6 +67,7 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
   // ancestors (e.g. the navbar's backdrop-blur) which create their own stacking
   // context and containing block for fixed-position elements.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true)
   }, [])
 

@@ -35,6 +35,7 @@ export function usePdfPagination(
   useEffect(() => {
     const controller = new AbortController()
     let cancelled = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setState((s) => ({ ...s, status: 'syncing' }))
 
     // Note: useDebounce's own initial state mirrors the input value

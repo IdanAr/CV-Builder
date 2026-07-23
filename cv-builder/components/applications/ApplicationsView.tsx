@@ -86,6 +86,7 @@ export default function ApplicationsView({
   // Restore the persisted view preference after mount (SSR-safe).
   useEffect(() => {
     const saved = localStorage.getItem(VIEW_KEY)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved === 'kanban' || saved === 'table') setView(saved)
   }, [])
 
@@ -99,6 +100,7 @@ export default function ApplicationsView({
   useEffect(() => {
     try {
       const saved = localStorage.getItem(FILTERS_KEY)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved) setFilters(JSON.parse(saved))
     } catch (err) {
       console.error(err)
@@ -401,7 +403,6 @@ export default function ApplicationsView({
       }
       pending.clear()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const visibleApplications = applications.filter((a) => !hiddenIds.has(a._id))

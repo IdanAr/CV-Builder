@@ -66,6 +66,7 @@ export function PreviewTab() {
     const saved = localStorage.getItem(ZOOM_STORAGE_KEY)
     if (saved && saved !== 'fit') {
       const z = parseFloat(saved)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (!isNaN(z)) setZoomOverride(clampZoom(z))
     }
   }, [])

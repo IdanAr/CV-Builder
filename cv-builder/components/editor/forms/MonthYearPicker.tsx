@@ -50,6 +50,7 @@ export function MonthYearPicker({ value, onChange, allowPresent = false, placeho
   // Sync internal state when external value changes
   useEffect(() => {
     const p = parseValue(value)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMonth(p.month)
     setYear(p.year)
     setIsPresent(p.isPresent)

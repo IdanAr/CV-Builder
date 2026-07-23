@@ -76,6 +76,7 @@ export default function UploadProgressModal({
     if (!open) return clearTimers
 
     if (stage === 'reading') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPercent(READING_PHASE.start)
       setLabel(`Reading ${filename}…`)
       runPhase(READING_PHASE)

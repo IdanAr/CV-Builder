@@ -190,11 +190,13 @@ export function DesignPanel() {
   // This is a no-op when the change originated from this component's own
   // valid-hex commit, since the draft already equals the new meta value.
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPrimaryColorDraft(meta.primaryColor)
     setPrimaryColorTouched(false)
   }, [meta.primaryColor])
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAccentColorDraft(meta.accentColor)
     setAccentColorTouched(false)
   }, [meta.accentColor])
