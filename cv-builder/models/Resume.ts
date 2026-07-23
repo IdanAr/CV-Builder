@@ -1,4 +1,4 @@
-import mongoose, { Schema, model, models, type Document } from 'mongoose'
+import { Schema, model, models, type Document } from 'mongoose'
 import type { ApplicationStatus, ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
 export interface IResume extends Document {

@@ -401,7 +401,6 @@ export default function ApplicationsView({
       }
       pending.clear()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const visibleApplications = applications.filter((a) => !hiddenIds.has(a._id))
