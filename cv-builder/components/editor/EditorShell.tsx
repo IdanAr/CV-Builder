@@ -98,6 +98,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
     if (saved) {
       const w = parseInt(saved, 10)
       if (!isNaN(w)) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setPanelWidth(clampPanelWidth(w))
       }
     }
