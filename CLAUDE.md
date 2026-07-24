@@ -28,7 +28,7 @@ Env vars live in `cv-builder/.env.local` (copy from `.env.local.example`): `MONG
 
 ## Architecture
 
-CV Builder is a Next.js 14 App Router app: AI-assisted résumé builder (JSON Resume schema) with PDF/DOCX export and a separate job-application tracking supertable. Auth via Auth.js v5 (GitHub/Google OAuth, MongoDB adapter, JWT sessions). AI features run on a single model, Claude Haiku 4.5 via `@anthropic-ai/sdk` (`lib/ai/models.ts`) — there is no multi-provider router despite what an old PRD might suggest.
+CV Builder is a Next.js 16 App Router app (React 19, Turbopack dev): AI-assisted résumé builder (JSON Resume schema) with PDF/DOCX export and a separate job-application tracking supertable. Auth via Auth.js v5 (GitHub/Google OAuth, MongoDB adapter, JWT sessions). AI features run on a single model, Claude Haiku 4.5 via `@anthropic-ai/sdk` (`lib/ai/models.ts`) — there is no multi-provider router despite what an old PRD might suggest.
 
 ### Two-tree document model (core invariant)
 

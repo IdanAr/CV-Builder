@@ -2,11 +2,12 @@
 
 > **Build résumés that beat ATS parsers and impress humans - then track every application from a spreadsheet-style board, without ever leaving the tool.**
 
-![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
+![React](https://img.shields.io/badge/React-19-61dafb?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?logo=mongodb)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38bdf8?logo=tailwindcss)
-![Vitest](https://img.shields.io/badge/tests-90%20suites-brightgreen?logo=vitest)
+![Vitest](https://img.shields.io/badge/tests-97%20suites-brightgreen?logo=vitest)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
@@ -101,7 +102,8 @@ Key differentiators:
 
 | Layer | Technology | Version |
 |---|---|---|
-| Framework | Next.js (App Router) | 14.2.x |
+| Framework | Next.js (App Router, Turbopack dev) | 16.2.x |
+| UI Runtime | React | 19.2.x |
 | Language | TypeScript | 5.x |
 | Styling | Tailwind CSS | 3.4.x |
 | State Management | Zustand | 5.x |
@@ -433,7 +435,7 @@ All routes below are session-authenticated via Auth.js (`auth()` wrapper) and sc
 
 ## Testing
 
-The project has **90 Vitest test suites** covering schemas, API routes, AI pipelines (including hallucination detection), the ATS scorer, DOCX/PDF template rendering, pagination math, the application-tracking sort/filter/order logic, and editor components, run via `@testing-library/react` + `jsdom`.
+The project has **97 Vitest test suites** covering schemas, API routes, AI pipelines (including hallucination detection), the ATS scorer, DOCX/PDF template rendering, pagination math, the application-tracking sort/filter/order logic, and editor components, run via `@testing-library/react` + `jsdom`.
 
 ```bash
 npm run test        # watch mode

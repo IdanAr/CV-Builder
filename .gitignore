@@ -5,3 +5,15 @@ Archived/
 
 # Claude Code harness-managed worktrees
 .claude/worktrees/
+
+# Dependencies (never commit)
+node_modules/
+
+# macOS junk
+.DS_Store
+
+# Design-tool export dump (kept locally, not part of the app)
+/design-export/
+
+# Claude harness brainstorm artifacts
+.superpowers/
