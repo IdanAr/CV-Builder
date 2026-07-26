@@ -54,6 +54,17 @@ describe('pdf-geometry', () => {
     // …but the same pair in one column does collide.
     expect(findBaselineCollisions([rail, { ...main, x: 45 }])).not.toHaveLength(0)
   })
+
+  // Regression guard for the interposition bug: an unrelated run from another
+  // column sorting *between* two colliding runs must not hide the collision.
+  // A detector that pairs globally-y-sorted neighbours fails this.
+  it('detects a same-column collision even when another column interleaves', () => {
+    const main1 = { str: 'Idan', x: 300, y: 782.09, width: 44, height: 22, fontName: 'f1', page: 1 }
+    const main2 = { str: 'Arch', x: 300, y: 779.34, width: 90, height: 11, fontName: 'f2', page: 1 }
+    const rail  = { str: 'RAIL', x: 40,  y: 780.50, width: 50, height: 12, fontName: 'f1', page: 1 }
+    expect(findBaselineCollisions([main1, main2]), 'baseline case').not.toHaveLength(0)
+    expect(findBaselineCollisions([main1, rail, main2]), 'interposed').not.toHaveLength(0)
+  })
 })
 
 describe('fontDiagnostics', () => {

@@ -108,19 +108,23 @@ export function findBaselineCollisions(
 
   const collisions: Array<{ a: GlyphRun; b: GlyphRun }> = []
   for (const pageRuns of byPage.values()) {
-    // Descending y == top of page first.
-    const sorted = [...pageRuns].sort((l, r) => r.y - l.y)
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const a = sorted[i]
-      const b = sorted[i + 1]
-      if (a.y - b.y <= SAME_LINE_TOLERANCE) continue // same visual line
-      // Runs in different columns never collide however close their baselines
-      // sit. The Sidebar template is flexDirection:'row', so without this the
-      // rail and the main column would false-positive against each other.
-      if (!overlapsHorizontally(a, b)) continue
+    for (const a of pageRuns) {
+      // The run directly beneath `a` *in a's own column*. Do not reach for
+      // this by sorting the whole page by y and pairing neighbours: in a
+      // multi-column template an unrelated run from another column can sort
+      // between two genuinely colliding runs, and the real pair then never
+      // gets compared. Ask the question per run instead.
+      let below: GlyphRun | null = null
+      for (const candidate of pageRuns) {
+        if (a.y - candidate.y <= SAME_LINE_TOLERANCE) continue // same line or above
+        if (!overlapsHorizontally(a, candidate)) continue      // different column
+        if (below === null || candidate.y > below.y) below = candidate
+      }
+      if (below === null) continue
+
       const upperInkBottom = a.y - a.height * DESCENT_RATIO
-      const lowerInkTop = b.y + b.height * ASCENT_RATIO
-      if (lowerInkTop > upperInkBottom) collisions.push({ a, b })
+      const lowerInkTop = below.y + below.height * ASCENT_RATIO
+      if (lowerInkTop > upperInkBottom) collisions.push({ a, b: below })
     }
   }
   return collisions
