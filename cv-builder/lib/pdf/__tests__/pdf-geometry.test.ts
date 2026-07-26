@@ -36,4 +36,12 @@ describe('pdf-geometry', () => {
     const runs = await renderToGlyphRuns(fixture({ lineHeight: 1.15 }))
     expect(findBaselineCollisions(runs)).toHaveLength(0)
   })
+
+  // Guards the detector against being loosened until it stops detecting.
+  // lineHeight 1.0 on a 22pt run above an 11pt run genuinely overlaps by
+  // 1.65pt — a detector that passes this fixture is too weak to be useful.
+  it('still detects a marginal overlap at lineHeight 1.0', async () => {
+    const runs = await renderToGlyphRuns(fixture({ lineHeight: 1.0 }))
+    expect(findBaselineCollisions(runs)).not.toHaveLength(0)
+  })
 })

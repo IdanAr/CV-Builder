@@ -57,14 +57,28 @@ export async function renderToGlyphRuns(element: React.ReactElement): Promise<Gl
 const SAME_LINE_TOLERANCE = 0.5
 
 /**
- * Two runs on *different* lines must be separated by at least
- * `ratio × the taller run's height`. A 22pt name above an 11pt label needs
- * ~19.8pt of separation at the default ratio; the pre-fix templates produce
- * 4.45pt, which is the D1 collision.
+ * Approximate ink extent either side of the baseline, as a fraction of the
+ * run's height. Latin faces put roughly three quarters of the em above the
+ * baseline (ascenders) and a quarter below (descenders).
+ */
+const ASCENT_RATIO = 0.75
+const DESCENT_RATIO = 0.25
+
+/**
+ * Two runs on different lines collide when their ink boxes overlap: the lower
+ * run's ascenders reach above the upper run's descenders.
+ *
+ * A ratio-of-font-size heuristic does not work here and was measured to be
+ * wrong. For a 22pt name above an 11pt label, @react-pdf produces 2.75pt of
+ * baseline separation when broken and 15.40pt when correct — i.e. the *correct*
+ * layout reaches only 0.70 of the larger height, so any threshold near 0.9
+ * flags good code, and any threshold that clears 0.70 sits a hair above the
+ * 0.55 produced by a genuinely overlapping `lineHeight: 1.0`. The ink model
+ * separates all three cases with physical meaning and nothing to tune:
+ * broken +11.00pt overlap, correct -1.65pt, `lineHeight: 1.0` +1.65pt.
  */
 export function findBaselineCollisions(
-  runs: GlyphRun[],
-  ratio = 0.65
+  runs: GlyphRun[]
 ): Array<{ a: GlyphRun; b: GlyphRun }> {
   const byPage = new Map<number, GlyphRun[]>()
   for (const run of runs) {
@@ -80,9 +94,10 @@ export function findBaselineCollisions(
     for (let i = 0; i < sorted.length - 1; i++) {
       const a = sorted[i]
       const b = sorted[i + 1]
-      const gap = a.y - b.y
-      if (gap <= SAME_LINE_TOLERANCE) continue // same visual line
-      if (gap < Math.max(a.height, b.height) * ratio) collisions.push({ a, b })
+      if (a.y - b.y <= SAME_LINE_TOLERANCE) continue // same visual line
+      const upperInkBottom = a.y - a.height * DESCENT_RATIO
+      const lowerInkTop = b.y + b.height * ASCENT_RATIO
+      if (lowerInkTop > upperInkBottom) collisions.push({ a, b })
     }
   }
   return collisions
