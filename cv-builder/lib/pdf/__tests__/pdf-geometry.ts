@@ -2,6 +2,7 @@
 // rather than on extracted text alone. pdfjs-dist is already present
 // transitively via pdf-parse, so this adds no dependency.
 import { renderToBuffer } from '@react-pdf/renderer'
+import path from 'node:path'
 import type React from 'react'
 
 export interface GlyphRun {
@@ -9,10 +10,21 @@ export interface GlyphRun {
   x: number
   /** Baseline in PDF user space. Origin is bottom-left: larger y is higher. */
   y: number
+  width: number
   height: number
   fontName: string
   /** 1-based page number. */
   page: number
+}
+
+/**
+ * pdfjs needs the base-14 metrics on disk to parse PDFs that reference them
+ * without embedding. Without this it logs `Ensure that the standardFontDataUrl
+ * API parameter is provided` for every such document — noise that would repeat
+ * across every test built on this harness.
+ */
+function standardFontDataUrl(): string {
+  return `${path.dirname(require.resolve('pdfjs-dist/package.json'))}/standard_fonts/`
 }
 
 export async function glyphRunsFromBuffer(buffer: Buffer): Promise<GlyphRun[]> {
@@ -21,6 +33,7 @@ export async function glyphRunsFromBuffer(buffer: Buffer): Promise<GlyphRun[]> {
     data: new Uint8Array(buffer),
     useSystemFonts: false,
     isEvalSupported: false,
+    standardFontDataUrl: standardFontDataUrl(),
   }).promise
 
   const out: GlyphRun[] = []
@@ -32,6 +45,7 @@ export async function glyphRunsFromBuffer(buffer: Buffer): Promise<GlyphRun[]> {
         str: item.str,
         x: item.transform[4],
         y: item.transform[5],
+        width: item.width,
         height: item.height,
         fontName: item.fontName,
         page,
@@ -64,6 +78,11 @@ const SAME_LINE_TOLERANCE = 0.5
 const ASCENT_RATIO = 0.75
 const DESCENT_RATIO = 0.25
 
+/** Two runs share horizontal space — a precondition for colliding at all. */
+function overlapsHorizontally(a: GlyphRun, b: GlyphRun): boolean {
+  return a.x < b.x + b.width && b.x < a.x + a.width
+}
+
 /**
  * Two runs on different lines collide when their ink boxes overlap: the lower
  * run's ascenders reach above the upper run's descenders.
@@ -95,6 +114,10 @@ export function findBaselineCollisions(
       const a = sorted[i]
       const b = sorted[i + 1]
       if (a.y - b.y <= SAME_LINE_TOLERANCE) continue // same visual line
+      // Runs in different columns never collide however close their baselines
+      // sit. The Sidebar template is flexDirection:'row', so without this the
+      // rail and the main column would false-positive against each other.
+      if (!overlapsHorizontally(a, b)) continue
       const upperInkBottom = a.y - a.height * DESCENT_RATIO
       const lowerInkTop = b.y + b.height * ASCENT_RATIO
       if (lowerInkTop > upperInkBottom) collisions.push({ a, b })
@@ -104,8 +127,20 @@ export function findBaselineCollisions(
 }
 
 /**
- * Font health, read from the raw PDF bytes. `/FontFile2` marks an embedded
- * TrueType program; base-14 names appear only when nothing was embedded.
+ * Font health, read from the raw PDF bytes.
+ *
+ * `embedded` accepts any of the three embedded-font-program keys, not just
+ * FontFile2: `/FontFile` is Type 1, `/FontFile2` TrueType, `/FontFile3`
+ * CFF/OpenType. react-pdf emits FontFile2 today, but a diagnostic that reports
+ * "not embedded" for a correctly embedded CFF font is worse than useless.
+ *
+ * `usesBase14` matches on the *family stem* followed by a word boundary, so it
+ * catches every one of the 14 standard faces — Times-Bold, Times-Italic,
+ * Times-BoldItalic, Helvetica-Oblique, Courier-BoldOblique, Symbol and
+ * ZapfDingbats included. Matching only the literal `Times-Roman` would let a
+ * bold serif template that failed to embed slip through as healthy, which is
+ * exactly the regression Task 3 uses this to catch. The `\b` also keeps real
+ * font names like `TimesNewRomanPSMT` from matching.
  */
 export function fontDiagnostics(buffer: Buffer): {
   embedded: boolean
@@ -114,8 +149,9 @@ export function fontDiagnostics(buffer: Buffer): {
 } {
   const raw = buffer.toString('latin1')
   return {
-    embedded: /\/FontFile2[\s/>]/.test(raw),
+    embedded: /\/FontFile[23]?[\s/>]/.test(raw),
     hasToUnicode: /\/ToUnicode[\s/>]/.test(raw),
-    usesBase14: /\/BaseFont\s*\/(?:[A-Z]{6}\+)?(Helvetica|Times-Roman|Courier)[\s/>-]/.test(raw),
+    usesBase14:
+      /\/BaseFont\s*\/(?:[A-Z]{6}\+)?(?:Helvetica|Times|Courier|Symbol|ZapfDingbats)\b/.test(raw),
   }
 }
