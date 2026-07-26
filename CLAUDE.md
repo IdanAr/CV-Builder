@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository layout
 
-The actual application lives in **`cv-builder/`**, not the repo root. The root only holds `README.md`, `docs/superpowers/` (sprint specs/plans), and a stray unused `package.json` (single `mongodb` dependency, not wired to anything — ignore it). All commands below are run from `cv-builder/`.
+The actual application lives in **`cv-builder/`**, not the repo root. The root only holds `README.md`, `docs/superpowers/` (sprint specs/plans — present on disk but **git-ignored**, internal use only; the same applies to `cv-builder/docs/superpowers/`), and a stray unused `package.json` (single `mongodb` dependency, not wired to anything — ignore it). All commands below are run from `cv-builder/`.
 
 ## Commands
 
@@ -108,12 +108,12 @@ cv-builder/
 │   ├── upload/                    # parse-file.ts, extract-resume.ts
 │   └── rate-limit.ts, export-mode.ts, preview-pagination.ts, mongodb.ts, auth.ts, db.ts
 ├── models/                # Mongoose models: Resume.ts, Application.ts, ApplicationActivity.ts, BoardConfig.ts
-└── docs/superpowers/       # sprint-by-sprint specs/ and plans/
+└── docs/superpowers/       # sprint-by-sprint specs/ and plans/ — git-ignored, local only
 ```
 
 ## Contributing conventions (from README)
 
-This repo follows a sprint-based workflow: each feature sprint has a design spec (`docs/superpowers/specs/`) and implementation plan (`docs/superpowers/plans/`) before merge. When adding a feature:
+This repo follows a sprint-based workflow: each feature sprint has a design spec (`docs/superpowers/specs/`) and implementation plan (`docs/superpowers/plans/`) before merge. These live on disk but are git-ignored, so they are visible while working locally and never pushed. When adding a feature:
 
 1. Extend the relevant Zod schema first (`lib/schemas/`) — it drives both runtime validation and inferred TS types.
 2. Keep the `data` tree and `meta`/design tree decoupled — never let template concerns leak into `ResumeData`.

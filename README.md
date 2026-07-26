@@ -8,7 +8,10 @@
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?logo=mongodb)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38bdf8?logo=tailwindcss)
 ![Vitest](https://img.shields.io/badge/tests-97%20suites-brightgreen?logo=vitest)
+![Vercel](https://img.shields.io/badge/deployed-Vercel-black?logo=vercel)
 ![License](https://img.shields.io/badge/license-MIT-green)
+
+**Live:** [cv-builder-indol-zeta.vercel.app](https://cv-builder-indol-zeta.vercel.app)
 
 ---
 
@@ -19,17 +22,18 @@
 3. [Tech Stack](#tech-stack)
 4. [Architecture](#architecture)
 5. [CV Templates & Export Modes](#cv-templates--export-modes)
-6. [AI Copilot - Generate → Critique → Refine](#ai-copilot--generate--critique--refine)
+6. [AI Copilot - Generate → Critique → Refine](#ai-copilot---generate--critique--refine)
 7. [ATS Scoring & Auto-Fix](#ats-scoring--auto-fix)
 8. [Application Tracking Supertable](#application-tracking-supertable)
 9. [Data Model](#data-model)
-10. [Project Structure](#project-structure)
+10. [Directory Layout](#directory-layout)
 11. [Getting Started](#getting-started)
 12. [Environment Variables](#environment-variables)
 13. [API Reference](#api-reference)
 14. [Testing](#testing)
-15. [Contributing](#contributing)
-16. [License](#license)
+15. [Deployment](#deployment)
+16. [Contributing](#contributing)
+17. [License](#license)
 
 ---
 
@@ -95,6 +99,7 @@ Key differentiators:
 ### Auth
 - GitHub OAuth and Google OAuth via Auth.js v5, backed by the MongoDB adapter.
 - Session-scoped résumé and application library - each user owns their own data.
+- Cross-provider account linking - signing in with GitHub or Google resolves to the *same* account when the verified email matches, so a user is never split across two identities.
 
 ---
 
@@ -221,8 +226,7 @@ cv-builder/
 │   ├── preview-pagination.ts, preview-anchor.ts
 │   └── mongodb.ts, auth.ts, db.ts, sections.ts, text-diff.ts, format-date.ts, …
 ├── models/                                  # Resume.ts, Application.ts, ApplicationActivity.ts, BoardConfig.ts
-├── types/                                   # Global TypeScript types
-└── docs/superpowers/                        # Sprint-by-sprint specs and implementation plans
+└── types/                                   # Global TypeScript types
 ```
 
 ---
@@ -392,6 +396,12 @@ Copy `cv-builder/.env.local.example` to `cv-builder/.env.local` and fill in:
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth app credentials |
 | `ANTHROPIC_API_KEY` | Powers all AI Copilot features (suggestions, ATS Fix, cover letters, upload extraction) - Claude Haiku 4.5 |
 
+In production one additional variable is set on the hosting platform - see [Deployment](#deployment):
+
+| Variable | Purpose |
+|---|---|
+| `AUTH_URL` | Canonical production origin (e.g. `https://your-app.vercel.app`). Optional on Vercel, which infers the host, but pinning it keeps OAuth callback URLs stable across deployments. |
+
 ---
 
 ## API Reference
@@ -444,37 +454,61 @@ npm run test:run    # single run, CI-friendly
 
 ---
 
+## Deployment
+
+The app is deployed on **Vercel**, built from this repository's `main` branch - every push triggers an automatic deployment.
+
+**Live:** [cv-builder-indol-zeta.vercel.app](https://cv-builder-indol-zeta.vercel.app)
+
+### Project settings
+
+The Next.js app lives in the `cv-builder/` subdirectory rather than the repository root, so the **Root Directory** must be set accordingly - otherwise the build runs in the wrong context and fails to detect the framework.
+
+| Setting | Value |
+|---|---|
+| Root Directory | `cv-builder` |
+| Framework Preset | Next.js (auto-detected) |
+| Build / Install / Output | Platform defaults |
+| Production branch | `main` |
+
+### Production environment variables
+
+Every variable from [Environment Variables](#environment-variables) must be configured in the Vercel project, plus `AUTH_URL`. Variables are read at **build time**, so adding or changing one requires a redeploy before it takes effect.
+
+### OAuth callback URLs
+
+Each provider must explicitly allow the production callback, or sign-in fails *after* the user authorizes - the provider rejects the `redirect_uri` it was handed:
+
+| Provider | Authorized callback URL |
+|---|---|
+| GitHub | `https://your-app.vercel.app/api/auth/callback/github` |
+| Google | `https://your-app.vercel.app/api/auth/callback/google` |
+
+**A GitHub OAuth app accepts only one callback URL**, so production and local development need **two separate GitHub OAuth apps**: production credentials live in the Vercel environment, local credentials in `.env.local` pointing at `http://localhost:3000/api/auth/callback/github`. Google permits multiple redirect URIs, so a single Google app can serve both environments.
+
+### Cross-provider account linking
+
+A sign-in that fails with `OAuthAccountNotLinked` - *after* the provider has been authorized - is an account-linking issue, not a callback one. Auth.js refuses by default to attach a second provider to an existing user with the same email, since providers returning unverified emails would make that an account-takeover vector.
+
+Both providers therefore set `allowDangerousEmailAccountLinking: true` in `auth.config.ts`. GitHub and Google both verify email ownership, so matching on email is safe here, and a user who first signed up with Google can subsequently sign in with GitHub and reach the same account rather than being blocked.
+
+### MongoDB Atlas network access
+
+Vercel's serverless functions use dynamic outbound IPs, so there is no fixed address to allowlist; Atlas **Network Access** must permit `0.0.0.0/0`. (Dedicated egress IPs require Vercel's Enterprise Secure Compute tier.) Security therefore rests on credentials rather than network origin:
+
+- Scope the database user to `readWrite` on this database only - not `atlasAdmin`.
+- Keep `MONGODB_URI` in environment variables, never committed to the repository.
+- TLS is enforced by the `mongodb+srv://` connection string.
+
+---
+
 ## Contributing
 
-This repository follows a sprint-based workflow - each feature sprint has a design spec and implementation plan under `docs/superpowers/` before merge. When adding a feature:
+This repository follows a sprint-based workflow - each feature sprint has a design spec and an implementation plan written and reviewed before merge. Those specs and plans are kept internally and are not published in this repository. When adding a feature:
 
 1. Extend the relevant Zod schema first (`lib/schemas/`) - it is the single source of truth for both runtime validation and TypeScript types.
 2. Keep the data tree and design/meta tree decoupled; never let a visual/template concern reach into `ResumeData`.
 3. Any new AI-generated content must pass through the hallucination guard before being committed.
 4. Multi-column PDF/DOCX layouts must preserve linear reading order for ATS parsers - verify with the `ats` export mode.
 5. Add or update tests alongside the change; `npm run test:run` should stay green.
-
-## License
-
-MIT License
-
-Copyright MIT © 2026 IdanAr (idan.rbel@gmail.com)
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 
