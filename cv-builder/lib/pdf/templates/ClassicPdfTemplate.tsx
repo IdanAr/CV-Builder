@@ -5,7 +5,7 @@ import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichTe
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { getColumnSide } from '@/lib/get-column-side'
 import { formatDateRange } from '@/lib/format-date'
-import { withLineHeights } from './pdf-primitives'
+import { withLineHeights, PdfBullet, PdfEntryHead } from './pdf-primitives'
 import { CLASSIC_TOKENS as T } from '@/lib/design/tokens'
 
 export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; meta: ResumeMeta; title?: string }) {
@@ -17,6 +17,10 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
   const headFont = mapToPdfFont(meta.headerFontFamily)
   const margin = inToPt(meta.pageMargins)
   const sectionOrder = resolveSectionOrder(meta)
+  // CLASSIC_TOKENS has no bulletGap (only Minimal's token set does, per Task 5).
+  // Every template's bullet style shares the same 10pt fontSize, so this
+  // mirrors MINIMAL_TOKENS.bulletGap rather than inventing a new value.
+  const bulletGap = 4.5
 
   const styles = withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: 11, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
@@ -29,6 +33,9 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
     accent: { color: meta.accentColor, fontSize: 10.5 },
     small: { fontSize: 10, color: '#666666' },
     bullet: { fontSize: 10, marginLeft: T.bulletIndent, marginBottom: 1 },
+    // Used inside PdfBullet, whose row already applies the hanging indent via
+    // its own `indent` prop; this omits marginLeft so it is not applied twice.
+    bulletHang: { fontSize: 10, marginBottom: 1 },
     bulletFirst: { marginTop: 3 },
     body: { fontSize: T.bodySize },
     entrySummary: { fontSize: 10, marginTop: 2 },
@@ -76,14 +83,22 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
               const dates = formatDateRange(job.startDate, job.endDate, true)
               return (
                 <View key={i} style={{ marginBottom: T.entryMarginBottom }}>
-                  <Text style={{ marginBottom: 2 }}>
-                    <Text style={styles.bold}>{job.name ?? ''}</Text>
-                    {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
-                  </Text>
+                  <PdfEntryHead
+                    style={{ marginBottom: 2 }}
+                    left={<Text style={styles.bold}>{job.name ?? ''}</Text>}
+                    right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
+                  />
                   <Text style={styles.accent}>{job.position ?? ''}</Text>
                   {renderPdfRichText(job.summary, styles.entrySummary)}
                   {(job.highlights ?? []).map((h, hi) => (
-                    <Text key={hi} style={hi === 0 ? [styles.bullet, styles.bulletFirst] : styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                    <PdfBullet
+                      key={hi}
+                      style={hi === 0 ? [styles.bulletHang, styles.bulletFirst] : styles.bulletHang}
+                      indent={T.bulletIndent}
+                      gap={bulletGap}
+                    >
+                      {renderPdfRichTextRuns(h)}
+                    </PdfBullet>
                   ))}
                 </View>
               )
@@ -99,10 +114,11 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
               const dates = formatDateRange(edu.startDate, edu.endDate)
               return (
                 <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
-                  <Text style={{ marginBottom: 2 }}>
-                    <Text style={styles.bold}>{edu.institution ?? ''}</Text>
-                    {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
-                  </Text>
+                  <PdfEntryHead
+                    style={{ marginBottom: 2 }}
+                    left={<Text style={styles.bold}>{edu.institution ?? ''}</Text>}
+                    right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
+                  />
                   <Text style={styles.degree}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
                   {edu.score ? <Text style={styles.small}>Score: {edu.score}</Text> : null}
                 </View>
@@ -163,10 +179,11 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
             <Text style={styles.sectionTitle}>Awards</Text>
             {awards.map((a, i) => (
               <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
-                <Text style={{ marginBottom: 2 }}>
-                  <Text style={styles.bold}>{a.title ?? ''}</Text>
-                  {a.date ? <Text style={styles.small}>{'  ·  '}{a.date}</Text> : null}
-                </Text>
+                <PdfEntryHead
+                  style={{ marginBottom: 2 }}
+                  left={<Text style={styles.bold}>{a.title ?? ''}</Text>}
+                  right={a.date ? <Text style={styles.small}>{a.date}</Text> : undefined}
+                />
                 {a.awarder ? <Text style={styles.small}>{a.awarder}</Text> : null}
                 {a.summary ? <Text style={styles.body}>{a.summary}</Text> : null}
               </View>
@@ -180,10 +197,11 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
             <Text style={styles.sectionTitle}>Publications</Text>
             {publications.map((p, i) => (
               <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
-                <Text style={{ marginBottom: 2 }}>
-                  <Text style={styles.bold}>{p.name ?? ''}</Text>
-                  {p.releaseDate ? <Text style={styles.small}>{'  ·  '}{p.releaseDate}</Text> : null}
-                </Text>
+                <PdfEntryHead
+                  style={{ marginBottom: 2 }}
+                  left={<Text style={styles.bold}>{p.name ?? ''}</Text>}
+                  right={p.releaseDate ? <Text style={styles.small}>{p.releaseDate}</Text> : undefined}
+                />
                 {p.publisher ? <Text style={styles.small}>{p.publisher}</Text> : null}
                 {p.summary ? <Text style={styles.body}>{p.summary}</Text> : null}
               </View>
@@ -199,14 +217,22 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
               const dates = formatDateRange(v.startDate, v.endDate, true)
               return (
                 <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
-                  <Text style={{ marginBottom: 2 }}>
-                    <Text style={styles.bold}>{v.organization ?? ''}</Text>
-                    {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
-                  </Text>
+                  <PdfEntryHead
+                    style={{ marginBottom: 2 }}
+                    left={<Text style={styles.bold}>{v.organization ?? ''}</Text>}
+                    right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
+                  />
                   <Text style={styles.accent}>{v.position ?? ''}</Text>
                   {renderPdfRichText(v.summary, styles.entrySummary)}
                   {(v.highlights ?? []).map((h, hi) => (
-                    <Text key={hi} style={hi === 0 ? [styles.bullet, styles.bulletFirst] : styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                    <PdfBullet
+                      key={hi}
+                      style={hi === 0 ? [styles.bulletHang, styles.bulletFirst] : styles.bulletHang}
+                      indent={T.bulletIndent}
+                      gap={bulletGap}
+                    >
+                      {renderPdfRichTextRuns(h)}
+                    </PdfBullet>
                   ))}
                 </View>
               )
@@ -236,12 +262,17 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
               const dates = formatDateRange(p.startDate, p.endDate)
               return (
                 <View key={i} style={{ marginBottom: T.projectMarginBottom }}>
-                  <Text style={{ marginBottom: 2 }}>
-                    <Text style={styles.bold}>{p.name ?? ''}</Text>
-                    {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
-                  </Text>
+                  <PdfEntryHead
+                    style={{ marginBottom: 2 }}
+                    left={<Text style={styles.bold}>{p.name ?? ''}</Text>}
+                    right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
+                  />
                   {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
-                  {(p.highlights ?? []).map((h, hi) => <Text key={hi} style={styles.bullet}>• {h}</Text>)}
+                  {(p.highlights ?? []).map((h, hi) => (
+                    <PdfBullet key={hi} style={styles.bulletHang} indent={T.bulletIndent} gap={bulletGap}>
+                      {h}
+                    </PdfBullet>
+                  ))}
                   {(p.keywords ?? []).length > 0 ? <Text style={[styles.small, { marginTop: 2 }]}>{(p.keywords ?? []).join(', ')}</Text> : null}
                 </View>
               )

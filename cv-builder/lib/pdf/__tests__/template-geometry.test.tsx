@@ -24,6 +24,11 @@ const data: ResumeData = {
   education: [{ institution: 'Technion', area: 'Generative AI', studyType: 'Certificate', endDate: '2025-12' }],
   skills: [{ name: 'Data', keywords: ['SQL', 'MongoDB'] }],
   languages: [{ language: 'Hebrew', fluency: 'Native' }],
+  // Task 6 also right-aligns dates on awards and publications entry heads
+  // (their web counterparts already use justify-content: space-between);
+  // exercised here so every template/font combination gets collision-checked.
+  awards: [{ title: 'Excellence Award', date: '2023-05', awarder: 'SAS Israel' }],
+  publications: [{ name: 'Streaming Fraud Detection at Scale', releaseDate: '2024-01', publisher: 'Data Eng Weekly' }],
 }
 
 function metaFor(templateId: string): ResumeMeta {
@@ -31,7 +36,7 @@ function metaFor(templateId: string): ResumeMeta {
     templateId, fontFamily: 'Calibri', headerFontFamily: 'Calibri',
     primaryColor: '#1e3a5f', accentColor: '#0066cc',
     pageMargins: 0.5, lineSpacing: 1.15,
-    sectionOrder: ['work', 'education', 'skills', 'languages'],
+    sectionOrder: ['work', 'education', 'skills', 'languages', 'awards', 'publications'],
     layout: 'single-column', columnAssignment: {}, excludedAtsKeywords: [],
   } as ResumeMeta
 }

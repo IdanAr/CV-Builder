@@ -1,3 +1,5 @@
+import React from 'react'
+import { View, Text } from '@react-pdf/renderer'
 import type { Style } from '@react-pdf/types'
 
 /**
@@ -22,4 +24,47 @@ export function withLineHeights<T extends Record<string, Style>>(
         : style
   }
   return out as T
+}
+
+/**
+ * A bullet with a true hanging indent, matching the web `<ul>`: the marker
+ * occupies a fixed-width column and the body flexes, so wrapped lines align
+ * with the first line's text rather than with the marker.
+ */
+export function PdfBullet({
+  style, indent, gap, children,
+}: {
+  style?: Style | Style[]
+  indent: number
+  gap: number
+  children: React.ReactNode
+}) {
+  const base: Style[] = Array.isArray(style) ? style : style ? [style] : []
+  return (
+    <View style={{ flexDirection: 'row', marginLeft: indent }} wrap={false}>
+      <Text style={[...base, { width: gap * 2 }]}>{'•'}</Text>
+      <Text style={[...base, { flex: 1 }]}>{children}</Text>
+    </View>
+  )
+}
+
+/**
+ * Entry head row matching the web's `justify-content: space-between`.
+ * Content-stream order stays left-then-right, so ATS reading order is
+ * unaffected. AtsPdfTemplate deliberately does not use this — its inline
+ * `Name | Dates` form is already linear and correct.
+ */
+export function PdfEntryHead({
+  left, right, style,
+}: {
+  left: React.ReactNode
+  right?: React.ReactNode
+  style?: Style
+}) {
+  return (
+    <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }, style ?? {}]}>
+      <Text>{left}</Text>
+      {right ? <Text>{right}</Text> : null}
+    </View>
+  )
 }
