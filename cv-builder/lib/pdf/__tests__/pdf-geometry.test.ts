@@ -65,6 +65,29 @@ describe('pdf-geometry', () => {
     expect(findBaselineCollisions([main1, main2]), 'baseline case').not.toHaveLength(0)
     expect(findBaselineCollisions([main1, rail, main2]), 'interposed').not.toHaveLength(0)
   })
+
+  // A nearer but SHORTER clean run must not hide a taller colliding run below
+  // it. Ink reach is y + height*ASCENT_RATIO, which is not monotone in y once
+  // font sizes differ, so any "nearest below" pre-selection is unsound.
+  it('detects a collision shadowed by a nearer, shorter, clean run', () => {
+    const head = { str: 'HEAD', x: 100, y: 700, width: 200, height: 11, fontName: 'f1', page: 1 }
+    const sm   = { str: 'sm',   x: 100, y: 690, width: 20,  height: 6,  fontName: 'f2', page: 1 }
+    const big  = { str: 'BIG',  x: 150, y: 690, width: 50,  height: 22, fontName: 'f3', page: 1 }
+    expect(findBaselineCollisions([head, big]), 'pair alone').not.toHaveLength(0)
+    expect(findBaselineCollisions([head, sm, big]), 'shorter run first').not.toHaveLength(0)
+    expect(findBaselineCollisions([head, big, sm]), 'order must not matter').not.toHaveLength(0)
+  })
+
+  // The realistic Sidebar shape: a full-width header band above two columns
+  // whose baselines differ slightly. The clean rail must not hide the main
+  // column's genuine collision with the band.
+  it('detects a main-column collision hidden by a clean rail run', () => {
+    const band = { str: 'NAME', x: 40,  y: 745, width: 500, height: 22, fontName: 'f1', page: 1 }
+    const rail = { str: 'SKIL', x: 40,  y: 735, width: 50,  height: 5,  fontName: 'f2', page: 1 }
+    const main = { str: 'EXPR', x: 200, y: 734, width: 90,  height: 14, fontName: 'f3', page: 1 }
+    expect(findBaselineCollisions([band, main]), 'band + main alone').not.toHaveLength(0)
+    expect(findBaselineCollisions([band, rail, main]), 'rail must not shadow').not.toHaveLength(0)
+  })
 })
 
 describe('fontDiagnostics', () => {

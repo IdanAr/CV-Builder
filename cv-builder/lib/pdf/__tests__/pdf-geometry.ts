@@ -95,6 +95,25 @@ function overlapsHorizontally(a: GlyphRun, b: GlyphRun): boolean {
  * 0.55 produced by a genuinely overlapping `lineHeight: 1.0`. The ink model
  * separates all three cases with physical meaning and nothing to tune:
  * broken +11.00pt overlap, correct -1.65pt, `lineHeight: 1.0` +1.65pt.
+ *
+ * THE INVARIANT, which every past bug here has been a violation of:
+ *
+ *   Two runs collide iff (1) their x-intervals overlap, (2) they are not on
+ *   the same visual line, and (3) their ink y-intervals overlap.
+ *
+ * Test that directly for EVERY qualifying pair. Do not sort and compare
+ * neighbours, and do not pre-select a "nearest" candidate — both are
+ * optimizations that have already shipped false negatives here. Sorting by y
+ * and pairing adjacents misses a pair once an off-column run interleaves
+ * between them. Selecting the nearest run below by y misses a pair whenever a
+ * closer but shorter run shadows a taller colliding one, because ink reach is
+ * `y + height * ASCENT_RATIO` and that is not monotone in y across mixed
+ * font sizes. The exhaustive pairwise form is the same O(n²) as the selection
+ * it replaces and has no ordering assumption left to violate.
+ *
+ * One visual collision may be reported more than once when the upper line is
+ * split into several runs. Callers assert emptiness or non-emptiness, so
+ * multiplicity is harmless and deduplication would only add a way to be wrong.
  */
 export function findBaselineCollisions(
   runs: GlyphRun[]
@@ -109,22 +128,12 @@ export function findBaselineCollisions(
   const collisions: Array<{ a: GlyphRun; b: GlyphRun }> = []
   for (const pageRuns of byPage.values()) {
     for (const a of pageRuns) {
-      // The run directly beneath `a` *in a's own column*. Do not reach for
-      // this by sorting the whole page by y and pairing neighbours: in a
-      // multi-column template an unrelated run from another column can sort
-      // between two genuinely colliding runs, and the real pair then never
-      // gets compared. Ask the question per run instead.
-      let below: GlyphRun | null = null
-      for (const candidate of pageRuns) {
-        if (a.y - candidate.y <= SAME_LINE_TOLERANCE) continue // same line or above
-        if (!overlapsHorizontally(a, candidate)) continue      // different column
-        if (below === null || candidate.y > below.y) below = candidate
-      }
-      if (below === null) continue
-
       const upperInkBottom = a.y - a.height * DESCENT_RATIO
-      const lowerInkTop = below.y + below.height * ASCENT_RATIO
-      if (lowerInkTop > upperInkBottom) collisions.push({ a, b: below })
+      for (const b of pageRuns) {
+        if (a.y - b.y <= SAME_LINE_TOLERANCE) continue // same line, or above a
+        if (!overlapsHorizontally(a, b)) continue      // different column
+        if (b.y + b.height * ASCENT_RATIO > upperInkBottom) collisions.push({ a, b })
+      }
     }
   }
   return collisions
