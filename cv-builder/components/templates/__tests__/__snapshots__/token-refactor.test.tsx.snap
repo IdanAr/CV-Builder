@@ -37,6 +37,16 @@ exports[`token refactor moves nothing on the web side > classic inline styles ar
   "32:display: flex; gap: 16px; margin-bottom: 2px;",
   "33:min-width: 130px; font-weight: 600; flex-shrink: 0;",
   "34:color: rgb(68, 68, 68); flex: 1 1 0%;",
+  "35:",
+  "36:font-family: "Carlito", sans-serif; font-size: 13pt; font-weight: 700; color: rgb(30, 58, 95); border-bottom: 1.5px solid rgb(30, 58, 95); padding-bottom: 2px; margin-top: 18px; margin-bottom: 8px;",
+  "37:margin-bottom: 11px;",
+  "38:display: flex; justify-content: space-between; align-items: baseline;",
+  "39:",
+  "40:font-size: 10pt; color: rgb(102, 102, 102);",
+  "41:font-size: 10pt; margin-top: 3px;",
+  "42:margin: 4px 0px 0px; padding-left: 18px; font-size: 10pt;",
+  "43:",
+  "44:font-size: 10pt; color: rgb(102, 102, 102); margin-top: 2px;",
 ]
 `;
 
@@ -76,6 +86,16 @@ exports[`token refactor moves nothing on the web side > executive inline styles 
   "31:display: flex; gap: 16px; margin-bottom: 2px;",
   "32:min-width: 130px; font-weight: 600; flex-shrink: 0;",
   "33:color: rgb(68, 68, 68); flex: 1 1 0%;",
+  "34:",
+  "35:font-family: "Carlito", sans-serif; font-size: 11.5pt; font-weight: 700; color: rgb(30, 58, 95); text-transform: uppercase; letter-spacing: 0.14em; margin-top: 18px; margin-bottom: 7px; padding-bottom: 3px; border-bottom: 1px solid rgb(30, 58, 95);",
+  "36:margin-bottom: 11px;",
+  "37:display: flex; justify-content: space-between; align-items: baseline;",
+  "38:",
+  "39:font-size: 10pt; color: rgb(102, 102, 102);",
+  "40:font-size: 10pt; margin-top: 3px; text-align: justify;",
+  "41:margin: 4px 0px 0px; padding-left: 18px; font-size: 10pt;",
+  "42:",
+  "43:font-size: 10pt; color: rgb(102, 102, 102); margin-top: 2px;",
 ]
 `;
 
@@ -114,6 +134,16 @@ exports[`token refactor moves nothing on the web side > minimal inline styles ar
   "30:display: flex; gap: 16px; margin-bottom: 2px;",
   "31:min-width: 130px; font-weight: 600; flex-shrink: 0;",
   "32:color: rgb(68, 68, 68); flex: 1 1 0%;",
+  "33:",
+  "34:font-family: "Carlito", sans-serif; font-size: 10pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: rgb(51, 51, 51); margin-top: 20px; margin-bottom: 8px;",
+  "35:margin-bottom: 11px;",
+  "36:display: flex; justify-content: space-between; align-items: baseline;",
+  "37:",
+  "38:font-size: 10pt; color: rgb(102, 102, 102);",
+  "39:font-size: 10pt; margin-top: 3px;",
+  "40:margin: 4px 0px 0px; padding-left: 18px; font-size: 10pt;",
+  "41:",
+  "42:font-size: 10pt; color: rgb(102, 102, 102); margin-top: 2px;",
 ]
 `;
 
@@ -152,6 +182,16 @@ exports[`token refactor moves nothing on the web side > modern inline styles are
   "30:display: flex; gap: 16px; margin-bottom: 2px;",
   "31:min-width: 130px; font-weight: 600; flex-shrink: 0;",
   "32:color: rgb(68, 68, 68); flex: 1 1 0%;",
+  "33:",
+  "34:font-family: "Carlito", sans-serif; font-size: 12pt; font-weight: 700; color: rgb(0, 102, 204); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 16px; margin-bottom: 8px;",
+  "35:margin-bottom: 11px;",
+  "36:display: flex; justify-content: space-between; align-items: baseline;",
+  "37:",
+  "38:font-size: 10pt; color: rgb(102, 102, 102);",
+  "39:font-size: 10pt; margin-top: 3px;",
+  "40:margin: 4px 0px 0px; padding-left: 18px; font-size: 10pt;",
+  "41:",
+  "42:font-size: 10pt; color: rgb(102, 102, 102); margin-top: 2px;",
 ]
 `;
 
@@ -191,5 +231,15 @@ exports[`token refactor moves nothing on the web side > sidebar inline styles ar
   "31:",
   "32:font-size: 10pt; color: rgb(102, 102, 102);",
   "33:font-size: 10.5pt;",
+  "34:",
+  "35:font-family: "Carlito", sans-serif; font-size: 12pt; font-weight: 700; color: rgb(30, 58, 95); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 16px; margin-bottom: 8px; padding-bottom: 2px; border-bottom: 2px solid rgb(0, 102, 204);",
+  "36:margin-bottom: 11px;",
+  "37:display: flex; justify-content: space-between; align-items: baseline;",
+  "38:",
+  "39:font-size: 10pt; color: rgb(102, 102, 102);",
+  "40:font-size: 10pt; margin-top: 3px;",
+  "41:margin: 4px 0px 0px; padding-left: 18px; font-size: 10pt;",
+  "42:",
+  "43:font-size: 10pt; color: rgb(102, 102, 102); margin-top: 2px;",
 ]
 `;

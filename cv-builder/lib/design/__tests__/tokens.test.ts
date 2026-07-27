@@ -36,6 +36,11 @@ const data: ResumeData = {
            highlights: ['Prevented fraud', 'Cut false positives 20%'] }],
   education: [{ institution: 'Technion', area: 'Generative AI', studyType: 'Certificate', endDate: '2025-12' }],
   skills: [{ name: 'Data', keywords: ['SQL', 'MongoDB'] }],
+  // projectMarginBottom is the one token whose web literal this refactor
+  // changed (10px -> 11px, resolving pre-existing drift against the PDF's 8pt).
+  // Without a project here neither guard renders the element that carries it,
+  // so the only value that moved would be the only value not watched.
+  projects: [{ name: 'CV Builder', description: 'Resume tooling.', highlights: ['Shipped exports'], keywords: ['TypeScript'] }],
 }
 
 describe('token refactor moves nothing', () => {
@@ -45,7 +50,7 @@ describe('token refactor moves nothing', () => {
         templateId, fontFamily: 'Calibri', headerFontFamily: 'Calibri',
         primaryColor: '#1e3a5f', accentColor: '#0066cc',
         pageMargins: 0.5, lineSpacing: 1.15,
-        sectionOrder: ['work', 'education', 'skills'],
+        sectionOrder: ['work', 'education', 'skills', 'projects'],
         layout: 'single-column', columnAssignment: {}, excludedAtsKeywords: [],
       } as ResumeMeta
       const runs = await renderToGlyphRuns(selectPdfTemplate(data, meta, 'designed', 'CV'))

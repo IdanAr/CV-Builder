@@ -24,6 +24,12 @@ exports[`token refactor moves nothing > classic glyph positions are unchanged 1`
   "Skills@36.0,495.0",
   "Data@36.0,473.8",
   "SQL, MongoDB@145.5,473.8",
+  "Projects@36.0,443.3",
+  "CV Builder@36.0,421.1",
+  "Resume tooling.@36.0,407.4",
+  "•@49.5,395.9",
+  "Shipped exports@56.7,395.9",
+  "TypeScript@36.0,381.4",
 ]
 `;
 
@@ -50,6 +56,12 @@ exports[`token refactor moves nothing > executive glyph positions are unchanged 
   "S K I L L S@36.0,525.2",
   "Data@36.0,505.1",
   "SQL, MongoDB@145.5,505.1",
+  "P R O J E C T S@36.0,476.0",
+  "CV Builder@36.0,455.0",
+  "Resume tooling.@36.0,441.3",
+  "•@49.5,429.8",
+  "Shipped exports@56.7,429.8",
+  "TypeScript@36.0,415.3",
 ]
 `;
 
@@ -76,6 +88,12 @@ exports[`token refactor moves nothing > minimal glyph positions are unchanged 1`
   "S K I L L S@36.0,527.1",
   "Data@36.0,509.6",
   "SQL, MongoDB@145.5,509.6",
+  "P R O J E C T S@36.0,480.4",
+  "CV Builder@36.0,462.0",
+  "Resume tooling.@36.0,448.3",
+  "•@49.5,436.8",
+  "Shipped exports@56.7,436.8",
+  "TypeScript@36.0,422.3",
 ]
 `;
 
@@ -102,6 +120,12 @@ exports[`token refactor moves nothing > modern glyph positions are unchanged 1`]
   "SKILLS@36.0,484.2",
   "Data@36.0,466.3",
   "SQL, MongoDB@145.5,466.3",
+  "PROJECTS@36.0,438.2",
+  "CV Builder@36.0,419.4",
+  "Resume tooling.@36.0,405.7",
+  "•@49.5,394.2",
+  "Shipped exports@56.7,394.2",
+  "TypeScript@36.0,379.7",
 ]
 `;
 
@@ -128,5 +152,11 @@ exports[`token refactor moves nothing > sidebar glyph positions are unchanged 1`
   "·@277.9,647.6",
   "12/2025@285.0,647.6",
   "Certificate in Generative AI@232.4,633.4",
+  "PROJECTS@232.4,601.9",
+  "CV Builder@232.4,580.1",
+  "Resume tooling.@232.4,566.4",
+  "•@245.9,554.9",
+  "Shipped exports@253.2,554.9",
+  "TypeScript@232.4,540.4",
 ]
 `;
