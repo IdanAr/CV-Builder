@@ -6,6 +6,7 @@ import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { getColumnSide } from '@/lib/get-column-side'
 import { formatDateRange } from '@/lib/format-date'
 import { withLineHeights } from './pdf-primitives'
+import { EXECUTIVE_TOKENS as T } from '@/lib/design/tokens'
 
 export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; meta: ResumeMeta; title?: string }) {
   const { basics = {}, work = [], education = [], skills = [],
@@ -19,27 +20,27 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
 
   const styles = withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: 11, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
-    name: { fontFamily: headFont, fontSize: 22, fontWeight: 'bold', color: meta.primaryColor, letterSpacing: 0.25 },
-    subtitle: { fontSize: 12, color: meta.accentColor, fontStyle: 'italic', marginTop: 0.75 },
+    name: { fontFamily: headFont, fontSize: T.nameSize, fontWeight: 'bold', color: meta.primaryColor, letterSpacing: 0.25 },
+    subtitle: { fontSize: T.labelSize, color: meta.accentColor, fontStyle: 'italic', marginTop: 0.75 },
     // Web double rule: 2px top + 0.75px bottom with 3px between, 6px above / 8px below
     ruleThick: { borderTopWidth: 1.5, borderTopColor: meta.primaryColor, marginTop: 4.5, marginBottom: 2.25 },
     ruleThin: { borderTopWidth: 0.55, borderTopColor: meta.primaryColor, marginBottom: 6 },
     sectionTitle: {
-      fontFamily: headFont, fontSize: 11.5, fontWeight: 'bold', color: meta.primaryColor,
+      fontFamily: headFont, fontSize: T.sectionTitleSize, fontWeight: 'bold', color: meta.primaryColor,
       textTransform: 'uppercase', letterSpacing: 1.6,
       borderBottomWidth: 0.75, borderBottomColor: meta.primaryColor,
-      paddingBottom: 2.25, marginTop: 13.5, marginBottom: 5.25,
+      paddingBottom: 2.25, marginTop: T.sectionTitleMarginTop, marginBottom: T.sectionTitleMarginBottom,
     },
     bold: { fontWeight: 'bold' },
     accent: { color: meta.accentColor, fontStyle: 'italic', fontSize: 10.5 },
     small: { fontSize: 10, color: '#666666' },
-    bullet: { fontSize: 10, marginLeft: 13.5, marginBottom: 1 },
+    bullet: { fontSize: 10, marginLeft: T.bulletIndent, marginBottom: 1 },
     bulletFirst: { marginTop: 3 },
-    body: { fontSize: 10, textAlign: 'justify' },
+    body: { fontSize: T.bodySize, textAlign: 'justify' },
     entrySummary: { fontSize: 10, marginTop: 2, textAlign: 'justify' },
     plainSummary: { fontSize: 10, marginTop: 2 },
     degree: { fontSize: 10.5, fontStyle: 'italic' },
-    summary: { fontSize: 10.5, textAlign: 'justify', marginTop: 9 },
+    summary: { fontSize: 10.5, textAlign: 'justify', marginTop: T.summaryMarginBottom },
   }), meta.lineSpacing)
 
   function buildContactRow() {
@@ -51,7 +52,7 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
     if (loc) items.push({ label: loc, href: '' })
     if (!items.length) return null
     return (
-      <Text style={{ fontSize: 10, color: '#555555' }}>
+      <Text style={{ fontSize: T.contactSize, color: '#555555' }}>
         {items.map((item, i) => (
           <React.Fragment key={i}>
             {item.href
@@ -81,7 +82,7 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
             {work.map((job, i) => {
               const dates = formatDateRange(job.startDate, job.endDate, true)
               return (
-                <View key={i} style={{ marginBottom: 7.5 }}>
+                <View key={i} style={{ marginBottom: T.entryMarginBottom }}>
                   <Text style={{ marginBottom: 2 }}>
                     <Text style={styles.bold}>{job.name ?? ''}</Text>
                     {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
@@ -104,7 +105,7 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
             {education.map((edu, i) => {
               const dates = formatDateRange(edu.startDate, edu.endDate)
               return (
-                <View key={i} style={{ marginBottom: 6 }}>
+                <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                   <Text style={{ marginBottom: 2 }}>
                     <Text style={styles.bold}>{edu.institution ?? ''}</Text>
                     {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
@@ -168,7 +169,7 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
           <View key="awards">
             <Text style={styles.sectionTitle}>Awards</Text>
             {awards.map((a, i) => (
-              <View key={i} style={{ marginBottom: 6 }}>
+              <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                 <Text style={{ marginBottom: 2 }}>
                   <Text style={styles.bold}>{a.title ?? ''}</Text>
                   {a.date ? <Text style={styles.small}>{'  ·  '}{a.date}</Text> : null}
@@ -185,7 +186,7 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
           <View key="publications">
             <Text style={styles.sectionTitle}>Publications</Text>
             {publications.map((p, i) => (
-              <View key={i} style={{ marginBottom: 6 }}>
+              <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                 <Text style={{ marginBottom: 2 }}>
                   <Text style={styles.bold}>{p.name ?? ''}</Text>
                   {p.releaseDate ? <Text style={styles.small}>{'  ·  '}{p.releaseDate}</Text> : null}
@@ -204,7 +205,7 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
             {volunteer.map((v, i) => {
               const dates = formatDateRange(v.startDate, v.endDate, true)
               return (
-                <View key={i} style={{ marginBottom: 6 }}>
+                <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                   <Text style={{ marginBottom: 2 }}>
                     <Text style={styles.bold}>{v.organization ?? ''}</Text>
                     {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
@@ -241,7 +242,7 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
             {projects.map((p, i) => {
               const dates = formatDateRange(p.startDate, p.endDate)
               return (
-                <View key={i} style={{ marginBottom: 8 }}>
+                <View key={i} style={{ marginBottom: T.projectMarginBottom }}>
                   <Text style={{ marginBottom: 2 }}>
                     <Text style={styles.bold}>{p.name ?? ''}</Text>
                     {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
@@ -262,7 +263,7 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
   const header = (
     <>
       {/* Header */}
-      <View style={{ marginBottom: 3 }}>
+      <View style={{ marginBottom: T.headerMarginBottom }}>
         <Text style={styles.name}>{basics.name ?? ''}</Text>
         {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
       </View>

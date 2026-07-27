@@ -6,6 +6,7 @@ import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { getColumnSide } from '@/lib/get-column-side'
 import { formatDateRange } from '@/lib/format-date'
 import { withLineHeights } from './pdf-primitives'
+import { CLASSIC_TOKENS as T } from '@/lib/design/tokens'
 
 export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; meta: ResumeMeta; title?: string }) {
   const { basics = {}, work = [], education = [], skills = [],
@@ -19,20 +20,20 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
 
   const styles = withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: 11, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
-    name: { fontFamily: headFont, fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 1.5 },
-    subtitle: { fontSize: 12, color: '#555555', textAlign: 'center' },
-    sectionTitle: { fontFamily: headFont, fontSize: 13, fontWeight: 'bold', color: meta.primaryColor,
-      borderBottomWidth: 1.1, borderBottomColor: meta.primaryColor, paddingBottom: 2, marginTop: 13.5, marginBottom: 6 },
+    name: { fontFamily: headFont, fontSize: T.nameSize, fontWeight: 'bold', textAlign: 'center', marginBottom: 1.5 },
+    subtitle: { fontSize: T.labelSize, color: '#555555', textAlign: 'center' },
+    sectionTitle: { fontFamily: headFont, fontSize: T.sectionTitleSize, fontWeight: 'bold', color: meta.primaryColor,
+      borderBottomWidth: 1.1, borderBottomColor: meta.primaryColor, paddingBottom: 2, marginTop: T.sectionTitleMarginTop, marginBottom: T.sectionTitleMarginBottom },
     bold: { fontWeight: 'bold' },
     // Web renders the position at font-weight 500, which core PDF fonts lack — regular is the nearest face
     accent: { color: meta.accentColor, fontSize: 10.5 },
     small: { fontSize: 10, color: '#666666' },
-    bullet: { fontSize: 10, marginLeft: 13.5, marginBottom: 1 },
+    bullet: { fontSize: 10, marginLeft: T.bulletIndent, marginBottom: 1 },
     bulletFirst: { marginTop: 3 },
-    body: { fontSize: 10 },
+    body: { fontSize: T.bodySize },
     entrySummary: { fontSize: 10, marginTop: 2 },
     degree: { fontSize: 10.5 },
-    summaryBox: { fontSize: 10, fontStyle: 'italic', marginBottom: 9 },
+    summaryBox: { fontSize: 10, fontStyle: 'italic', marginBottom: T.summaryMarginBottom },
   }), meta.lineSpacing)
 
   function buildContactRow() {
@@ -44,7 +45,7 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
     if (loc) items.push({ label: loc, href: '' })
     if (!items.length) return null
     return (
-      <Text style={{ fontSize: 10, color: '#555555', textAlign: 'center', marginTop: 3 }}>
+      <Text style={{ fontSize: T.contactSize, color: '#555555', textAlign: 'center', marginTop: 3 }}>
         {items.map((item, i) => (
           <React.Fragment key={i}>
             {item.href
@@ -74,7 +75,7 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
             {work.map((job, i) => {
               const dates = formatDateRange(job.startDate, job.endDate, true)
               return (
-                <View key={i} style={{ marginBottom: 7.5 }}>
+                <View key={i} style={{ marginBottom: T.entryMarginBottom }}>
                   <Text style={{ marginBottom: 2 }}>
                     <Text style={styles.bold}>{job.name ?? ''}</Text>
                     {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
@@ -97,7 +98,7 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
             {education.map((edu, i) => {
               const dates = formatDateRange(edu.startDate, edu.endDate)
               return (
-                <View key={i} style={{ marginBottom: 6 }}>
+                <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                   <Text style={{ marginBottom: 2 }}>
                     <Text style={styles.bold}>{edu.institution ?? ''}</Text>
                     {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
@@ -161,7 +162,7 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
           <View key="awards">
             <Text style={styles.sectionTitle}>Awards</Text>
             {awards.map((a, i) => (
-              <View key={i} style={{ marginBottom: 6 }}>
+              <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                 <Text style={{ marginBottom: 2 }}>
                   <Text style={styles.bold}>{a.title ?? ''}</Text>
                   {a.date ? <Text style={styles.small}>{'  ·  '}{a.date}</Text> : null}
@@ -178,7 +179,7 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
           <View key="publications">
             <Text style={styles.sectionTitle}>Publications</Text>
             {publications.map((p, i) => (
-              <View key={i} style={{ marginBottom: 6 }}>
+              <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                 <Text style={{ marginBottom: 2 }}>
                   <Text style={styles.bold}>{p.name ?? ''}</Text>
                   {p.releaseDate ? <Text style={styles.small}>{'  ·  '}{p.releaseDate}</Text> : null}
@@ -197,7 +198,7 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
             {volunteer.map((v, i) => {
               const dates = formatDateRange(v.startDate, v.endDate, true)
               return (
-                <View key={i} style={{ marginBottom: 6 }}>
+                <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                   <Text style={{ marginBottom: 2 }}>
                     <Text style={styles.bold}>{v.organization ?? ''}</Text>
                     {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
@@ -234,7 +235,7 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
             {projects.map((p, i) => {
               const dates = formatDateRange(p.startDate, p.endDate)
               return (
-                <View key={i} style={{ marginBottom: 8 }}>
+                <View key={i} style={{ marginBottom: T.projectMarginBottom }}>
                   <Text style={{ marginBottom: 2 }}>
                     <Text style={styles.bold}>{p.name ?? ''}</Text>
                     {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
@@ -259,7 +260,7 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
     return (
       <Document {...pdfDocumentProps(data, title)}>
         <Page size="A4" style={styles.page}>
-          <View style={{ marginBottom: 12 }}>
+          <View style={{ marginBottom: T.headerMarginBottom }}>
             <Text style={styles.name}>{basics.name ?? ''}</Text>
             {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
             {buildContactRow()}
@@ -278,7 +279,7 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
   return (
     <Document {...pdfDocumentProps(data, title)}>
       <Page size="A4" style={styles.page}>
-        <View style={{ marginBottom: 12 }}>
+        <View style={{ marginBottom: T.headerMarginBottom }}>
           <Text style={styles.name}>{basics.name ?? ''}</Text>
           {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
           {buildContactRow()}

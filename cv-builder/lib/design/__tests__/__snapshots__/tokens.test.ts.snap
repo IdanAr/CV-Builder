@@ -1,0 +1,132 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`token refactor moves nothing > classic glyph positions are unchanged 1`] = `
+[
+  "Idan Arbel@254.6,786.8",
+  "Architect@275.6,770.0",
+  "idan@example.com@257.3,755.1",
+  "Summary@36.0,714.1",
+  "Data Solutions Architect and GenAI platform developer.@36.0,692.9",
+  "Work Experience@36.0,665.0",
+  "SAS Israel@36.0,642.9",
+  "·@84.6,642.9",
+  "07/2022 - Present@91.6,642.9",
+  "Data Solutions Architect@36.0,628.7",
+  "•@49.5,614.1",
+  "Prevented fraud@56.7,614.1",
+  "•@49.5,601.6",
+  "Cut false positives 20%@56.7,601.6",
+  "Education@36.0,565.2",
+  "Technion@36.0,543.1",
+  "·@81.5,543.1",
+  "12/2025@88.5,543.1",
+  "Certificate in Generative AI@36.0,528.9",
+  "Skills@36.0,495.0",
+  "Data@36.0,473.8",
+  "SQL, MongoDB@145.5,473.8",
+]
+`;
+
+exports[`token refactor moves nothing > executive glyph positions are unchanged 1`] = `
+[
+  "Idan Arbel@36.0,784.9",
+  "Architect@36.0,768.4",
+  "idan@example.com@36.0,738.7",
+  "Data Solutions Architect and GenAI platform developer.@36.0,716.6",
+  "W O R K E X P E R I E N C E@36.0,690.1",
+  "SAS Israel@36.0,669.1",
+  "·@84.6,669.1",
+  "07/2022 - Present@91.6,669.1",
+  "Data Solutions Architect@36.0,654.9",
+  "•@49.5,640.3",
+  "Prevented fraud@56.7,640.3",
+  "•@49.5,627.8",
+  "Cut false positives 20%@56.7,627.8",
+  "E D U C AT I O N@36.0,592.9",
+  "Technion@36.0,571.9",
+  "·@81.5,571.9",
+  "12/2025@88.5,571.9",
+  "Certificate in Generative AI@36.0,557.7",
+  "S K I L L S@36.0,525.2",
+  "Data@36.0,505.1",
+  "SQL, MongoDB@145.5,505.1",
+]
+`;
+
+exports[`token refactor moves nothing > minimal glyph positions are unchanged 1`] = `
+[
+  "Idan Arbel@252.3,784.9",
+  "Architect@277.5,767.9",
+  "idan@example.com@257.3,753.2",
+  "Data Solutions Architect and GenAI platform developer.@36.0,725.5",
+  "W O R K E X P E R I E N C E@36.0,687.0",
+  "SAS Israel@36.0,668.6",
+  "·@84.6,668.6",
+  "07/2022 - Present@91.6,668.6",
+  "Data Solutions Architect@36.0,654.4",
+  "•@49.5,639.8",
+  "Prevented fraud@56.7,639.8",
+  "•@49.5,627.3",
+  "Cut false positives 20%@56.7,627.3",
+  "E D U C AT I O N@36.0,592.3",
+  "Technion@36.0,573.8",
+  "·@81.5,573.8",
+  "12/2025@88.5,573.8",
+  "Certificate in Generative AI@36.0,559.7",
+  "S K I L L S@36.0,527.1",
+  "Data@36.0,509.6",
+  "SQL, MongoDB@145.5,509.6",
+]
+`;
+
+exports[`token refactor moves nothing > modern glyph positions are unchanged 1`] = `
+[
+  "Idan Arbel@36.0,784.9",
+  "Architect@36.0,767.7",
+  "idan@example.com@36.0,752.8",
+  "Data Solutions Architect and GenAI platform developer.@36.0,677.1",
+  "WORK EXPERIENCE@36.0,642.7",
+  "SAS Israel@36.0,623.9",
+  "·@84.6,623.9",
+  "07/2022 - Present@91.6,623.9",
+  "Data Solutions Architect@36.0,609.7",
+  "•@49.5,595.1",
+  "Prevented fraud@56.7,595.1",
+  "•@49.5,582.6",
+  "Cut false positives 20%@56.7,582.6",
+  "EDUCATION@36.0,548.7",
+  "Technion@36.0,529.8",
+  "·@81.5,529.8",
+  "12/2025@88.5,529.8",
+  "Certificate in Generative AI@36.0,515.7",
+  "SKILLS@36.0,484.2",
+  "Data@36.0,466.3",
+  "SQL, MongoDB@145.5,466.3",
+]
+`;
+
+exports[`token refactor moves nothing > sidebar glyph positions are unchanged 1`] = `
+[
+  "Idan Arbel@36.0,788.8",
+  "Architect@36.0,773.8",
+  "idan@example.com@36.0,753.2",
+  "SKILLS@36.0,718.8",
+  "Data@36.0,698.7",
+  "SQL, MongoDB@36.0,687.2",
+  "Data Solutions Architect and GenAI platform developer.@232.4,796.4",
+  "WORK EXPERIENCE@232.4,766.5",
+  "SAS Israel@232.4,744.6",
+  "·@281.0,744.6",
+  "07/2022 - Present@288.1,744.6",
+  "Data Solutions Architect@232.4,730.4",
+  "•@245.9,715.8",
+  "Prevented fraud@253.2,715.8",
+  "•@245.9,703.3",
+  "Cut false positives 20%@253.2,703.3",
+  "EDUCATION@232.4,669.4",
+  "Technion@232.4,647.6",
+  "·@277.9,647.6",
+  "12/2025@285.0,647.6",
+  "Certificate in Generative AI@232.4,633.4",
+]
+`;

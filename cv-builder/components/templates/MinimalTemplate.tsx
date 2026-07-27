@@ -5,6 +5,7 @@ import { renderCustomSection } from './renderCustomSection'
 import { richTextToHtml } from '@/lib/rich-text'
 import { formatDateRange } from '@/lib/format-date'
 import { webFontFamily } from '@/lib/fonts/families'
+import { MINIMAL_TOKENS as T, px } from '@/lib/design/tokens'
 
 function rt(text: string | undefined | null): React.ReactNode {
   if (!text) return null
@@ -32,13 +33,13 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
 
   const sectionTitle: React.CSSProperties = {
     fontFamily: webFontFamily(meta.headerFontFamily),
-    fontSize: '10pt',
+    fontSize: `${T.sectionTitleSize}pt`,
     fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: '0.12em',
     color: '#333',
-    marginTop: '20px',
-    marginBottom: '8px',
+    marginTop: px(T.sectionTitleMarginTop),
+    marginBottom: px(T.sectionTitleMarginBottom),
   }
 
   function renderSection(section: string): React.ReactNode {
@@ -56,7 +57,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
           <div key="work">
             <div style={sectionTitle}>Work Experience</div>
             {work.map((job, i) => (
-              <div key={i} style={{ marginBottom: '10px' }}>
+              <div key={i} style={{ marginBottom: px(T.entryMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong style={{ fontSize: '11pt' }}>{job.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -66,7 +67,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
                 <div style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{job.position}</div>
                 {job.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(job.summary)}</div>}
                 {(job.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
                     {(job.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
@@ -82,7 +83,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
           <div key="education">
             <div style={sectionTitle}>Education</div>
             {education.map((edu, i) => (
-              <div key={i} style={{ marginBottom: '8px' }}>
+              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{edu.institution}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -142,7 +143,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
           <div key="volunteer">
             <div style={sectionTitle}>Volunteer</div>
             {vol.map((v, i) => (
-              <div key={i} style={{ marginBottom: '8px' }}>
+              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{v.organization}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -152,7 +153,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
                 <div style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{v.position}</div>
                 {v.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(v.summary)}</div>}
                 {(v.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
                     {(v.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
@@ -184,7 +185,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
           <div key="awards">
             <div style={sectionTitle}>Awards</div>
             {awards.map((a, i) => (
-              <div key={i} style={{ marginBottom: '8px' }}>
+              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{a.title}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>{a.date}</span>
@@ -203,7 +204,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
           <div key="publications">
             <div style={sectionTitle}>Publications</div>
             {publications.map((p, i) => (
-              <div key={i} style={{ marginBottom: '8px' }}>
+              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{p.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>{p.releaseDate}</span>
@@ -240,7 +241,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
           <div key="projects">
             <div style={sectionTitle}>Projects</div>
             {projects.map((p, i) => (
-              <div key={i} style={{ marginBottom: '10px' }}>
+              <div key={i} style={{ marginBottom: px(T.projectMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{p.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -249,7 +250,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
                 </div>
                 {p.description && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{p.description}</div>}
                 {(p.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
                     {(p.highlights ?? []).map((h, hi) => <li key={hi}>{h}</li>)}
                   </ul>
                 )}
@@ -268,12 +269,12 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
 
   return (
     <div style={page}>
-      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-        <div style={{ fontFamily: webFontFamily(meta.headerFontFamily), fontSize: '22pt', fontWeight: 700, letterSpacing: '-0.02em' }}>
+      <div style={{ textAlign: 'center', marginBottom: px(T.headerMarginBottom) }}>
+        <div style={{ fontFamily: webFontFamily(meta.headerFontFamily), fontSize: `${T.nameSize}pt`, fontWeight: 700, letterSpacing: '-0.02em' }}>
           {basics.name}
         </div>
-        {basics.label && <div style={{ fontSize: '11pt', color: '#555', marginTop: '3px' }}>{basics.label}</div>}
-        <div style={{ fontSize: '10pt', color: '#777', marginTop: '4px' }}>
+        {basics.label && <div style={{ fontSize: `${T.labelSize}pt`, color: '#555', marginTop: '3px' }}>{basics.label}</div>}
+        <div style={{ fontSize: `${T.contactSize}pt`, color: '#777', marginTop: '4px' }}>
           {(() => {
             const eu = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`
             const parts: React.ReactNode[] = []
@@ -286,7 +287,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
           })()}
         </div>
       </div>
-      {basics.summary && <div style={{ fontSize: '10pt', color: '#444', marginBottom: '16px' }}>{rt(basics.summary)}</div>}
+      {basics.summary && <div style={{ fontSize: '10pt', color: '#444', marginBottom: px(T.summaryMarginBottom) }}>{rt(basics.summary)}</div>}
       {sectionOrder.map((s) => (
         <React.Fragment key={s}>{renderSection(s)}</React.Fragment>
       ))}

@@ -6,6 +6,7 @@ import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { formatDateRange } from '@/lib/format-date'
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
 import { withLineHeights } from './pdf-primitives'
+import { SIDEBAR_TOKENS as T } from '@/lib/design/tokens'
 
 export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; meta: ResumeMeta; title?: string }) {
   const { basics = {}, work = [], education = [], skills = [],
@@ -26,10 +27,10 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
 
     // Left rail
     rail: { width: '33%', backgroundColor: meta.primaryColor, padding: margin, paddingTop: margin },
-    railName: { fontFamily: headFont, fontSize: 18, fontWeight: 'bold', color: '#ffffff', lineHeight: 1.1 },
-    railLabel: { fontSize: 10.5, color: 'rgba(255,255,255,0.85)', marginTop: 2.25 },
+    railName: { fontFamily: headFont, fontSize: T.nameSize, fontWeight: 'bold', color: '#ffffff', lineHeight: 1.1 },
+    railLabel: { fontSize: T.labelSize, color: 'rgba(255,255,255,0.85)', marginTop: 2.25 },
     railContact: { marginTop: 9 },
-    railContactLine: { fontSize: 10, color: 'rgba(255,255,255,0.9)', lineHeight: 1.9 },
+    railContactLine: { fontSize: T.contactSize, color: 'rgba(255,255,255,0.9)', lineHeight: 1.9 },
     railSectionTitle: {
       fontFamily: headFont, fontSize: 12, fontWeight: 'bold', color: '#ffffff',
       textTransform: 'uppercase', letterSpacing: 1,
@@ -44,20 +45,20 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
 
     // Main column
     main: { flex: 1, padding: margin, paddingTop: margin },
-    summary: { fontSize: 10, color: '#444444', marginBottom: 4.5 },
+    summary: { fontSize: 10, color: '#444444', marginBottom: T.summaryMarginBottom },
     sectionTitle: {
-      fontFamily: headFont, fontSize: 12, fontWeight: 'bold', color: meta.primaryColor,
+      fontFamily: headFont, fontSize: T.sectionTitleSize, fontWeight: 'bold', color: meta.primaryColor,
       textTransform: 'uppercase', letterSpacing: 0.7,
       borderBottomWidth: 1.5, borderBottomColor: meta.accentColor,
-      paddingBottom: 1.5, marginTop: 12, marginBottom: 6,
+      paddingBottom: 1.5, marginTop: T.sectionTitleMarginTop, marginBottom: T.sectionTitleMarginBottom,
     },
     bold: { fontWeight: 'bold' },
     // Web renders the position at font-weight 500, which core PDF fonts lack — regular is the nearest face
     accent: { color: meta.accentColor, fontSize: 10.5 },
     small: { fontSize: 10, color: '#666666' },
-    bullet: { fontSize: 10, marginLeft: 13.5, marginBottom: 1 },
+    bullet: { fontSize: 10, marginLeft: T.bulletIndent, marginBottom: 1 },
     bulletFirst: { marginTop: 3 },
-    body: { fontSize: 10 },
+    body: { fontSize: T.bodySize },
     entrySummary: { fontSize: 10, marginTop: 2 },
     degree: { fontSize: 10.5 },
   }), meta.lineSpacing)
@@ -288,7 +289,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
             {work.map((job, i) => {
               const dates = formatDateRange(job.startDate, job.endDate, true)
               return (
-                <View key={i} style={{ marginBottom: 7.5 }}>
+                <View key={i} style={{ marginBottom: T.entryMarginBottom }}>
                   <Text style={{ marginBottom: 2 }}>
                     <Text style={styles.bold}>{job.name ?? ''}</Text>
                     {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
@@ -311,7 +312,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
             {education.map((edu, i) => {
               const dates = formatDateRange(edu.startDate, edu.endDate)
               return (
-                <View key={i} style={{ marginBottom: 6 }}>
+                <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                   <Text style={{ marginBottom: 2 }}>
                     <Text style={styles.bold}>{edu.institution ?? ''}</Text>
                     {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
@@ -345,7 +346,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
           <View key="awards">
             <Text style={styles.sectionTitle}>Awards</Text>
             {awards.map((a, i) => (
-              <View key={i} style={{ marginBottom: 6 }}>
+              <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                 <Text style={{ marginBottom: 2 }}>
                   <Text style={styles.bold}>{a.title ?? ''}</Text>
                   {a.date ? <Text style={styles.small}>{'  ·  '}{a.date}</Text> : null}
@@ -362,7 +363,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
           <View key="publications">
             <Text style={styles.sectionTitle}>Publications</Text>
             {publications.map((p, i) => (
-              <View key={i} style={{ marginBottom: 6 }}>
+              <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                 <Text style={{ marginBottom: 2 }}>
                   <Text style={styles.bold}>{p.name ?? ''}</Text>
                   {p.releaseDate ? <Text style={styles.small}>{'  ·  '}{p.releaseDate}</Text> : null}
@@ -381,7 +382,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
             {volunteer.map((v, i) => {
               const dates = formatDateRange(v.startDate, v.endDate, true)
               return (
-                <View key={i} style={{ marginBottom: 6 }}>
+                <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                   <Text style={{ marginBottom: 2 }}>
                     <Text style={styles.bold}>{v.organization ?? ''}</Text>
                     {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
@@ -418,7 +419,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
             {projects.map((p, i) => {
               const dates = formatDateRange(p.startDate, p.endDate)
               return (
-                <View key={i} style={{ marginBottom: 8 }}>
+                <View key={i} style={{ marginBottom: T.projectMarginBottom }}>
                   <Text style={{ marginBottom: 2 }}>
                     <Text style={styles.bold}>{p.name ?? ''}</Text>
                     {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}

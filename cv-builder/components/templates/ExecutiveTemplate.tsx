@@ -7,6 +7,7 @@ import { getColumnSide } from '@/lib/get-column-side'
 import { richTextToHtml } from '@/lib/rich-text'
 import { formatDateRange } from '@/lib/format-date'
 import { webFontFamily } from '@/lib/fonts/families'
+import { EXECUTIVE_TOKENS as T, px } from '@/lib/design/tokens'
 
 function rt(text: string | undefined | null): React.ReactNode {
   if (!text) return null
@@ -34,13 +35,13 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
 
   const sectionTitle: React.CSSProperties = {
     fontFamily: webFontFamily(meta.headerFontFamily),
-    fontSize: '11.5pt',
+    fontSize: `${T.sectionTitleSize}pt`,
     fontWeight: 700,
     color: meta.primaryColor,
     textTransform: 'uppercase',
     letterSpacing: '0.14em',
-    marginTop: '18px',
-    marginBottom: '7px',
+    marginTop: px(T.sectionTitleMarginTop),
+    marginBottom: px(T.sectionTitleMarginBottom),
     paddingBottom: '3px',
     borderBottom: `1px solid ${meta.primaryColor}`,
   }
@@ -60,7 +61,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
           <div key="work">
             <div style={sectionTitle}>Work Experience</div>
             {work.map((job, i) => (
-              <div key={i} style={{ marginBottom: '10px' }}>
+              <div key={i} style={{ marginBottom: px(T.entryMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong style={{ fontSize: '11pt' }}>{job.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -70,7 +71,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
                 <div style={{ color: meta.accentColor, fontStyle: 'italic', fontSize: '10.5pt' }}>{job.position}</div>
                 {job.summary && <div style={{ fontSize: '10pt', marginTop: '3px', textAlign: 'justify' }}>{rt(job.summary)}</div>}
                 {(job.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
                     {(job.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
@@ -86,7 +87,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
           <div key="education">
             <div style={sectionTitle}>Education</div>
             {education.map((edu, i) => (
-              <div key={i} style={{ marginBottom: '8px' }}>
+              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{edu.institution}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -146,7 +147,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
           <div key="volunteer">
             <div style={sectionTitle}>Volunteer</div>
             {vol.map((v, i) => (
-              <div key={i} style={{ marginBottom: '8px' }}>
+              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{v.organization}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -156,7 +157,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
                 <div style={{ color: meta.accentColor, fontStyle: 'italic', fontSize: '10.5pt' }}>{v.position}</div>
                 {v.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(v.summary)}</div>}
                 {(v.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
                     {(v.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
@@ -188,7 +189,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
           <div key="awards">
             <div style={sectionTitle}>Awards</div>
             {awards.map((a, i) => (
-              <div key={i} style={{ marginBottom: '8px' }}>
+              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{a.title}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>{a.date}</span>
@@ -207,7 +208,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
           <div key="publications">
             <div style={sectionTitle}>Publications</div>
             {publications.map((p, i) => (
-              <div key={i} style={{ marginBottom: '8px' }}>
+              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{p.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>{p.releaseDate}</span>
@@ -244,7 +245,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
           <div key="projects">
             <div style={sectionTitle}>Projects</div>
             {projects.map((p, i) => (
-              <div key={i} style={{ marginBottom: '10px' }}>
+              <div key={i} style={{ marginBottom: px(T.projectMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{p.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -253,7 +254,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
                 </div>
                 {p.description && <div style={{ fontSize: '10pt', marginTop: '3px', textAlign: 'justify' }}>{p.description}</div>}
                 {(p.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
                     {(p.highlights ?? []).map((h, hi) => <li key={hi}>{h}</li>)}
                   </ul>
                 )}
@@ -273,10 +274,10 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
   const header = (
     <>
       {/* Header */}
-      <div style={{ marginBottom: '4px' }}>
+      <div style={{ marginBottom: px(T.headerMarginBottom) }}>
         <div style={{
           fontFamily: webFontFamily(meta.headerFontFamily),
-          fontSize: '22pt',
+          fontSize: `${T.nameSize}pt`,
           fontWeight: 700,
           letterSpacing: '0.01em',
           color: meta.primaryColor,
@@ -284,7 +285,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
           {basics.name}
         </div>
         {basics.label && (
-          <div style={{ fontSize: '12pt', color: meta.accentColor, fontStyle: 'italic', marginTop: '1px' }}>
+          <div style={{ fontSize: `${T.labelSize}pt`, color: meta.accentColor, fontStyle: 'italic', marginTop: '1px' }}>
             {basics.label}
           </div>
         )}
@@ -299,7 +300,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
       }} />
 
       {/* Contact line */}
-      <div style={{ fontSize: '10pt', color: '#555' }}>
+      <div style={{ fontSize: `${T.contactSize}pt`, color: '#555' }}>
         {(() => {
           const eu = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`
           const parts: React.ReactNode[] = []
@@ -314,7 +315,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
 
       {/* Summary */}
       {basics.summary && (
-        <div style={{ fontSize: '10.5pt', marginTop: '12px', textAlign: 'justify' }}>
+        <div style={{ fontSize: '10.5pt', marginTop: px(T.summaryMarginBottom), textAlign: 'justify' }}>
           {rt(basics.summary)}
         </div>
       )}
