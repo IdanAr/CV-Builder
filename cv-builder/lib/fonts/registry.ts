@@ -131,7 +131,16 @@ export function pdfFontFamily(pickerName: string): string[] {
   return usable.length > 0 ? usable : ['Helvetica']
 }
 
-/** `@font-face` rules so the browser preview loads the same files. */
+/**
+ * `@font-face` rules so the browser preview loads the same files the PDF
+ * embeds. Must cover italic as well as normal: ExecutiveTemplate and
+ * ClassicTemplate render `fontStyle: 'italic'`, and without a matching
+ * `@font-face` the browser fakes italic by shearing the regular face while
+ * the PDF embeds the genuine italic — a letterform mismatch the word-level
+ * parity test in Task 7 can't detect. Only the `latin` subset is served; the
+ * `latin-ext` subset exists solely for PDF glyph fallback and the browser
+ * resolves any missing glyphs on its own.
+ */
 export function fontFaceCss(): string {
   const seen = new Set<string>()
   const rules: string[] = []
@@ -139,10 +148,12 @@ export function fontFaceCss(): string {
     if (seen.has(family)) continue
     seen.add(family)
     for (const weight of WEIGHTS) {
-      rules.push(
-        `@font-face{font-family:'${family}';font-weight:${weight};font-style:normal;` +
-        `font-display:swap;src:url('/fonts/${slug}-latin-${weight}-normal.woff') format('woff');}`
-      )
+      for (const style of STYLES) {
+        rules.push(
+          `@font-face{font-family:'${family}';font-weight:${weight};font-style:${style};` +
+          `font-display:swap;src:url('/fonts/${slug}-latin-${weight}-${style}.woff') format('woff');}`
+        )
+      }
     }
   }
   return rules.join('\n')
