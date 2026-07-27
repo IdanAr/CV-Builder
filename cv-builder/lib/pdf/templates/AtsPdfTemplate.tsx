@@ -7,6 +7,7 @@ import {
 } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { formatDate, formatDateRange } from '@/lib/format-date'
+import { withLineHeights } from './pdf-primitives'
 
 /**
  * Shared ATS-safe renderer used by every template in "ats" export mode.
@@ -26,7 +27,7 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
   const lineHeight = Math.min(Math.max(meta.lineSpacing, 1.0), 1.15)
   const sectionOrder = resolveSectionOrder(meta)
 
-  const styles = StyleSheet.create({
+  const styles = withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: 10.5, lineHeight, color: '#000000', padding: margin },
     name: { fontFamily: headFont, fontSize: 20, fontWeight: 'bold', marginBottom: 2 },
     label: { fontSize: 11, color: '#333333', marginBottom: 2 },
@@ -41,7 +42,7 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
     body: { fontSize: 10.5, marginTop: 1 },
     bullet: { fontSize: 10.5, marginLeft: 12, marginBottom: 1 },
     small: { fontSize: 10, color: '#333333' },
-  })
+  }), lineHeight)
 
   const contactLine = [
     basics.email, basics.phone, basics.url,

@@ -5,6 +5,7 @@ import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichTe
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { getColumnSide } from '@/lib/get-column-side'
 import { formatDateRange } from '@/lib/format-date'
+import { withLineHeights } from './pdf-primitives'
 
 export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; meta: ResumeMeta; title?: string }) {
   const { basics = {}, work = [], education = [], skills = [],
@@ -16,7 +17,7 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
   const margin = inToPt(meta.pageMargins)
   const sectionOrder = resolveSectionOrder(meta)
 
-  const styles = StyleSheet.create({
+  const styles = withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: 11, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
     name: { fontFamily: headFont, fontSize: 22, fontWeight: 'bold', color: meta.primaryColor, letterSpacing: 0.25 },
     subtitle: { fontSize: 12, color: meta.accentColor, fontStyle: 'italic', marginTop: 0.75 },
@@ -39,7 +40,7 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
     plainSummary: { fontSize: 10, marginTop: 2 },
     degree: { fontSize: 10.5, fontStyle: 'italic' },
     summary: { fontSize: 10.5, textAlign: 'justify', marginTop: 9 },
-  })
+  }), meta.lineSpacing)
 
   function buildContactRow() {
     const items: Array<{ label: string; href: string }> = []

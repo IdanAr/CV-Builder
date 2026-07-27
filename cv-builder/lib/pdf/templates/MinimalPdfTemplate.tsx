@@ -4,6 +4,7 @@ import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns, pdfDocumentProps } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { formatDateRange } from '@/lib/format-date'
+import { withLineHeights } from './pdf-primitives'
 
 export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; meta: ResumeMeta; title?: string }) {
   const { basics = {}, work = [], education = [], skills = [],
@@ -15,7 +16,7 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
   const margin = inToPt(meta.pageMargins)
   const sectionOrder = resolveSectionOrder(meta)
 
-  const styles = StyleSheet.create({
+  const styles = withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: 11, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
     name: { fontFamily: headFont, fontSize: 22, fontWeight: 'bold', textAlign: 'center', letterSpacing: -0.4, marginBottom: 2.25 },
     subtitle: { fontSize: 11, color: '#555555', textAlign: 'center' },
@@ -31,7 +32,7 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
     entrySummary: { fontSize: 10, marginTop: 2 },
     degree: { fontSize: 10.5 },
     summaryBox: { fontSize: 10, color: '#444444', marginBottom: 12 },
-  })
+  }), meta.lineSpacing)
 
   function buildContactRow() {
     const items: Array<{ label: string; href: string }> = []

@@ -5,6 +5,7 @@ import { mapToPdfFont, inToPt, resolveSectionOrder, renderPdfRichText, renderPdf
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { formatDateRange } from '@/lib/format-date'
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
+import { withLineHeights } from './pdf-primitives'
 
 export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; meta: ResumeMeta; title?: string }) {
   const { basics = {}, work = [], education = [], skills = [],
@@ -20,7 +21,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
   const railSections = sectionOrder.filter((s) => getColumnSide(s, ca, SIDEBAR_COLUMN_DEFAULTS) === 'left')
   const mainSections = sectionOrder.filter((s) => getColumnSide(s, ca, SIDEBAR_COLUMN_DEFAULTS) === 'right')
 
-  const styles = StyleSheet.create({
+  const styles = withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: 11, lineHeight: meta.lineSpacing, color: '#000000', flexDirection: 'row' },
 
     // Left rail
@@ -59,7 +60,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
     body: { fontSize: 10 },
     entrySummary: { fontSize: 10, marginTop: 2 },
     degree: { fontSize: 10.5 },
-  })
+  }), meta.lineSpacing)
 
   function renderRailSection(kind: string): React.ReactNode {
     if (kind.startsWith('custom:')) {

@@ -5,6 +5,7 @@ import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichTe
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { getColumnSide } from '@/lib/get-column-side'
 import { formatDateRange } from '@/lib/format-date'
+import { withLineHeights } from './pdf-primitives'
 
 export function ModernPdfTemplate({ data, meta, title }: { data: ResumeData; meta: ResumeMeta; title?: string }) {
   const { basics = {}, work = [], education = [], skills = [],
@@ -16,7 +17,7 @@ export function ModernPdfTemplate({ data, meta, title }: { data: ResumeData; met
   const margin = inToPt(meta.pageMargins)
   const sectionOrder = resolveSectionOrder(meta)
 
-  const styles = StyleSheet.create({
+  const styles = withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: 11, lineHeight: meta.lineSpacing, color: '#000000' },
     headerBlock: { backgroundColor: meta.primaryColor, padding: margin, paddingBottom: margin * 0.75 },
     name: { fontFamily: headFont, fontSize: 22, fontWeight: 'bold', color: '#ffffff', marginBottom: 1.5 },
@@ -35,7 +36,7 @@ export function ModernPdfTemplate({ data, meta, title }: { data: ResumeData; met
     entrySummary: { fontSize: 10, marginTop: 2 },
     degree: { fontSize: 10.5 },
     summaryBox: { fontSize: 10, color: '#444444', marginBottom: 9 },
-  })
+  }), meta.lineSpacing)
 
   function buildContactRow() {
     const items: Array<{ label: string; href: string }> = []
