@@ -11,7 +11,9 @@
     "test:run": "vitest run",
     "fonts:copy": "node scripts/copy-fonts.mjs",
     "prebuild": "node scripts/copy-fonts.mjs",
-    "predev": "node scripts/copy-fonts.mjs"
+    "predev": "node scripts/copy-fonts.mjs",
+    "pretest": "node scripts/copy-fonts.mjs",
+    "pretest:run": "node scripts/copy-fonts.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

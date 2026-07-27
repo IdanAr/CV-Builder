@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
-import { fontFaceCss, FONT_SUBSTITUTES } from '../registry'
+import { fontFaceCss, FONT_SUBSTITUTES } from '../families'
 
 describe('preview font-face', () => {
   it('emits a rule for every distinct family, weight and style', () => {

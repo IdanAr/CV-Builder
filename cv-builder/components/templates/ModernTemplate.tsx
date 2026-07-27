@@ -5,6 +5,7 @@ import { renderCustomSection } from './renderCustomSection'
 import { richTextToHtml } from '@/lib/rich-text'
 import { getColumnSide } from '@/lib/get-column-side'
 import { formatDateRange } from '@/lib/format-date'
+import { webFontFamily } from '@/lib/fonts/families'
 
 function rt(text: string | undefined | null): React.ReactNode {
   if (!text) return null
@@ -19,7 +20,7 @@ export function ModernTemplate({ data, meta }: TemplateProps) {
   const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : ALL_SECTIONS
 
   const page: React.CSSProperties = {
-    fontFamily: `${meta.fontFamily}, Arial, sans-serif`,
+    fontFamily: webFontFamily(meta.fontFamily),
     fontSize: '11pt',
     lineHeight: meta.lineSpacing,
     background: '#fff',
@@ -30,7 +31,7 @@ export function ModernTemplate({ data, meta }: TemplateProps) {
   }
 
   const sectionTitle: React.CSSProperties = {
-    fontFamily: `${meta.headerFontFamily}, Arial, sans-serif`,
+    fontFamily: webFontFamily(meta.headerFontFamily),
     fontSize: '12pt',
     fontWeight: 700,
     color: meta.accentColor,
@@ -283,7 +284,7 @@ export function ModernTemplate({ data, meta }: TemplateProps) {
     return (
       <div style={page}>
         <div style={{ background: meta.primaryColor, color: '#fff', padding: `${pad}px ${pad}px ${pad * 0.75}px` }}>
-          <div style={{ fontFamily: `${meta.headerFontFamily}, Arial, sans-serif`, fontSize: '22pt', fontWeight: 700 }}>{basics.name}</div>
+          <div style={{ fontFamily: webFontFamily(meta.headerFontFamily), fontSize: '22pt', fontWeight: 700 }}>{basics.name}</div>
           {basics.label && <div style={{ fontSize: '12pt', opacity: 0.85, marginTop: '2px' }}>{basics.label}</div>}
           <div style={{ fontSize: '10pt', opacity: 0.75, marginTop: '4px' }}>
             {(() => {
@@ -318,7 +319,7 @@ export function ModernTemplate({ data, meta }: TemplateProps) {
   return (
     <div style={page}>
       <div style={{ background: meta.primaryColor, color: '#fff', padding: `${pad}px ${pad}px ${pad * 0.75}px` }}>
-        <div style={{ fontFamily: `${meta.headerFontFamily}, Arial, sans-serif`, fontSize: '22pt', fontWeight: 700 }}>{basics.name}</div>
+        <div style={{ fontFamily: webFontFamily(meta.headerFontFamily), fontSize: '22pt', fontWeight: 700 }}>{basics.name}</div>
         {basics.label && <div style={{ fontSize: '12pt', opacity: 0.85, marginTop: '2px' }}>{basics.label}</div>}
         <div style={{ fontSize: '10pt', opacity: 0.75, marginTop: '4px' }}>
           {[basics.email, basics.phone, [basics.location?.city, basics.location?.region].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}

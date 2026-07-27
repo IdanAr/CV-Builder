@@ -6,6 +6,7 @@ import { renderCustomSection } from './renderCustomSection'
 import { getColumnSide } from '@/lib/get-column-side'
 import { richTextToHtml } from '@/lib/rich-text'
 import { formatDateRange } from '@/lib/format-date'
+import { webFontFamily } from '@/lib/fonts/families'
 
 function rt(text: string | undefined | null): React.ReactNode {
   if (!text) return null
@@ -20,7 +21,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
   const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : ALL_SECTIONS
 
   const page: React.CSSProperties = {
-    fontFamily: `${meta.fontFamily}, 'Times New Roman', serif`,
+    fontFamily: webFontFamily(meta.fontFamily),
     fontSize: '11pt',
     lineHeight: meta.lineSpacing,
     background: '#fff',
@@ -32,7 +33,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
   }
 
   const sectionTitle: React.CSSProperties = {
-    fontFamily: `${meta.headerFontFamily}, 'Times New Roman', serif`,
+    fontFamily: webFontFamily(meta.headerFontFamily),
     fontSize: '11.5pt',
     fontWeight: 700,
     color: meta.primaryColor,
@@ -274,7 +275,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
       {/* Header */}
       <div style={{ marginBottom: '4px' }}>
         <div style={{
-          fontFamily: `${meta.headerFontFamily}, 'Times New Roman', serif`,
+          fontFamily: webFontFamily(meta.headerFontFamily),
           fontSize: '22pt',
           fontWeight: 700,
           letterSpacing: '0.01em',

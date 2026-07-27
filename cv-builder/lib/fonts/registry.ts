@@ -1,54 +1,19 @@
 import { Font } from '@react-pdf/renderer'
 import path from 'node:path'
 import { accessSync, constants } from 'node:fs'
+import {
+  FONT_SUBSTITUTES,
+  DEFAULT_PICKER_FONT,
+  SUBSETS,
+  WEIGHTS,
+  STYLES,
+  GLYPH_FALLBACK,
+} from './families'
 
-/**
- * Six of the nine picker fonts (Calibri, Cambria, Georgia, Arial, Helvetica)
- * are proprietary and cannot be embedded. Each maps to an open substitute;
- * all but EB Garamond are metric-compatible, so line breaks are unchanged.
- */
-export const FONT_SUBSTITUTES: Record<string, { family: string; slug: string }> = {
-  'Calibri':       { family: 'Carlito',       slug: 'carlito' },
-  'Cambria':       { family: 'Caladea',       slug: 'caladea' },
-  'Arial':         { family: 'Arimo',         slug: 'arimo' },
-  'Helvetica':     { family: 'Arimo',         slug: 'arimo' },
-  'Georgia':       { family: 'Gelasio',       slug: 'gelasio' },
-  'Garamond':      { family: 'EBGaramond',    slug: 'eb-garamond' },
-  'Lato':          { family: 'Lato',          slug: 'lato' },
-  'Roboto':        { family: 'Roboto',        slug: 'roboto' },
-  'IBM Plex Sans': { family: 'IBMPlexSans',   slug: 'ibm-plex-sans' },
-}
-
-const DEFAULT_PICKER_FONT = 'Calibri'
-
-/** `latin` lacks U+20AA (₪); `latin-ext` covers U+20A0-20AB. */
-const SUBSETS = ['latin', 'latin-ext'] as const
-const WEIGHTS = [400, 700] as const
-
-/**
- * Italic must be registered explicitly. `ExecutivePdfTemplate` sets
- * `fontStyle: 'italic'`, which previously rode on @react-pdf's automatic
- * base-14 italic; once real fonts are registered, an unregistered italic
- * throws `Could not resolve font` and crashes the render. All eight
- * @fontsource packages ship italic files at both weights and both subsets.
- */
-const STYLES = ['normal', 'italic'] as const
-
-/**
- * Last resort in every font chain.
- *
- * Being in the `latin-ext` *range* does not mean a face actually draws the
- * glyph. Verified with fontkit against @fontsource 5.3.0: Carlito, Arimo,
- * Roboto and IBM Plex Sans carry U+20AA; Caladea, Gelasio, EB Garamond and
- * Lato do not. Without a third link in the chain, a Cambria / Georgia /
- * Garamond / Lato résumé falls through to @react-pdf's built-in Helvetica and
- * reprints the original `ª` corruption — measured, not hypothetical.
- *
- * Appending CarlitoExt costs a glyph-level typeface mismatch on the handful of
- * characters the chosen family cannot draw. That is strictly better than
- * printing the wrong character, which is what the alternative does.
- */
-const GLYPH_FALLBACK = 'CarlitoExt'
+// Re-exported so `lib/pdf/templates/pdf-utils.tsx` and existing tests can keep
+// importing `FONT_SUBSTITUTES` from `registry.ts` unchanged. The canonical
+// declaration now lives in `families.ts` (client-safe, no Node/@react-pdf).
+export { FONT_SUBSTITUTES }
 
 /**
  * Resolve through the module graph rather than process.cwd(): on Vercel the
@@ -129,32 +94,4 @@ export function pdfFontFamily(pickerName: string): string[] {
   // Everything failed to register: name the built-in so the export still
   // renders (degraded) instead of throwing "Font family not registered".
   return usable.length > 0 ? usable : ['Helvetica']
-}
-
-/**
- * `@font-face` rules so the browser preview loads the same files the PDF
- * embeds. Must cover italic as well as normal: ExecutiveTemplate and
- * ClassicTemplate render `fontStyle: 'italic'`, and without a matching
- * `@font-face` the browser fakes italic by shearing the regular face while
- * the PDF embeds the genuine italic — a letterform mismatch the word-level
- * parity test in Task 7 can't detect. Only the `latin` subset is served; the
- * `latin-ext` subset exists solely for PDF glyph fallback and the browser
- * resolves any missing glyphs on its own.
- */
-export function fontFaceCss(): string {
-  const seen = new Set<string>()
-  const rules: string[] = []
-  for (const { family, slug } of Object.values(FONT_SUBSTITUTES)) {
-    if (seen.has(family)) continue
-    seen.add(family)
-    for (const weight of WEIGHTS) {
-      for (const style of STYLES) {
-        rules.push(
-          `@font-face{font-family:'${family}';font-weight:${weight};font-style:${style};` +
-          `font-display:swap;src:url('/fonts/${slug}-latin-${weight}-${style}.woff') format('woff');}`
-        )
-      }
-    }
-  }
-  return rules.join('\n')
 }

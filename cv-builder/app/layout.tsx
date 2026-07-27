@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { Toaster } from '@/components/ui/Toaster'
-import { fontFaceCss } from '@/lib/fonts/registry'
+import { fontFaceCss } from '@/lib/fonts/families'
 
 export const metadata: Metadata = {
   title: 'CV Builder',

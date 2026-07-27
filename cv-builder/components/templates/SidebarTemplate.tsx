@@ -5,6 +5,7 @@ import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
 import { richTextToHtml } from '@/lib/rich-text'
 import { formatDateRange } from '@/lib/format-date'
+import { webFontFamily } from '@/lib/fonts/families'
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
 
 function rt(text: string | undefined | null): React.ReactNode {
@@ -20,7 +21,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
   const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : ALL_SECTIONS
 
   const page: React.CSSProperties = {
-    fontFamily: `${meta.fontFamily}, Arial, sans-serif`,
+    fontFamily: webFontFamily(meta.fontFamily),
     fontSize: '11pt',
     lineHeight: meta.lineSpacing,
     background: '#fff',
@@ -33,7 +34,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
   }
 
   const railTitleStyle: React.CSSProperties = {
-    fontFamily: `${meta.headerFontFamily}, Arial, sans-serif`,
+    fontFamily: webFontFamily(meta.headerFontFamily),
     fontSize: '12pt',
     fontWeight: 700,
     color: '#fff',
@@ -46,7 +47,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
   }
 
   const mainTitleStyle: React.CSSProperties = {
-    fontFamily: `${meta.headerFontFamily}, Arial, sans-serif`,
+    fontFamily: webFontFamily(meta.headerFontFamily),
     fontSize: '12pt',
     fontWeight: 700,
     color: meta.primaryColor,
@@ -259,7 +260,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         boxSizing: 'border-box',
       }}>
         <div style={{
-          fontFamily: `${meta.headerFontFamily}, Arial, sans-serif`,
+          fontFamily: webFontFamily(meta.headerFontFamily),
           fontSize: '18pt',
           fontWeight: 700,
           lineHeight: 1.1,

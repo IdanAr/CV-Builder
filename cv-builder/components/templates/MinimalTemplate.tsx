@@ -4,6 +4,7 @@ import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
 import { richTextToHtml } from '@/lib/rich-text'
 import { formatDateRange } from '@/lib/format-date'
+import { webFontFamily } from '@/lib/fonts/families'
 
 function rt(text: string | undefined | null): React.ReactNode {
   if (!text) return null
@@ -18,7 +19,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
   const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : ALL_SECTIONS
 
   const page: React.CSSProperties = {
-    fontFamily: `${meta.fontFamily}, Arial, sans-serif`,
+    fontFamily: webFontFamily(meta.fontFamily),
     fontSize: '11pt',
     lineHeight: meta.lineSpacing,
     background: '#fff',
@@ -30,7 +31,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
   }
 
   const sectionTitle: React.CSSProperties = {
-    fontFamily: `${meta.headerFontFamily}, Arial, sans-serif`,
+    fontFamily: webFontFamily(meta.headerFontFamily),
     fontSize: '10pt',
     fontWeight: 700,
     textTransform: 'uppercase',
@@ -268,7 +269,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
   return (
     <div style={page}>
       <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-        <div style={{ fontFamily: `${meta.headerFontFamily}, Arial, sans-serif`, fontSize: '22pt', fontWeight: 700, letterSpacing: '-0.02em' }}>
+        <div style={{ fontFamily: webFontFamily(meta.headerFontFamily), fontSize: '22pt', fontWeight: 700, letterSpacing: '-0.02em' }}>
           {basics.name}
         </div>
         {basics.label && <div style={{ fontSize: '11pt', color: '#555', marginTop: '3px' }}>{basics.label}</div>}
