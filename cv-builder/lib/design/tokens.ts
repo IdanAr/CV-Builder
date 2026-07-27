@@ -43,7 +43,7 @@ export const CLASSIC_TOKENS = {
   summaryMarginBottom: 9,       // web 12px (two-column summary only; single-column has no margin here)
   entryMarginBottom: 7.5,       // web 10px
   eduMarginBottom: 6,           // web 8px
-  projectMarginBottom: 8,       // web 10px — pre-existing drift, see task-5-report.md
+  projectMarginBottom: 8,       // px(8)=11px; web was hand-transcribed as 10px — drift fixed, see task-5-report.md
   sectionTitleMarginTop: 13.5,  // web 18px
   sectionTitleMarginBottom: 6,  // web 8px
   bulletIndent: 13.5,           // web ul padding-left 18px
@@ -59,7 +59,7 @@ export const MODERN_TOKENS = {
   summaryMarginBottom: 9,        // web 12px
   entryMarginBottom: 7.5,        // web 10px
   eduMarginBottom: 6,            // web 8px
-  projectMarginBottom: 8,        // web 10px — pre-existing drift, see task-5-report.md
+  projectMarginBottom: 8,        // px(8)=11px; web was hand-transcribed as 10px — drift fixed, see task-5-report.md
   sectionTitleMarginTop: 12,     // web 16px
   sectionTitleMarginBottom: 6,   // web 8px
   bulletIndent: 13.5,            // web ul padding-left 18px
@@ -78,7 +78,7 @@ export const EXECUTIVE_TOKENS = {
   summaryMarginBottom: 9,        // web 12px
   entryMarginBottom: 7.5,        // web 10px
   eduMarginBottom: 6,            // web 8px
-  projectMarginBottom: 8,        // web 10px — pre-existing drift, see task-5-report.md
+  projectMarginBottom: 8,        // px(8)=11px; web was hand-transcribed as 10px — drift fixed, see task-5-report.md
   sectionTitleMarginTop: 13.5,   // web 18px
   sectionTitleMarginBottom: 5.25, // web 7px
   bulletIndent: 13.5,            // web ul padding-left 18px
@@ -95,7 +95,7 @@ export const SIDEBAR_TOKENS = {
   summaryMarginBottom: 4.5,      // web 6px (main-column summary)
   entryMarginBottom: 7.5,        // web 10px
   eduMarginBottom: 6,            // web 8px
-  projectMarginBottom: 8,        // web 10px — pre-existing drift, see task-5-report.md
+  projectMarginBottom: 8,        // px(8)=11px; web was hand-transcribed as 10px — drift fixed, see task-5-report.md
   // Main-column section title only. The rail has a second, differently-sized
   // section title (marginTop 13.5/marginBottom 5.25, fontSize 12) that the
   // shared shape has no second slot for; left as template-local literals.
