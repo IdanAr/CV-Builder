@@ -1,5 +1,6 @@
 import { Font } from '@react-pdf/renderer'
 import path from 'node:path'
+import { accessSync, constants } from 'node:fs'
 
 /**
  * Six of the nine picker fonts (Calibri, Cambria, Georgia, Arial, Helvetica)
@@ -23,14 +24,13 @@ const DEFAULT_PICKER_FONT = 'Calibri'
 /** `latin` lacks U+20AA (₪); `latin-ext` covers U+20A0-20AB. */
 const SUBSETS = ['latin', 'latin-ext'] as const
 const WEIGHTS = [400, 700] as const
+
 /**
- * Several templates (e.g. ExecutivePdfTemplate's subtitle/degree styles) set
- * `fontStyle: 'italic'`. @react-pdf's built-in base-14 faces carry italic
- * automatically, but a custom-registered family does not unless the italic
- * file is registered too — an unregistered style throws `Could not resolve
- * font for <family>, fontWeight <n>, fontStyle italic` and aborts the whole
- * render, rather than falling back gracefully. Every @fontsource package used
- * here ships italic files at the same weights, so both styles are registered.
+ * Italic must be registered explicitly. `ExecutivePdfTemplate` sets
+ * `fontStyle: 'italic'`, which previously rode on @react-pdf's automatic
+ * base-14 italic; once real fonts are registered, an unregistered italic
+ * throws `Could not resolve font` and crashes the render. All eight
+ * @fontsource packages ship italic files at both weights and both subsets.
  */
 const STYLES = ['normal', 'italic'] as const
 
@@ -70,6 +70,13 @@ function fontFile(slug: string, subset: string, weight: number, style: string): 
 let registered = false
 
 /**
+ * Families we successfully registered. `pdfFontFamily` filters chains through
+ * this so a family that failed to register is never named in a style — naming
+ * an unregistered family throws `Font family not registered` at render time.
+ */
+const available = new Set<string>()
+
+/**
  * Idempotent. @react-pdf rejects .woff2 but accepts .woff, and has no
  * unicode-range support — so each family is registered twice and consumed as
  * an array fontFamily, which @react-pdf resolves as a fallback chain.
@@ -82,20 +89,27 @@ export function registerPdfFonts(): void {
     seen.add(family)
     try {
       for (const subset of SUBSETS) {
-        Font.register({
-          family: subset === 'latin' ? family : `${family}Ext`,
-          fonts: WEIGHTS.flatMap(weight =>
-            STYLES.map(style => ({
-              src: fontFile(slug, subset, weight, style),
-              fontWeight: weight,
-              fontStyle: style,
-            }))
-          ),
-        })
+        const registeredFamily = subset === 'latin' ? family : `${family}Ext`
+        const fonts = WEIGHTS.flatMap(weight =>
+          STYLES.map(fontStyle => ({
+            src: fontFile(slug, subset, weight, fontStyle),
+            fontWeight: weight,
+            fontStyle,
+          }))
+        )
+        // `Font.register` performs NO file I/O — it only records a descriptor.
+        // fontkit reads the file lazily during the first render that uses the
+        // face, which is outside this try/catch and would surface as a 500.
+        // Verified: register() with a nonexistent path does not throw, while
+        // the subsequent render throws ENOENT. Probe readability here so an
+        // unreadable font is caught while we can still degrade gracefully.
+        for (const font of fonts) accessSync(font.src, constants.R_OK)
+        Font.register({ family: registeredFamily, fonts })
+        available.add(registeredFamily)
       }
     } catch (err) {
-      // A missing or unreadable font file must never 500 an export. The
-      // template falls back to @react-pdf's built-in Helvetica.
+      // A missing or unreadable font file must never 500 an export. The family
+      // stays out of `available`, so chains skip it and fall back.
       console.error(`[fonts] failed to register ${family}:`, err)
     }
   }
@@ -108,9 +122,13 @@ export function registerPdfFonts(): void {
  * property. @react-pdf resolves an array as a per-glyph fallback chain.
  */
 export function pdfFontFamily(pickerName: string): string[] {
+  registerPdfFonts()
   const entry = FONT_SUBSTITUTES[pickerName] ?? FONT_SUBSTITUTES[DEFAULT_PICKER_FONT]
   const chain = [entry.family, `${entry.family}Ext`, GLYPH_FALLBACK]
-  return [...new Set(chain)] // Carlito is its own fallback; don't list it twice
+  const usable = [...new Set(chain)].filter(f => available.has(f))
+  // Everything failed to register: name the built-in so the export still
+  // renders (degraded) instead of throwing "Font family not registered".
+  return usable.length > 0 ? usable : ['Helvetica']
 }
 
 /** `@font-face` rules so the browser preview loads the same files. */

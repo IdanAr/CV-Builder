@@ -53,3 +53,20 @@ describe('template geometry: no overlapping text', () => {
     })
   }
 })
+
+// One representative per risk class: metric-compatible substitute, a
+// deliberately non-metric-compatible substitute, and a font that previously
+// rendered as Helvetica and now renders as itself.
+const FONT_RISK_CLASSES = ['Calibri', 'Garamond', 'Lato'] as const
+
+describe('template geometry across font substitutions', () => {
+  for (const templateId of TEMPLATE_IDS) {
+    for (const fontFamily of FONT_RISK_CLASSES) {
+      it(`${templateId} / ${fontFamily} has no baseline collisions`, async () => {
+        const meta = { ...metaFor(templateId), fontFamily, headerFontFamily: fontFamily }
+        const runs = await renderToGlyphRuns(selectPdfTemplate(data, meta, 'designed', 'CV'))
+        expect(findBaselineCollisions(runs)).toEqual([])
+      })
+    }
+  }
+})
