@@ -17,11 +17,6 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
   const headFont = mapToPdfFont(meta.headerFontFamily)
   const margin = inToPt(meta.pageMargins)
   const sectionOrder = resolveSectionOrder(meta)
-  // CLASSIC_TOKENS has no bulletGap (only Minimal's token set does, per Task 5).
-  // Every template's bullet style shares the same 10pt fontSize, so this
-  // mirrors MINIMAL_TOKENS.bulletGap rather than inventing a new value.
-  const bulletGap = 4.5
-
   const styles = withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: 11, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
     name: { fontFamily: headFont, fontSize: T.nameSize, fontWeight: 'bold', textAlign: 'center', marginBottom: 1.5 },
@@ -95,7 +90,7 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
                       key={hi}
                       style={hi === 0 ? [styles.bulletHang, styles.bulletFirst] : styles.bulletHang}
                       indent={T.bulletIndent}
-                      gap={bulletGap}
+                      gap={T.bulletGap}
                     >
                       {renderPdfRichTextRuns(h)}
                     </PdfBullet>
@@ -229,7 +224,7 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
                       key={hi}
                       style={hi === 0 ? [styles.bulletHang, styles.bulletFirst] : styles.bulletHang}
                       indent={T.bulletIndent}
-                      gap={bulletGap}
+                      gap={T.bulletGap}
                     >
                       {renderPdfRichTextRuns(h)}
                     </PdfBullet>
@@ -269,7 +264,7 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
                   />
                   {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
                   {(p.highlights ?? []).map((h, hi) => (
-                    <PdfBullet key={hi} style={styles.bulletHang} indent={T.bulletIndent} gap={bulletGap}>
+                    <PdfBullet key={hi} style={styles.bulletHang} indent={T.bulletIndent} gap={T.bulletGap}>
                       {h}
                     </PdfBullet>
                   ))}

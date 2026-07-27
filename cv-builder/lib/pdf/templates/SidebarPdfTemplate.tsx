@@ -21,14 +21,6 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
   const ca = meta.columnAssignment ?? {}
   const railSections = sectionOrder.filter((s) => getColumnSide(s, ca, SIDEBAR_COLUMN_DEFAULTS) === 'left')
   const mainSections = sectionOrder.filter((s) => getColumnSide(s, ca, SIDEBAR_COLUMN_DEFAULTS) === 'right')
-  // SIDEBAR_TOKENS has no bulletGap (only Minimal's token set does, per Task 5).
-  // Every template's bullet style shares the same 10pt fontSize, so this
-  // mirrors MINIMAL_TOKENS.bulletGap rather than inventing a new value. Main
-  // column only — the rail uses its own compact, non-hanging bullet style,
-  // matching the web rail (components/templates/SidebarTemplate.tsx), which
-  // never right-aligns dates or hangs bullets there either.
-  const bulletGap = 4.5
-
   const styles = withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: 11, lineHeight: meta.lineSpacing, color: '#000000', flexDirection: 'row' },
 
@@ -312,7 +304,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
                       key={hi}
                       style={hi === 0 ? [styles.bulletHang, styles.bulletFirst] : styles.bulletHang}
                       indent={T.bulletIndent}
-                      gap={bulletGap}
+                      gap={T.bulletGap}
                     >
                       {renderPdfRichTextRuns(h)}
                     </PdfBullet>
@@ -416,7 +408,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
                       key={hi}
                       style={hi === 0 ? [styles.bulletHang, styles.bulletFirst] : styles.bulletHang}
                       indent={T.bulletIndent}
-                      gap={bulletGap}
+                      gap={T.bulletGap}
                     >
                       {renderPdfRichTextRuns(h)}
                     </PdfBullet>
@@ -456,7 +448,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
                   />
                   {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
                   {(p.highlights ?? []).map((h, hi) => (
-                    <PdfBullet key={hi} style={styles.bulletHang} indent={T.bulletIndent} gap={bulletGap}>
+                    <PdfBullet key={hi} style={styles.bulletHang} indent={T.bulletIndent} gap={T.bulletGap}>
                       {h}
                     </PdfBullet>
                   ))}

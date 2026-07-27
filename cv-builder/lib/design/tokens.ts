@@ -47,6 +47,7 @@ export const CLASSIC_TOKENS = {
   sectionTitleMarginTop: 13.5,  // web 18px
   sectionTitleMarginBottom: 6,  // web 8px
   bulletIndent: 13.5,           // web ul padding-left 18px
+  bulletGap: 4.5,           // marker column width; matches MINIMAL_TOKENS
   nameSize: 20,
   labelSize: 12,
   contactSize: 10,
@@ -63,6 +64,7 @@ export const MODERN_TOKENS = {
   sectionTitleMarginTop: 12,     // web 16px
   sectionTitleMarginBottom: 6,   // web 8px
   bulletIndent: 13.5,            // web ul padding-left 18px
+  bulletGap: 4.5,            // marker column width; matches MINIMAL_TOKENS
   nameSize: 22,
   labelSize: 12,
   contactSize: 10,
@@ -82,6 +84,7 @@ export const EXECUTIVE_TOKENS = {
   sectionTitleMarginTop: 13.5,   // web 18px
   sectionTitleMarginBottom: 5.25, // web 7px
   bulletIndent: 13.5,            // web ul padding-left 18px
+  bulletGap: 4.5,            // marker column width; matches MINIMAL_TOKENS
   nameSize: 22,
   labelSize: 12,
   contactSize: 10,
@@ -102,6 +105,7 @@ export const SIDEBAR_TOKENS = {
   sectionTitleMarginTop: 12,      // web 16px
   sectionTitleMarginBottom: 6,    // web 8px
   bulletIndent: 13.5,             // web ul padding-left 18px
+  bulletGap: 4.5,             // marker column width; matches MINIMAL_TOKENS
   nameSize: 18,                   // rail name
   labelSize: 10.5,                // rail label
   contactSize: 10,
