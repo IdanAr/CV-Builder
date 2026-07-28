@@ -68,3 +68,17 @@ export function PdfEntryHead({
     </View>
   )
 }
+
+/**
+ * Space that must remain below a section heading before @react-pdf will place
+ * it on the current page. Three body lines, derived at render time so it
+ * tracks the user's line-spacing setting rather than hardcoding 38pt.
+ */
+export function sectionReserve(pageFontSize: number, lineSpacing: number): number {
+  return 3 * pageFontSize * lineSpacing
+}
+
+/** Two body lines — enough that an entry head is followed by its first bullet. */
+export function entryReserve(pageFontSize: number, lineSpacing: number): number {
+  return 2 * pageFontSize * lineSpacing
+}

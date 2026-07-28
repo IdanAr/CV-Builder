@@ -176,6 +176,10 @@ function sectionHeading(text: string, font: string, theme: DocxTheme): Paragraph
     })],
     // Web section titles: 18px top / 8px bottom margins, 1.5px underline
     spacing: { before: 270, after: 120 },
+    // Keep the heading glued to whatever paragraph follows it — a heading
+    // alone at the foot of a page is the same orphan the PDF reserve logic
+    // guards against.
+    keepNext: true,
     ...(theme.sectionBorder
       ? { border: { bottom: { style: BorderStyle.SINGLE, size: theme.sectionBorderSize ?? 9, color: theme.sectionBorderColor ?? theme.sectionTitleColor, space: 4 } } }
       : {}),
@@ -194,10 +198,14 @@ function jobEntry(
       ],
       tabStops: [{ type: 'right' as never, position: tabWidthTwips }],
       spacing: { before: 150 },
+      // Keep the entry head on the same page as the position line that
+      // identifies it, matching the PDF entry-atomicity treatment.
+      keepNext: true,
     }),
     new Paragraph({
       children: [new TextRun({ text: position, font, size: 21, color: theme.accentColor, italics: theme.positionItalics || false })],
       spacing: { after: 40 },
+      keepLines: true,
     }),
   ]
   if (summary) {
@@ -205,6 +213,7 @@ function jobEntry(
       children: richTextRuns(summary, font, 20),
       ...(theme.bodyJustified ? { alignment: AlignmentType.JUSTIFIED } : {}),
       spacing: { after: 40 },
+      keepLines: true,
     }))
   }
   for (const h of highlights) {

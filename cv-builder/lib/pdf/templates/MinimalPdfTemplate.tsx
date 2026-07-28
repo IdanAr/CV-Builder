@@ -4,8 +4,10 @@ import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns, pdfDocumentProps } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { formatDateRange } from '@/lib/format-date'
-import { withLineHeights, PdfBullet, PdfEntryHead } from './pdf-primitives'
+import { withLineHeights, PdfBullet, PdfEntryHead, sectionReserve, entryReserve } from './pdf-primitives'
 import { MINIMAL_TOKENS as T } from '@/lib/design/tokens'
+
+const PAGE_FONT_SIZE = 11
 
 export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; meta: ResumeMeta; title?: string }) {
   const { basics = {}, work = [], education = [], skills = [],
@@ -16,9 +18,11 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
   const headFont = mapToPdfFont(meta.headerFontFamily)
   const margin = inToPt(meta.pageMargins)
   const sectionOrder = resolveSectionOrder(meta)
+  const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE, meta.lineSpacing)
+  const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE, meta.lineSpacing)
 
   const styles = withLineHeights(StyleSheet.create({
-    page: { fontFamily: bodyFont, fontSize: 11, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
+    page: { fontFamily: bodyFont, fontSize: PAGE_FONT_SIZE, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
     name: { fontFamily: headFont, fontSize: T.nameSize, fontWeight: 'bold', textAlign: 'center', letterSpacing: -0.4, marginBottom: 2.25 },
     subtitle: { fontSize: T.labelSize, color: '#555555', textAlign: 'center' },
     sectionTitle: { fontFamily: headFont, fontSize: T.sectionTitleSize, fontWeight: 'bold', textTransform: 'uppercase',
@@ -73,17 +77,21 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
         if (!work.length) return null
         return (
           <View key="work">
-            <Text style={styles.sectionTitle}>Work Experience</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Work Experience</Text>
+            </View>
             {work.map((job, i) => {
               const dates = formatDateRange(job.startDate, job.endDate, true)
               return (
                 <View key={i} style={{ marginBottom: T.entryMarginBottom }}>
-                  <PdfEntryHead
-                    style={{ marginBottom: 2 }}
-                    left={<Text style={styles.bold}>{job.name ?? ''}</Text>}
-                    right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
-                  />
-                  <Text style={styles.accent}>{job.position ?? ''}</Text>
+                  <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                    <PdfEntryHead
+                      style={{ marginBottom: 2 }}
+                      left={<Text style={styles.bold}>{job.name ?? ''}</Text>}
+                      right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
+                    />
+                    <Text style={styles.accent}>{job.position ?? ''}</Text>
+                  </View>
                   {renderPdfRichText(job.summary, styles.entrySummary)}
                   {(job.highlights ?? []).map((h, hi) => (
                     <PdfBullet
@@ -104,17 +112,21 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
         if (!education.length) return null
         return (
           <View key="education">
-            <Text style={styles.sectionTitle}>Education</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Education</Text>
+            </View>
             {education.map((edu, i) => {
               const dates = formatDateRange(edu.startDate, edu.endDate)
               return (
                 <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
-                  <PdfEntryHead
-                    style={{ marginBottom: 2 }}
-                    left={<Text style={styles.bold}>{edu.institution ?? ''}</Text>}
-                    right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
-                  />
-                  <Text style={styles.degree}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
+                  <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                    <PdfEntryHead
+                      style={{ marginBottom: 2 }}
+                      left={<Text style={styles.bold}>{edu.institution ?? ''}</Text>}
+                      right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
+                    />
+                    <Text style={styles.degree}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
+                  </View>
                   {edu.score ? <Text style={styles.small}>Score: {edu.score}</Text> : null}
                 </View>
               )
@@ -125,7 +137,9 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
         if (!skills.length) return null
         return (
           <View key="skills">
-            <Text style={styles.sectionTitle}>Skills</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Skills</Text>
+            </View>
             {/* Mirrors the web definition list: fixed-width bold name column, keywords fill the rest */}
             {skills.map((s, i) => (
               <View key={i} style={{ flexDirection: 'row', gap: 12, marginBottom: 1.5 }}>
@@ -142,7 +156,9 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
         if (!certificates.length) return null
         return (
           <View key="certificates">
-            <Text style={styles.sectionTitle}>Certifications</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Certifications</Text>
+            </View>
             {certificates.map((c, i) => (
               <Text key={i} style={{ marginBottom: 4 }}>
                 <Text style={styles.bold}>
@@ -158,7 +174,9 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
         if (!languages.length) return null
         return (
           <View key="languages">
-            <Text style={styles.sectionTitle}>Languages</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Languages</Text>
+            </View>
             {languages.map((l, i) => (
               <Text key={i} style={styles.body}>
                 <Text style={styles.bold}>{l.language ?? ''}</Text>
@@ -171,15 +189,19 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
         if (!awards.length) return null
         return (
           <View key="awards">
-            <Text style={styles.sectionTitle}>Awards</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Awards</Text>
+            </View>
             {awards.map((a, i) => (
               <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
-                <PdfEntryHead
-                  style={{ marginBottom: 2 }}
-                  left={<Text style={styles.bold}>{a.title ?? ''}</Text>}
-                  right={a.date ? <Text style={styles.small}>{a.date}</Text> : undefined}
-                />
-                {a.awarder ? <Text style={styles.small}>{a.awarder}</Text> : null}
+                <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                  <PdfEntryHead
+                    style={{ marginBottom: 2 }}
+                    left={<Text style={styles.bold}>{a.title ?? ''}</Text>}
+                    right={a.date ? <Text style={styles.small}>{a.date}</Text> : undefined}
+                  />
+                  {a.awarder ? <Text style={styles.small}>{a.awarder}</Text> : null}
+                </View>
                 {a.summary ? <Text style={styles.body}>{a.summary}</Text> : null}
               </View>
             ))}
@@ -189,15 +211,19 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
         if (!publications.length) return null
         return (
           <View key="publications">
-            <Text style={styles.sectionTitle}>Publications</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Publications</Text>
+            </View>
             {publications.map((p, i) => (
               <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
-                <PdfEntryHead
-                  style={{ marginBottom: 2 }}
-                  left={<Text style={styles.bold}>{p.name ?? ''}</Text>}
-                  right={p.releaseDate ? <Text style={styles.small}>{p.releaseDate}</Text> : undefined}
-                />
-                {p.publisher ? <Text style={styles.small}>{p.publisher}</Text> : null}
+                <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                  <PdfEntryHead
+                    style={{ marginBottom: 2 }}
+                    left={<Text style={styles.bold}>{p.name ?? ''}</Text>}
+                    right={p.releaseDate ? <Text style={styles.small}>{p.releaseDate}</Text> : undefined}
+                  />
+                  {p.publisher ? <Text style={styles.small}>{p.publisher}</Text> : null}
+                </View>
                 {p.summary ? <Text style={styles.body}>{p.summary}</Text> : null}
               </View>
             ))}
@@ -207,17 +233,21 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
         if (!volunteer.length) return null
         return (
           <View key="volunteer">
-            <Text style={styles.sectionTitle}>Volunteer</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Volunteer</Text>
+            </View>
             {volunteer.map((v, i) => {
               const dates = formatDateRange(v.startDate, v.endDate, true)
               return (
                 <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
-                  <PdfEntryHead
-                    style={{ marginBottom: 2 }}
-                    left={<Text style={styles.bold}>{v.organization ?? ''}</Text>}
-                    right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
-                  />
-                  <Text style={styles.accent}>{v.position ?? ''}</Text>
+                  <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                    <PdfEntryHead
+                      style={{ marginBottom: 2 }}
+                      left={<Text style={styles.bold}>{v.organization ?? ''}</Text>}
+                      right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
+                    />
+                    <Text style={styles.accent}>{v.position ?? ''}</Text>
+                  </View>
                   {renderPdfRichText(v.summary, styles.entrySummary)}
                   {(v.highlights ?? []).map((h, hi) => (
                     <PdfBullet
@@ -238,7 +268,9 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
         if (!interests.length) return null
         return (
           <View key="interests">
-            <Text style={styles.sectionTitle}>Interests</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Interests</Text>
+            </View>
             {interests.map((int, i) => (
               <Text key={i} style={styles.body}>
                 <Text style={styles.bold}>{int.name ?? ''}</Text>
@@ -252,17 +284,21 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
         if (!projects.length) return null
         return (
           <View key="projects">
-            <Text style={styles.sectionTitle}>Projects</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Projects</Text>
+            </View>
             {projects.map((p, i) => {
               const dates = formatDateRange(p.startDate, p.endDate)
               return (
                 <View key={i} style={{ marginBottom: T.projectMarginBottom }}>
-                  <PdfEntryHead
-                    style={{ marginBottom: 2 }}
-                    left={<Text style={styles.bold}>{p.name ?? ''}</Text>}
-                    right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
-                  />
-                  {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
+                  <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                    <PdfEntryHead
+                      style={{ marginBottom: 2 }}
+                      left={<Text style={styles.bold}>{p.name ?? ''}</Text>}
+                      right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
+                    />
+                    {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
+                  </View>
                   {(p.highlights ?? []).map((h, hi) => (
                     <PdfBullet key={hi} style={styles.bulletHang} indent={T.bulletIndent} gap={T.bulletGap}>
                       {h}

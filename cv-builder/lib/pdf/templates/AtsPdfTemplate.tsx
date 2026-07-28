@@ -7,7 +7,9 @@ import {
 } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { formatDate, formatDateRange } from '@/lib/format-date'
-import { withLineHeights } from './pdf-primitives'
+import { withLineHeights, sectionReserve, entryReserve } from './pdf-primitives'
+
+const PAGE_FONT_SIZE = 10.5
 
 /**
  * Shared ATS-safe renderer used by every template in "ats" export mode.
@@ -26,9 +28,11 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
   const margin = inToPt(Math.max(meta.pageMargins, 0.5))
   const lineHeight = Math.min(Math.max(meta.lineSpacing, 1.0), 1.15)
   const sectionOrder = resolveSectionOrder(meta)
+  const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE, lineHeight)
+  const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE, lineHeight)
 
   const styles = withLineHeights(StyleSheet.create({
-    page: { fontFamily: bodyFont, fontSize: 10.5, lineHeight, color: '#000000', padding: margin },
+    page: { fontFamily: bodyFont, fontSize: PAGE_FONT_SIZE, lineHeight, color: '#000000', padding: margin },
     name: { fontFamily: headFont, fontSize: 20, fontWeight: 'bold', marginBottom: 2 },
     label: { fontSize: 11, color: '#333333', marginBottom: 2 },
     contact: { fontSize: 10, color: '#333333', marginBottom: 6 },
@@ -83,11 +87,15 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
         if (!work.length) return null
         return (
           <View key="work">
-            <Text style={styles.sectionTitle}>WORK EXPERIENCE</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>WORK EXPERIENCE</Text>
+            </View>
             {work.map((job, i) => (
               <View key={i} style={{ marginBottom: 5 }}>
-                {entryHead(job.name ?? '', formatDateRange(job.startDate, job.endDate, true))}
-                {job.position ? <Text style={styles.position}>{job.position}</Text> : null}
+                <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                  {entryHead(job.name ?? '', formatDateRange(job.startDate, job.endDate, true))}
+                  {job.position ? <Text style={styles.position}>{job.position}</Text> : null}
+                </View>
                 {renderPdfRichText(job.summary, styles.body)}
                 {(job.highlights ?? []).map((h, hi) => (
                   <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
@@ -100,11 +108,15 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
         if (!education.length) return null
         return (
           <View key="education">
-            <Text style={styles.sectionTitle}>EDUCATION</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>EDUCATION</Text>
+            </View>
             {education.map((edu, i) => (
               <View key={i} style={{ marginBottom: 4 }}>
-                {entryHead(edu.institution ?? '', formatDateRange(edu.startDate, edu.endDate))}
-                <Text style={styles.body}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
+                <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                  {entryHead(edu.institution ?? '', formatDateRange(edu.startDate, edu.endDate))}
+                  <Text style={styles.body}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
+                </View>
                 {edu.score ? <Text style={styles.small}>Score: {edu.score}</Text> : null}
               </View>
             ))}
@@ -114,7 +126,9 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
         if (!skills.length) return null
         return (
           <View key="skills">
-            <Text style={styles.sectionTitle}>SKILLS</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>SKILLS</Text>
+            </View>
             {skills.map((s, i) => (
               <Text key={i} style={styles.body}>
                 <Text style={{ fontWeight: 'bold' }}>{s.name ?? ''}</Text>
@@ -128,7 +142,9 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
         if (!certificates.length) return null
         return (
           <View key="certificates">
-            <Text style={styles.sectionTitle}>CERTIFICATIONS</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>CERTIFICATIONS</Text>
+            </View>
             {certificates.map((c, i) => (
               <Text key={i} style={styles.body}>
                 <Text style={{ fontWeight: 'bold' }}>{c.name ?? ''}</Text>
@@ -142,7 +158,9 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
         if (!languages.length) return null
         return (
           <View key="languages">
-            <Text style={styles.sectionTitle}>LANGUAGES</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>LANGUAGES</Text>
+            </View>
             {languages.map((l, i) => (
               <Text key={i} style={styles.body}>
                 <Text style={{ fontWeight: 'bold' }}>{l.language ?? ''}</Text>
@@ -155,11 +173,15 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
         if (!awards.length) return null
         return (
           <View key="awards">
-            <Text style={styles.sectionTitle}>AWARDS</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>AWARDS</Text>
+            </View>
             {awards.map((a, i) => (
               <View key={i} style={{ marginBottom: 4 }}>
-                {entryHead(a.title ?? '', a.date ? formatDate(a.date) : '')}
-                {a.awarder ? <Text style={styles.small}>{a.awarder}</Text> : null}
+                <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                  {entryHead(a.title ?? '', a.date ? formatDate(a.date) : '')}
+                  {a.awarder ? <Text style={styles.small}>{a.awarder}</Text> : null}
+                </View>
                 {a.summary ? <Text style={styles.body}>{a.summary}</Text> : null}
               </View>
             ))}
@@ -169,11 +191,15 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
         if (!publications.length) return null
         return (
           <View key="publications">
-            <Text style={styles.sectionTitle}>PUBLICATIONS</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>PUBLICATIONS</Text>
+            </View>
             {publications.map((p, i) => (
               <View key={i} style={{ marginBottom: 4 }}>
-                {entryHead(p.name ?? '', p.releaseDate ? formatDate(p.releaseDate) : '')}
-                {p.publisher ? <Text style={styles.small}>{p.publisher}</Text> : null}
+                <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                  {entryHead(p.name ?? '', p.releaseDate ? formatDate(p.releaseDate) : '')}
+                  {p.publisher ? <Text style={styles.small}>{p.publisher}</Text> : null}
+                </View>
                 {p.summary ? <Text style={styles.body}>{p.summary}</Text> : null}
               </View>
             ))}
@@ -183,11 +209,15 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
         if (!volunteer.length) return null
         return (
           <View key="volunteer">
-            <Text style={styles.sectionTitle}>VOLUNTEER</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>VOLUNTEER</Text>
+            </View>
             {volunteer.map((v, i) => (
               <View key={i} style={{ marginBottom: 5 }}>
-                {entryHead(v.organization ?? '', formatDateRange(v.startDate, v.endDate, true))}
-                {v.position ? <Text style={styles.position}>{v.position}</Text> : null}
+                <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                  {entryHead(v.organization ?? '', formatDateRange(v.startDate, v.endDate, true))}
+                  {v.position ? <Text style={styles.position}>{v.position}</Text> : null}
+                </View>
                 {renderPdfRichText(v.summary, styles.body)}
                 {(v.highlights ?? []).map((h, hi) => (
                   <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
@@ -200,7 +230,9 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
         if (!interests.length) return null
         return (
           <View key="interests">
-            <Text style={styles.sectionTitle}>INTERESTS</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>INTERESTS</Text>
+            </View>
             {interests.map((int, i) => (
               <Text key={i} style={styles.body}>
                 <Text style={{ fontWeight: 'bold' }}>{int.name ?? ''}</Text>
@@ -213,11 +245,15 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
         if (!projects.length) return null
         return (
           <View key="projects">
-            <Text style={styles.sectionTitle}>PROJECTS</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>PROJECTS</Text>
+            </View>
             {projects.map((p, i) => (
               <View key={i} style={{ marginBottom: 5 }}>
-                {entryHead(p.name ?? '', formatDateRange(p.startDate, p.endDate))}
-                {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
+                <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                  {entryHead(p.name ?? '', formatDateRange(p.startDate, p.endDate))}
+                  {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
+                </View>
                 {(p.highlights ?? []).map((h, hi) => (
                   <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
                 ))}
