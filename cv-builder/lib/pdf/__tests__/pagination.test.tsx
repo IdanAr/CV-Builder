@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { MinimalPdfTemplate } from '../templates/MinimalPdfTemplate'
+import { ClassicPdfTemplate } from '../templates/ClassicPdfTemplate'
+import { ModernPdfTemplate } from '../templates/ModernPdfTemplate'
+import { ExecutivePdfTemplate } from '../templates/ExecutivePdfTemplate'
+import { SidebarPdfTemplate } from '../templates/SidebarPdfTemplate'
+import { AtsPdfTemplate } from '../templates/AtsPdfTemplate'
 import { renderToGlyphRuns, type GlyphRun } from './pdf-geometry'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
@@ -110,14 +115,29 @@ describe('pagination', () => {
     }
   })
 
-  it('never drops a project description that needs a page break', async () => {
-    const runs = await renderToGlyphRuns(MinimalPdfTemplate({ data: projectOverflowData, meta: projectsMeta, title: 'CV' }))
+  // Runs against every template, not just Minimal: the clipping bug this
+  // guards existed in all six simultaneously and no test caught it in any of
+  // them. A Minimal-only check would pass while five templates silently drop
+  // content.
+  const OVERFLOW_TEMPLATES = [
+    ['minimal', MinimalPdfTemplate],
+    ['classic', ClassicPdfTemplate],
+    ['modern', ModernPdfTemplate],
+    ['executive', ExecutivePdfTemplate],
+    ['sidebar', SidebarPdfTemplate],
+    ['ats', AtsPdfTemplate],
+  ] as const
+
+  it.each(OVERFLOW_TEMPLATES)('%s never drops a project description that needs a page break', async (id, Template) => {
+    const runs = await renderToGlyphRuns(
+      Template({ data: projectOverflowData, meta: { ...projectsMeta, templateId: id }, title: 'CV' })
+    )
 
     // The description alone is well over a page's worth of text — confirm
     // the fixture actually forces a break rather than trivially fitting.
-    expect(new Set(runs.map((r) => r.page)).size).toBeGreaterThan(1)
+    expect(new Set(runs.map((r) => r.page)).size, `${id}: fixture did not paginate`).toBeGreaterThan(1)
 
     const tail = runs.find((r) => r.str.includes('MARKER-END-OF-DESCRIPTION'))
-    expect(tail, 'trailing words of the project description were dropped, not just moved').toBeDefined()
+    expect(tail, `${id}: trailing words of the project description were dropped, not just moved`).toBeDefined()
   })
 })
