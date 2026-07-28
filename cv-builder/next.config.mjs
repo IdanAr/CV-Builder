@@ -21,6 +21,26 @@ const nextConfig = {
   // pagination routes, because nft infers a `*.woff` wildcard from the runtime
   // path construction in registry.ts. This pins that behaviour so an
   // undocumented inference cannot regress silently on a Next upgrade.
+  //
+  // ── IF THE BUILD PANICS, START HERE ──────────────────────────────────────
+  //   FATAL: An unexpected Turbopack error occurred.
+  //   Error [TurbopackInternalError]: '<path>' is a symlink causes that
+  //   causes an infinite loop!
+  //     - Execution of <NftJsonAsset as Asset>::content failed
+  //     - Execution of read_glob failed
+  //
+  // That is this block. Declaring any `outputFileTracingIncludes` entry makes
+  // the tracer walk node_modules, so a single self-referential symlink
+  // anywhere under it aborts the whole build with the message above, which
+  // names the symlink but never mentions this config.
+  //
+  // Fix: delete the offending link (`rm node_modules/node_modules`), not this
+  // config. Narrowing the pattern does NOT help — verified by replacing the
+  // glob with 64 fully literal file paths, which panics identically. The walk
+  // is triggered by the option itself, not by the pattern's breadth.
+  //
+  // Removing this block also makes the build pass, which is a tempting wrong
+  // turn: it trades an obvious build failure for a silent production one.
   // Keys are matched as GLOBS, so a literal dynamic-route path does not work:
   // in a glob, `[id]` is a character class matching a single "i" or "d", so
   // '/api/resumes/[id]/export/pdf' matches no route at all and the entry is
