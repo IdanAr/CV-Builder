@@ -309,7 +309,11 @@ describe('docx outline verification (Word nav pane / ATS outline, structural rep
 
     const headingParagraph = documentXml.match(/<w:p><w:pPr><w:pStyle w:val="Heading1"\/>[\s\S]*?<\/w:p>/)
     expect(headingParagraph).not.toBeNull()
-    // Section-heading text ("Work Experience") sits inside this paragraph
+    // "Work Experience" is the FIRST Heading1 only because `sampleData` has no
+    // basics.summary — a summary would emit its own section heading ahead of
+    // it. If a future fixture change adds one, this fails loudly rather than
+    // silently, but the coupling is deliberate: matching the first Heading1
+    // keeps the regex simple.
     expect(headingParagraph![0]).toContain('Work Experience')
     // The style now owns sizing -- no inline <w:sz> left on the run
     expect(headingParagraph![0]).not.toContain('<w:sz')

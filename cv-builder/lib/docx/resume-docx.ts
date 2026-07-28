@@ -652,8 +652,12 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta, mode: ExportMode =
   const docxStyles = buildDocxStyles(theme, headFont, bodyFont)
   const makeDocument = (children: (Paragraph | Table)[]) => new Document({
     styles: {
-      ...docxStyles,
       default: {
+        // buildDocxStyles returns only `default` — it overrides docx's built-in
+        // Title/Heading1/Heading2 rather than declaring new paragraphStyles,
+        // because declaring ids the library already injects emits duplicate
+        // <w:style> elements. Spreading it above this key would therefore be
+        // dead code, not a merge.
         ...docxStyles.default,
         document: {
           run: { font: bodyFont, size: 22 },
