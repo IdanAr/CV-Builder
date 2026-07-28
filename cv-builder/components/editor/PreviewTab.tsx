@@ -31,6 +31,26 @@ function clampZoom(z: number): number {
   return Math.round(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z)) * 100) / 100
 }
 
+/**
+ * Auto-fit scale for a container width, clamped to the same range as every
+ * user-facing zoom control.
+ *
+ * The clamp is load-bearing, not defensive tidying. `resolveAnchorTops` keeps
+ * a break only when its measured position clears `minGap`, a fixed 200
+ * *visual* px — but measurements are post-scale, so at small enough scale a
+ * whole page is shorter than the gap. The true position is rejected, the
+ * arithmetic estimate is rejected by the same guard, and the break is dropped:
+ * no divider is drawn at all. Measured at scale 0.15 (a container under ~183px
+ * wide), where the page-1 divider disappears entirely.
+ *
+ * Every other path into `scale` already goes through `clampZoom`; this one
+ * came straight from the container width and could reach 0, or go negative for
+ * a container narrower than the 64px padding.
+ */
+export function fitScaleFor(clientWidth: number): number {
+  return clampZoom(Math.min(1, (clientWidth - 64) / A4_WIDTH_PX))
+}
+
 export function PreviewTab() {
   const data = useResumeEditorStore((s) => s.data)
   const meta = useResumeEditorStore((s) => s.meta)
@@ -54,7 +74,7 @@ export function PreviewTab() {
     const el = containerRef.current
     if (!el) return
     const ro = new ResizeObserver(() => {
-      setFitScale(Math.min(1, (el.clientWidth - 64) / A4_WIDTH_PX))
+      setFitScale(fitScaleFor(el.clientWidth))
     })
     ro.observe(el)
     return () => ro.disconnect()
