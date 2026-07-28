@@ -250,6 +250,21 @@ describe('docx semantic structure', () => {
   it('keeps headings with the content that follows', async () => {
     const xml = await documentXml(buildDocx(sampleData, defaultMeta, 'designed'))
     expect(xml).toContain('<w:keepNext')
+    // keepNext alone is satisfied by sectionHeading; keepLines is what stops a
+    // position or summary paragraph splitting mid-entry, and deleting both
+    // source lines previously left the suite green.
+    expect(xml).toContain('<w:keepLines')
+  })
+
+  it('does not let the Heading2 style bold the entry-head date range', async () => {
+    // ECMA-376 §17.7.2: an absent <w:b> on a run means *inherit*, not *off*.
+    // A bold Heading2 style therefore reaches the date run, which sets no bold
+    // of its own — bolding work/volunteer dates while the identically-shaped
+    // dates on education, awards and publications stayed regular.
+    const { stylesXml } = await docxParts(buildDocx(sampleData, defaultMeta, 'designed'))
+    const heading2 = stylesXml.match(/<w:style [^>]*w:styleId="Heading2"[\s\S]*?<\/w:style>/)
+    expect(heading2, 'Heading2 style not found').not.toBeNull()
+    expect(heading2![0]).not.toContain('<w:b/>')
   })
 
   it('stays free of tables, text boxes and drawings in single-column mode', async () => {

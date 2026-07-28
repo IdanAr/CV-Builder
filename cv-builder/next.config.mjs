@@ -16,9 +16,11 @@ const FONT_GLOBS = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   serverExternalPackages: ['pdf-parse', 'mongodb', 'mongoose'],
-  // The PDF renderer reads these at runtime from a path built at runtime, which
-  // the tracer cannot follow; without an explicit include they are dropped from
-  // the serverless bundle and exports fail in production only.
+  // Belt-and-braces, not a fix for a live failure. Measured: a build with this
+  // block removed still traced all 64 required faces into the pdf and
+  // pagination routes, because nft infers a `*.woff` wildcard from the runtime
+  // path construction in registry.ts. This pins that behaviour so an
+  // undocumented inference cannot regress silently on a Next upgrade.
   // Keys are matched as GLOBS, so a literal dynamic-route path does not work:
   // in a glob, `[id]` is a character class matching a single "i" or "d", so
   // '/api/resumes/[id]/export/pdf' matches no route at all and the entry is

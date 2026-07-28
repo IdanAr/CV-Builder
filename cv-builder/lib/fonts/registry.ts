@@ -16,20 +16,40 @@ import {
 export { FONT_SUBSTITUTES }
 
 /**
- * Resolve through the module graph rather than process.cwd(): on Vercel the
- * working directory of a serverless function is not guaranteed to be the app
- * root, and a cwd-relative path is the classic "works locally, 500s in
- * production" failure. require.resolve follows whatever layout the tracer
- * produced. The cwd form stays as a last-resort fallback.
+ * Locate a font file on disk.
+ *
+ * **In a production build, `process.cwd()` is the only live path.** Turbopack
+ * compiles `require.resolve` of a template literal into a *context module*,
+ * whose `resolve` returns the numeric module id rather than a filename —
+ * verified in the built chunk: `moduleContext.resolve = (id) => map[id].id()`.
+ * `path.dirname(1010)` then throws `ERR_INVALID_ARG_TYPE`, which the guard
+ * below catches. Under Vitest and plain Node the same call does return a real
+ * path, so the module-graph branch is live in tests and dead in production —
+ * the reverse of what matters.
+ *
+ * This is left as a best-effort first attempt rather than deleted, because it
+ * works wherever `require.resolve` is genuine. But the cwd form is not a
+ * "last resort": on Vercel it is the one that runs, and it is only correct
+ * while the function's working directory is the app root. That assumption is
+ * unverified — Task 10's preview-deploy check was never run — and it is the
+ * single riskiest thing in this feature. A wrong cwd does not 500: every
+ * family fails its `accessSync` probe, `pdfFontFamily` degrades to
+ * base-14 Helvetica, and the export silently reprints the `ª`-for-₪ corruption
+ * this phase exists to remove, visible only as `[fonts] failed to register`
+ * lines in the platform log.
  */
 function fontFile(slug: string, subset: string, weight: number, style: string): string {
   const file = `${slug}-${subset}-${weight}-${style}.woff`
   try {
     const pkgJson = require.resolve(`@fontsource/${slug}/package.json`)
-    return path.join(path.dirname(pkgJson), 'files', file)
+    // Guard the bundler case explicitly instead of relying on dirname throwing.
+    if (typeof pkgJson === 'string') {
+      return path.join(path.dirname(pkgJson), 'files', file)
+    }
   } catch {
-    return path.join(process.cwd(), 'node_modules', '@fontsource', slug, 'files', file)
+    // fall through
   }
+  return path.join(process.cwd(), 'node_modules', '@fontsource', slug, 'files', file)
 }
 
 let registered = false

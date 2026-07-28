@@ -19,11 +19,18 @@ import { CSS } from '@dnd-kit/utilities'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { getColumnSide } from '@/lib/get-column-side'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
+import { FONT_SUBSTITUTES } from '@/lib/fonts/families'
 
-const ATS_FONTS = [
-  'Calibri', 'Arial', 'Helvetica', 'Garamond', 'Cambria', 'Georgia',
-  'Lato', 'Roboto', 'IBM Plex Sans',
-]
+/**
+ * Derived, not restated. A hardcoded list here was the last unguarded copy of
+ * the font names: adding one that FONT_SUBSTITUTES does not know would leave
+ * both `webFontFamily` and `pdfFontFamily` falling through to the default, so
+ * the user picks a font and silently gets Carlito in the preview *and* the
+ * PDF — the exact divergence this phase exists to remove — with the whole
+ * suite green. `families.ts` is client-safe by construction, so importing it
+ * from this 'use client' panel is legal.
+ */
+const ATS_FONTS = Object.keys(FONT_SUBSTITUTES)
 
 function TemplateThumb({ id, active }: { id: string; active: boolean }) {
   const ink = active ? '#4f46e5' : '#a5b4fc'

@@ -20,10 +20,36 @@ export function withLineHeights<T extends Record<string, Style>>(
   for (const [key, style] of Object.entries(styles)) {
     out[key] =
       style && style.fontSize !== undefined && style.lineHeight === undefined
-        ? { ...style, lineHeight: lineSpacing }
+        ? { ...style, lineHeight: lineHeightFor(style.fontSize as number, lineSpacing) }
         : style
   }
   return out as T
+}
+
+/** Text at or above this size gets the floor below. */
+const HEADING_FONT_SIZE = 16
+/**
+ * Smallest line box a heading may have, as a multiple of its font size.
+ * Derived from the worst measured case rather than picked: IBM Plex Sans has a
+ * -0.24em descender and a 0.698em cap height, so a 22pt name over a 12pt
+ * headline needs 5.28 + 8.38 = 13.66pt of clearance. At lineSpacing 1.0 it got
+ * 12.5pt and the two lines overlapped.
+ */
+const HEADING_MIN_LINE_HEIGHT = 1.15
+
+/**
+ * A unitless lineHeight resolves against the font size where it is declared,
+ * so the same multiplier that reads comfortably at 10pt body text produces a
+ * line box smaller than the glyphs' own ink extent at 22pt. The user's line
+ * spacing slider allows 1.0-1.15; at 1.0 and 1.05 a name with descenders
+ * (g, j, p, q, y) collided with the headline beneath it in most template and
+ * font combinations. Body text keeps the user's exact setting — only headings
+ * get a floor, and only when their setting is below it, so 1.15 is unchanged.
+ */
+export function lineHeightFor(fontSize: number, lineSpacing: number): number {
+  return fontSize >= HEADING_FONT_SIZE
+    ? Math.max(lineSpacing, HEADING_MIN_LINE_HEIGHT)
+    : lineSpacing
 }
 
 /**
@@ -40,8 +66,14 @@ export function PdfBullet({
   children: React.ReactNode
 }) {
   const base: Style[] = Array.isArray(style) ? style : style ? [style] : []
+  // Deliberately NOT wrap={false}. `highlights` is an unbounded string array in
+  // the schema, so a single pasted bullet can exceed a page — and react-pdf
+  // silently discards everything past the page bottom of a non-wrapping View
+  // rather than erroring. A ~14.5k-character highlight rendered as one page
+  // with the tail simply missing. Letting the row wrap costs a bullet split
+  // across a page break; forbidding it costs the user's content.
   return (
-    <View style={{ flexDirection: 'row', marginLeft: indent }} wrap={false}>
+    <View style={{ flexDirection: 'row', marginLeft: indent }}>
       <Text style={[...base, { width: gap * 2 }]}>{'•'}</Text>
       <Text style={[...base, { flex: 1 }]}>{children}</Text>
     </View>

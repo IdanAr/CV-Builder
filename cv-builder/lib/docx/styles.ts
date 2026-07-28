@@ -20,8 +20,8 @@ export function buildDocxStyles(
   headFont: string,
   bodyFont: string
 ): IStylesOptions {
-  const heading = (size: number) => ({
-    run: { font: headFont, size, bold: true, color: theme.sectionTitleColor.replace('#', '') },
+  const heading = (size: number, bold: boolean) => ({
+    run: { font: headFont, size, bold, color: theme.sectionTitleColor.replace('#', '') },
     paragraph: { spacing: { before: 270, after: 120 }, keepNext: true },
   })
 
@@ -31,8 +31,16 @@ export function buildDocxStyles(
         run: { font: headFont, size: theme.nameSize, bold: true },
         paragraph: { spacing: { after: 60 }, keepNext: true },
       },
-      heading1: heading(theme.headingSize),
-      heading2: heading(Math.max(theme.headingSize - 2, 20)),
+      // Heading1 owns its bold: `sectionHeading` no longer sets it on the run.
+      heading1: heading(theme.headingSize, true),
+      // Heading2 must NOT, even though it is a heading. It is applied to entry
+      // heads, whose paragraph holds two runs: the entry name, which sets
+      // `bold: true` itself, and the date range, which sets no `bold` at all.
+      // Under ECMA-376 §17.7.2 an absent `<w:b>` on a run means *inherit*, not
+      // *off* — so a bold style silently bolded every work and volunteer date
+      // range while the identically-shaped dates on education, awards,
+      // publications and projects (not under Heading2) stayed regular.
+      heading2: heading(Math.max(theme.headingSize - 2, 20), false),
       document: { run: { font: bodyFont, size: 22 } },
     },
   }
