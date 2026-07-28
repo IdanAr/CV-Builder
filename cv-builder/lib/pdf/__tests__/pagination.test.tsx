@@ -44,6 +44,21 @@ const splitEntryData: ResumeData = {
   work: workEntries(10, 0),
 }
 
+// A description long enough that it cannot fit on a single page by itself
+// (well over a page's worth of text), ending in a distinctive marker phrase
+// so the test can assert the tail of the description actually made it into
+// the rendered output rather than being silently dropped.
+const LONG_DESCRIPTION =
+  Array.from({ length: 220 }, (_, i) => `Sentence number ${i + 1} describing the project in exhaustive, repetitive detail so the paragraph runs long.`).join(' ')
+  + ' MARKER-END-OF-DESCRIPTION'
+
+const projectOverflowData: ResumeData = {
+  basics: { name: 'Idan Arbel', label: 'Architect' },
+  projects: [{ name: 'Overflow Project', startDate: '2020-01', endDate: '2021-01', description: LONG_DESCRIPTION }],
+}
+
+const projectsMeta: ResumeMeta = { ...meta, sectionOrder: ['projects'] }
+
 /**
  * Reading-order successor lookup. `y` resets at every page boundary, so a
  * plain `r.y < target.y` filter silently mixes runs from later pages in with
@@ -93,5 +108,16 @@ describe('pagination', () => {
       const position = firstMatchAfter(runs, company, (r) => r.str.includes('Data Solutions Architect'))
       expect(position?.page, `Company ${i} split from its position line`).toBe(company.page)
     }
+  })
+
+  it('never drops a project description that needs a page break', async () => {
+    const runs = await renderToGlyphRuns(MinimalPdfTemplate({ data: projectOverflowData, meta: projectsMeta, title: 'CV' }))
+
+    // The description alone is well over a page's worth of text — confirm
+    // the fixture actually forces a break rather than trivially fitting.
+    expect(new Set(runs.map((r) => r.page)).size).toBeGreaterThan(1)
+
+    const tail = runs.find((r) => r.str.includes('MARKER-END-OF-DESCRIPTION'))
+    expect(tail, 'trailing words of the project description were dropped, not just moved').toBeDefined()
   })
 })

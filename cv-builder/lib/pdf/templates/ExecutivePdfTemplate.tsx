@@ -304,8 +304,8 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
                       left={<Text style={styles.bold}>{p.name ?? ''}</Text>}
                       right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
                     />
-                    {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
                   </View>
+                  {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
                   {(p.highlights ?? []).map((h, hi) => (
                     <PdfBullet key={hi} style={styles.bulletHang} indent={T.bulletIndent} gap={T.bulletGap}>
                       {h}

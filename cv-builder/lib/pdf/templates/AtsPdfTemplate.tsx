@@ -252,8 +252,8 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
               <View key={i} style={{ marginBottom: 5 }}>
                 <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
                   {entryHead(p.name ?? '', formatDateRange(p.startDate, p.endDate))}
-                  {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
                 </View>
+                {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
                 {(p.highlights ?? []).map((h, hi) => (
                   <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
                 ))}
