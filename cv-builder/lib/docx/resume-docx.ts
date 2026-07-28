@@ -7,6 +7,7 @@ import type { ExportMode } from '@/lib/export-mode'
 import { parseRichText, TextRun as RichTextRun } from '@/lib/rich-text'
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
 import { formatDate, formatDateRange } from '@/lib/format-date'
+import { buildDocxStyles } from './styles'
 
 function richTextRuns(
   text: string,
@@ -170,9 +171,10 @@ function buildAtsDocxTheme(meta: ResumeMeta): DocxTheme {
 
 function sectionHeading(text: string, font: string, theme: DocxTheme): Paragraph {
   return new Paragraph({
+    style: 'Heading1',
     children: [new TextRun({
       text: theme.sectionUppercase ? text.toUpperCase() : text,
-      bold: true, font, size: theme.headingSize, color: theme.sectionTitleColor,
+      font,
     })],
     // Web section titles: 18px top / 8px bottom margins, 1.5px underline
     spacing: { before: 270, after: 120 },
@@ -192,12 +194,19 @@ function jobEntry(
 ): Paragraph[] {
   const paras: Paragraph[] = [
     new Paragraph({
+      style: 'Heading2',
       children: [
-        new TextRun({ text: name, bold: true, font, size: 22 }),
+        // Heading2's style run/paragraph properties exist for the outline
+        // (Word nav pane / ATS section detection), not for this entry's
+        // look — the entry head keeps its own plain-black, undersized
+        // appearance, so color and spacing-after are pinned explicitly
+        // rather than left to inherit the section-heading accent color and
+        // 6pt trailing gap the style otherwise contributes.
+        new TextRun({ text: name, bold: true, font, size: 22, color: '000000' }),
         new TextRun({ text: `\t${dates}`, font, size: 20, color: '666666' }),
       ],
       tabStops: [{ type: 'right' as never, position: tabWidthTwips }],
-      spacing: { before: 150 },
+      spacing: { before: 150, after: 0 },
       // Keep the entry head on the same page as the position line that
       // identifies it, matching the PDF entry-atomicity treatment.
       keepNext: true,
@@ -640,9 +649,12 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta, mode: ExportMode =
 
   const ensureHttps = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`
 
+  const docxStyles = buildDocxStyles(theme, headFont, bodyFont)
   const makeDocument = (children: (Paragraph | Table)[]) => new Document({
     styles: {
+      ...docxStyles,
       default: {
+        ...docxStyles.default,
         document: {
           run: { font: bodyFont, size: 22 },
           paragraph: { spacing: { line: lineVal, lineRule } },
@@ -720,7 +732,8 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta, mode: ExportMode =
   const headerParas: Paragraph[] = []
   headerParas.push(
     new Paragraph({
-      children: [new TextRun({ text: basics.name ?? '', bold: true, font: headFont, size: theme.nameSize, ...nameProps })],
+      style: 'Title',
+      children: [new TextRun({ text: basics.name ?? '', bold: true, font: headFont, ...nameProps })],
       alignment: theme.headerAlign,
       spacing: { after: 60 },
       ...headerShadingProps,
