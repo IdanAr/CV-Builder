@@ -2,15 +2,14 @@
 import React from 'react'
 import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
-import { richTextToHtml } from '@/lib/rich-text'
+import { RichText } from './RichText'
 import { getColumnSide } from '@/lib/get-column-side'
 import { formatDateRange } from '@/lib/format-date'
 import { webFontFamily } from '@/lib/fonts/families'
 import { MODERN_TOKENS as T, px } from '@/lib/design/tokens'
 
 function rt(text: string | undefined | null): React.ReactNode {
-  if (!text) return null
-  return <span dangerouslySetInnerHTML={{ __html: richTextToHtml(text) }} />
+  return <RichText text={text} />
 }
 
 const ALL_SECTIONS = ['work', 'education', 'skills', 'certificates', 'awards', 'publications', 'volunteer', 'languages', 'interests', 'projects']

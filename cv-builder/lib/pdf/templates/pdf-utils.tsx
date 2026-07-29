@@ -1,9 +1,10 @@
 import React from 'react'
 import { Text } from '@react-pdf/renderer'
 import type { Style } from '@react-pdf/types'
-import { parseRichText } from '@/lib/rich-text'
+import { parseRichText, splitParagraphs } from '@/lib/rich-text'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { registerPdfFonts, pdfFontFamily } from '@/lib/fonts/registry'
+import { PARAGRAPH_GAP_PT } from '@/lib/design/tokens'
 
 /**
  * Returns the array font-family chain for a picker font name, registering the
@@ -41,25 +42,37 @@ export function renderPdfRichText(
   baseStyle?: Style | Style[]
 ): React.ReactNode {
   if (!text) return null
-  const runs = parseRichText(text)
-  if (runs.length === 1 && !runs[0].bold && !runs[0].italic && !runs[0].underline) {
-    return <Text style={baseStyle}>{runs[0].text}</Text>
-  }
-  return (
-    <Text style={baseStyle}>
-      {runs.map((run, i) => {
-        const style: Record<string, string> = {}
-        if (run.bold) style.fontWeight = 'bold'
-        if (run.italic) style.fontStyle = 'italic'
-        if (run.underline) style.textDecoration = 'underline'
-        return (
-          <Text key={i} style={Object.keys(style).length ? style : undefined}>
-            {run.text}
-          </Text>
-        )
-      })}
+  // One <Text> block per paragraph: paragraphs stay visually distinct via a
+  // real inter-block gap instead of a blank line inside a single <Text> — an
+  // empty line there has no glyphs to carry the font and forces a bare, unembedded
+  // Helvetica fallback into the file.
+  const paragraphs = splitParagraphs(text)
+  if (paragraphs.length === 0) return null
+  const base: Style[] = Array.isArray(baseStyle) ? baseStyle : baseStyle ? [baseStyle] : []
+  return paragraphs.map((paragraph, i) => (
+    <Text key={i} style={i === 0 ? base : [...base, { marginTop: PARAGRAPH_GAP_PT }]}>
+      {richTextInlineRuns(paragraph)}
     </Text>
-  )
+  ))
+}
+
+/** Inline <Text> run nodes for one paragraph, carrying bold/italic/underline. */
+function richTextInlineRuns(paragraph: string): React.ReactNode {
+  const runs = parseRichText(paragraph)
+  if (runs.length === 1 && !runs[0].bold && !runs[0].italic && !runs[0].underline) {
+    return runs[0].text
+  }
+  return runs.map((run, i) => {
+    const style: Record<string, string> = {}
+    if (run.bold) style.fontWeight = 'bold'
+    if (run.italic) style.fontStyle = 'italic'
+    if (run.underline) style.textDecoration = 'underline'
+    return (
+      <Text key={i} style={Object.keys(style).length ? style : undefined}>
+        {run.text}
+      </Text>
+    )
+  })
 }
 
 /**

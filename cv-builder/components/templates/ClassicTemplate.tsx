@@ -4,14 +4,13 @@ import React from 'react'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { renderCustomSection } from './renderCustomSection'
 import { getColumnSide } from '@/lib/get-column-side'
-import { richTextToHtml } from '@/lib/rich-text'
+import { RichText } from './RichText'
 import { formatDateRange } from '@/lib/format-date'
 import { webFontFamily } from '@/lib/fonts/families'
 import { CLASSIC_TOKENS as T, px } from '@/lib/design/tokens'
 
 function rt(text: string | undefined | null): React.ReactNode {
-  if (!text) return null
-  return <span dangerouslySetInnerHTML={{ __html: richTextToHtml(text) }} />
+  return <RichText text={text} />
 }
 
 export interface TemplateProps {
