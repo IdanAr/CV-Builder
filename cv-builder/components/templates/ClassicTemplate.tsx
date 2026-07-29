@@ -6,6 +6,8 @@ import { renderCustomSection } from './renderCustomSection'
 import { getColumnSide } from '@/lib/get-column-side'
 import { richTextToHtml } from '@/lib/rich-text'
 import { formatDateRange } from '@/lib/format-date'
+import { webFontFamily } from '@/lib/fonts/families'
+import { CLASSIC_TOKENS as T, px } from '@/lib/design/tokens'
 
 function rt(text: string | undefined | null): React.ReactNode {
   if (!text) return null
@@ -25,7 +27,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
   const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : ALL_SECTIONS
 
   const page: React.CSSProperties = {
-    fontFamily: `${meta.fontFamily}, Arial, sans-serif`,
+    fontFamily: webFontFamily(meta.fontFamily),
     fontSize: '11pt',
     lineHeight: meta.lineSpacing,
     background: '#fff',
@@ -37,14 +39,14 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
   }
 
   const sectionTitle: React.CSSProperties = {
-    fontFamily: `${meta.headerFontFamily}, Arial, sans-serif`,
-    fontSize: '13pt',
+    fontFamily: webFontFamily(meta.headerFontFamily),
+    fontSize: `${T.sectionTitleSize}pt`,
     fontWeight: 700,
     color: meta.primaryColor,
     borderBottom: `1.5px solid ${meta.primaryColor}`,
     paddingBottom: '2px',
-    marginTop: '18px',
-    marginBottom: '8px',
+    marginTop: px(T.sectionTitleMarginTop),
+    marginBottom: px(T.sectionTitleMarginBottom),
   }
 
   function renderSection(section: string): React.ReactNode {
@@ -62,7 +64,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
           <div key="work">
             <div style={sectionTitle}>Work Experience</div>
             {work.map((job, i) => (
-              <div key={i} style={{ marginBottom: '10px' }}>
+              <div key={i} style={{ marginBottom: px(T.entryMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong style={{ fontSize: '11pt' }}>{job.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -72,7 +74,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
                 <div style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{job.position}</div>
                 {job.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(job.summary)}</div>}
                 {(job.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
                     {(job.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
@@ -88,7 +90,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
           <div key="education">
             <div style={sectionTitle}>Education</div>
             {education.map((edu, i) => (
-              <div key={i} style={{ marginBottom: '8px' }}>
+              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{edu.institution}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -148,7 +150,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
           <div key="volunteer">
             <div style={sectionTitle}>Volunteer</div>
             {vol.map((v, i) => (
-              <div key={i} style={{ marginBottom: '8px' }}>
+              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{v.organization}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -158,7 +160,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
                 <div style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{v.position}</div>
                 {v.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(v.summary)}</div>}
                 {(v.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
                     {(v.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
@@ -190,7 +192,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
           <div key="awards">
             <div style={sectionTitle}>Awards</div>
             {awards.map((a, i) => (
-              <div key={i} style={{ marginBottom: '8px' }}>
+              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{a.title}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>{a.date}</span>
@@ -209,7 +211,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
           <div key="publications">
             <div style={sectionTitle}>Publications</div>
             {publications.map((p, i) => (
-              <div key={i} style={{ marginBottom: '8px' }}>
+              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{p.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>{p.releaseDate}</span>
@@ -246,7 +248,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
           <div key="projects">
             <div style={sectionTitle}>Projects</div>
             {projects.map((p, i) => (
-              <div key={i} style={{ marginBottom: '10px' }}>
+              <div key={i} style={{ marginBottom: px(T.projectMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{p.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -255,7 +257,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
                 </div>
                 {p.description && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{p.description}</div>}
                 {(p.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
                     {(p.highlights ?? []).map((h, hi) => <li key={hi}>{h}</li>)}
                   </ul>
                 )}
@@ -273,12 +275,12 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
   }
 
   const header = (
-    <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-      <div style={{ fontFamily: `${meta.headerFontFamily}, Arial, sans-serif`, fontSize: '20pt', fontWeight: 700 }}>
+    <div style={{ textAlign: 'center', marginBottom: px(T.headerMarginBottom) }}>
+      <div style={{ fontFamily: webFontFamily(meta.headerFontFamily), fontSize: `${T.nameSize}pt`, fontWeight: 700 }}>
         {basics.name}
       </div>
-      {basics.label && <div style={{ fontSize: '12pt', color: '#555', marginTop: '2px' }}>{basics.label}</div>}
-      <div style={{ fontSize: '10pt', color: '#555', marginTop: '4px' }}>
+      {basics.label && <div style={{ fontSize: `${T.labelSize}pt`, color: '#555', marginTop: '2px' }}>{basics.label}</div>}
+      <div style={{ fontSize: `${T.contactSize}pt`, color: '#555', marginTop: '4px' }}>
         {(() => {
           const eu = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`
           const parts: React.ReactNode[] = []
@@ -301,7 +303,7 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
       <div style={page}>
         {header}
         {basics.summary && (
-          <div style={{ fontSize: '10pt', fontStyle: 'italic', marginBottom: '12px' }}>{rt(basics.summary)}</div>
+          <div style={{ fontSize: '10pt', fontStyle: 'italic', marginBottom: px(T.summaryMarginBottom) }}>{rt(basics.summary)}</div>
         )}
         <div style={{ display: 'flex', gap: '24px' }}>
           <div style={{ flex: '0 0 58%' }}>{leftSections.map((s) => (

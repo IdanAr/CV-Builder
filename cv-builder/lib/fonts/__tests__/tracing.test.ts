@@ -1,0 +1,135 @@
+import { describe, it, expect, beforeAll } from 'vitest'
+import { existsSync } from 'node:fs'
+import path from 'node:path'
+import { FONT_SUBSTITUTES, SUBSETS, WEIGHTS, STYLES } from '../families'
+
+/**
+ * The export routes read `node_modules/@fontsource/**\/files/*.woff` at
+ * runtime.
+ *
+ * This config is belt-and-braces, not a fix for a live failure — measured, not
+ * assumed. A build with `outputFileTracingIncludes` removed entirely still
+ * traced all 64 required faces into the pdf and pagination routes, because nft
+ * infers a `*.woff` wildcard from the runtime path construction in
+ * `registry.ts`. What this pins is that the behaviour cannot regress silently
+ * on a Next upgrade, since that inference is undocumented.
+ *
+ * The tests below still earn their place: they caught two defects that would
+ * each have made the config a no-op — a glob that excluded every italic face,
+ * and route keys containing `[id]`, which is a glob character class and
+ * therefore matches nothing.
+ */
+
+/** The routes that render a PDF/DOCX and therefore need the font files. */
+const EXPORT_ROUTES = [
+  '/api/resumes/[id]/export/pdf',
+  '/api/resumes/[id]/export/docx',
+  '/api/preview/pagination',
+]
+
+/**
+ * Load the real config rather than grepping its source. The globs are built by
+ * interpolation, so the literal string "@fontsource/carlito" never appears in
+ * the file — a text search would have to assert on the template's shape and
+ * would break the moment the config is refactored without any behaviour
+ * changing.
+ */
+let includes: Record<string, string[]>
+
+beforeAll(async () => {
+  const mod = await import(path.join(process.cwd(), 'next.config.mjs'))
+  includes = mod.default.outputFileTracingIncludes
+})
+
+/** Every filename `registerPdfFonts` will try to read, per family. */
+function expectedFiles(slug: string): string[] {
+  const files: string[] = []
+  for (const subset of SUBSETS) {
+    for (const weight of WEIGHTS) {
+      for (const style of STYLES) {
+        files.push(`${slug}-${subset}-${weight}-${style}.woff`)
+      }
+    }
+  }
+  return files
+}
+
+function globToRegExp(glob: string): RegExp {
+  return new RegExp('^' + glob.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*') + '$')
+}
+
+/** Route-key globs, where `**` spans path separators. */
+function routeKeyToRegExp(key: string): RegExp {
+  const escaped = key.replace(/[.*+^${}()|[\]\\]/g, '\\$&')
+  // `**` spans separators, a lone `*` does not.
+  return new RegExp('^' + escaped.replace(/\\\*\\\*/g, '\u0000').replace(/\\\*/g, '[^/]*').replace(/\u0000/g, '.*') + '$')
+}
+
+/** The config globs that apply to a given route, via key-glob matching. */
+function globsFor(route: string): string[] {
+  return Object.entries(includes)
+    .filter(([key]) => routeKeyToRegExp(key).test(route))
+    .flatMap(([, globs]) => globs)
+}
+
+describe('serverless font tracing', () => {
+  /**
+   * Keys are matched as globs, so a literal dynamic-route path silently
+   * matches nothing: in a glob `[id]` is a character class standing for a
+   * single "i" or "d". Next emits no warning — the entry is just dropped and
+   * the .nft.json comes out without the files, which only shows up as a
+   * production 500. Measured: the literal key produced 0 font entries for the
+   * docx route, the `**` key produced all 64.
+   */
+  it('uses no bracketed dynamic-route segment in a tracing key', () => {
+    for (const key of Object.keys(includes)) {
+      expect(key, `"${key}" is a glob — [id] matches one character, not a route segment`)
+        .not.toMatch(/\[/)
+    }
+  })
+
+  it('covers every route that renders an export', () => {
+    for (const route of EXPORT_ROUTES) {
+      expect(globsFor(route).length, `no tracing key matches ${route}`).toBeGreaterThan(0)
+    }
+  })
+
+  /**
+   * The decisive check: every face the registry can ask for must be matched by
+   * some traced glob. Asserting on resolved paths rather than the pattern text
+   * means a future rewrite of the glob is still checked.
+   *
+   * In particular the glob must not narrow to `-normal`. The registry
+   * registers italic explicitly and ExecutivePdfTemplate renders
+   * `fontStyle: 'italic'`; an untraced italic is a production-only defect of
+   * exactly the kind this config exists to prevent.
+   */
+  it.each(EXPORT_ROUTES)('%s traces every face the registry registers', (route) => {
+    const patterns = globsFor(route).map(globToRegExp)
+    for (const { slug } of Object.values(FONT_SUBSTITUTES)) {
+      for (const file of expectedFiles(slug)) {
+        const target = `./node_modules/@fontsource/${slug}/files/${file}`
+        expect(
+          patterns.some(rx => rx.test(target)),
+          `${route}: no traced glob matches ${target}`
+        ).toBe(true)
+      }
+    }
+  })
+
+  it('the traced files exist on disk under the names the registry expects', () => {
+    for (const { slug } of Object.values(FONT_SUBSTITUTES)) {
+      for (const subset of SUBSETS) {
+        for (const weight of WEIGHTS) {
+          for (const style of STYLES) {
+            const file = path.join(
+              process.cwd(), 'node_modules', '@fontsource', slug, 'files',
+              `${slug}-${subset}-${weight}-${style}.woff`
+            )
+            expect(existsSync(file), `missing ${file}`).toBe(true)
+          }
+        }
+      }
+    }
+  })
+})

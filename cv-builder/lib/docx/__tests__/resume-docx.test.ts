@@ -160,12 +160,17 @@ describe('buildDocx ATS typography bands (Sidebar rail + Executive name)', () =>
   })
 
   it('executive name renders at 22pt (w:sz 44, half-points), not the old 26pt', async () => {
+    // The name paragraph now carries the size via the Title style (Task 9)
+    // rather than an inline <w:sz> on the run, so the regression this test
+    // guards against is checked in word/styles.xml instead of document.xml.
     const meta: ResumeMeta = { ...defaultMeta, templateId: 'executive' }
-    const xml = await docXml(buildDocx(sampleData, meta))
-    const nameRunMatch = xml.match(/<w:r>(?:(?!<w:r>)[\s\S])*?Jane Smith(?:(?!<w:r>)[\s\S])*?<\/w:r>/)
-    expect(nameRunMatch).not.toBeNull()
-    expect(nameRunMatch![0]).toContain('w:sz w:val="44"')
-    expect(nameRunMatch![0]).not.toContain('w:sz w:val="52"')
+    const buffer = await Packer.toBuffer(buildDocx(sampleData, meta))
+    const zip = await JSZip.loadAsync(buffer)
+    const stylesXml = await zip.file('word/styles.xml')!.async('string')
+    const titleStyleMatch = stylesXml.match(/<w:style w:type="paragraph" w:styleId="Title">[\s\S]*?<\/w:style>/)
+    expect(titleStyleMatch).not.toBeNull()
+    expect(titleStyleMatch![0]).toContain('w:sz w:val="44"')
+    expect(titleStyleMatch![0]).not.toContain('w:sz w:val="52"')
   })
 })
 
@@ -222,5 +227,110 @@ describe('buildDocx ats mode', () => {
     const textIdx = xml.indexOf('Seasoned platform engineer.')
     expect(headingIdx).toBeGreaterThan(-1)
     expect(textIdx).toBeGreaterThan(headingIdx)
+  })
+})
+
+async function documentXml(doc: ReturnType<typeof buildDocx>): Promise<string> {
+  const buffer = await Packer.toBuffer(doc)
+  const zip = await JSZip.loadAsync(buffer)
+  return zip.file('word/document.xml')!.async('string')
+}
+
+describe('docx semantic structure', () => {
+  it('applies Heading1 to section headings instead of inline sizing', async () => {
+    const xml = await documentXml(buildDocx(sampleData, defaultMeta, 'designed'))
+    expect(xml).toContain('w:pStyle w:val="Heading1"')
+  })
+
+  it('applies Title to the candidate name', async () => {
+    const xml = await documentXml(buildDocx(sampleData, defaultMeta, 'designed'))
+    expect(xml).toContain('w:pStyle w:val="Title"')
+  })
+
+  it('keeps headings with the content that follows', async () => {
+    const xml = await documentXml(buildDocx(sampleData, defaultMeta, 'designed'))
+    expect(xml).toContain('<w:keepNext')
+    // keepNext alone is satisfied by sectionHeading; keepLines is what stops a
+    // position or summary paragraph splitting mid-entry, and deleting both
+    // source lines previously left the suite green.
+    expect(xml).toContain('<w:keepLines')
+  })
+
+  it('does not let the Heading2 style bold the entry-head date range', async () => {
+    // ECMA-376 §17.7.2: an absent <w:b> on a run means *inherit*, not *off*.
+    // A bold Heading2 style therefore reaches the date run, which sets no bold
+    // of its own — bolding work/volunteer dates while the identically-shaped
+    // dates on education, awards and publications stayed regular.
+    const { stylesXml } = await docxParts(buildDocx(sampleData, defaultMeta, 'designed'))
+    const heading2 = stylesXml.match(/<w:style [^>]*w:styleId="Heading2"[\s\S]*?<\/w:style>/)
+    expect(heading2, 'Heading2 style not found').not.toBeNull()
+    expect(heading2![0]).not.toContain('<w:b/>')
+  })
+
+  it('stays free of tables, text boxes and drawings in single-column mode', async () => {
+    const xml = await documentXml(
+      buildDocx(sampleData, { ...defaultMeta, layout: 'single-column' }, 'ats')
+    )
+    expect(xml).not.toContain('<w:tbl>')
+    expect(xml).not.toContain('txbxContent')
+    expect(xml).not.toContain('<w:drawing>')
+  })
+})
+
+// Structural replacement for "open the file in Word and check the navigation
+// pane" (not available in this environment). Word's outline/navigation pane
+// and an ATS parser both key off the same two facts, so both are asserted
+// against the real packed .docx XML:
+//   1. word/styles.xml defines styleId="Heading1"/"Title" using Word's
+//      built-in style *names* (not just ids) -- the name is what makes Word's
+//      built-in "Quick Styles"/outline machinery treat the style as a real
+//      heading rather than an arbitrarily-named custom style.
+//   2. word/document.xml references those styles via <w:pStyle>, and the
+//      heading run no longer carries the inline <w:sz> that used to be the
+//      only signal of "this is a heading".
+async function docxParts(doc: ReturnType<typeof buildDocx>): Promise<{ documentXml: string; stylesXml: string }> {
+  const buffer = await Packer.toBuffer(doc)
+  const zip = await JSZip.loadAsync(buffer)
+  const [documentXml, stylesXml] = await Promise.all([
+    zip.file('word/document.xml')!.async('string'),
+    zip.file('word/styles.xml')!.async('string'),
+  ])
+  return { documentXml, stylesXml }
+}
+
+describe('docx outline verification (Word nav pane / ATS outline, structural replacement for opening in Word)', () => {
+  it('styles.xml defines Heading1 and Title exactly once each, under their real built-in Word names', async () => {
+    const { stylesXml } = await docxParts(buildDocx(sampleData, defaultMeta, 'designed'))
+
+    // docx's own DefaultStylesFactory always emits a Title/Heading1/Heading2
+    // style; buildDocxStyles (lib/docx/styles.ts) customizes those built-ins
+    // in place via `styles.default.title`/`.heading1`/`.heading2` rather than
+    // declaring new `paragraphStyles` with colliding ids -- so each id must
+    // appear exactly once in the packed XML, not twice.
+    expect(stylesXml.match(/w:styleId="Heading1"/g)).toHaveLength(1)
+    expect(stylesXml.match(/w:styleId="Title"/g)).toHaveLength(1)
+
+    const heading1Style = stylesXml.match(/<w:style w:type="paragraph" w:styleId="Heading1">[\s\S]*?<\/w:style>/)
+    expect(heading1Style).not.toBeNull()
+    expect(heading1Style![0]).toContain('<w:name w:val="Heading 1"/>')
+
+    const titleStyle = stylesXml.match(/<w:style w:type="paragraph" w:styleId="Title">[\s\S]*?<\/w:style>/)
+    expect(titleStyle).not.toBeNull()
+    expect(titleStyle![0]).toContain('<w:name w:val="Title"/>')
+  })
+
+  it('document.xml references Heading1 via w:pStyle on section headings, with no inline w:sz duplicating it', async () => {
+    const { documentXml } = await docxParts(buildDocx(sampleData, defaultMeta, 'designed'))
+
+    const headingParagraph = documentXml.match(/<w:p><w:pPr><w:pStyle w:val="Heading1"\/>[\s\S]*?<\/w:p>/)
+    expect(headingParagraph).not.toBeNull()
+    // "Work Experience" is the FIRST Heading1 only because `sampleData` has no
+    // basics.summary — a summary would emit its own section heading ahead of
+    // it. If a future fixture change adds one, this fails loudly rather than
+    // silently, but the coupling is deliberate: matching the first Heading1
+    // keeps the regex simple.
+    expect(headingParagraph![0]).toContain('Work Experience')
+    // The style now owns sizing -- no inline <w:sz> left on the run
+    expect(headingParagraph![0]).not.toContain('<w:sz')
   })
 })

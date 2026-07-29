@@ -5,6 +5,10 @@ import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichTe
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { getColumnSide } from '@/lib/get-column-side'
 import { formatDateRange } from '@/lib/format-date'
+import { withLineHeights, PdfBullet, PdfEntryHead, sectionReserve, entryReserve } from './pdf-primitives'
+import { EXECUTIVE_TOKENS as T } from '@/lib/design/tokens'
+
+const PAGE_FONT_SIZE = 11
 
 export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; meta: ResumeMeta; title?: string }) {
   const { basics = {}, work = [], education = [], skills = [],
@@ -15,31 +19,35 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
   const headFont = mapToPdfFont(meta.headerFontFamily)
   const margin = inToPt(meta.pageMargins)
   const sectionOrder = resolveSectionOrder(meta)
-
-  const styles = StyleSheet.create({
-    page: { fontFamily: bodyFont, fontSize: 11, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
-    name: { fontFamily: headFont, fontSize: 22, fontWeight: 'bold', color: meta.primaryColor, letterSpacing: 0.25 },
-    subtitle: { fontSize: 12, color: meta.accentColor, fontStyle: 'italic', marginTop: 0.75 },
+  const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE, meta.lineSpacing)
+  const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE, meta.lineSpacing)
+  const styles = withLineHeights(StyleSheet.create({
+    page: { fontFamily: bodyFont, fontSize: PAGE_FONT_SIZE, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
+    name: { fontFamily: headFont, fontSize: T.nameSize, fontWeight: 'bold', color: meta.primaryColor, letterSpacing: 0.25 },
+    subtitle: { fontSize: T.labelSize, color: meta.accentColor, fontStyle: 'italic', marginTop: 0.75 },
     // Web double rule: 2px top + 0.75px bottom with 3px between, 6px above / 8px below
     ruleThick: { borderTopWidth: 1.5, borderTopColor: meta.primaryColor, marginTop: 4.5, marginBottom: 2.25 },
     ruleThin: { borderTopWidth: 0.55, borderTopColor: meta.primaryColor, marginBottom: 6 },
     sectionTitle: {
-      fontFamily: headFont, fontSize: 11.5, fontWeight: 'bold', color: meta.primaryColor,
+      fontFamily: headFont, fontSize: T.sectionTitleSize, fontWeight: 'bold', color: meta.primaryColor,
       textTransform: 'uppercase', letterSpacing: 1.6,
       borderBottomWidth: 0.75, borderBottomColor: meta.primaryColor,
-      paddingBottom: 2.25, marginTop: 13.5, marginBottom: 5.25,
+      paddingBottom: 2.25, marginTop: T.sectionTitleMarginTop, marginBottom: T.sectionTitleMarginBottom,
     },
     bold: { fontWeight: 'bold' },
     accent: { color: meta.accentColor, fontStyle: 'italic', fontSize: 10.5 },
     small: { fontSize: 10, color: '#666666' },
-    bullet: { fontSize: 10, marginLeft: 13.5, marginBottom: 1 },
+    bullet: { fontSize: 10, marginLeft: T.bulletIndent, marginBottom: 1 },
+    // Used inside PdfBullet, whose row already applies the hanging indent via
+    // its own `indent` prop; this omits marginLeft so it is not applied twice.
+    bulletHang: { fontSize: 10, marginBottom: 1 },
     bulletFirst: { marginTop: 3 },
-    body: { fontSize: 10, textAlign: 'justify' },
+    body: { fontSize: T.bodySize, textAlign: 'justify' },
     entrySummary: { fontSize: 10, marginTop: 2, textAlign: 'justify' },
     plainSummary: { fontSize: 10, marginTop: 2 },
     degree: { fontSize: 10.5, fontStyle: 'italic' },
-    summary: { fontSize: 10.5, textAlign: 'justify', marginTop: 9 },
-  })
+    summary: { fontSize: 10.5, textAlign: 'justify', marginTop: T.summaryMarginBottom },
+  }), meta.lineSpacing)
 
   function buildContactRow() {
     const items: Array<{ label: string; href: string }> = []
@@ -50,7 +58,7 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
     if (loc) items.push({ label: loc, href: '' })
     if (!items.length) return null
     return (
-      <Text style={{ fontSize: 10, color: '#555555' }}>
+      <Text style={{ fontSize: T.contactSize, color: '#555555' }}>
         {items.map((item, i) => (
           <React.Fragment key={i}>
             {item.href
@@ -76,19 +84,31 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
         if (!work.length) return null
         return (
           <View key="work">
-            <Text style={styles.sectionTitle}>Work Experience</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Work Experience</Text>
+            </View>
             {work.map((job, i) => {
               const dates = formatDateRange(job.startDate, job.endDate, true)
               return (
-                <View key={i} style={{ marginBottom: 7.5 }}>
-                  <Text style={{ marginBottom: 2 }}>
-                    <Text style={styles.bold}>{job.name ?? ''}</Text>
-                    {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
-                  </Text>
-                  <Text style={styles.accent}>{job.position ?? ''}</Text>
+                <View key={i} style={{ marginBottom: T.entryMarginBottom }}>
+                  <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                    <PdfEntryHead
+                      style={{ marginBottom: 2 }}
+                      left={<Text style={styles.bold}>{job.name ?? ''}</Text>}
+                      right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
+                    />
+                    <Text style={styles.accent}>{job.position ?? ''}</Text>
+                  </View>
                   {renderPdfRichText(job.summary, styles.entrySummary)}
                   {(job.highlights ?? []).map((h, hi) => (
-                    <Text key={hi} style={hi === 0 ? [styles.bullet, styles.bulletFirst] : styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                    <PdfBullet
+                      key={hi}
+                      style={hi === 0 ? [styles.bulletHang, styles.bulletFirst] : styles.bulletHang}
+                      indent={T.bulletIndent}
+                      gap={T.bulletGap}
+                    >
+                      {renderPdfRichTextRuns(h)}
+                    </PdfBullet>
                   ))}
                 </View>
               )
@@ -99,16 +119,21 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
         if (!education.length) return null
         return (
           <View key="education">
-            <Text style={styles.sectionTitle}>Education</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Education</Text>
+            </View>
             {education.map((edu, i) => {
               const dates = formatDateRange(edu.startDate, edu.endDate)
               return (
-                <View key={i} style={{ marginBottom: 6 }}>
-                  <Text style={{ marginBottom: 2 }}>
-                    <Text style={styles.bold}>{edu.institution ?? ''}</Text>
-                    {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
-                  </Text>
-                  <Text style={styles.degree}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
+                <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
+                  <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                    <PdfEntryHead
+                      style={{ marginBottom: 2 }}
+                      left={<Text style={styles.bold}>{edu.institution ?? ''}</Text>}
+                      right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
+                    />
+                    <Text style={styles.degree}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
+                  </View>
                   {edu.score ? <Text style={styles.small}>Score: {edu.score}</Text> : null}
                 </View>
               )
@@ -119,7 +144,9 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
         if (!skills.length) return null
         return (
           <View key="skills">
-            <Text style={styles.sectionTitle}>Skills</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Skills</Text>
+            </View>
             {/* Mirrors the web definition list: fixed-width bold name column, keywords fill the rest */}
             {skills.map((s, i) => (
               <View key={i} style={{ flexDirection: 'row', gap: 12, marginBottom: 1.5 }}>
@@ -136,7 +163,9 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
         if (!certificates.length) return null
         return (
           <View key="certificates">
-            <Text style={styles.sectionTitle}>Certifications</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Certifications</Text>
+            </View>
             {certificates.map((c, i) => (
               <Text key={i} style={{ marginBottom: 4 }}>
                 <Text style={styles.bold}>
@@ -152,7 +181,9 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
         if (!languages.length) return null
         return (
           <View key="languages">
-            <Text style={styles.sectionTitle}>Languages</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Languages</Text>
+            </View>
             {languages.map((l, i) => (
               <Text key={i} style={styles.body}>
                 <Text style={styles.bold}>{l.language ?? ''}</Text>
@@ -165,14 +196,19 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
         if (!awards.length) return null
         return (
           <View key="awards">
-            <Text style={styles.sectionTitle}>Awards</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Awards</Text>
+            </View>
             {awards.map((a, i) => (
-              <View key={i} style={{ marginBottom: 6 }}>
-                <Text style={{ marginBottom: 2 }}>
-                  <Text style={styles.bold}>{a.title ?? ''}</Text>
-                  {a.date ? <Text style={styles.small}>{'  ·  '}{a.date}</Text> : null}
-                </Text>
-                {a.awarder ? <Text style={styles.small}>{a.awarder}</Text> : null}
+              <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
+                <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                  <PdfEntryHead
+                    style={{ marginBottom: 2 }}
+                    left={<Text style={styles.bold}>{a.title ?? ''}</Text>}
+                    right={a.date ? <Text style={styles.small}>{a.date}</Text> : undefined}
+                  />
+                  {a.awarder ? <Text style={styles.small}>{a.awarder}</Text> : null}
+                </View>
                 {a.summary ? <Text style={styles.body}>{a.summary}</Text> : null}
               </View>
             ))}
@@ -182,14 +218,19 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
         if (!publications.length) return null
         return (
           <View key="publications">
-            <Text style={styles.sectionTitle}>Publications</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Publications</Text>
+            </View>
             {publications.map((p, i) => (
-              <View key={i} style={{ marginBottom: 6 }}>
-                <Text style={{ marginBottom: 2 }}>
-                  <Text style={styles.bold}>{p.name ?? ''}</Text>
-                  {p.releaseDate ? <Text style={styles.small}>{'  ·  '}{p.releaseDate}</Text> : null}
-                </Text>
-                {p.publisher ? <Text style={styles.small}>{p.publisher}</Text> : null}
+              <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
+                <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                  <PdfEntryHead
+                    style={{ marginBottom: 2 }}
+                    left={<Text style={styles.bold}>{p.name ?? ''}</Text>}
+                    right={p.releaseDate ? <Text style={styles.small}>{p.releaseDate}</Text> : undefined}
+                  />
+                  {p.publisher ? <Text style={styles.small}>{p.publisher}</Text> : null}
+                </View>
                 {p.summary ? <Text style={styles.body}>{p.summary}</Text> : null}
               </View>
             ))}
@@ -199,19 +240,31 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
         if (!volunteer.length) return null
         return (
           <View key="volunteer">
-            <Text style={styles.sectionTitle}>Volunteer</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Volunteer</Text>
+            </View>
             {volunteer.map((v, i) => {
               const dates = formatDateRange(v.startDate, v.endDate, true)
               return (
-                <View key={i} style={{ marginBottom: 6 }}>
-                  <Text style={{ marginBottom: 2 }}>
-                    <Text style={styles.bold}>{v.organization ?? ''}</Text>
-                    {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
-                  </Text>
-                  <Text style={styles.accent}>{v.position ?? ''}</Text>
+                <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
+                  <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                    <PdfEntryHead
+                      style={{ marginBottom: 2 }}
+                      left={<Text style={styles.bold}>{v.organization ?? ''}</Text>}
+                      right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
+                    />
+                    <Text style={styles.accent}>{v.position ?? ''}</Text>
+                  </View>
                   {renderPdfRichText(v.summary, styles.entrySummary)}
                   {(v.highlights ?? []).map((h, hi) => (
-                    <Text key={hi} style={hi === 0 ? [styles.bullet, styles.bulletFirst] : styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                    <PdfBullet
+                      key={hi}
+                      style={hi === 0 ? [styles.bulletHang, styles.bulletFirst] : styles.bulletHang}
+                      indent={T.bulletIndent}
+                      gap={T.bulletGap}
+                    >
+                      {renderPdfRichTextRuns(h)}
+                    </PdfBullet>
                   ))}
                 </View>
               )
@@ -222,7 +275,9 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
         if (!interests.length) return null
         return (
           <View key="interests">
-            <Text style={styles.sectionTitle}>Interests</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Interests</Text>
+            </View>
             {interests.map((int, i) => (
               <Text key={i} style={styles.body}>
                 <Text style={styles.bold}>{int.name ?? ''}</Text>
@@ -236,17 +291,26 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
         if (!projects.length) return null
         return (
           <View key="projects">
-            <Text style={styles.sectionTitle}>Projects</Text>
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Projects</Text>
+            </View>
             {projects.map((p, i) => {
               const dates = formatDateRange(p.startDate, p.endDate)
               return (
-                <View key={i} style={{ marginBottom: 8 }}>
-                  <Text style={{ marginBottom: 2 }}>
-                    <Text style={styles.bold}>{p.name ?? ''}</Text>
-                    {dates ? <Text style={styles.small}>{'  ·  '}{dates}</Text> : null}
-                  </Text>
+                <View key={i} style={{ marginBottom: T.projectMarginBottom }}>
+                  <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                    <PdfEntryHead
+                      style={{ marginBottom: 2 }}
+                      left={<Text style={styles.bold}>{p.name ?? ''}</Text>}
+                      right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
+                    />
+                  </View>
                   {p.description ? <Text style={styles.body}>{p.description}</Text> : null}
-                  {(p.highlights ?? []).map((h, hi) => <Text key={hi} style={styles.bullet}>• {h}</Text>)}
+                  {(p.highlights ?? []).map((h, hi) => (
+                    <PdfBullet key={hi} style={styles.bulletHang} indent={T.bulletIndent} gap={T.bulletGap}>
+                      {h}
+                    </PdfBullet>
+                  ))}
                   {(p.keywords ?? []).length > 0 ? <Text style={[styles.small, { marginTop: 2 }]}>{(p.keywords ?? []).join(', ')}</Text> : null}
                 </View>
               )
@@ -261,7 +325,7 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
   const header = (
     <>
       {/* Header */}
-      <View style={{ marginBottom: 3 }}>
+      <View style={{ marginBottom: T.headerMarginBottom }}>
         <Text style={styles.name}>{basics.name ?? ''}</Text>
         {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
       </View>

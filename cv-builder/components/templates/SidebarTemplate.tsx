@@ -5,7 +5,9 @@ import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
 import { richTextToHtml } from '@/lib/rich-text'
 import { formatDateRange } from '@/lib/format-date'
+import { webFontFamily } from '@/lib/fonts/families'
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
+import { SIDEBAR_TOKENS as T, px } from '@/lib/design/tokens'
 
 function rt(text: string | undefined | null): React.ReactNode {
   if (!text) return null
@@ -20,7 +22,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
   const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : ALL_SECTIONS
 
   const page: React.CSSProperties = {
-    fontFamily: `${meta.fontFamily}, Arial, sans-serif`,
+    fontFamily: webFontFamily(meta.fontFamily),
     fontSize: '11pt',
     lineHeight: meta.lineSpacing,
     background: '#fff',
@@ -33,7 +35,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
   }
 
   const railTitleStyle: React.CSSProperties = {
-    fontFamily: `${meta.headerFontFamily}, Arial, sans-serif`,
+    fontFamily: webFontFamily(meta.headerFontFamily),
     fontSize: '12pt',
     fontWeight: 700,
     color: '#fff',
@@ -46,14 +48,14 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
   }
 
   const mainTitleStyle: React.CSSProperties = {
-    fontFamily: `${meta.headerFontFamily}, Arial, sans-serif`,
-    fontSize: '12pt',
+    fontFamily: webFontFamily(meta.headerFontFamily),
+    fontSize: `${T.sectionTitleSize}pt`,
     fontWeight: 700,
     color: meta.primaryColor,
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
-    marginTop: '16px',
-    marginBottom: '8px',
+    marginTop: px(T.sectionTitleMarginTop),
+    marginBottom: px(T.sectionTitleMarginBottom),
     paddingBottom: '2px',
     borderBottom: `2px solid ${meta.accentColor}`,
   }
@@ -77,7 +79,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
           <div key="work">
             <div style={mainTitleStyle}>Work Experience</div>
             {work.map((job, i) => (
-              <div key={i} style={{ marginBottom: '10px' }}>
+              <div key={i} style={{ marginBottom: px(T.entryMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong style={{ fontSize: '11pt' }}>{job.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -87,7 +89,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
                 <div style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{job.position}</div>
                 {job.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(job.summary)}</div>}
                 {(job.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
                     {(job.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
@@ -103,7 +105,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
           <div key="education">
             <div style={mainTitleStyle}>Education</div>
             {education.map((edu, i) => (
-              <div key={i} style={{ marginBottom: '8px' }}>
+              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{edu.institution}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -124,7 +126,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
           <div key="volunteer">
             <div style={mainTitleStyle}>Volunteer</div>
             {vol.map((v, i) => (
-              <div key={i} style={{ marginBottom: '8px' }}>
+              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{v.organization}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -134,7 +136,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
                 <div style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{v.position}</div>
                 {v.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(v.summary)}</div>}
                 {(v.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
                     {(v.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
@@ -166,7 +168,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
           <div key="awards">
             <div style={mainTitleStyle}>Awards</div>
             {awards.map((a, i) => (
-              <div key={i} style={{ marginBottom: '8px' }}>
+              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{a.title}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>{a.date}</span>
@@ -185,7 +187,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
           <div key="publications">
             <div style={mainTitleStyle}>Publications</div>
             {publications.map((p, i) => (
-              <div key={i} style={{ marginBottom: '8px' }}>
+              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{p.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>{p.releaseDate}</span>
@@ -222,7 +224,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
           <div key="projects">
             <div style={mainTitleStyle}>Projects</div>
             {projects.map((p, i) => (
-              <div key={i} style={{ marginBottom: '10px' }}>
+              <div key={i} style={{ marginBottom: px(T.projectMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{p.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -231,7 +233,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
                 </div>
                 {p.description && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{p.description}</div>}
                 {(p.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
                     {(p.highlights ?? []).map((h, hi) => <li key={hi}>{h}</li>)}
                   </ul>
                 )}
@@ -259,17 +261,17 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         boxSizing: 'border-box',
       }}>
         <div style={{
-          fontFamily: `${meta.headerFontFamily}, Arial, sans-serif`,
-          fontSize: '18pt',
+          fontFamily: webFontFamily(meta.headerFontFamily),
+          fontSize: `${T.nameSize}pt`,
           fontWeight: 700,
           lineHeight: 1.1,
         }}>
           {basics.name}
         </div>
         {basics.label && (
-          <div style={{ fontSize: '10.5pt', opacity: 0.85, marginTop: '3px' }}>{basics.label}</div>
+          <div style={{ fontSize: `${T.labelSize}pt`, opacity: 0.85, marginTop: '3px' }}>{basics.label}</div>
         )}
-        <div style={{ fontSize: '10pt', opacity: 0.9, marginTop: '12px', lineHeight: 1.9, wordBreak: 'break-word' }}>
+        <div style={{ fontSize: `${T.contactSize}pt`, opacity: 0.9, marginTop: '12px', lineHeight: 1.9, wordBreak: 'break-word' }}>
           {[
             basics.email,
             basics.phone,
@@ -399,7 +401,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
       {/* Main column */}
       <div style={{ flex: 1, padding: `${pad}px`, boxSizing: 'border-box' }}>
         {basics.summary && (
-          <div style={{ fontSize: '10pt', color: '#444', marginBottom: '6px' }}>{rt(basics.summary)}</div>
+          <div style={{ fontSize: '10pt', color: '#444', marginBottom: px(T.summaryMarginBottom) }}>{rt(basics.summary)}</div>
         )}
         {mainSections.map((s) => (
           <React.Fragment key={s}>{renderMainSection(s)}</React.Fragment>

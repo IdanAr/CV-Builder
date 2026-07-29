@@ -3,10 +3,17 @@ import { Text } from '@react-pdf/renderer'
 import type { Style } from '@react-pdf/types'
 import { parseRichText } from '@/lib/rich-text'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
+import { registerPdfFonts, pdfFontFamily } from '@/lib/fonts/registry'
 
-export function mapToPdfFont(font: string): string {
-  const serifFonts = ['Garamond', 'Georgia', 'Cambria']
-  return serifFonts.includes(font) ? 'Times-Roman' : 'Helvetica'
+/**
+ * Returns the array font-family chain for a picker font name, registering the
+ * bundled faces on first use. Previously collapsed every font to a
+ * non-embedded base-14 face, which discarded the user's choice and could not
+ * represent characters outside WinAnsi.
+ */
+export function mapToPdfFont(font: string): string[] {
+  registerPdfFonts()
+  return pdfFontFamily(font)
 }
 
 export function inToPt(inches: number): number {

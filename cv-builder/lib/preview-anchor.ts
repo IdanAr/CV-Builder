@@ -105,11 +105,19 @@ export function resolveAnchorTops(
     if (anchorKey.length >= MIN_MATCH) {
       const at = findAnchorIndex(index, anchorKey, searchFrom)
       if (at !== -1) {
+        // Advance past this match whether or not the measurement is accepted.
+        // Anchors are page-start texts and are therefore strictly ordered; if a
+        // rejected match left searchFrom in place, the next anchor could match
+        // an *earlier* occurrence of repeated text — a recurring section
+        // heading, or two entries at the same employer — and place the page-3
+        // divider above the page-2 one. Advancing by the needle length rather
+        // than a single character also stops a long anchor re-matching inside
+        // itself.
+        searchFrom = at + Math.min(anchorKey.length, MIN_MATCH)
         const measured = measureTop(index.refs[at], wrapper)
         if (measured !== null && measured > prevTop + minGap && measured < maxTop) {
           top = measured
           source = 'pdf'
-          searchFrom = at + 1
         }
       }
     }
