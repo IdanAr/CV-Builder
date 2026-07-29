@@ -183,3 +183,22 @@ export function stripRichText(input: string): string {
     .map((r) => r.text)
     .join('')
 }
+
+/**
+ * Splits a text field into its visual paragraphs, separated by blank lines.
+ *
+ * A blank line (one or more consecutive newlines, CRLF-normalized) starts a new
+ * paragraph; a lone newline inside a paragraph is collapsed to a space, exactly
+ * as HTML flow layout does — this keeps the browser preview, the PDF and any
+ * other consumer in agreement about where a break falls. Callers render each
+ * returned string as its own block so paragraphs are visually distinct without
+ * embedding an empty line (an empty line in a @react-pdf <Text> has no glyphs
+ * to carry the font and forces a bare-Helvetica fallback).
+ */
+export function splitParagraphs(input: string): string[] {
+  return input
+    .replace(/\r\n?/g, '\n')
+    .split(/\n[ \t]*\n+/)
+    .map((p) => p.replace(/\s+/g, ' ').trim())
+    .filter((p) => p.length > 0)
+}

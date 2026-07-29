@@ -1,5 +1,36 @@
 import { describe, it, expect } from 'vitest'
-import { parseRichText, richTextToHtml, stripRichText } from '../rich-text'
+import { parseRichText, richTextToHtml, stripRichText, splitParagraphs } from '../rich-text'
+
+describe('splitParagraphs', () => {
+  it('splits on a blank line into separate paragraphs', () => {
+    expect(splitParagraphs('First para.\n\nSecond para.')).toEqual(['First para.', 'Second para.'])
+  })
+
+  it('treats one or more blank lines as a single break', () => {
+    expect(splitParagraphs('A\n\n\n\nB')).toEqual(['A', 'B'])
+  })
+
+  it('collapses a single newline within a paragraph to a space (matches HTML flow)', () => {
+    expect(splitParagraphs('one\ntwo')).toEqual(['one two'])
+  })
+
+  it('trims surrounding whitespace and drops empty paragraphs', () => {
+    expect(splitParagraphs('  A  \n\n   \n\n  B  ')).toEqual(['A', 'B'])
+  })
+
+  it('normalizes CRLF blank lines', () => {
+    expect(splitParagraphs('A\r\n\r\nB')).toEqual(['A', 'B'])
+  })
+
+  it('returns a single element for text with no blank line', () => {
+    expect(splitParagraphs('Just one paragraph.')).toEqual(['Just one paragraph.'])
+  })
+
+  it('returns an empty array for empty or whitespace-only input', () => {
+    expect(splitParagraphs('')).toEqual([])
+    expect(splitParagraphs('   \n\n  ')).toEqual([])
+  })
+})
 
 describe('parseRichText', () => {
   it('plain text → single TextRun with no flags', () => {

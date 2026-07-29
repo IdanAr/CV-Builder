@@ -17,6 +17,13 @@ export function pt(value: number): number {
   return value / PX_PER_PT
 }
 
+/**
+ * Vertical gap between consecutive paragraphs of a single rich-text field
+ * (e.g. a summary with a blank line in it). Uniform across templates; consumed
+ * as points by the PDF and via px() by the web preview so the two agree.
+ */
+export const PARAGRAPH_GAP_PT = 6
+
 export const MINIMAL_TOKENS = {
   headerMarginBottom: 15,   // web 20px
   summaryMarginBottom: 12,  // web 16px
