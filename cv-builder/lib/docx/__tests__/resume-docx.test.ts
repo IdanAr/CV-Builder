@@ -28,6 +28,22 @@ describe('buildDocx', () => {
     expect(buffer.byteLength).toBeGreaterThan(1000)
   })
 
+  it('renders a blank-line summary as separate Word paragraphs', async () => {
+    const data: ResumeData = {
+      basics: { name: 'X', summary: 'ALPHAPARA about pipelines.\n\nBETAPARA about platforms.' },
+    }
+    const buffer = await Packer.toBuffer(buildDocx(data, defaultMeta))
+    const zip = await JSZip.loadAsync(buffer)
+    const xml = await zip.file('word/document.xml')!.async('string')
+    const paras = xml.split(/<w:p[ >]/)
+    const alphaIdx = paras.findIndex(p => p.includes('ALPHAPARA'))
+    const betaIdx = paras.findIndex(p => p.includes('BETAPARA'))
+    expect(alphaIdx).toBeGreaterThan(-1)
+    expect(betaIdx).toBeGreaterThan(-1)
+    // Both sentinels must live in different <w:p> blocks — i.e. real paragraphs.
+    expect(alphaIdx).not.toBe(betaIdx)
+  })
+
   it('serializes without error when data is empty', async () => {
     const doc = buildDocx({}, defaultMeta)
     const buffer = await Packer.toBuffer(doc)
