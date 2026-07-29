@@ -2,9 +2,10 @@
   Document, Paragraph, TextRun, ExternalHyperlink, Table, TableRow, TableCell,
   AlignmentType, BorderStyle, ShadingType, WidthType, convertInchesToTwip,
 } from 'docx'
+import type { IParagraphOptions } from 'docx'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import type { ExportMode } from '@/lib/export-mode'
-import { parseRichText, TextRun as RichTextRun } from '@/lib/rich-text'
+import { parseRichText, splitParagraphs, TextRun as RichTextRun } from '@/lib/rich-text'
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
 import { formatDate, formatDateRange } from '@/lib/format-date'
 import { buildDocxStyles } from './styles'
@@ -25,6 +26,25 @@ function richTextRuns(
     underline: run.underline ? {} : undefined,
     ...(extraProps?.color ? { color: extraProps.color } : {}),
   }))
+}
+
+/**
+ * Renders a rich-text field as one Word paragraph per blank-line-separated
+ * paragraph, so a multi-paragraph summary shows real breaks — a single
+ * Paragraph with embedded newlines does not. The given paragraph props
+ * (spacing, alignment, keepLines) apply to every generated paragraph, so
+ * single-paragraph text produces exactly one Paragraph, unchanged from before.
+ */
+function richTextParagraphs(
+  text: string,
+  font: string,
+  size: number,
+  extraProps: Partial<{ bold: boolean; color: string; italics: boolean }> | undefined,
+  paraProps: Omit<IParagraphOptions, 'children'>
+): Paragraph[] {
+  return splitParagraphs(text).map(paragraph =>
+    new Paragraph({ ...paraProps, children: richTextRuns(paragraph, font, size, extraProps) })
+  )
 }
 
 function mapFont(font: string): string {
@@ -218,8 +238,7 @@ function jobEntry(
     }),
   ]
   if (summary) {
-    paras.push(new Paragraph({
-      children: richTextRuns(summary, font, 20),
+    paras.push(...richTextParagraphs(summary, font, 20, undefined, {
       ...(theme.bodyJustified ? { alignment: AlignmentType.JUSTIFIED } : {}),
       spacing: { after: 40 },
       keepLines: true,
@@ -432,7 +451,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
           }))
         }
         if (cs.enabledFields.includes('summary') && item.summary) {
-          out.push(new Paragraph({ children: richTextRuns(item.summary, bodyFont, 20), spacing: { after: 40 } }))
+          out.push(...richTextParagraphs(item.summary, bodyFont, 20, undefined, { spacing: { after: 40 } }))
         }
         for (const h of (cs.enabledFields.includes('highlights') ? (item.highlights ?? []) : [])) {
           out.push(new Paragraph({ children: richTextRuns(h, bodyFont, 20), bullet: { level: 0 }, spacing: { after: 20 } }))
@@ -541,7 +560,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
               spacing: { before: 100 },
             }),
             ...(a.awarder ? [new Paragraph({ children: [new TextRun({ text: a.awarder, font: bodyFont, size: 20, color: '666666' })], spacing: { after: 20 } })] : []),
-            ...(a.summary ? [new Paragraph({ children: richTextRuns(a.summary, bodyFont, 20), spacing: { after: 80 } })] : [])
+            ...(a.summary ? richTextParagraphs(a.summary, bodyFont, 20, undefined, { spacing: { after: 80 } }) : [])
           )
         }
         break
@@ -559,7 +578,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
               spacing: { before: 100 },
             }),
             ...(p.publisher ? [new Paragraph({ children: [new TextRun({ text: p.publisher, font: bodyFont, size: 20, color: '666666' })], spacing: { after: 20 } })] : []),
-            ...(p.summary ? [new Paragraph({ children: richTextRuns(p.summary, bodyFont, 20), spacing: { after: 80 } })] : [])
+            ...(p.summary ? richTextParagraphs(p.summary, bodyFont, 20, undefined, { spacing: { after: 80 } }) : [])
           )
         }
         break
@@ -695,8 +714,7 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta, mode: ExportMode =
 
     const rightParas: Paragraph[] = []
     if (basics.summary) {
-      rightParas.push(new Paragraph({
-        children: richTextRuns(basics.summary, bodyFont, 20, { color: '444444' }),
+      rightParas.push(...richTextParagraphs(basics.summary, bodyFont, 20, { color: '444444' }, {
         spacing: { after: 90 },
       }))
     }
@@ -789,21 +807,18 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta, mode: ExportMode =
   if (basics.summary) {
     if (!theme.summaryHeading) {
       // Web modern/minimal/executive show the summary as plain body text without a heading
-      headerParas.push(new Paragraph({
-        children: richTextRuns(basics.summary, bodyFont, theme.summarySize ?? 20, theme.summaryColor ? { color: theme.summaryColor } : undefined),
+      headerParas.push(...richTextParagraphs(basics.summary, bodyFont, theme.summarySize ?? 20, theme.summaryColor ? { color: theme.summaryColor } : undefined, {
         ...(theme.summaryJustified ? { alignment: AlignmentType.JUSTIFIED } : {}),
         spacing: { after: 180 },
       }))
     } else if (mode === 'designed' && meta.layout === 'two-column') {
       // Web two-column shows the summary italic under the header, without a heading
-      headerParas.push(new Paragraph({
-        children: richTextRuns(basics.summary, bodyFont, 20, { italics: true }),
+      headerParas.push(...richTextParagraphs(basics.summary, bodyFont, 20, { italics: true }, {
         spacing: { after: 180 },
       }))
     } else {
       headerParas.push(sectionHeading('Summary', headFont, theme))
-      headerParas.push(new Paragraph({
-        children: richTextRuns(basics.summary, bodyFont, 20),
+      headerParas.push(...richTextParagraphs(basics.summary, bodyFont, 20, undefined, {
         spacing: { after: 80 },
       }))
     }
