@@ -17,7 +17,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
-import { getColumnSide } from '@/lib/get-column-side'
+import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 import { FONT_SUBSTITUTES } from '@/lib/fonts/families'
 
@@ -269,6 +269,12 @@ export function DesignPanel() {
   const selectClass = 'w-full border border-indigo-200 rounded-lg px-2 py-1.5 text-sm bg-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
   const labelClass = 'block text-xs font-medium text-indigo-600 mb-1'
 
+  // Sidebar always renders skills/languages in the rail regardless of any
+  // stored columnAssignment default, so the assignment editor must consult
+  // the same per-template defaults the live preview uses — otherwise it
+  // shows the wrong side for sections the user hasn't explicitly assigned.
+  const colDefaults = meta.templateId === 'sidebar' ? SIDEBAR_COLUMN_DEFAULTS : undefined
+
   function handleColumnDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
@@ -279,7 +285,7 @@ export function DesignPanel() {
   }
 
   function handleColumnToggle(sectionKey: string) {
-    const current = getColumnSide(sectionKey, meta.columnAssignment ?? {})
+    const current = getColumnSide(sectionKey, meta.columnAssignment ?? {}, colDefaults)
     const next: 'left' | 'right' = current === 'left' ? 'right' : 'left'
     setMeta({ columnAssignment: { ...meta.columnAssignment, [sectionKey]: next } })
   }
@@ -311,44 +317,52 @@ export function DesignPanel() {
         </div>
       </div>
 
-      {/* Layout toggle — Minimal is single-column only */}
+      {/* Layout toggle — Minimal is single-column only; Sidebar always uses a
+          rail + main layout, so the toggle is meaningless there and hidden. */}
       <div>
         <p className={labelClass}>Layout</p>
-        <div className="flex gap-2">
-          {(meta.templateId === 'minimal'
-            ? (['single-column'] as const)
-            : (['single-column', 'two-column'] as const)
-          ).map((layout) => (
-            <button
-              key={layout}
-              type="button"
-              onClick={() => setMeta({ layout })}
-              className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 text-sm rounded-xl border transition-all duration-200 ${
-                meta.layout === layout
-                  ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-medium shadow-sm'
-                  : 'border-indigo-100 text-indigo-500 hover:border-indigo-300 hover:shadow-sm'
-              }`}
-            >
-              <svg aria-hidden="true" viewBox="0 0 28 20" className="h-5 w-7">
-                {layout === 'single-column' ? (
-                  <rect x="4" y="2" width="20" height="16" rx="2" fill="currentColor" opacity="0.35" />
-                ) : (<>
-                  <rect x="3" y="2" width="9" height="16" rx="2" fill="currentColor" opacity="0.35" />
-                  <rect x="16" y="2" width="9" height="16" rx="2" fill="currentColor" opacity="0.35" />
-                </>)}
-              </svg>
-              {layout === 'single-column' ? 'Single column' : 'Two columns'}
-            </button>
-          ))}
-        </div>
-        {meta.templateId === 'minimal' && (
-          <p className="text-xs text-indigo-300 mt-1.5">The Minimal template supports a single column only.</p>
+        {meta.templateId === 'sidebar' ? (
+          <p className="text-xs text-indigo-300 mt-1.5">The Sidebar template always uses a rail + main column layout.</p>
+        ) : (
+          <>
+            <div className="flex gap-2">
+              {(meta.templateId === 'minimal'
+                ? (['single-column'] as const)
+                : (['single-column', 'two-column'] as const)
+              ).map((layout) => (
+                <button
+                  key={layout}
+                  type="button"
+                  onClick={() => setMeta({ layout })}
+                  className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 text-sm rounded-xl border transition-all duration-200 ${
+                    meta.layout === layout
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-medium shadow-sm'
+                      : 'border-indigo-100 text-indigo-500 hover:border-indigo-300 hover:shadow-sm'
+                  }`}
+                >
+                  <svg aria-hidden="true" viewBox="0 0 28 20" className="h-5 w-7">
+                    {layout === 'single-column' ? (
+                      <rect x="4" y="2" width="20" height="16" rx="2" fill="currentColor" opacity="0.35" />
+                    ) : (<>
+                      <rect x="3" y="2" width="9" height="16" rx="2" fill="currentColor" opacity="0.35" />
+                      <rect x="16" y="2" width="9" height="16" rx="2" fill="currentColor" opacity="0.35" />
+                    </>)}
+                  </svg>
+                  {layout === 'single-column' ? 'Single column' : 'Two columns'}
+                </button>
+              ))}
+            </div>
+            {meta.templateId === 'minimal' && (
+              <p className="text-xs text-indigo-300 mt-1.5">The Minimal template supports a single column only.</p>
+            )}
+          </>
         )}
       </div>
 
-      {/* Section columns — only visible in two-column mode (never for minimal,
-          which may carry a stale two-column layout from a previously saved resume) */}
-      {meta.layout === 'two-column' && meta.templateId !== 'minimal' && (
+      {/* Section columns — visible in two-column mode (never for minimal, which
+          may carry a stale two-column layout from a previously saved resume),
+          and always for sidebar since it always renders a rail + main split. */}
+      {((meta.layout === 'two-column' && meta.templateId !== 'minimal') || meta.templateId === 'sidebar') && (
         <div>
           <p className={labelClass}>Section columns</p>
           <div className="bg-white border border-indigo-100 rounded-lg overflow-hidden">
@@ -366,7 +380,7 @@ export function DesignPanel() {
                     key={sectionKey}
                     sectionKey={sectionKey}
                     label={getSectionLabel(sectionKey, data)}
-                    side={getColumnSide(sectionKey, meta.columnAssignment ?? {})}
+                    side={getColumnSide(sectionKey, meta.columnAssignment ?? {}, colDefaults)}
                     onToggle={() => handleColumnToggle(sectionKey)}
                   />
                 ))}

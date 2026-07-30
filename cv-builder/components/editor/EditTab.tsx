@@ -77,12 +77,14 @@ function SortableAccordionItem({
 
 export function EditTab() {
   const [openSection, setOpenSection] = useState<string | null>('basics')
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
   const meta = useResumeEditorStore((s) => s.meta)
   const data = useResumeEditorStore((s) => s.data)
   const setMeta = useResumeEditorStore((s) => s.setMeta)
   const addCustomSection = useResumeEditorStore((s) => s.addCustomSection)
   const updateCustomSection = useResumeEditorStore((s) => s.updateCustomSection)
   const removeCustomSection = useResumeEditorStore((s) => s.removeCustomSection)
+  const removeBuiltInSection = useResumeEditorStore((s) => s.removeBuiltInSection)
   const undo = useResumeEditorStore((s) => s.undo)
   const redo = useResumeEditorStore((s) => s.redo)
 
@@ -97,6 +99,14 @@ export function EditTab() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [undo, redo])
+
+  useEffect(() => {
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === 'Escape') setAddMenuOpen(false)
+    }
+    window.addEventListener('keydown', onEsc)
+    return () => window.removeEventListener('keydown', onEsc)
+  }, [])
 
   const orderedSections = (meta.sectionOrder?.length > 0
     ? meta.sectionOrder
@@ -114,12 +124,27 @@ export function EditTab() {
       ]
   ).filter((s) => (s in SECTION_FORMS && s !== 'basics') || s.startsWith('custom:'))
 
+  const removedBuiltIns = Object.keys(SECTION_LABELS).filter((k) => k !== 'basics' && !orderedSections.includes(k))
+
   function handleDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return
     const oldIndex = orderedSections.indexOf(String(active.id))
     const newIndex = orderedSections.indexOf(String(over.id))
     if (oldIndex === -1 || newIndex === -1) return
     setMeta({ sectionOrder: arrayMove(orderedSections, oldIndex, newIndex) })
+  }
+
+  function handleDeleteBuiltIn(section: string) {
+    const arr = (data as Record<string, unknown[]>)[section]
+    const count = Array.isArray(arr) ? arr.length : 0
+    if (count > 0) {
+      const label = SECTION_LABELS[section] ?? section
+      if (!window.confirm(`Delete ${label} and its ${count} ${count === 1 ? 'entry' : 'entries'}? This can't be undone.`)) {
+        return
+      }
+    }
+    removeBuiltInSection(section as Parameters<typeof removeBuiltInSection>[0])
+    if (openSection === section) setOpenSection(null)
   }
 
   function handleAddSection() {
@@ -131,6 +156,13 @@ export function EditTab() {
     }
     addCustomSection(newSection)
     setOpenSection(`custom:${newSection.id}`)
+    setAddMenuOpen(false)
+  }
+
+  function handleReAddSection(section: string) {
+    setMeta({ sectionOrder: [...orderedSections, section] })
+    setOpenSection(section)
+    setAddMenuOpen(false)
   }
 
   return (
@@ -182,6 +214,7 @@ export function EditTab() {
                     badge={getBadge(section, data)}
                     isOpen={openSection === section}
                     onToggle={() => setOpenSection((prev) => (prev === section ? null : section))}
+                    onDelete={() => handleDeleteBuiltIn(section)}
                     dragHandleProps={dragHandleProps}
                     icon={<SectionIcon section={section} />}
                   >
@@ -194,13 +227,52 @@ export function EditTab() {
         </SortableContext>
       </DndContext>
 
-      <button
-        type="button"
-        onClick={handleAddSection}
-        className="w-full mt-2 py-2.5 border-2 border-dashed border-indigo-200 rounded-xl text-sm text-indigo-400 hover:border-indigo-400 hover:text-indigo-600 transition-colors font-medium"
-      >
-        + Add Section
-      </button>
+      <div className="relative mt-2">
+        <button
+          type="button"
+          onClick={() => setAddMenuOpen((o) => !o)}
+          aria-haspopup="menu"
+          aria-expanded={addMenuOpen}
+          className="w-full py-2.5 border-2 border-dashed border-indigo-200 rounded-xl text-sm text-indigo-400 hover:border-indigo-400 hover:text-indigo-600 transition-colors font-medium"
+        >
+          + Add Section
+        </button>
+        {addMenuOpen && (
+          <>
+            <div className="fixed inset-0 z-10" aria-hidden="true" onClick={() => setAddMenuOpen(false)} />
+            <div
+              role="menu"
+              className="absolute left-0 right-0 mt-1 z-20 rounded-xl border border-indigo-100 bg-white shadow-lg overflow-hidden"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleAddSection}
+                className="w-full text-left px-4 py-2.5 text-sm text-indigo-900 hover:bg-indigo-50"
+              >
+                + New custom section
+              </button>
+              {removedBuiltIns.length > 0 && (
+                <div className="border-t border-indigo-50">
+                  <p className="px-4 pt-2 pb-1 text-[11px] uppercase tracking-wide text-indigo-300">Add back</p>
+                  {removedBuiltIns.map((section) => (
+                    <button
+                      key={section}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => handleReAddSection(section)}
+                      className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-indigo-800 hover:bg-indigo-50"
+                    >
+                      <SectionIcon section={section} />
+                      {SECTION_LABELS[section]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }

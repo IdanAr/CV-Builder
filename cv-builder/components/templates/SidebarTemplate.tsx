@@ -43,7 +43,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
     marginTop: '18px',
     marginBottom: '7px',
     paddingBottom: '3px',
-    borderBottom: '1px solid rgba(255,255,255,0.35)',
+    borderBottom: `1px solid ${meta.accentColor}`,
   }
 
   const mainTitleStyle: React.CSSProperties = {

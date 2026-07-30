@@ -261,4 +261,44 @@ describe('DesignPanel', () => {
       expect(screen.getByLabelText(/custom accent color/i)).toBeInTheDocument()
     })
   })
+
+  describe('sidebar layout', () => {
+    it('hides the Single/Two-column toggle for the sidebar template', () => {
+      useResumeEditorStore.setState({
+        resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+        data: {},
+        meta: { ...defaultMeta, templateId: 'sidebar' },
+      })
+      render(<DesignPanel />)
+      expect(screen.queryByText('Single column')).toBeNull()
+      expect(screen.queryByText('Two columns')).toBeNull()
+    })
+
+    it('shows the Section columns editor for the sidebar template regardless of layout', () => {
+      useResumeEditorStore.setState({
+        resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+        data: {},
+        meta: { ...defaultMeta, templateId: 'sidebar', layout: 'single-column', sectionOrder: ['work', 'skills', 'languages'] },
+      })
+      render(<DesignPanel />)
+      expect(screen.getByText('Section columns')).toBeTruthy()
+    })
+
+    it('shows skills on the rail (left) side by sidebar defaults', () => {
+      useResumeEditorStore.setState({
+        resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+        data: {},
+        meta: { ...defaultMeta, templateId: 'sidebar', sectionOrder: ['skills'], columnAssignment: {} },
+      })
+      render(<DesignPanel />)
+      // SortableColumnRow always renders both "Left" and "Right" buttons, styling
+      // whichever is the current side with the active (bg-white) class. Skills has
+      // no LEFT_DEFAULTS entry, so this only passes when the sidebar's own column
+      // defaults (SIDEBAR_COLUMN_DEFAULTS) are threaded through getColumnSide.
+      const leftBtn = screen.getByRole('button', { name: 'Left' })
+      const rightBtn = screen.getByRole('button', { name: 'Right' })
+      expect(leftBtn.className).toContain('bg-white')
+      expect(rightBtn.className).not.toContain('bg-white')
+    })
+  })
 })

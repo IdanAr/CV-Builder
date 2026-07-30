@@ -60,6 +60,7 @@ const setMeta = vi.fn()
 const addCustomSection = vi.fn()
 const updateCustomSection = vi.fn()
 const removeCustomSection = vi.fn()
+const removeBuiltInSection = vi.fn()
 const undo = vi.fn()
 const redo = vi.fn()
 
@@ -79,7 +80,15 @@ const baseMeta = {
 function setupStore(overrides: { sectionOrder?: string[]; customSections?: CustomSection[] } = {}) {
   const meta = { ...baseMeta, sectionOrder: overrides.sectionOrder ?? baseMeta.sectionOrder }
   const data = overrides.customSections ? { customSections: overrides.customSections } : {}
-  const state = { meta, data, setMeta, addCustomSection, updateCustomSection, removeCustomSection, undo, redo }
+  const state = { meta, data, setMeta, addCustomSection, updateCustomSection, removeCustomSection, removeBuiltInSection, undo, redo }
+  vi.mocked(useResumeEditorStore).mockImplementation((sel) => sel(state as unknown as ResumeEditorStore))
+  ;(useResumeEditorStore as unknown as { getState: ReturnType<typeof vi.fn> }).getState.mockReturnValue(state)
+}
+
+function setupStoreWithData(overrides: { sectionOrder?: string[]; data?: Record<string, unknown> } = {}) {
+  const meta = { ...baseMeta, sectionOrder: overrides.sectionOrder ?? baseMeta.sectionOrder }
+  const data = overrides.data ?? {}
+  const state = { meta, data, setMeta, addCustomSection, updateCustomSection, removeCustomSection, removeBuiltInSection, undo, redo }
   vi.mocked(useResumeEditorStore).mockImplementation((sel) => sel(state as unknown as ResumeEditorStore))
   ;(useResumeEditorStore as unknown as { getState: ReturnType<typeof vi.fn> }).getState.mockReturnValue(state)
 }
@@ -89,6 +98,7 @@ beforeEach(() => {
   addCustomSection.mockClear()
   updateCustomSection.mockClear()
   removeCustomSection.mockClear()
+  removeBuiltInSection.mockClear()
   capturedOnDragEnd = null
   setupStore()
 })
@@ -198,7 +208,7 @@ describe('EditTab — custom sections', () => {
       customSections: [customSection],
     })
     render(<EditTab />)
-    expect(screen.getByRole('button', { name: /delete section/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /delete my certifications/i })).toBeTruthy()
   })
 
   it('clicking delete calls removeCustomSection with the section id', () => {
@@ -207,7 +217,7 @@ describe('EditTab — custom sections', () => {
       customSections: [customSection],
     })
     render(<EditTab />)
-    fireEvent.click(screen.getByRole('button', { name: /delete section/i }))
+    fireEvent.click(screen.getByRole('button', { name: /delete my certifications/i }))
     expect(removeCustomSection).toHaveBeenCalledWith('cs1')
   })
 
@@ -216,9 +226,10 @@ describe('EditTab — custom sections', () => {
     expect(screen.getByRole('button', { name: /add section/i })).toBeTruthy()
   })
 
-  it('clicking Add Section calls addCustomSection with correct shape', () => {
+  it('clicking Add Section then New custom section calls addCustomSection with correct shape', () => {
     render(<EditTab />)
     fireEvent.click(screen.getByRole('button', { name: /add section/i }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /new custom section/i }))
     expect(addCustomSection).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'New Section',
@@ -226,5 +237,51 @@ describe('EditTab — custom sections', () => {
         items: [],
       })
     )
+  })
+})
+
+describe('EditTab — add section menu', () => {
+  it('lists removed built-in sections in the add menu and re-adds on click', () => {
+    // 'skills' is absent from sectionOrder → it should be offered for re-add
+    setupStore({ sectionOrder: ['work', 'education'] })
+    render(<EditTab />)
+    fireEvent.click(screen.getByRole('button', { name: /add section/i }))
+    const skillsItem = screen.getByRole('menuitem', { name: /^skills$/i })
+    fireEvent.click(skillsItem)
+    expect(setMeta).toHaveBeenCalledWith({ sectionOrder: ['work', 'education', 'skills'] })
+  })
+
+  it('offers New custom section in the add menu', () => {
+    setupStore({ sectionOrder: ['work', 'education', 'skills'] })
+    render(<EditTab />)
+    fireEvent.click(screen.getByRole('button', { name: /add section/i }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /new custom section/i }))
+    expect(addCustomSection).toHaveBeenCalled()
+  })
+
+  it('never offers Personal Info (basics) in the add menu', () => {
+    setupStore({ sectionOrder: ['work', 'education', 'skills'] })
+    render(<EditTab />)
+    fireEvent.click(screen.getByRole('button', { name: /add section/i }))
+    expect(screen.queryByRole('menuitem', { name: /personal info/i })).toBeNull()
+  })
+})
+
+describe('EditTab — deleting built-in sections', () => {
+  it('deletes an empty built-in section without confirming', () => {
+    setupStore({ sectionOrder: ['work', 'education', 'skills'] })
+    render(<EditTab />)
+    fireEvent.click(screen.getByRole('button', { name: /delete work experience/i }))
+    expect(removeBuiltInSection).toHaveBeenCalledWith('work')
+  })
+
+  it('confirms before deleting a built-in section that has data', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    setupStoreWithData({ sectionOrder: ['work', 'education'], data: { work: [{ name: 'Acme' }] } })
+    render(<EditTab />)
+    fireEvent.click(screen.getByRole('button', { name: /delete work experience/i }))
+    expect(confirmSpy).toHaveBeenCalled()
+    expect(removeBuiltInSection).not.toHaveBeenCalled() // user declined
+    confirmSpy.mockRestore()
   })
 })
