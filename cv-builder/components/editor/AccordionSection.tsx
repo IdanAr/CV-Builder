@@ -101,7 +101,7 @@ export function AccordionSection({
             type="button"
             onClick={onDelete}
             className="p-1 text-gray-400 hover:text-red-500 rounded"
-            aria-label="Delete section"
+            aria-label={`Delete ${title}`}
           >
             ✕
           </button>

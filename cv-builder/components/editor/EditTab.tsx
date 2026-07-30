@@ -83,6 +83,7 @@ export function EditTab() {
   const addCustomSection = useResumeEditorStore((s) => s.addCustomSection)
   const updateCustomSection = useResumeEditorStore((s) => s.updateCustomSection)
   const removeCustomSection = useResumeEditorStore((s) => s.removeCustomSection)
+  const removeBuiltInSection = useResumeEditorStore((s) => s.removeBuiltInSection)
   const undo = useResumeEditorStore((s) => s.undo)
   const redo = useResumeEditorStore((s) => s.redo)
 
@@ -120,6 +121,19 @@ export function EditTab() {
     const newIndex = orderedSections.indexOf(String(over.id))
     if (oldIndex === -1 || newIndex === -1) return
     setMeta({ sectionOrder: arrayMove(orderedSections, oldIndex, newIndex) })
+  }
+
+  function handleDeleteBuiltIn(section: string) {
+    const arr = (data as Record<string, unknown[]>)[section]
+    const count = Array.isArray(arr) ? arr.length : 0
+    if (count > 0) {
+      const label = SECTION_LABELS[section] ?? section
+      if (!window.confirm(`Delete ${label} and its ${count} ${count === 1 ? 'entry' : 'entries'}? This can't be undone.`)) {
+        return
+      }
+    }
+    removeBuiltInSection(section as Parameters<typeof removeBuiltInSection>[0])
+    if (openSection === section) setOpenSection(null)
   }
 
   function handleAddSection() {
@@ -182,6 +196,7 @@ export function EditTab() {
                     badge={getBadge(section, data)}
                     isOpen={openSection === section}
                     onToggle={() => setOpenSection((prev) => (prev === section ? null : section))}
+                    onDelete={() => handleDeleteBuiltIn(section)}
                     dragHandleProps={dragHandleProps}
                     icon={<SectionIcon section={section} />}
                   >
