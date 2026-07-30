@@ -258,6 +258,13 @@ describe('EditTab — add section menu', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: /new custom section/i }))
     expect(addCustomSection).toHaveBeenCalled()
   })
+
+  it('never offers Personal Info (basics) in the add menu', () => {
+    setupStore({ sectionOrder: ['work', 'education', 'skills'] })
+    render(<EditTab />)
+    fireEvent.click(screen.getByRole('button', { name: /add section/i }))
+    expect(screen.queryByRole('menuitem', { name: /personal info/i })).toBeNull()
+  })
 })
 
 describe('EditTab — deleting built-in sections', () => {

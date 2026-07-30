@@ -124,7 +124,7 @@ export function EditTab() {
       ]
   ).filter((s) => (s in SECTION_FORMS && s !== 'basics') || s.startsWith('custom:'))
 
-  const removedBuiltIns = Object.keys(SECTION_LABELS).filter((k) => !orderedSections.includes(k))
+  const removedBuiltIns = Object.keys(SECTION_LABELS).filter((k) => k !== 'basics' && !orderedSections.includes(k))
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return
