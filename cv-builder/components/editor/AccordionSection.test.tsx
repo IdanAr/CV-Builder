@@ -138,4 +138,17 @@ describe('AccordionSection', () => {
     )
     expect(screen.getByTestId('section-icon')).toBeInTheDocument()
   })
+
+  it('renders the badge as a right-aligned sibling of the title button (built-in section)', () => {
+    render(
+      <AccordionSection title="Work Experience" badge="2 entries" isOpen={false} onToggle={() => {}}>
+        <div>body</div>
+      </AccordionSection>,
+    )
+    const badge = screen.getByText('2 entries')
+    // Get the button that contains the title span (not the chevron button)
+    const titleButton = screen.getByText('Work Experience').closest('button')
+    // Badge must NOT be nested inside the title toggle button anymore
+    expect(titleButton?.contains(badge)).toBe(false)
+  })
 })

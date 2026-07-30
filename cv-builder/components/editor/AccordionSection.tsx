@@ -86,17 +86,12 @@ export function AccordionSection({
             type="button"
             onClick={onToggle}
             aria-expanded={isOpen}
-            className="flex-1 flex items-center gap-2 px-2 py-3 text-left min-w-0"
+            className="flex-1 flex items-center px-2 py-3 text-left min-w-0"
           >
-            <span className="font-medium text-sm text-indigo-900">{title}</span>
-            {badge && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-500 shrink-0">
-                {badge}
-              </span>
-            )}
+            <span className="font-medium text-sm text-indigo-900 truncate">{title}</span>
           </button>
         )}
-        {onRename && badge && (
+        {badge && (
           <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-500 shrink-0">
             {badge}
           </span>
