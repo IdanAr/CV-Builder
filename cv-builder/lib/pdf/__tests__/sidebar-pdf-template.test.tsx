@@ -107,6 +107,16 @@ describe('SidebarPdfTemplate rail typography bands', () => {
   })
 })
 
+describe('SidebarPdfTemplate rail section-title separator', () => {
+  it('uses the accent color for the rail section-title separator', () => {
+    const meta = { ...baseMeta, accentColor: '#ff00aa' }
+    const { rail } = getPageColumns(meta)
+    const styles = collectStyles(rail)
+    const found = styles.some((s) => s.borderBottomColor === '#ff00aa')
+    expect(found).toBe(true)
+  })
+})
+
 describe('ExecutivePdfTemplate name band', () => {
   it('clamps the name to 22pt (top of the 18-22pt band)', () => {
     const doc = ExecutivePdfTemplate({

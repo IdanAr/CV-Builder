@@ -37,7 +37,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
     railSectionTitle: {
       fontFamily: headFont, fontSize: 12, fontWeight: 'bold', color: '#ffffff',
       textTransform: 'uppercase', letterSpacing: 1,
-      borderBottomWidth: 0.75, borderBottomColor: 'rgba(255,255,255,0.35)',
+      borderBottomWidth: 0.75, borderBottomColor: meta.accentColor,
       paddingBottom: 2.25, marginTop: 13.5, marginBottom: 5.25,
     },
     railBody: { fontSize: 10, color: 'rgba(255,255,255,0.9)', lineHeight: 1.6 },
