@@ -226,9 +226,10 @@ describe('EditTab — custom sections', () => {
     expect(screen.getByRole('button', { name: /add section/i })).toBeTruthy()
   })
 
-  it('clicking Add Section calls addCustomSection with correct shape', () => {
+  it('clicking Add Section then New custom section calls addCustomSection with correct shape', () => {
     render(<EditTab />)
     fireEvent.click(screen.getByRole('button', { name: /add section/i }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /new custom section/i }))
     expect(addCustomSection).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'New Section',
@@ -236,6 +237,26 @@ describe('EditTab — custom sections', () => {
         items: [],
       })
     )
+  })
+})
+
+describe('EditTab — add section menu', () => {
+  it('lists removed built-in sections in the add menu and re-adds on click', () => {
+    // 'skills' is absent from sectionOrder → it should be offered for re-add
+    setupStore({ sectionOrder: ['work', 'education'] })
+    render(<EditTab />)
+    fireEvent.click(screen.getByRole('button', { name: /add section/i }))
+    const skillsItem = screen.getByRole('menuitem', { name: /^skills$/i })
+    fireEvent.click(skillsItem)
+    expect(setMeta).toHaveBeenCalledWith({ sectionOrder: ['work', 'education', 'skills'] })
+  })
+
+  it('offers New custom section in the add menu', () => {
+    setupStore({ sectionOrder: ['work', 'education', 'skills'] })
+    render(<EditTab />)
+    fireEvent.click(screen.getByRole('button', { name: /add section/i }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /new custom section/i }))
+    expect(addCustomSection).toHaveBeenCalled()
   })
 })
 
