@@ -24,7 +24,7 @@ export interface ResumeEditorStore {
   addCustomSection: (section: CustomSection) => void
   updateCustomSection: (id: string, patch: Partial<CustomSection>) => void
   removeCustomSection: (id: string) => void
-  removeBuiltInSection: (section: string) => void
+  removeBuiltInSection: (section: Exclude<keyof ResumeData, 'basics' | 'customSections' | 'coverLetter'>) => void
   hydrate: (resumeId: string, title: string, data: ResumeData, meta: ResumeMeta) => void
   _setIsSaving: (v: boolean) => void
   _setIsDirty: (v: boolean) => void
@@ -177,15 +177,18 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
         isDirty: true,
       })),
     removeBuiltInSection: (section) =>
-      set((s) => ({
-        ...pushHistory(s),
-        data: { ...s.data, [section]: [] },
-        meta: {
-          ...s.meta,
-          sectionOrder: s.meta.sectionOrder.filter((k) => k !== section),
-        },
-        isDirty: true,
-      })),
+      set((s) => {
+        const clearedData: Partial<ResumeData> = { [section]: [] }
+        return {
+          ...pushHistory(s),
+          data: { ...s.data, ...clearedData },
+          meta: {
+            ...s.meta,
+            sectionOrder: s.meta.sectionOrder.filter((k) => k !== section),
+          },
+          isDirty: true,
+        }
+      }),
     hydrate: (resumeId, title, data, meta) => {
       _lastPushAt = 0
       set({ resumeId, title, data, meta, isDirty: false, saveError: null, _history: [], _future: [], canUndo: false, canRedo: false })
