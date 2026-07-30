@@ -57,3 +57,34 @@ describe('setMeta — Minimal template is single-column only', () => {
     expect(useResumeEditorStore.getState().meta.layout).toBe('two-column')
   })
 })
+
+describe('removeBuiltInSection', () => {
+  it('removes the section from sectionOrder and clears its data', () => {
+    useResumeEditorStore.getState().hydrate(
+      'r1',
+      'CV',
+      { work: [{ name: 'Acme' }], education: [{ institution: 'MIT' }] },
+      { ...defaultMeta, sectionOrder: ['work', 'education', 'skills'] },
+    )
+    useResumeEditorStore.getState().removeBuiltInSection('work')
+    const { data, meta, isDirty } = useResumeEditorStore.getState()
+    expect(meta.sectionOrder).toEqual(['education', 'skills'])
+    expect(data.work).toEqual([])
+    expect(data.education).toEqual([{ institution: 'MIT' }])
+    expect(isDirty).toBe(true)
+  })
+
+  it('is undoable in a single step', () => {
+    useResumeEditorStore.getState().hydrate(
+      'r1',
+      'CV',
+      { work: [{ name: 'Acme' }] },
+      { ...defaultMeta, sectionOrder: ['work', 'education'] },
+    )
+    useResumeEditorStore.getState().removeBuiltInSection('work')
+    useResumeEditorStore.getState().undo()
+    const { data, meta } = useResumeEditorStore.getState()
+    expect(meta.sectionOrder).toEqual(['work', 'education'])
+    expect(data.work).toEqual([{ name: 'Acme' }])
+  })
+})

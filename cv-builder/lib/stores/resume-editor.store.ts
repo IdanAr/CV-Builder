@@ -24,6 +24,7 @@ export interface ResumeEditorStore {
   addCustomSection: (section: CustomSection) => void
   updateCustomSection: (id: string, patch: Partial<CustomSection>) => void
   removeCustomSection: (id: string) => void
+  removeBuiltInSection: (section: string) => void
   hydrate: (resumeId: string, title: string, data: ResumeData, meta: ResumeMeta) => void
   _setIsSaving: (v: boolean) => void
   _setIsDirty: (v: boolean) => void
@@ -172,6 +173,16 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
         meta: {
           ...s.meta,
           sectionOrder: s.meta.sectionOrder.filter((k) => k !== `custom:${id}`),
+        },
+        isDirty: true,
+      })),
+    removeBuiltInSection: (section) =>
+      set((s) => ({
+        ...pushHistory(s),
+        data: { ...s.data, [section]: [] },
+        meta: {
+          ...s.meta,
+          sectionOrder: s.meta.sectionOrder.filter((k) => k !== section),
         },
         isDirty: true,
       })),
