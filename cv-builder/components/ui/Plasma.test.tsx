@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
+import { Renderer } from 'ogl'
 import { Plasma } from './Plasma'
 
 class ResizeObserverStub {
@@ -26,22 +27,34 @@ class IntersectionObserverStub {
   }
 }
 
+interface FakeRendererInstance {
+  dpr: number
+  renderCallCount: number
+}
+
 vi.mock('ogl', () => {
   class FakeRenderer {
+    static instances: FakeRenderer[] = []
     gl: {
       canvas: HTMLCanvasElement
       drawingBufferWidth: number
       drawingBufferHeight: number
     }
-    constructor() {
+    dpr: number
+    renderCallCount = 0
+    constructor(opts: { dpr: number }) {
+      this.dpr = opts.dpr
       this.gl = {
         canvas: document.createElement('canvas'),
         drawingBufferWidth: 100,
         drawingBufferHeight: 100,
       }
+      FakeRenderer.instances.push(this)
     }
     setSize() {}
-    render() {}
+    render() {
+      this.renderCallCount++
+    }
   }
   class FakeProgram {
     uniforms: Record<string, { value: unknown }>
@@ -54,12 +67,26 @@ vi.mock('ogl', () => {
   return { Renderer: FakeRenderer, Program: FakeProgram, Mesh: FakeMesh, Triangle: FakeTriangle }
 })
 
+function lastRendererInstance(): FakeRendererInstance {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const instances = (Renderer as any).instances as FakeRendererInstance[]
+  return instances[instances.length - 1]
+}
+
 describe('Plasma — animation lifecycle', () => {
   let rafSpy: ReturnType<typeof vi.spyOn>
   let cafSpy: ReturnType<typeof vi.spyOn>
+  let pendingFrame: FrameRequestCallback | null
+
+  function fireFrame(t: number) {
+    const cb = pendingFrame
+    pendingFrame = null
+    cb?.(t)
+  }
 
   beforeEach(() => {
     IntersectionObserverStub.instances = []
+    pendingFrame = null
     vi.stubGlobal('ResizeObserver', ResizeObserverStub)
     vi.stubGlobal('IntersectionObserver', IntersectionObserverStub)
     vi.stubGlobal('matchMedia', (query: string) => ({
@@ -68,7 +95,10 @@ describe('Plasma — animation lifecycle', () => {
       addEventListener: () => {},
       removeEventListener: () => {},
     }))
-    rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 1)
+    rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+      pendingFrame = cb
+      return 1
+    })
     cafSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
   })
 
@@ -125,5 +155,25 @@ describe('Plasma — animation lifecycle', () => {
     rafSpy.mockClear()
     unmount()
     expect(cafSpy).toHaveBeenCalled()
+  })
+
+  it('caps the WebGL renderer DPR at 1 regardless of devicePixelRatio', () => {
+    vi.stubGlobal('devicePixelRatio', 3)
+    render(<Plasma />)
+    expect(lastRendererInstance().dpr).toBe(1)
+  })
+
+  it('throttles GPU render calls to ~30fps regardless of rAF frequency — the loop stays visible/focused the whole time, matching normal active use', () => {
+    render(<Plasma />)
+    const renderer = lastRendererInstance()
+
+    fireFrame(1000)
+    expect(renderer.renderCallCount).toBe(1)
+
+    fireFrame(1010) // 10ms later — under the ~33ms budget, should skip
+    expect(renderer.renderCallCount).toBe(1)
+
+    fireFrame(1040) // 40ms after the first render — over budget, should render
+    expect(renderer.renderCallCount).toBe(2)
   })
 })

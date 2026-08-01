@@ -10,6 +10,19 @@ interface PlasmaProps {
   mouseInteractive?: boolean;
 }
 
+// This is a low-opacity (default 0.2, further diluted by a gradient overlay)
+// ambient background rendered continuously behind every dashboard route,
+// including the editor — it can't rely on being off-screen to cut its cost,
+// because during normal active use it never is. So its per-frame cost is
+// capped unconditionally: 30fps is visually indistinguishable from 60+ for
+// this kind of slow ambient motion, and DPR 1 is imperceptible at this
+// opacity while quartering the shader's per-frame pixel count on retina
+// displays — both cut sustained GPU load (and the thermal/main-thread-stall
+// risk that comes with it) regardless of visibility or focus state.
+const TARGET_FPS = 30;
+const MIN_FRAME_INTERVAL_MS = 1000 / TARGET_FPS;
+const MAX_DPR = 1;
+
 const hexToRgb = (hex: string): [number, number, number] => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) return [1, 0.5, 0.2];
@@ -115,7 +128,7 @@ export const Plasma: React.FC<PlasmaProps> = ({
       webgl: 2,
       alpha: true,
       antialias: false,
-      dpr: Math.min(window.devicePixelRatio || 1, 2),
+      dpr: Math.min(window.devicePixelRatio || 1, MAX_DPR),
     });
     const gl = renderer.gl;
     const canvas = gl.canvas as HTMLCanvasElement;
@@ -190,8 +203,14 @@ export const Plasma: React.FC<PlasmaProps> = ({
 
     let raf = 0;
     let animating = false;
+    let lastRenderTime = 0;
     const loop = (t: number) => {
-      renderFrame(t);
+      // rAF still fires at full display refresh rate — cheap dispatch — but
+      // the expensive GPU draw call is throttled to TARGET_FPS.
+      if (t - lastRenderTime >= MIN_FRAME_INTERVAL_MS) {
+        lastRenderTime = t;
+        renderFrame(t);
+      }
       raf = requestAnimationFrame(loop);
     };
     const startLoop = () => {
