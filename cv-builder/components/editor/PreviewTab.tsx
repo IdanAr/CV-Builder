@@ -73,11 +73,19 @@ export function PreviewTab() {
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
+    let raf = 0
+    // rAF-batched: fitScale resizes a child inside this observed container,
+    // which can toggle the scrollbar and re-notify within the same cycle.
+    // Deferring to the next frame avoids re-entrant ResizeObserver churn.
     const ro = new ResizeObserver(() => {
-      setFitScale(fitScaleFor(el.clientWidth))
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => setFitScale(fitScaleFor(el.clientWidth)))
     })
     ro.observe(el)
-    return () => ro.disconnect()
+    return () => {
+      cancelAnimationFrame(raf)
+      ro.disconnect()
+    }
   }, [])
 
   // Restore a previously-persisted zoom level. Absent or 'fit' → leave
@@ -95,11 +103,16 @@ export function PreviewTab() {
   useEffect(() => {
     const el = innerRef.current
     if (!el) return
+    let raf = 0
     const ro = new ResizeObserver(() => {
-      setTemplateHeight(el.scrollHeight)
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => setTemplateHeight(el.scrollHeight))
     })
     ro.observe(el)
-    return () => ro.disconnect()
+    return () => {
+      cancelAnimationFrame(raf)
+      ro.disconnect()
+    }
   }, [])
 
   const Template = TEMPLATES[debouncedMeta.templateId] ?? ClassicTemplate
