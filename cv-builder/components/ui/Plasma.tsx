@@ -173,9 +173,8 @@ export const Plasma: React.FC<PlasmaProps> = ({
     ro.observe(containerRef.current);
     setSize();
 
-    let raf = 0;
     const t0 = performance.now();
-    const loop = (t: number) => {
+    const renderFrame = (t: number) => {
       const timeValue = (t - t0) * 0.001;
 
       if (direction === "pingpong") {
@@ -187,13 +186,60 @@ export const Plasma: React.FC<PlasmaProps> = ({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (program.uniforms.iTime as any).value = timeValue;
       renderer.render({ scene: mesh });
+    };
+
+    let raf = 0;
+    let animating = false;
+    const loop = (t: number) => {
+      renderFrame(t);
       raf = requestAnimationFrame(loop);
     };
-    raf = requestAnimationFrame(loop);
+    const startLoop = () => {
+      if (animating) return;
+      animating = true;
+      raf = requestAnimationFrame(loop);
+    };
+    const stopLoop = () => {
+      if (!animating) return;
+      animating = false;
+      cancelAnimationFrame(raf);
+    };
+
+    // Sustained full-viewport WebGL rendering is expensive; only pay for it
+    // when the shader is actually visible and the tab is in the foreground.
+    const prefersReducedMotion =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    let io: IntersectionObserver | undefined;
+    let isIntersecting = true;
+
+    const syncAnimationState = () => {
+      if (!isIntersecting || document.hidden) {
+        stopLoop();
+      } else {
+        startLoop();
+      }
+    };
+    const handleVisibilityChange = () => syncAnimationState();
+
+    if (prefersReducedMotion) {
+      renderFrame(t0);
+    } else {
+      io = new IntersectionObserver(([entry]) => {
+        isIntersecting = entry.isIntersecting;
+        syncAnimationState();
+      });
+      io.observe(containerRef.current);
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+      syncAnimationState();
+    }
 
     return () => {
-      cancelAnimationFrame(raf);
+      stopLoop();
       ro.disconnect();
+      io?.disconnect();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (mouseInteractive && containerRef.current) {
         containerRef.current.removeEventListener("mousemove", handleMouseMove);
       }
