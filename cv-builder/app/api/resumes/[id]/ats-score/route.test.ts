@@ -18,9 +18,13 @@ vi.mock('@/lib/ats/scorer', async (importOriginal) => {
   }
 })
 
-vi.mock('@/lib/ai/jd-extraction-pipeline', () => ({
-  extractJdRequirements: vi.fn(),
-}))
+vi.mock('@/lib/ai/jd-extraction-pipeline', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/ai/jd-extraction-pipeline')>()
+  return {
+    ...actual,
+    extractJdRequirements: vi.fn(),
+  }
+})
 
 vi.mock('@/lib/rate-limit', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/rate-limit')>()
@@ -45,7 +49,9 @@ async function authedRequest(body: unknown) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  return POST(req as never, { params: Promise.resolve({ id: 'abc' }) } as never) as Promise<Response>
+  const res = await POST(req as never, { params: Promise.resolve({ id: 'abc' }) } as never) as Response
+  const json = await res.json()
+  return { res, json }
 }
 
 describe('POST /api/resumes/[id]/ats-score', () => {
@@ -70,7 +76,7 @@ describe('POST /api/resumes/[id]/ats-score', () => {
 
   it('forwards semanticMatches to scoreResume, defaulting to an empty array', async () => {
     const { scoreResume } = await import('@/lib/ats/scorer')
-    const res = await authedRequest({ jobDescription: 'React developer', semanticMatches: ['kubernetes'], jdKeywords: ['react'] })
+    const { res } = await authedRequest({ jobDescription: 'React developer', semanticMatches: ['kubernetes'], jdKeywords: ['react'] })
     expect(res.status).toBe(200)
     expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], ['kubernetes'], ['react'])
   })
@@ -86,7 +92,7 @@ describe('POST /api/resumes/[id]/ats-score', () => {
     const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
     const { scoreResume } = await import('@/lib/ats/scorer')
 
-    const res = await authedRequest({ jobDescription: 'React developer', jdKeywords: ['react', 'typescript'] })
+    const { res } = await authedRequest({ jobDescription: 'React developer', jdKeywords: ['react', 'typescript'] })
 
     expect(res.status).toBe(200)
     expect(checkRateLimit).not.toHaveBeenCalled()
@@ -97,39 +103,72 @@ describe('POST /api/resumes/[id]/ats-score', () => {
   it('extracts fresh jdKeywords via AI when none are cached and the job description is non-blank', async () => {
     const { checkRateLimit } = await import('@/lib/rate-limit')
     const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
-    vi.mocked(extractJdRequirements).mockResolvedValueOnce(['mixpanel', 'amplitude'])
+    vi.mocked(extractJdRequirements).mockResolvedValueOnce([
+      { term: 'mixpanel', priority: 'nice-to-have' },
+      { term: 'amplitude', priority: 'nice-to-have' },
+    ])
     const { scoreResume } = await import('@/lib/ats/scorer')
 
-    const res = await authedRequest({ jobDescription: 'Analytics role' })
+    const { res, json } = await authedRequest({ jobDescription: 'Analytics role' })
 
     expect(res.status).toBe(200)
     expect(checkRateLimit).toHaveBeenCalledWith('user-1:ai', expect.any(Object))
     expect(extractJdRequirements).toHaveBeenCalledWith('Analytics role')
     expect(scoreResume).toHaveBeenCalledWith({}, 'Analytics role', [], [], ['mixpanel', 'amplitude'])
+    expect(json.keywordPriorities).toEqual({ mixpanel: 'nice-to-have', amplitude: 'nice-to-have' })
   })
 
-  it('falls back to an empty override (regex extraction inside scoreResume) when rate limited, and still returns 200', async () => {
+  it('reuses cached keywordPriorities from the body instead of recomputing them, when jdKeywords is also cached', async () => {
+    const { checkRateLimit } = await import('@/lib/rate-limit')
+    const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
+
+    const { res, json } = await authedRequest({
+      jobDescription: 'React developer',
+      jdKeywords: ['react', 'kubernetes'],
+      keywordPriorities: { react: 'must', kubernetes: 'ambiguous' },
+    })
+
+    expect(res.status).toBe(200)
+    expect(checkRateLimit).not.toHaveBeenCalled()
+    expect(extractJdRequirements).not.toHaveBeenCalled()
+    expect(json.keywordPriorities).toEqual({ react: 'must', kubernetes: 'ambiguous' })
+  })
+
+  it('normalizes malformed cached priority values instead of trusting the client blindly', async () => {
+    const { res, json } = await authedRequest({
+      jobDescription: 'React developer',
+      jdKeywords: ['react'],
+      keywordPriorities: { react: 'not-a-real-priority' },
+    })
+
+    expect(res.status).toBe(200)
+    expect(json.keywordPriorities).toEqual({ react: 'ambiguous' })
+  })
+
+  it('falls back to an empty override and empty priorities (regex extraction inside scoreResume) when rate limited, and still returns 200', async () => {
     const { checkRateLimit } = await import('@/lib/rate-limit')
     vi.mocked(checkRateLimit).mockReturnValueOnce({ allowed: false, retryAfterSeconds: 42 })
     const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
     const { scoreResume } = await import('@/lib/ats/scorer')
 
-    const res = await authedRequest({ jobDescription: 'React developer' })
+    const { res, json } = await authedRequest({ jobDescription: 'React developer' })
 
     expect(res.status).toBe(200)
     expect(extractJdRequirements).not.toHaveBeenCalled()
     expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], [])
+    expect(json.keywordPriorities).toEqual({})
   })
 
-  it('falls back to an empty override when AI extraction throws, and still returns 200', async () => {
+  it('falls back to an empty override and empty priorities when AI extraction throws, and still returns 200', async () => {
     const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
     vi.mocked(extractJdRequirements).mockRejectedValueOnce(new Error('Anthropic API error'))
     const { scoreResume } = await import('@/lib/ats/scorer')
 
-    const res = await authedRequest({ jobDescription: 'React developer' })
+    const { res, json } = await authedRequest({ jobDescription: 'React developer' })
 
     expect(res.status).toBe(200)
     expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], [])
+    expect(json.keywordPriorities).toEqual({})
   })
 
   it('does not attempt AI extraction when the job description is blank', async () => {
@@ -137,11 +176,12 @@ describe('POST /api/resumes/[id]/ats-score', () => {
     const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
     const { scoreResume } = await import('@/lib/ats/scorer')
 
-    const res = await authedRequest({})
+    const { res, json } = await authedRequest({})
 
     expect(res.status).toBe(200)
     expect(checkRateLimit).not.toHaveBeenCalled()
     expect(extractJdRequirements).not.toHaveBeenCalled()
     expect(scoreResume).toHaveBeenCalledWith({}, '', [], [], [])
+    expect(json.keywordPriorities).toEqual({})
   })
 })
