@@ -313,3 +313,52 @@ describe('scoreResume — semanticMatches', () => {
     expect(withDefault).toEqual(withEmpty)
   })
 })
+
+describe('scoreResume — jdKeywordsOverride', () => {
+  it('returns the regex-extracted keywords in jdKeywords when no override is given', () => {
+    const result = scoreResume(fullData, jd)
+    expect(result.jdKeywords).toEqual(expect.arrayContaining(['react', 'typescript']))
+  })
+
+  it('uses jdKeywordsOverride instead of regex-extracting from the job description', () => {
+    const data: ResumeData = {
+      basics: { name: 'A', email: 'a@b.c', summary: 'Experienced with Mixpanel and Amplitude analytics.' },
+    }
+    // The job description text itself contains none of these words, proving
+    // the override — not the text — drove extraction.
+    const result = scoreResume(data, 'Completely unrelated filler text.', [], [], ['mixpanel', 'amplitude'])
+    expect(result.jdKeywords).toEqual(['mixpanel', 'amplitude'])
+    expect(result.matchedKeywords).toEqual(expect.arrayContaining(['mixpanel', 'amplitude']))
+  })
+
+  it('reflects the override verbatim in the jdKeywords field', () => {
+    const result = scoreResume({}, 'irrelevant', [], [], ['jira', 'confluence'])
+    expect(result.jdKeywords).toEqual(['jira', 'confluence'])
+  })
+
+  it('lowercases jdKeywordsOverride defensively', () => {
+    const data: ResumeData = { basics: { name: 'A', email: 'a@b.c', summary: 'Uses Mixpanel daily.' } }
+    const result = scoreResume(data, 'irrelevant', [], [], ['Mixpanel'])
+    expect(result.jdKeywords).toEqual(['mixpanel'])
+    expect(result.matchedKeywords).toContain('mixpanel')
+  })
+
+  it('matches multi-word override keywords against resume text', () => {
+    const data: ResumeData = {
+      basics: { name: 'A', email: 'a@b.c', summary: 'Deployed workloads on Google Cloud Platform.' },
+    }
+    const result = scoreResume(data, 'irrelevant', [], [], ['google cloud platform'])
+    expect(result.matchedKeywords).toContain('google cloud platform')
+  })
+
+  it('falls back to regex extraction when jdKeywordsOverride is an empty array', () => {
+    const withEmptyOverride = scoreResume(fullData, jd, [], [], [])
+    const withoutOverride = scoreResume(fullData, jd)
+    expect(withEmptyOverride).toEqual(withoutOverride)
+  })
+
+  it('empty-jobDescription short-circuit still includes an empty jdKeywords field', () => {
+    const result = scoreResume({}, '')
+    expect(result.jdKeywords).toEqual([])
+  })
+})

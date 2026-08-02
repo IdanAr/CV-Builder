@@ -21,6 +21,7 @@ const scoreResult: AtsScoreResult = {
   missingKeywords: ['react', 'typescript'],
   excludedMatchedKeywords: [],
   excludedMissingKeywords: [],
+  jdKeywords: ['react', 'typescript'],
 }
 
 const generateFix: AtsFix = {
@@ -97,6 +98,7 @@ describe('AtsScorePanel keyword exclusion toggle', () => {
       missingKeywords: ['typescript'],
       excludedMatchedKeywords: [],
       excludedMissingKeywords: ['react'],
+      jdKeywords: ['react', 'typescript'],
     }
     const fetchMock = vi
       .fn()
@@ -131,6 +133,7 @@ describe('AtsScorePanel keyword exclusion toggle', () => {
       missingKeywords: ['typescript'],
       excludedMatchedKeywords: [],
       excludedMissingKeywords: ['react'],
+      jdKeywords: ['react', 'typescript'],
     }
     const fetchMock = vi
       .fn()
@@ -163,6 +166,7 @@ describe('AtsScorePanel semantic match', () => {
       missingKeywords: ['typescript'],
       excludedMatchedKeywords: [],
       excludedMissingKeywords: [],
+      jdKeywords: ['react', 'typescript'],
     }
     const fetchMock = vi
       .fn()
@@ -238,6 +242,7 @@ describe('AtsScorePanel missing-keyword ignore hint', () => {
       missingKeywords: [],
       excludedMatchedKeywords: [],
       excludedMissingKeywords: [],
+      jdKeywords: ['react', 'typescript'],
     }
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(noMissing))
     vi.stubGlobal('fetch', fetchMock)
