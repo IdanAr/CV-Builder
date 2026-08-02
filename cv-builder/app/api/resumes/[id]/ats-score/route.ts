@@ -22,8 +22,11 @@ export const POST = auth(async (req, ctx) => {
     const excludedKeywords: string[] = Array.isArray(body.excludedKeywords)
       ? body.excludedKeywords.filter((k: unknown) => typeof k === 'string').slice(0, 200)
       : []
+    const semanticMatches: string[] = Array.isArray(body.semanticMatches)
+      ? body.semanticMatches.filter((k: unknown) => typeof k === 'string').slice(0, 30)
+      : []
     const data = (resume.data ?? {}) as ResumeData
-    const result = scoreResume(data, jobDescription, excludedKeywords)
+    const result = scoreResume(data, jobDescription, excludedKeywords, semanticMatches)
 
     return NextResponse.json(result)
   } catch (err) {
