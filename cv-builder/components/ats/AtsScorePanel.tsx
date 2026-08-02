@@ -4,7 +4,13 @@ import { useState, useCallback } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import type { AtsScoreResult } from '@/lib/ats/scorer'
 import type { AtsFix } from '@/lib/ai/ats-fix-pipeline'
+import type { KeywordPriority } from '@/lib/ai/jd-extraction-pipeline'
 import { AtsFixReviewPanel } from './AtsFixReviewPanel'
+
+// /ats-score merges keywordPriorities onto AtsScoreResult rather than
+// widening that interface (see the route) — this is the richer shape the
+// client actually receives.
+type AtsScoreResponse = AtsScoreResult & { keywordPriorities?: Record<string, KeywordPriority> }
 
 const VECTOR_LABELS: { key: keyof AtsScoreResult['breakdown']; label: string; max: number }[] = [
   { key: 'format', label: 'Format & Structure', max: 25 },
@@ -60,7 +66,20 @@ export function AtsScorePanel() {
   // fresh Analyze click so an edited job description gets fresh extraction.
   const [jdKeywords, setJdKeywords] = useState<string[]>([])
 
-  async function handleAnalyze(excludedOverride?: string[], semanticOverride?: string[], jdKeywordsOverride?: string[]) {
+  // Which missing keywords are must-have vs nice-to-have, per the JD's own
+  // wording (Claude reads qualifiers like "Must", "Nice to have" directly).
+  // Cached and re-sent alongside jdKeywords for the same caching reason —
+  // an absent entry is treated as "ambiguous" (colored the same as
+  // must-have, per the product decision to err toward not hiding a
+  // possibly-important requirement).
+  const [keywordPriorities, setKeywordPriorities] = useState<Record<string, KeywordPriority>>({})
+
+  async function handleAnalyze(
+    excludedOverride?: string[],
+    semanticOverride?: string[],
+    jdKeywordsOverride?: string[],
+    keywordPrioritiesOverride?: Record<string, KeywordPriority>
+  ) {
     if (!resumeId || !jobDescription.trim()) return
     setLoading(true)
     setError(null)
@@ -74,6 +93,7 @@ export function AtsScorePanel() {
       setSemanticError(null)
     }
     const cachedJdKeywords = jdKeywordsOverride ?? []
+    const cachedKeywordPriorities = keywordPrioritiesOverride ?? {}
     try {
       const res = await fetch(`/api/resumes/${resumeId}/ats-score`, {
         method: 'POST',
@@ -83,12 +103,14 @@ export function AtsScorePanel() {
           excludedKeywords: excludedOverride ?? excludedKeywords,
           semanticMatches: semantic,
           jdKeywords: cachedJdKeywords,
+          keywordPriorities: cachedKeywordPriorities,
         }),
       })
       if (!res.ok) throw new Error('Analysis failed')
-      const json: AtsScoreResult = await res.json()
+      const json: AtsScoreResponse = await res.json()
       setResult(json)
       setJdKeywords(json.jdKeywords)
+      setKeywordPriorities(json.keywordPriorities ?? {})
     } catch {
       setError('Analysis failed. Please try again.')
     } finally {
@@ -102,7 +124,7 @@ export function AtsScorePanel() {
       : [...excludedKeywords, kw]
     setMeta({ excludedAtsKeywords: next })
     if (jobDescription.trim()) {
-      handleAnalyze(next, semanticMatches, jdKeywords)
+      handleAnalyze(next, semanticMatches, jdKeywords, keywordPriorities)
     }
   }
 
@@ -139,7 +161,7 @@ export function AtsScorePanel() {
       })
       if (!res.ok) throw new Error('Semantic match failed')
       const { confirmedMatches } = await res.json()
-      await handleAnalyze(excludedKeywords, confirmedMatches, jdKeywords)
+      await handleAnalyze(excludedKeywords, confirmedMatches, jdKeywords, keywordPriorities)
       setSemanticStatus('ready')
     } catch {
       setSemanticError('Semantic match failed. Please try again.')
@@ -267,29 +289,48 @@ export function AtsScorePanel() {
                 <p className="mb-2 text-xs text-red-600">{semanticError}</p>
               )}
 
-              <p className="mb-2 text-xs text-red-400">
+              <p className="mb-1 text-xs text-red-400">
                 Click a keyword you don&apos;t have to ignore it — the AI tools above will skip it too.
+              </p>
+              <p className="mb-2 text-xs text-indigo-300">
+                <span className="text-red-500">●</span> must-have / unclear&nbsp;&nbsp;
+                <span className="text-yellow-600">●</span> nice-to-have
               </p>
 
               <div className="flex flex-wrap gap-1">
                 {[
                   ...result.missingKeywords.map((kw) => ({ kw, excluded: false })),
                   ...result.excludedMissingKeywords.map((kw) => ({ kw, excluded: true })),
-                ].slice(0, 40).map(({ kw, excluded }) => (
+                ].slice(0, 40).map(({ kw, excluded }) => {
+                  const priority = keywordPriorities[kw] ?? 'ambiguous'
+                  const isNiceToHave = priority === 'nice-to-have'
+                  return (
                   <button
                     key={kw}
                     type="button"
                     onClick={() => toggleExcluded(kw)}
                     aria-label={excluded ? `Include "${kw}" in scoring` : `Exclude "${kw}" from scoring`}
+                    title={
+                      excluded
+                        ? undefined
+                        : priority === 'must'
+                        ? 'Must-have requirement'
+                        : priority === 'nice-to-have'
+                        ? 'Nice-to-have requirement'
+                        : 'Requirement level unclear from the job description'
+                    }
                     className={
                       excluded
                         ? 'inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-400 line-through hover:bg-gray-200 transition-colors'
+                        : isNiceToHave
+                        ? 'inline-block rounded bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800 hover:bg-yellow-200 transition-colors'
                         : 'inline-block rounded bg-red-100 px-2 py-0.5 text-xs text-red-700 hover:bg-red-200 transition-colors'
                     }
                   >
                     {kw}
                   </button>
-                ))}
+                  )
+                })}
                 {result.missingKeywords.length + result.excludedMissingKeywords.length > 40 && (
                   <span className="text-xs text-red-500 self-center">
                     +{result.missingKeywords.length + result.excludedMissingKeywords.length - 40} more

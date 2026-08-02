@@ -312,3 +312,111 @@ describe('AtsScorePanel jdKeywords caching', () => {
     expect(secondCallBody.jdKeywords).toEqual([])
   })
 })
+
+describe('AtsScorePanel missing-keyword priority coloring', () => {
+  const priorityScoreResult = {
+    ...scoreResult,
+    missingKeywords: ['react', 'typescript', 'agile'],
+    keywordPriorities: { react: 'must', typescript: 'nice-to-have' }, // agile intentionally absent
+  }
+
+  it('colors a must-have missing keyword red', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(priorityScoreResult))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+
+    const reactChip = await screen.findByLabelText('Exclude "react" from scoring')
+    expect(reactChip.className).toContain('red')
+    expect(reactChip.className).not.toContain('yellow')
+  })
+
+  it('colors a nice-to-have missing keyword yellow', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(priorityScoreResult))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+
+    const tsChip = await screen.findByLabelText('Exclude "typescript" from scoring')
+    expect(tsChip.className).toContain('yellow')
+    expect(tsChip.className).not.toContain('red')
+  })
+
+  it('colors a missing keyword with no priority entry (ambiguous) red, same as must-have', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(priorityScoreResult))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+
+    const agileChip = await screen.findByLabelText('Exclude "agile" from scoring')
+    expect(agileChip.className).toContain('red')
+    expect(agileChip.className).not.toContain('yellow')
+  })
+
+  it('shows a legend explaining the red/yellow priority coloring', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(priorityScoreResult))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+
+    await waitFor(() => expect(screen.getByText(/nice-to-have/i)).toBeInTheDocument())
+    expect(screen.getByText(/must-have/i)).toBeInTheDocument()
+  })
+
+  it('caches and forwards keywordPriorities on a re-score of the same job description', async () => {
+    const afterExclusion = {
+      ...priorityScoreResult,
+      missingKeywords: ['typescript', 'agile'],
+      excludedMissingKeywords: ['react'],
+    }
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(priorityScoreResult))
+      .mockResolvedValueOnce(jsonResponse(afterExclusion))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+    await waitFor(() => expect(screen.getByLabelText('Exclude "react" from scoring')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByLabelText('Exclude "react" from scoring'))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    const secondCallBody = JSON.parse(fetchMock.mock.calls[1][1].body)
+    expect(secondCallBody.keywordPriorities).toEqual({ react: 'must', typescript: 'nice-to-have' })
+  })
+
+  it('a fresh Analyze click sends an empty keywordPriorities cache', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(priorityScoreResult))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    const firstCallBody = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(firstCallBody.keywordPriorities).toEqual({})
+  })
+})
