@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { parseFile, ParseError } from '@/lib/upload/parse-file'
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB_LABEL } from '@/lib/upload/limits'
 import { checkRateLimit, UPLOAD_RATE_LIMIT } from '@/lib/rate-limit'
 import { apiError, handleRouteError } from '@/lib/api/route-errors'
 
-const MAX_BYTES = 5 * 1024 * 1024
 const ALLOWED_TYPES = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -39,9 +39,9 @@ export const POST = auth(async function POST(req) {
     )
   }
 
-  if (file.size > MAX_BYTES) {
+  if (file.size > MAX_UPLOAD_BYTES) {
     return NextResponse.json(
-      { error: 'File must be 5 MB or smaller', code: 'FILE_TOO_LARGE' },
+      { error: `File must be ${MAX_UPLOAD_MB_LABEL} or smaller`, code: 'FILE_TOO_LARGE' },
       { status: 400 }
     )
   }
