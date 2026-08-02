@@ -1,3 +1,8 @@
+// Must import before 'pdf-parse': pdfjs-dist references the browser-only
+// DOMMatrix global at module-evaluation time. CanvasFactory polyfills it in
+// Node — without this explicit wiring, pdf-parse crashes on import in
+// Vercel's serverless runtime (see pdf-parse's troubleshooting.md #1).
+import { CanvasFactory } from 'pdf-parse/worker'
 import { PDFParse } from 'pdf-parse'
 import * as mammoth from 'mammoth'
 
@@ -17,7 +22,7 @@ export async function parseFile(buffer: Buffer, mimeType: string): Promise<strin
 
   try {
     if (mimeType === PDF_MIME) {
-      const parser = new PDFParse({ data: buffer })
+      const parser = new PDFParse({ data: buffer, CanvasFactory })
       const result = await parser.getText()
       text = result.text
     } else if (mimeType === DOCX_MIME) {
