@@ -15,7 +15,15 @@ const FONT_GLOBS = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ['pdf-parse', 'mongodb', 'mongoose'],
+  // '@napi-rs/canvas' provides the DOMMatrix polyfill pdf-parse (pdfjs-dist)
+  // needs in Node. It ships prebuilt native binaries per-platform, which
+  // bundling breaks — keep it external like pdf-parse itself so Vercel's
+  // file tracer picks up the right platform binary instead of a broken
+  // bundle. Without this, pdf-parse crashes at import time in production
+  // with "ReferenceError: DOMMatrix is not defined" (works locally because
+  // the whole app runs as one process there, not Vercel's isolated
+  // per-route Lambda).
+  serverExternalPackages: ['pdf-parse', '@napi-rs/canvas', 'mongodb', 'mongoose'],
   // Belt-and-braces, not a fix for a live failure. Measured: a build with this
   // block removed still traced all 64 required faces into the pdf and
   // pagination routes, because nft infers a `*.woff` wildcard from the runtime
