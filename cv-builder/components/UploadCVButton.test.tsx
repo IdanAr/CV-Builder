@@ -88,8 +88,8 @@ describe('UploadCVButton', () => {
 
   it('rejects an oversized file client-side before any fetch, showing the error in the modal', async () => {
     render(<UploadCVButton />)
-    triggerFileChange(makeFile('big.pdf', 'application/pdf', 5 * 1024 * 1024 + 1))
-    await waitFor(() => expect(screen.getByText(/5 MB/i)).toBeTruthy())
+    triggerFileChange(makeFile('big.pdf', 'application/pdf', 4 * 1024 * 1024 + 1))
+    await waitFor(() => expect(screen.getByText(/4 MB/i)).toBeTruthy())
     expect(fetch).not.toHaveBeenCalled()
   })
 })

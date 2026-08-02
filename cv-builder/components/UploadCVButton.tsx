@@ -3,10 +3,10 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import UploadProgressModal, { type UploadStage } from './UploadProgressModal'
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB_LABEL } from '@/lib/upload/limits'
 
 type Stage = 'idle' | UploadStage
 
-const MAX_BYTES = 5 * 1024 * 1024
 const DONE_DISPLAY_MS = 400
 
 interface UploadCVButtonProps {
@@ -31,9 +31,9 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
     if (inputRef.current) inputRef.current.value = ''
     if (!file) return
 
-    if (file.size > MAX_BYTES) {
+    if (file.size > MAX_UPLOAD_BYTES) {
       setFilename(file.name)
-      setErrorMsg('File must be 5 MB or smaller.')
+      setErrorMsg(`File must be ${MAX_UPLOAD_MB_LABEL} or smaller.`)
       setStage('error')
       return
     }

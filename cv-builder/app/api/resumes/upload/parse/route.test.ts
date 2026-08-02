@@ -60,9 +60,9 @@ describe('POST /api/resumes/upload/parse', () => {
     expect(body.code).toBe('UNSUPPORTED_FORMAT')
   })
 
-  it('returns 400 when file exceeds 5 MB', async () => {
+  it('returns 400 when file exceeds 4 MB', async () => {
     const { POST } = await import('./route')
-    const bigContent = 'x'.repeat(5 * 1024 * 1024 + 1)
+    const bigContent = 'x'.repeat(4 * 1024 * 1024 + 1)
     const formData = new FormData()
     formData.append('file', new File([bigContent], 'big.pdf', { type: 'application/pdf' }))
     const req = new Request('http://localhost/api/resumes/upload/parse', {
