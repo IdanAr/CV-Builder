@@ -49,18 +49,32 @@ export function AtsScorePanel() {
   const [fixError, setFixError] = useState<string | null>(null)
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
 
-  async function handleAnalyze(excludedOverride?: string[]) {
+  const [semanticMatches, setSemanticMatches] = useState<string[]>([])
+  const [semanticStatus, setSemanticStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [semanticError, setSemanticError] = useState<string | null>(null)
+
+  async function handleAnalyze(excludedOverride?: string[], semanticOverride?: string[]) {
     if (!resumeId || !jobDescription.trim()) return
     setLoading(true)
     setError(null)
     setFixes([])
     setFixStatus('idle')
     setDismissedIds(new Set())
+    const semantic = semanticOverride ?? []
+    setSemanticMatches(semantic)
+    if (semanticOverride === undefined) {
+      setSemanticStatus('idle')
+      setSemanticError(null)
+    }
     try {
       const res = await fetch(`/api/resumes/${resumeId}/ats-score`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobDescription, excludedKeywords: excludedOverride ?? excludedKeywords }),
+        body: JSON.stringify({
+          jobDescription,
+          excludedKeywords: excludedOverride ?? excludedKeywords,
+          semanticMatches: semantic,
+        }),
       })
       if (!res.ok) throw new Error('Analysis failed')
       setResult(await res.json())
@@ -77,7 +91,7 @@ export function AtsScorePanel() {
       : [...excludedKeywords, kw]
     setMeta({ excludedAtsKeywords: next })
     if (jobDescription.trim()) {
-      handleAnalyze(next)
+      handleAnalyze(next, semanticMatches)
     }
   }
 
@@ -99,6 +113,26 @@ export function AtsScorePanel() {
     } catch {
       setFixError('Could not generate fixes. Please try again.')
       setFixStatus('error')
+    }
+  }
+
+  async function handleSemanticMatch() {
+    if (!resumeId || !result || result.missingKeywords.length === 0) return
+    setSemanticStatus('loading')
+    setSemanticError(null)
+    try {
+      const res = await fetch(`/api/resumes/${resumeId}/ats-semantic-match`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ missingKeywords: result.missingKeywords }),
+      })
+      if (!res.ok) throw new Error('Semantic match failed')
+      const { confirmedMatches } = await res.json()
+      await handleAnalyze(excludedKeywords, confirmedMatches)
+      setSemanticStatus('ready')
+    } catch {
+      setSemanticError('Semantic match failed. Please try again.')
+      setSemanticStatus('error')
     }
   }
 
@@ -182,23 +216,45 @@ export function AtsScorePanel() {
                 <p className="text-sm font-semibold text-red-700">
                   Missing Keywords ({result.missingKeywords.length})
                 </p>
-                {fixStatus !== 'ready' && (
-                  <button
-                    onClick={handleFixAll}
-                    disabled={fixStatus === 'loading'}
-                    className="flex items-center gap-1.5 px-3 py-1 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                  >
-                    {fixStatus === 'loading' ? (
-                      <>
-                        <span className="animate-spin inline-block">⟳</span>
-                        Generating…
-                      </>
-                    ) : (
-                      <>✨ Tailor with AI</>
-                    )}
-                  </button>
-                )}
+                <div className="flex gap-2">
+                  {semanticStatus !== 'ready' && (
+                    <button
+                      onClick={handleSemanticMatch}
+                      disabled={semanticStatus === 'loading'}
+                      className="flex items-center gap-1.5 px-3 py-1 text-xs bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                    >
+                      {semanticStatus === 'loading' ? (
+                        <>
+                          <span className="animate-spin inline-block">⟳</span>
+                          Checking…
+                        </>
+                      ) : (
+                        <>🔎 Semantic Match</>
+                      )}
+                    </button>
+                  )}
+                  {fixStatus !== 'ready' && (
+                    <button
+                      onClick={handleFixAll}
+                      disabled={fixStatus === 'loading'}
+                      className="flex items-center gap-1.5 px-3 py-1 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                    >
+                      {fixStatus === 'loading' ? (
+                        <>
+                          <span className="animate-spin inline-block">⟳</span>
+                          Generating…
+                        </>
+                      ) : (
+                        <>✨ Tailor with AI</>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {semanticError && (
+                <p className="mb-2 text-xs text-red-600">{semanticError}</p>
+              )}
 
               <div className="flex flex-wrap gap-1">
                 {[
@@ -257,17 +313,20 @@ export function AtsScorePanel() {
               </p>
               <div className="flex flex-wrap gap-1">
                 {[
-                  ...result.matchedKeywords.map((kw) => ({ kw, excluded: false })),
-                  ...result.excludedMatchedKeywords.map((kw) => ({ kw, excluded: true })),
-                ].slice(0, 40).map(({ kw, excluded }) => (
+                  ...result.matchedKeywords.map((kw) => ({ kw, excluded: false, semantic: semanticMatches.includes(kw) })),
+                  ...result.excludedMatchedKeywords.map((kw) => ({ kw, excluded: true, semantic: false })),
+                ].slice(0, 40).map(({ kw, excluded, semantic }) => (
                   <button
                     key={kw}
                     type="button"
                     onClick={() => toggleExcluded(kw)}
                     aria-label={excluded ? `Include "${kw}" in scoring` : `Exclude "${kw}" from scoring`}
+                    title={semantic ? 'Matched via AI semantic analysis (not an exact keyword match)' : undefined}
                     className={
                       excluded
                         ? 'inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-400 line-through hover:bg-gray-200 transition-colors'
+                        : semantic
+                        ? 'inline-block rounded bg-teal-100 px-2 py-0.5 text-xs text-teal-700 hover:bg-teal-200 transition-colors'
                         : 'inline-block rounded bg-green-100 px-2 py-0.5 text-xs text-green-700 hover:bg-green-200 transition-colors'
                     }
                   >
