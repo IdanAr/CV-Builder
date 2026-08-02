@@ -24,7 +24,7 @@ const RequirementItemSchema = z.object({
  * substrings here is more forgiving than a strict enum check, and anything
  * unrecognized safely defaults to "ambiguous" rather than being dropped.
  */
-function normalizePriority(raw: unknown): KeywordPriority {
+export function normalizePriority(raw: unknown): KeywordPriority {
   if (typeof raw !== 'string') return 'ambiguous'
   const p = raw.toLowerCase()
   if (p.includes('must') || p.includes('required')) return 'must'
