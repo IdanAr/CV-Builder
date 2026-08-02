@@ -53,7 +53,14 @@ export function AtsScorePanel() {
   const [semanticStatus, setSemanticStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [semanticError, setSemanticError] = useState<string | null>(null)
 
-  async function handleAnalyze(excludedOverride?: string[], semanticOverride?: string[]) {
+  // The JD keyword list an /ats-score response actually used (AI-extracted
+  // or regex-fallback) — re-sent on subsequent re-scores of the SAME job
+  // description (exclude toggles, semantic-match re-analyze) so the server
+  // reuses it instead of paying for another AI extraction. Cleared on every
+  // fresh Analyze click so an edited job description gets fresh extraction.
+  const [jdKeywords, setJdKeywords] = useState<string[]>([])
+
+  async function handleAnalyze(excludedOverride?: string[], semanticOverride?: string[], jdKeywordsOverride?: string[]) {
     if (!resumeId || !jobDescription.trim()) return
     setLoading(true)
     setError(null)
@@ -66,6 +73,7 @@ export function AtsScorePanel() {
       setSemanticStatus('idle')
       setSemanticError(null)
     }
+    const cachedJdKeywords = jdKeywordsOverride ?? []
     try {
       const res = await fetch(`/api/resumes/${resumeId}/ats-score`, {
         method: 'POST',
@@ -74,10 +82,13 @@ export function AtsScorePanel() {
           jobDescription,
           excludedKeywords: excludedOverride ?? excludedKeywords,
           semanticMatches: semantic,
+          jdKeywords: cachedJdKeywords,
         }),
       })
       if (!res.ok) throw new Error('Analysis failed')
-      setResult(await res.json())
+      const json: AtsScoreResult = await res.json()
+      setResult(json)
+      setJdKeywords(json.jdKeywords)
     } catch {
       setError('Analysis failed. Please try again.')
     } finally {
@@ -91,7 +102,7 @@ export function AtsScorePanel() {
       : [...excludedKeywords, kw]
     setMeta({ excludedAtsKeywords: next })
     if (jobDescription.trim()) {
-      handleAnalyze(next, semanticMatches)
+      handleAnalyze(next, semanticMatches, jdKeywords)
     }
   }
 
@@ -128,7 +139,7 @@ export function AtsScorePanel() {
       })
       if (!res.ok) throw new Error('Semantic match failed')
       const { confirmedMatches } = await res.json()
-      await handleAnalyze(excludedKeywords, confirmedMatches)
+      await handleAnalyze(excludedKeywords, confirmedMatches, jdKeywords)
       setSemanticStatus('ready')
     } catch {
       setSemanticError('Semantic match failed. Please try again.')
@@ -255,6 +266,10 @@ export function AtsScorePanel() {
               {semanticError && (
                 <p className="mb-2 text-xs text-red-600">{semanticError}</p>
               )}
+
+              <p className="mb-2 text-xs text-red-400">
+                Click a keyword you don&apos;t have to ignore it — the AI tools above will skip it too.
+              </p>
 
               <div className="flex flex-wrap gap-1">
                 {[

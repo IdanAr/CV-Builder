@@ -15,6 +15,8 @@ export interface AtsScoreResult {
   excludedMatchedKeywords: string[]
   /** User-excluded JD keywords that are absent from the resume — shown as muted chips, never scored or sent to AI tailoring. */
   excludedMissingKeywords: string[]
+  /** The JD keyword list actually used for this scoring pass (AI-extracted override, or the regex-extracted fallback) — callers cache and re-send this to avoid redundant AI extraction on re-scores of the same job description. */
+  jdKeywords: string[]
 }
 
 export function flattenAllText(data: ResumeData): string {
@@ -127,11 +129,19 @@ export function scoreResume(
   data: ResumeData,
   jobDescription: string,
   excludedKeywords: string[] = [],
-  semanticMatches: string[] = []
+  semanticMatches: string[] = [],
+  jdKeywordsOverride: string[] = []
 ): AtsScoreResult {
   const formatScore = scoreFormat(data)
   const metricsScore = scoreMetrics(data)
-  const jdKeywords = extractKeywords(jobDescription)
+  // An AI-extracted keyword list (see lib/ai/jd-extraction-pipeline.ts) takes
+  // priority when supplied — it recognizes product/tool names and multi-word
+  // phrases the regex extractor's fixed dictionary and single-token
+  // tokenizer can't. Falls back to the regex extractor when no override is
+  // given (e.g. AI extraction was rate-limited or unavailable).
+  const jdKeywords = jdKeywordsOverride.length > 0
+    ? jdKeywordsOverride.map(k => k.toLowerCase())
+    : extractKeywords(jobDescription)
 
   if (jdKeywords.length === 0) {
     return {
@@ -141,6 +151,7 @@ export function scoreResume(
       missingKeywords: [],
       excludedMatchedKeywords: [],
       excludedMissingKeywords: [],
+      jdKeywords: [],
     }
   }
 
@@ -196,5 +207,6 @@ export function scoreResume(
     missingKeywords: missing,
     excludedMatchedKeywords,
     excludedMissingKeywords,
+    jdKeywords,
   }
 }

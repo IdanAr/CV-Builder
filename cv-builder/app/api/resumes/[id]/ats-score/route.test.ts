@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('@/lib/auth', () => ({
   auth: vi.fn((handler) => async (req: Request, ctx: unknown) => {
@@ -18,7 +18,41 @@ vi.mock('@/lib/ats/scorer', async (importOriginal) => {
   }
 })
 
+vi.mock('@/lib/ai/jd-extraction-pipeline', () => ({
+  extractJdRequirements: vi.fn(),
+}))
+
+vi.mock('@/lib/rate-limit', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/rate-limit')>()
+  return {
+    ...actual,
+    checkRateLimit: vi.fn(() => ({ allowed: true, retryAfterSeconds: 0 })),
+  }
+})
+
+async function authedRequest(body: unknown) {
+  const { auth } = await import('@/lib/auth')
+  vi.mocked(auth).mockImplementationOnce((handler) => async (req: Request, ctx: unknown) => {
+    return handler(Object.assign(req, { auth: { user: { id: 'user-1' } } }) as never, ctx as never)
+  })
+
+  const { getResume } = await import('@/lib/api/resumes')
+  vi.mocked(getResume).mockResolvedValueOnce({ title: 'My CV', data: {}, meta: {} } as never)
+
+  const { POST } = await import('./route')
+  const req = new Request('http://localhost/api/resumes/abc/ats-score', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return POST(req as never, { params: Promise.resolve({ id: 'abc' }) } as never) as Promise<Response>
+}
+
 describe('POST /api/resumes/[id]/ats-score', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   afterEach(() => {
     vi.resetModules()
   })
@@ -35,45 +69,79 @@ describe('POST /api/resumes/[id]/ats-score', () => {
   })
 
   it('forwards semanticMatches to scoreResume, defaulting to an empty array', async () => {
-    const { auth } = await import('@/lib/auth')
-    vi.mocked(auth).mockImplementationOnce((handler) => async (req: Request, ctx: unknown) => {
-      return handler(Object.assign(req, { auth: { user: { id: 'user-1' } } }) as never, ctx as never)
-    })
-
-    const { getResume } = await import('@/lib/api/resumes')
-    vi.mocked(getResume).mockResolvedValueOnce({ title: 'My CV', data: {}, meta: {} } as never)
-
     const { scoreResume } = await import('@/lib/ats/scorer')
-
-    const { POST } = await import('./route')
-    const req = new Request('http://localhost/api/resumes/abc/ats-score', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jobDescription: 'React developer', semanticMatches: ['kubernetes'] }),
-    })
-    const res = await POST(req as never, { params: Promise.resolve({ id: 'abc' }) } as never) as Response
+    const res = await authedRequest({ jobDescription: 'React developer', semanticMatches: ['kubernetes'], jdKeywords: ['react'] })
     expect(res.status).toBe(200)
-    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], ['kubernetes'])
+    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], ['kubernetes'], ['react'])
   })
 
   it('defaults semanticMatches to an empty array when omitted', async () => {
-    const { auth } = await import('@/lib/auth')
-    vi.mocked(auth).mockImplementationOnce((handler) => async (req: Request, ctx: unknown) => {
-      return handler(Object.assign(req, { auth: { user: { id: 'user-1' } } }) as never, ctx as never)
-    })
+    const { scoreResume } = await import('@/lib/ats/scorer')
+    await authedRequest({ jobDescription: 'React developer', jdKeywords: ['react'] })
+    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], ['react'])
+  })
 
-    const { getResume } = await import('@/lib/api/resumes')
-    vi.mocked(getResume).mockResolvedValueOnce({ title: 'My CV', data: {}, meta: {} } as never)
-
+  it('uses cached jdKeywords from the body without calling the rate limiter or AI extraction', async () => {
+    const { checkRateLimit } = await import('@/lib/rate-limit')
+    const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
     const { scoreResume } = await import('@/lib/ats/scorer')
 
-    const { POST } = await import('./route')
-    const req = new Request('http://localhost/api/resumes/abc/ats-score', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jobDescription: 'React developer' }),
-    })
-    await POST(req as never, { params: Promise.resolve({ id: 'abc' }) } as never)
-    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [])
+    const res = await authedRequest({ jobDescription: 'React developer', jdKeywords: ['react', 'typescript'] })
+
+    expect(res.status).toBe(200)
+    expect(checkRateLimit).not.toHaveBeenCalled()
+    expect(extractJdRequirements).not.toHaveBeenCalled()
+    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], ['react', 'typescript'])
+  })
+
+  it('extracts fresh jdKeywords via AI when none are cached and the job description is non-blank', async () => {
+    const { checkRateLimit } = await import('@/lib/rate-limit')
+    const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
+    vi.mocked(extractJdRequirements).mockResolvedValueOnce(['mixpanel', 'amplitude'])
+    const { scoreResume } = await import('@/lib/ats/scorer')
+
+    const res = await authedRequest({ jobDescription: 'Analytics role' })
+
+    expect(res.status).toBe(200)
+    expect(checkRateLimit).toHaveBeenCalledWith('user-1:ai', expect.any(Object))
+    expect(extractJdRequirements).toHaveBeenCalledWith('Analytics role')
+    expect(scoreResume).toHaveBeenCalledWith({}, 'Analytics role', [], [], ['mixpanel', 'amplitude'])
+  })
+
+  it('falls back to an empty override (regex extraction inside scoreResume) when rate limited, and still returns 200', async () => {
+    const { checkRateLimit } = await import('@/lib/rate-limit')
+    vi.mocked(checkRateLimit).mockReturnValueOnce({ allowed: false, retryAfterSeconds: 42 })
+    const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
+    const { scoreResume } = await import('@/lib/ats/scorer')
+
+    const res = await authedRequest({ jobDescription: 'React developer' })
+
+    expect(res.status).toBe(200)
+    expect(extractJdRequirements).not.toHaveBeenCalled()
+    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], [])
+  })
+
+  it('falls back to an empty override when AI extraction throws, and still returns 200', async () => {
+    const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
+    vi.mocked(extractJdRequirements).mockRejectedValueOnce(new Error('Anthropic API error'))
+    const { scoreResume } = await import('@/lib/ats/scorer')
+
+    const res = await authedRequest({ jobDescription: 'React developer' })
+
+    expect(res.status).toBe(200)
+    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], [])
+  })
+
+  it('does not attempt AI extraction when the job description is blank', async () => {
+    const { checkRateLimit } = await import('@/lib/rate-limit')
+    const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
+    const { scoreResume } = await import('@/lib/ats/scorer')
+
+    const res = await authedRequest({})
+
+    expect(res.status).toBe(200)
+    expect(checkRateLimit).not.toHaveBeenCalled()
+    expect(extractJdRequirements).not.toHaveBeenCalled()
+    expect(scoreResume).toHaveBeenCalledWith({}, '', [], [], [])
   })
 })
