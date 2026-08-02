@@ -118,6 +118,10 @@ describe('AtsScorePanel keyword exclusion toggle', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
     const secondCallBody = JSON.parse(fetchMock.mock.calls[1][1].body)
     expect(secondCallBody.excludedKeywords).toEqual(['react'])
+    // The jdKeywords from the first /ats-score response are re-sent, proving
+    // the exclude-toggle re-score reuses the cached AI extraction instead of
+    // triggering a fresh one server-side.
+    expect(secondCallBody.jdKeywords).toEqual(['react', 'typescript'])
     expect(useResumeEditorStore.getState().meta.excludedAtsKeywords).toEqual(['react'])
 
     const chip = await screen.findByLabelText('Include "react" in scoring')
@@ -153,6 +157,7 @@ describe('AtsScorePanel keyword exclusion toggle', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
     const secondCallBody = JSON.parse(fetchMock.mock.calls[1][1].body)
     expect(secondCallBody.excludedKeywords).toEqual([])
+    expect(secondCallBody.jdKeywords).toEqual(['react', 'typescript'])
     expect(useResumeEditorStore.getState().meta.excludedAtsKeywords).toEqual([])
   })
 })
@@ -192,6 +197,9 @@ describe('AtsScorePanel semantic match', () => {
     expect(semanticCallBody.missingKeywords).toEqual(['react', 'typescript'])
     const rescoreCallBody = JSON.parse(fetchMock.mock.calls[2][1].body)
     expect(rescoreCallBody.semanticMatches).toEqual(['react'])
+    // The re-score after Semantic Match also reuses the cached jdKeywords
+    // from the initial Analyze, instead of triggering a fresh AI extraction.
+    expect(rescoreCallBody.jdKeywords).toEqual(['react', 'typescript'])
 
     const reactChip = await screen.findByLabelText('Exclude "react" from scoring')
     await waitFor(() => expect(reactChip.className).toContain('teal'))
@@ -255,5 +263,52 @@ describe('AtsScorePanel missing-keyword ignore hint', () => {
 
     await waitFor(() => expect(screen.getByText(/matched keywords/i)).toBeInTheDocument())
     expect(screen.queryByText(/click a keyword you don't have to ignore it/i)).not.toBeInTheDocument()
+  })
+})
+
+describe('AtsScorePanel jdKeywords caching', () => {
+  it('a fresh Analyze click always sends an empty jdKeywords cache, letting the server extract fresh', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    const firstCallBody = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(firstCallBody.jdKeywords).toEqual([])
+  })
+
+  it('re-analyzing after editing the job description resets the cache rather than reusing stale keywords', async () => {
+    const secondScoreResult: AtsScoreResult = {
+      total: 60,
+      breakdown: { format: 20, keywordDensity: 20, keywordPlacement: 15, metrics: 5 },
+      matchedKeywords: ['mixpanel'],
+      missingKeywords: [],
+      excludedMatchedKeywords: [],
+      excludedMissingKeywords: [],
+      jdKeywords: ['mixpanel'],
+    }
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(scoreResult))
+      .mockResolvedValueOnce(jsonResponse(secondScoreResult))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    const textarea = screen.getByPlaceholderText(/paste the full job description/i)
+    fireEvent.change(textarea, { target: { value: 'Looking for a React + TypeScript engineer.' } })
+    fireEvent.click(screen.getByText('Analyze'))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+
+    fireEvent.change(textarea, { target: { value: 'Analytics role needing Mixpanel expertise.' } })
+    fireEvent.click(screen.getByText('Analyze'))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    const secondCallBody = JSON.parse(fetchMock.mock.calls[1][1].body)
+    expect(secondCallBody.jdKeywords).toEqual([])
   })
 })
