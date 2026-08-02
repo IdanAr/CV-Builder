@@ -213,3 +213,42 @@ describe('AtsScorePanel semantic match', () => {
     await waitFor(() => expect(screen.getByText(/semantic match failed/i)).toBeInTheDocument())
   })
 })
+
+describe('AtsScorePanel missing-keyword ignore hint', () => {
+  it('shows a hint explaining that clicking a missing keyword ignores it everywhere', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+
+    await waitFor(() =>
+      expect(screen.getByText(/click a keyword you don't have to ignore it/i)).toBeInTheDocument()
+    )
+  })
+
+  it('does not show the hint when there are no missing keywords', async () => {
+    const noMissing: AtsScoreResult = {
+      total: 90,
+      breakdown: { format: 25, keywordDensity: 35, keywordPlacement: 25, metrics: 5 },
+      matchedKeywords: ['react', 'typescript'],
+      missingKeywords: [],
+      excludedMatchedKeywords: [],
+      excludedMissingKeywords: [],
+    }
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(noMissing))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+
+    await waitFor(() => expect(screen.getByText(/matched keywords/i)).toBeInTheDocument())
+    expect(screen.queryByText(/click a keyword you don't have to ignore it/i)).not.toBeInTheDocument()
+  })
+})

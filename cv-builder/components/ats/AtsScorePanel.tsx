@@ -256,6 +256,10 @@ export function AtsScorePanel() {
                 <p className="mb-2 text-xs text-red-600">{semanticError}</p>
               )}
 
+              <p className="mb-2 text-xs text-red-400">
+                Click a keyword you don&apos;t have to ignore it — the AI tools above will skip it too.
+              </p>
+
               <div className="flex flex-wrap gap-1">
                 {[
                   ...result.missingKeywords.map((kw) => ({ kw, excluded: false })),
