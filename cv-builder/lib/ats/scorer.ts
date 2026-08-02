@@ -126,7 +126,8 @@ function scoreMetrics(data: ResumeData): number {
 export function scoreResume(
   data: ResumeData,
   jobDescription: string,
-  excludedKeywords: string[] = []
+  excludedKeywords: string[] = [],
+  semanticMatches: string[] = []
 ): AtsScoreResult {
   const formatScore = scoreFormat(data)
   const metricsScore = scoreMetrics(data)
@@ -144,12 +145,21 @@ export function scoreResume(
   }
 
   const excluded = new Set(excludedKeywords.map(k => k.toLowerCase()))
+  const semantic = new Set(semanticMatches.map(k => k.toLowerCase()))
   const allText = flattenAllText(data)
   const highValueText = flattenHighValueText(data)
 
   // Every JD candidate keyword is matched/missing against the full set, so
   // excluded ones stay visible to the UI (as muted chips) instead of vanishing.
-  const { matched: allMatched, missing: allMissing } = keywordOverlap(allText, jdKeywords)
+  const { matched: literalMatched, missing: literalMissing } = keywordOverlap(allText, jdKeywords)
+
+  // Keywords Claude confirmed as covered by a synonym/abbreviation (see
+  // lib/ai/keyword-analysis-pipeline.ts) are promoted from missing to
+  // matched, counting the same as a literal match everywhere below.
+  const semanticallyPromoted = literalMissing.filter(k => semantic.has(k))
+  const allMatched = [...literalMatched, ...semanticallyPromoted]
+  const allMissing = literalMissing.filter(k => !semantic.has(k))
+
   const matched = allMatched.filter(k => !excluded.has(k))
   const excludedMatchedKeywords = allMatched.filter(k => excluded.has(k))
   const missing = allMissing.filter(k => !excluded.has(k))
@@ -163,9 +173,13 @@ export function scoreResume(
     ? Math.min(35, Math.round((matched.length / activeKeywords.length) * 35))
     : 0
 
-  const { matched: hvMatched } = keywordOverlap(highValueText, activeKeywords)
+  const { matched: hvMatchedLiteral } = keywordOverlap(highValueText, activeKeywords)
+  const hvMatched = new Set([
+    ...hvMatchedLiteral,
+    ...semanticallyPromoted.filter(k => !excluded.has(k)),
+  ])
   const keywordPlacementScore = activeKeywords.length > 0
-    ? Math.min(25, Math.round((hvMatched.length / activeKeywords.length) * 25))
+    ? Math.min(25, Math.round((hvMatched.size / activeKeywords.length) * 25))
     : 0
 
   const total = Math.min(100, formatScore + keywordDensityScore + keywordPlacementScore + metricsScore)

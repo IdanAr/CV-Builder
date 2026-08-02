@@ -244,3 +244,72 @@ describe('scoreResume — excludedKeywords', () => {
     expect(withDefault).toEqual(withEmpty)
   })
 })
+
+describe('scoreResume — semanticMatches', () => {
+  it('promotes a semantically-confirmed keyword from missing to matched', () => {
+    const data: ResumeData = {
+      basics: { name: 'A', email: 'a@b.c' },
+      skills: [{ name: 'Stack', keywords: ['React'] }],
+    }
+    const jdText = 'React Kubernetes developer needed'
+
+    const before = scoreResume(data, jdText)
+    expect(before.missingKeywords).toContain('kubernetes')
+
+    const after = scoreResume(data, jdText, [], ['kubernetes'])
+    expect(after.missingKeywords).not.toContain('kubernetes')
+    expect(after.matchedKeywords).toContain('kubernetes')
+  })
+
+  it('semantic promotion raises keywordDensity to full credit when it is the only unmatched keyword', () => {
+    const data: ResumeData = {
+      basics: { name: 'A', email: 'a@b.c' },
+      skills: [{ name: 'Stack', keywords: ['React'] }],
+    }
+    const jdText = 'React Kubernetes developer needed'
+
+    const withoutSemantic = scoreResume(data, jdText)
+    expect(withoutSemantic.breakdown.keywordDensity).toBeLessThan(35)
+
+    const withSemantic = scoreResume(data, jdText, [], ['kubernetes'])
+    expect(withSemantic.breakdown.keywordDensity).toBe(35)
+  })
+
+  it('semantic promotion increases keywordPlacement credit', () => {
+    const data: ResumeData = {
+      basics: { name: 'A', email: 'a@b.c' },
+      skills: [{ name: 'Stack', keywords: ['React'] }],
+    }
+    const jdText = 'React Kubernetes developer needed'
+
+    const withoutSemantic = scoreResume(data, jdText)
+    const withSemantic = scoreResume(data, jdText, [], ['kubernetes'])
+    expect(withSemantic.breakdown.keywordPlacement).toBeGreaterThan(withoutSemantic.breakdown.keywordPlacement)
+  })
+
+  it('semantic match is case-insensitive', () => {
+    const data: ResumeData = { basics: { name: 'A', email: 'a@b.c' } }
+    const result = scoreResume(data, 'Kubernetes required', [], ['KUBERNETES'])
+    expect(result.matchedKeywords).toContain('kubernetes')
+  })
+
+  it('an excluded keyword stays excluded even when also semantically confirmed', () => {
+    const data: ResumeData = { basics: { name: 'A', email: 'a@b.c' } }
+    const result = scoreResume(data, 'Kubernetes required', ['kubernetes'], ['kubernetes'])
+    expect(result.matchedKeywords).not.toContain('kubernetes')
+    expect(result.missingKeywords).not.toContain('kubernetes')
+    expect(result.excludedMatchedKeywords).toContain('kubernetes')
+  })
+
+  it('a semantic match for a keyword already literally matched has no effect', () => {
+    const withoutSemantic = scoreResume(fullData, jd)
+    const withSemantic = scoreResume(fullData, jd, [], ['react'])
+    expect(withSemantic).toEqual(withoutSemantic)
+  })
+
+  it('omitting semanticMatches entirely reproduces the same result as an empty array', () => {
+    const withDefault = scoreResume(fullData, jd)
+    const withEmpty = scoreResume(fullData, jd, [], [])
+    expect(withDefault).toEqual(withEmpty)
+  })
+})
