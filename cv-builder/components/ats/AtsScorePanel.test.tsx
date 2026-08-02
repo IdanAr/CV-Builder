@@ -153,3 +153,63 @@ describe('AtsScorePanel keyword exclusion toggle', () => {
     expect(useResumeEditorStore.getState().meta.excludedAtsKeywords).toEqual([])
   })
 })
+
+describe('AtsScorePanel semantic match', () => {
+  it('clicking Semantic Match calls the endpoint, re-analyzes, and styles the confirmed chip distinctly', async () => {
+    const afterSemantic: AtsScoreResult = {
+      total: 55,
+      breakdown: { format: 20, keywordDensity: 35, keywordPlacement: 25, metrics: 5 },
+      matchedKeywords: ['react'],
+      missingKeywords: ['typescript'],
+      excludedMatchedKeywords: [],
+      excludedMissingKeywords: [],
+    }
+    const fetchMock = vi
+      .fn()
+      // 1st call: POST /ats-score (initial Analyze)
+      .mockResolvedValueOnce(jsonResponse(scoreResult))
+      // 2nd call: POST /ats-semantic-match
+      .mockResolvedValueOnce(jsonResponse({ confirmedMatches: ['react'] }))
+      // 3rd call: POST /ats-score (re-analyze after semantic match)
+      .mockResolvedValueOnce(jsonResponse(afterSemantic))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+    await waitFor(() => expect(screen.getByText(/semantic match/i)).toBeInTheDocument())
+
+    fireEvent.click(screen.getByText(/semantic match/i))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
+    const semanticCallBody = JSON.parse(fetchMock.mock.calls[1][1].body)
+    expect(semanticCallBody.missingKeywords).toEqual(['react', 'typescript'])
+    const rescoreCallBody = JSON.parse(fetchMock.mock.calls[2][1].body)
+    expect(rescoreCallBody.semanticMatches).toEqual(['react'])
+
+    const reactChip = await screen.findByLabelText('Exclude "react" from scoring')
+    await waitFor(() => expect(reactChip.className).toContain('teal'))
+    await waitFor(() => expect(screen.queryByText(/semantic match/i)).not.toBeInTheDocument())
+  })
+
+  it('shows an error message when the semantic match request fails', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(scoreResult))
+      .mockResolvedValueOnce({ ok: false, json: async () => ({}) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+    await waitFor(() => expect(screen.getByText(/semantic match/i)).toBeInTheDocument())
+
+    fireEvent.click(screen.getByText(/semantic match/i))
+
+    await waitFor(() => expect(screen.getByText(/semantic match failed/i)).toBeInTheDocument())
+  })
+})
