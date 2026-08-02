@@ -45,7 +45,8 @@ export const POST = auth(async (req, ctx) => {
       if (rate.allowed) {
         try {
           jdKeywordsOverride = await extractJdRequirements(jobDescription)
-        } catch {
+        } catch (err) {
+          console.error('POST /api/resumes/[id]/ats-score: extractJdRequirements threw, falling back to regex extraction', err)
           jdKeywordsOverride = []
         }
       }

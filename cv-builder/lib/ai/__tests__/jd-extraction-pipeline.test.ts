@@ -49,6 +49,26 @@ describe('extractJdRequirements', () => {
     expect(result).toEqual([])
   })
 
+  it('parses the array even when Claude wraps it in a markdown code fence', async () => {
+    // Claude frequently wraps JSON output in ```json ... ``` fences despite
+    // being told to return only the array — real production behavior that
+    // every other test in this file (using JSON.stringify directly) never
+    // exercises.
+    mockCreate.mockResolvedValueOnce({
+      content: [{ type: 'text', text: '```json\n["Mixpanel", "Amplitude", "SQL"]\n```' }],
+    })
+    const result = await extractJdRequirements('some jd')
+    expect(result).toEqual(['mixpanel', 'amplitude', 'sql'])
+  })
+
+  it('parses the array even with leading/trailing prose around it', async () => {
+    mockCreate.mockResolvedValueOnce({
+      content: [{ type: 'text', text: 'Here are the extracted terms:\n["React", "Agile"]\nLet me know if you need more.' }],
+    })
+    const result = await extractJdRequirements('some jd')
+    expect(result).toEqual(['react', 'agile'])
+  })
+
   it('returns empty array when Claude returns a non-array', async () => {
     mockClaudeResponse({ terms: ['react'] })
     const result = await extractJdRequirements('some jd')
