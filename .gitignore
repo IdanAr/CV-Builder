@@ -21,3 +21,6 @@ node_modules/
 # Sprint specs/plans - internal use only, kept on disk but not tracked.
 # **/ matches at any depth, covering both the repo root and cv-builder/.
 **/docs/superpowers/
+
+# Graphify plugin:
+/graphify-out/

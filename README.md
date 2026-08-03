@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?logo=mongodb)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38bdf8?logo=tailwindcss)
-![Vitest](https://img.shields.io/badge/tests-97%20suites-brightgreen?logo=vitest)
+![Vitest](https://img.shields.io/badge/tests-114%20suites-brightgreen?logo=vitest)
 ![Vercel](https://img.shields.io/badge/deployed-Vercel-black?logo=vercel)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -58,6 +58,7 @@ Key differentiators:
 - Section-based accordion editor covering all JSON Resume sections: Basics, Work, Education, Skills, Certificates, Awards, Publications, Volunteer, Languages, Interests, Projects, plus unlimited custom sections with per-field type configuration.
 - Drag-and-drop section reordering via `@dnd-kit`.
 - Rich text formatting (bold, italic, underline) in bullet/summary fields.
+- Blank-line paragraph breaks in bullet/summary text render as visually distinct paragraphs consistently across live preview, PDF, and DOCX export.
 - Undo/redo, dirty-state tracking, `beforeunload` guard against losing unsaved work, and per-field validation errors.
 - Full keyboard and screen-reader accessibility pass on the editor shell.
 - Mobile-responsive editor shell and navbar.
@@ -206,7 +207,7 @@ cv-builder/
 │   └── page.tsx                             # Landing / marketing page
 ├── components/
 │   ├── editor/                              # EditorShell, EditTab, DesignPanel, PreviewTab, forms/
-│   ├── templates/                           # HTML/CSS live-preview templates (5 templates)
+│   ├── templates/                           # HTML/CSS live-preview templates (5 templates) + RichText
 │   ├── ats/                                 # AtsScorePanel, AtsFixReviewPanel
 │   ├── ai/                                  # AiSuggestButton
 │   ├── coverletter/                         # CoverLetterPanel
@@ -214,15 +215,20 @@ cv-builder/
 │   └── ui/                                  # AppNavbar, PlasmaBackground, Toaster, UserProfileButton
 ├── lib/
 │   ├── ai/                                  # pipeline.ts, ats-fix-pipeline.ts, cover-letter-pipeline.ts, hallucination-guard.ts, models.ts
+│   ├── api/                                 # Shared route handler logic: resumes.ts, applications.ts, board-config.ts, route-errors.ts
 │   ├── ats/                                 # scorer.ts, keywords.ts
 │   ├── applications/                        # cells.ts, filter.ts, order.ts, sort.ts, types.ts
-│   ├── docx/                                # resume-docx.ts
-│   ├── pdf/templates/                       # 6 @react-pdf/renderer templates incl. AtsPdfTemplate
+│   ├── design/                               # tokens.ts - shared design-panel constants
+│   ├── docx/                                # resume-docx.ts, styles.ts
+│   ├── fonts/                                # families.ts, registry.ts - web-font → ATS-safe system font mapping
+│   ├── hooks/                                # use-debounce.ts, use-media-query.ts, use-pdf-pagination.ts
+│   ├── pdf/                                  # extract-pagination.ts, select-template.ts, templates/ (6 @react-pdf/renderer templates incl. AtsPdfTemplate)
 │   ├── schemas/                             # resume.zod.ts, application.zod.ts
 │   ├── stores/                              # resume-editor.store.ts, toast.store.ts (Zustand)
 │   ├── upload/                              # parse-file.ts, extract-resume.ts
 │   ├── rate-limit.ts                        # In-memory token-bucket limiter (AI / upload / preview)
 │   ├── export-mode.ts                       # 'ats' | 'designed' export mode parsing
+│   ├── rich-text.ts                         # Bold/italic/underline markers + blank-line paragraph splitting
 │   ├── preview-pagination.ts, preview-anchor.ts
 │   └── mongodb.ts, auth.ts, db.ts, sections.ts, text-diff.ts, format-date.ts, …
 ├── models/                                  # Resume.ts, Application.ts, ApplicationActivity.ts, BoardConfig.ts
@@ -378,6 +384,7 @@ Open [http://localhost:3000](http://localhost:3000).
 npm run build      # production build
 npm run start      # run production build
 npm run lint       # ESLint
+npx tsc --noEmit   # type check
 npm run test       # Vitest, watch mode
 npm run test:run   # Vitest, single run (CI)
 ```
@@ -445,7 +452,7 @@ All routes below are session-authenticated via Auth.js (`auth()` wrapper) and sc
 
 ## Testing
 
-The project has **97 Vitest test suites** covering schemas, API routes, AI pipelines (including hallucination detection), the ATS scorer, DOCX/PDF template rendering, pagination math, the application-tracking sort/filter/order logic, and editor components, run via `@testing-library/react` + `jsdom`.
+The project has **114 Vitest test suites (975 tests)** covering schemas, API routes, AI pipelines (including hallucination detection), the ATS scorer, DOCX/PDF template rendering, pagination math, the application-tracking sort/filter/order logic, and editor components, run via `@testing-library/react` + `jsdom`.
 
 ```bash
 npm run test        # watch mode
@@ -511,4 +518,10 @@ This repository follows a sprint-based workflow - each feature sprint has a desi
 3. Any new AI-generated content must pass through the hallucination guard before being committed.
 4. Multi-column PDF/DOCX layouts must preserve linear reading order for ATS parsers - verify with the `ats` export mode.
 5. Add or update tests alongside the change; `npm run test:run` should stay green.
+
+---
+
+## License
+
+MIT © [IdanAr](https://github.com/IdanAr) - see [LICENSE](LICENSE).
 
