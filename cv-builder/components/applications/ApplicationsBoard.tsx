@@ -5,15 +5,27 @@
 // enum). Cross-container card drag PATCHes the application's status through
 // the same diff-and-log handler as any other edit, so Kanban moves produce
 // activity rows with no separate logging path.
+import { useState } from 'react'
 import {
   DndContext,
+  DragOverlay,
   closestCorners,
   useDroppable,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  KeyboardSensor,
+  type DragStartEvent,
   type DragEndEvent,
   type Announcements,
   type ScreenReaderInstructions,
 } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { BoardColumn, ColumnOption } from '@/lib/schemas/application.zod'
 import type { ApplicationRow } from '@/lib/applications/types'
@@ -64,25 +76,9 @@ function buildAnnouncements(applications: ApplicationRow[], options: ColumnOptio
   }
 }
 
-function BoardCard({ app, customChips }: { app: ApplicationRow; customChips: string[] }) {
-  // role: 'listitem' matches the lane's role="list" container — passed as a
-  // dnd-kit attributes option (rather than overridden via JSX spread order)
-  // so dnd-kit itself skips the button-only aria-pressed it would otherwise add.
-  const { listeners, attributes, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: app._id,
-    attributes: { role: 'listitem' },
-  })
+function CardContent({ app, customChips }: { app: ApplicationRow; customChips: string[] }) {
   return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      {...attributes}
-      {...listeners}
-      aria-label={`Application at ${app.company || 'unknown company'}`}
-      className={`cursor-grab touch-none rounded-lg border border-indigo-100 bg-white p-3 shadow-sm transition hover:border-indigo-300 hover:shadow ${
-        isDragging ? 'z-10 opacity-80 shadow-lg' : ''
-      }`}
-    >
+    <>
       <p className="truncate text-sm font-semibold text-indigo-900">
         {app.company || <span className="text-indigo-300">No company</span>}
       </p>
@@ -102,6 +98,43 @@ function BoardCard({ app, customChips }: { app: ApplicationRow; customChips: str
           ))}
         </div>
       )}
+    </>
+  )
+}
+
+function BoardCard({ app, customChips }: { app: ApplicationRow; customChips: string[] }) {
+  // role: 'listitem' matches the lane's role="list" container — passed as a
+  // dnd-kit attributes option (rather than overridden via JSX spread order)
+  // so dnd-kit itself skips the button-only aria-pressed it would otherwise add.
+  const { listeners, attributes, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: app._id,
+    attributes: { role: 'listitem' },
+  })
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      {...attributes}
+      {...listeners}
+      aria-label={`Application at ${app.company || 'unknown company'}`}
+      // While this card is the one being dragged, it becomes a faint in-place
+      // placeholder — the actual "floating" card the user sees under the
+      // cursor is the DragOverlay clone below, which is what makes cross-
+      // column dragging read as one continuous motion instead of the list
+      // just reflowing around a half-visible original.
+      className={`cursor-grab touch-none rounded-lg border border-indigo-100 bg-white p-3 shadow-sm transition hover:border-indigo-300 hover:shadow ${
+        isDragging ? 'opacity-30' : ''
+      }`}
+    >
+      <CardContent app={app} customChips={customChips} />
+    </div>
+  )
+}
+
+function BoardCardOverlay({ app, customChips }: { app: ApplicationRow; customChips: string[] }) {
+  return (
+    <div className="w-64 rotate-2 cursor-grabbing rounded-lg border border-indigo-200 bg-white p-3 shadow-2xl ring-2 ring-indigo-300">
+      <CardContent app={app} customChips={customChips} />
     </div>
   )
 }
@@ -157,6 +190,15 @@ export default function ApplicationsBoard({
   const statusColumn = columns.find((c) => c.type === 'status')
   const options = statusColumn?.options ?? []
   const optionIds = new Set(options.map((o) => o.id))
+  const [activeId, setActiveId] = useState<string | null>(null)
+  // A tiny movement threshold before a drag activates, so a plain click/tap
+  // never gets mistaken for the start of a drag — without this, the default
+  // sensor starts dragging on the very first pixel of pointer movement,
+  // which is what made the interaction feel twitchy rather than deliberate.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   // Chips for custom select columns with a set value (readable at a glance).
   function customChipsFor(app: ApplicationRow): string[] {
@@ -166,7 +208,12 @@ export default function ApplicationsBoard({
       .filter((label): label is string => label !== undefined)
   }
 
+  function handleDragStart({ active }: DragStartEvent) {
+    setActiveId(String(active.id))
+  }
+
   function handleDragEnd({ active, over }: DragEndEvent) {
+    setActiveId(null)
     if (!over) return
     const appId = String(active.id)
     const overId = String(over.id)
@@ -180,6 +227,10 @@ export default function ApplicationsBoard({
     const overApp = applications.find((a) => a._id === overId)
     if (!overApp || !optionIds.has(overApp.status)) return
     onCardMove(appId, overApp.status, overId)
+  }
+
+  function handleDragCancel() {
+    setActiveId(null)
   }
 
   if (!statusColumn || options.length === 0) {
@@ -198,12 +249,16 @@ export default function ApplicationsBoard({
   }
 
   const announcements = buildAnnouncements(applications, options)
+  const activeApp = activeId ? applications.find((a) => a._id === activeId) ?? null : null
 
   return (
     <div className="overflow-x-auto pb-2">
       <DndContext
+        sensors={sensors}
         collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
         accessibility={{ announcements, screenReaderInstructions }}
       >
         <div className="flex items-stretch gap-3">
@@ -223,6 +278,9 @@ export default function ApplicationsBoard({
             />
           )}
         </div>
+        <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.2, 0, 0, 1)' }}>
+          {activeApp ? <BoardCardOverlay app={activeApp} customChips={customChipsFor(activeApp)} /> : null}
+        </DragOverlay>
       </DndContext>
     </div>
   )
