@@ -1,5 +1,6 @@
 'use client'
 
+import { useId } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { MonthYearPicker } from './MonthYearPicker'
@@ -32,21 +33,26 @@ interface ItemFormProps {
 }
 
 function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
+  const id = useId()
   const set = (f: keyof CustomSectionItem, v: string) => onUpdate({ ...item, [f]: v })
   const setArr = (f: 'highlights' | 'keywords', v: string[]) => onUpdate({ ...item, [f]: v })
 
   return (
     <div className="space-y-2">
       <div className="flex gap-2 items-start">
-        <input type="text" value={item.title ?? ''} onChange={(e) => set('title', e.target.value)}
+        <label htmlFor={`${id}-title`} className="sr-only">Title</label>
+        <input id={`${id}-title`} type="text" value={item.title ?? ''} onChange={(e) => set('title', e.target.value)}
           placeholder="Title" className={`${inputClass} flex-1`} />
         <button type="button" onClick={onRemove} aria-label="Remove item"
           className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
       </div>
 
       {enabledFields.includes('subtitle') && (
-        <input type="text" value={item.subtitle ?? ''} onChange={(e) => set('subtitle', e.target.value)}
-          placeholder="Subtitle" className={inputClass} />
+        <>
+          <label htmlFor={`${id}-subtitle`} className="sr-only">Subtitle</label>
+          <input id={`${id}-subtitle`} type="text" value={item.subtitle ?? ''} onChange={(e) => set('subtitle', e.target.value)}
+            placeholder="Subtitle" className={inputClass} />
+        </>
       )}
 
       {enabledFields.includes('dateRange') && (
@@ -57,22 +63,29 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
       )}
 
       {enabledFields.includes('url') && (
-        <input type="url" value={item.url ?? ''} onChange={(e) => set('url', e.target.value)}
-          placeholder="URL" className={inputClass} />
+        <>
+          <label htmlFor={`${id}-url`} className="sr-only">URL</label>
+          <input id={`${id}-url`} type="url" value={item.url ?? ''} onChange={(e) => set('url', e.target.value)}
+            placeholder="URL" className={inputClass} />
+        </>
       )}
 
       {enabledFields.includes('summary') && (
-        <RichTextField
-          value={item.summary ?? ''}
-          onChange={(v) => set('summary', v)}
-          placeholder="Description..."
-          rows={2}
-        />
+        <>
+          <label htmlFor={`${id}-summary`} className="sr-only">Description</label>
+          <RichTextField
+            id={`${id}-summary`}
+            value={item.summary ?? ''}
+            onChange={(v) => set('summary', v)}
+            placeholder="Description..."
+            rows={2}
+          />
+        </>
       )}
 
       {enabledFields.includes('highlights') && (
-        <div className="space-y-1">
-          <div className="text-xs text-indigo-500 font-medium">Bullets</div>
+        <fieldset className="space-y-1 border-0 p-0 m-0">
+          <legend className="text-xs text-indigo-500 font-medium p-0">Bullets</legend>
           {(item.highlights ?? []).map((h, i) => (
             <div key={i} className="flex gap-2 items-start">
               <RichTextField
@@ -83,6 +96,7 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
                   setArr('highlights', next)
                 }}
                 placeholder="Bullet point..."
+                ariaLabel={`Bullet ${i + 1}`}
                 rows={1}
                 className="flex-1"
               />
@@ -94,7 +108,7 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
           <button type="button"
             onClick={() => setArr('highlights', [...(item.highlights ?? []), ''])}
             className="text-xs text-indigo-500 hover:text-indigo-700">+ Add bullet</button>
-        </div>
+        </fieldset>
       )}
 
       {enabledFields.includes('keywords') && (
@@ -110,7 +124,8 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
               </span>
             ))}
           </div>
-          <input type="text" placeholder="Add keyword, press Enter" className={inputClass}
+          <label htmlFor={`${id}-keyword-input`} className="sr-only">Add keyword</label>
+          <input id={`${id}-keyword-input`} type="text" placeholder="Add keyword, press Enter" className={inputClass}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault()
@@ -125,14 +140,17 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
       )}
 
       {enabledFields.includes('level') && (
-        <select value={item.level ?? ''} onChange={(e) => set('level', e.target.value)}
-          className={inputClass}>
-          <option value="">Select level…</option>
-          <option value="Expert">Expert</option>
-          <option value="Advanced">Advanced</option>
-          <option value="Intermediate">Intermediate</option>
-          <option value="Beginner">Beginner</option>
-        </select>
+        <>
+          <label htmlFor={`${id}-level`} className="sr-only">Level</label>
+          <select id={`${id}-level`} value={item.level ?? ''} onChange={(e) => set('level', e.target.value)}
+            className={inputClass}>
+            <option value="">Select level…</option>
+            <option value="Expert">Expert</option>
+            <option value="Advanced">Advanced</option>
+            <option value="Intermediate">Intermediate</option>
+            <option value="Beginner">Beginner</option>
+          </select>
+        </>
       )}
     </div>
   )

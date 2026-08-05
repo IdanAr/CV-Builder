@@ -215,4 +215,69 @@ describe('UploadProgressModal', () => {
     fireEvent.mouseDown(screen.getByRole('dialog'))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  it('moves focus to the Close button in the error state, and calls onClose on Escape', () => {
+    const onClose = vi.fn()
+    render(
+      <UploadProgressModal
+        open
+        filename="cv.pdf"
+        stage="error"
+        errorMessage="Could not read the file."
+        onRetry={() => {}}
+        onClose={onClose}
+      />
+    )
+    expect(screen.getByRole('button', { name: /close/i })).toHaveFocus()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('ignores Escape while the upload is in progress (not dismissible)', () => {
+    const onClose = vi.fn()
+    render(
+      <UploadProgressModal
+        open
+        filename="cv.pdf"
+        stage="reading"
+        onRetry={() => {}}
+        onClose={onClose}
+      />
+    )
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('restores focus to whatever was focused before the dialog opened, once it closes', () => {
+    const trigger = document.createElement('button')
+    trigger.textContent = 'Upload CV'
+    document.body.appendChild(trigger)
+    trigger.focus()
+    expect(trigger).toHaveFocus()
+
+    const { rerender } = render(
+      <UploadProgressModal
+        open
+        filename="cv.pdf"
+        stage="error"
+        errorMessage="Could not read the file."
+        onRetry={() => {}}
+        onClose={() => {}}
+      />
+    )
+    expect(screen.getByRole('button', { name: /close/i })).toHaveFocus()
+
+    rerender(
+      <UploadProgressModal
+        open={false}
+        filename=""
+        stage="reading"
+        onRetry={() => {}}
+        onClose={() => {}}
+      />
+    )
+    expect(trigger).toHaveFocus()
+    trigger.remove()
+  })
 })

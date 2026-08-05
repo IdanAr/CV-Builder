@@ -55,3 +55,32 @@ it('adds a highlight bullet', () => {
   fireEvent.click(screen.getByText('+ Add bullet'))
   expect(useResumeEditorStore.getState().data.work?.[0].highlights).toHaveLength(1)
 })
+
+it('exposes accessible names for Company name and Job title via associated labels', () => {
+  useResumeEditorStore.setState({
+    ...useResumeEditorStore.getState(),
+    data: { work: [{ name: '', position: '', startDate: '' }] },
+  })
+  render(<WorkForm />)
+  fireEvent.change(screen.getByLabelText('Company name'), { target: { value: 'Acme' } })
+  expect(useResumeEditorStore.getState().data.work?.[0].name).toBe('Acme')
+  fireEvent.change(screen.getByLabelText('Job title'), { target: { value: 'Engineer' } })
+  expect(useResumeEditorStore.getState().data.work?.[0].position).toBe('Engineer')
+})
+
+it('gives each work entry its own unique field ids, so labels never cross-wire between entries', () => {
+  useResumeEditorStore.setState({
+    ...useResumeEditorStore.getState(),
+    data: {
+      work: [
+        { name: 'Acme', position: 'Dev', startDate: '' },
+        { name: 'Globex', position: 'PM', startDate: '' },
+      ],
+    },
+  })
+  render(<WorkForm />)
+  const companyInputs = screen.getAllByLabelText('Company name')
+  expect(companyInputs).toHaveLength(2)
+  const ids = companyInputs.map((el) => el.id)
+  expect(new Set(ids).size).toBe(2)
+})

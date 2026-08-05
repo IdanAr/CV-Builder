@@ -43,6 +43,38 @@ describe('AtsFixReviewPanel', () => {
     expect(screen.queryByText(/not in your original text/i)).not.toBeInTheDocument()
   })
 
+  it('labels "Apply All Verified" with a count and disables it when every visible fix has unverified claims', () => {
+    render(
+      <AtsFixReviewPanel
+        fixes={[
+          makeFix({ id: 'fix-a', pendingApprovals: ['45%'] }),
+          makeFix({ id: 'fix-b', pendingApprovals: ['12'] }),
+        ]}
+        dismissedIds={new Set()}
+        {...noop}
+      />
+    )
+    const button = screen.getByRole('button', { name: /apply all verified/i })
+    expect(button).toBeDisabled()
+    expect(button.textContent).toContain('(0)')
+  })
+
+  it('enables "Apply All Verified" with a count reflecting only the unflagged fixes', () => {
+    render(
+      <AtsFixReviewPanel
+        fixes={[
+          makeFix({ id: 'fix-a', pendingApprovals: [] }),
+          makeFix({ id: 'fix-b', pendingApprovals: ['45%'] }),
+        ]}
+        dismissedIds={new Set()}
+        {...noop}
+      />
+    )
+    const button = screen.getByRole('button', { name: /apply all verified/i })
+    expect(button).toBeEnabled()
+    expect(button.textContent).toContain('(1)')
+  })
+
   it('renders Before/After blocks for an edit-kind fix', () => {
     render(
       <AtsFixReviewPanel

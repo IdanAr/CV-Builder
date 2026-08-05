@@ -19,6 +19,7 @@ export function AtsFixReviewPanel({
   onApplyAll,
 }: AtsFixReviewPanelProps) {
   const visible = fixes.filter((f) => !dismissedIds.has(f.id))
+  const verifiedCount = visible.filter((f) => f.pendingApprovals.length === 0).length
 
   if (visible.length === 0) {
     return (
@@ -36,9 +37,15 @@ export function AtsFixReviewPanel({
         </p>
         <button
           onClick={onApplyAll}
-          className="px-3 py-1 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          disabled={verifiedCount === 0}
+          title={
+            verifiedCount < visible.length
+              ? 'Fixes with unverified figures are skipped — apply those individually after checking them'
+              : undefined
+          }
+          className="px-3 py-1 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
         >
-          Apply All
+          Apply All Verified{verifiedCount < visible.length ? ` (${verifiedCount})` : ''}
         </button>
       </div>
 

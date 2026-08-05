@@ -49,7 +49,7 @@ describe('CoverLetterPanel', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('a successful generate call updates the store data.coverLetter and renders it in the editable textarea', async () => {
+  it('a successful generate call shows a draft preview without writing to the store until accepted', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(
       jsonResponse({ content: 'Dear Hiring Manager, ...', pendingApprovals: [] })
     )
@@ -61,12 +61,16 @@ describe('CoverLetterPanel', () => {
     })
     fireEvent.click(screen.getByText('Generate'))
 
+    await waitFor(() => expect(screen.getByText('Dear Hiring Manager, ...')).toBeInTheDocument())
+    // Not yet written to the store — the draft requires explicit acceptance.
+    expect(useResumeEditorStore.getState().data.coverLetter).toBeUndefined()
+
+    fireEvent.click(screen.getByText('Use this letter'))
+
     await waitFor(() =>
       expect(useResumeEditorStore.getState().data.coverLetter).toBe('Dear Hiring Manager, ...')
     )
-
-    const letterTextarea = screen.getByDisplayValue('Dear Hiring Manager, ...')
-    expect(letterTextarea).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Dear Hiring Manager, ...')).toBeInTheDocument()
 
     const [url, opts] = fetchMock.mock.calls[0]
     expect(url).toBe('/api/resumes/r1/cover-letter')
@@ -74,7 +78,7 @@ describe('CoverLetterPanel', () => {
     expect(body.jobDescription).toBe('We are looking for a Software Engineer.')
   })
 
-  it('a response with pendingApprovals renders warning chips', async () => {
+  it('a response with pendingApprovals highlights the flagged claim and requires explicit acceptance', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(
       jsonResponse({ content: 'Grew revenue by 45%.', pendingApprovals: ['45%'] })
     )
@@ -86,8 +90,13 @@ describe('CoverLetterPanel', () => {
     })
     fireEvent.click(screen.getByText('Generate'))
 
-    await waitFor(() => expect(screen.getByText(/double-check these/i)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/not in your original notes/i)).toBeInTheDocument())
     expect(screen.getByText('45%')).toBeInTheDocument()
+    expect(useResumeEditorStore.getState().data.coverLetter).toBeUndefined()
+
+    fireEvent.click(screen.getByText('Discard'))
+    expect(screen.queryByText(/not in your original notes/i)).not.toBeInTheDocument()
+    expect(useResumeEditorStore.getState().data.coverLetter).toBeUndefined()
   })
 
   it('editing the textarea directly updates data.coverLetter in the store', () => {
@@ -103,7 +112,7 @@ describe('CoverLetterPanel', () => {
   })
 
   it('a failed fetch shows an inline error message', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: false, status: 500 })
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) })
     vi.stubGlobal('fetch', fetchMock)
 
     render(<CoverLetterPanel />)

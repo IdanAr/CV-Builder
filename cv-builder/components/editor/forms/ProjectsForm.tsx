@@ -1,4 +1,5 @@
 'use client'
+import { useId } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { MonthYearPicker } from './MonthYearPicker'
@@ -16,6 +17,7 @@ const createEmpty = (): Item => ({
 })
 
 function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item) => void; onRemove: () => void }) {
+  const id = useId()
   const set = (f: keyof Item, v: string) => onUpdate({ ...item, [f]: v })
   const setHighlights = (highlights: string[]) => onUpdate({ ...item, highlights })
   const addH = () => setHighlights([...(item.highlights ?? []), ''])
@@ -34,9 +36,11 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
     <div className="space-y-2">
       <div className="flex gap-2 items-start">
         <div className="grid grid-cols-2 gap-2 flex-1">
-          <input type="text" value={item.name ?? ''} onChange={(e) => set('name', e.target.value)}
+          <label htmlFor={`${id}-name`} className="sr-only">Project name</label>
+          <input id={`${id}-name`} type="text" value={item.name ?? ''} onChange={(e) => set('name', e.target.value)}
             placeholder="Project name" className={inputClass} />
-          <input type="text" value={item.url ?? ''} onChange={(e) => set('url', e.target.value)}
+          <label htmlFor={`${id}-url`} className="sr-only">Project URL</label>
+          <input id={`${id}-url`} type="text" value={item.url ?? ''} onChange={(e) => set('url', e.target.value)}
             placeholder="URL" className={inputClass} />
         </div>
         <button type="button" onClick={onRemove} aria-label="Remove project entry"
@@ -46,20 +50,23 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
         <MonthYearPicker value={item.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
         <MonthYearPicker value={item.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
       </div>
+      <label htmlFor={`${id}-description`} className="sr-only">Project description</label>
       <RichTextField
+        id={`${id}-description`}
         value={item.description ?? ''}
         onChange={(v) => set('description', v)}
         placeholder="Description..."
         rows={2}
       />
-      <div className="space-y-1">
-        <label className="block text-xs font-medium text-indigo-600">Highlights</label>
+      <fieldset className="space-y-1 border-0 p-0 m-0">
+        <legend className="block text-xs font-medium text-indigo-600 p-0">Highlights</legend>
         {(item.highlights ?? []).map((h, i) => (
           <div key={i} className="flex gap-1 items-start">
             <RichTextField
               value={h}
               onChange={(v) => updateH(i, v)}
               placeholder="Achievement..."
+              ariaLabel={`Highlight ${i + 1}`}
               rows={1}
               className="flex-1"
             />
@@ -70,20 +77,20 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
         <button type="button" onClick={addH} className="text-xs text-indigo-600 hover:text-indigo-800">
           + Add highlight
         </button>
-      </div>
-      <div className="space-y-1">
-        <label className="block text-xs font-medium text-indigo-600">Keywords</label>
+      </fieldset>
+      <fieldset className="space-y-1 border-0 p-0 m-0">
+        <legend className="block text-xs font-medium text-indigo-600 p-0">Keywords</legend>
         {(item.keywords ?? []).map((k, i) => (
           <div key={i} className="flex gap-1">
             <input type="text" value={k} onChange={(e) => updateKeyword(i, e.target.value)}
-              placeholder="e.g. React" className={`${inputClass} flex-1`} />
+              placeholder="e.g. React" aria-label={`Keyword ${i + 1}`} className={`${inputClass} flex-1`} />
             <button type="button" onClick={() => removeKeyword(i)} aria-label="Remove keyword"
               className="text-gray-400 hover:text-red-500 text-xs px-1">✕</button>
           </div>
         ))}
         <button type="button" onClick={addKeyword}
           className="text-xs text-indigo-600 hover:text-indigo-800">+ Add keyword</button>
-      </div>
+      </fieldset>
     </div>
   )
 }

@@ -89,6 +89,55 @@ describe('AtsScorePanel applyFix for generate-kind summary fixes', () => {
   })
 })
 
+describe('AtsScorePanel Apply All Verified', () => {
+  it('applies only fixes with no pendingApprovals, leaving flagged ones for individual review', async () => {
+    useResumeEditorStore.setState({
+      data: { basics: { name: 'Jane Doe' }, work: [{ highlights: ['Built a system.'] }] },
+    })
+    const workFix: AtsFix = {
+      id: 'fix-work',
+      section: 'work',
+      kind: 'edit',
+      workIndex: 0,
+      highlightIndex: 0,
+      original: 'Built a system.',
+      suggested: 'Built a scalable system.',
+      targetKeywords: ['react'],
+      pendingApprovals: [],
+    }
+    const flaggedSummaryFix: AtsFix = {
+      ...generateFix,
+      id: 'fix-summary-flagged',
+      suggested: 'Grew revenue by 45%.',
+      pendingApprovals: ['45%'],
+    }
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(scoreResult))
+      .mockResolvedValueOnce(jsonResponse([workFix, flaggedSummaryFix]))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
+
+    fireEvent.click(screen.getByText(/tailor with ai/i))
+    const applyAllButton = await screen.findByRole('button', { name: /apply all verified/i })
+    expect(applyAllButton.textContent).toContain('(1)')
+
+    fireEvent.click(applyAllButton)
+
+    const { data } = useResumeEditorStore.getState()
+    expect(data.work?.[0].highlights?.[0]).toBe('Built a scalable system.')
+    expect(data.basics?.summary).toBeUndefined()
+    // The flagged fix is still awaiting individual review, not silently dropped.
+    expect(screen.getByText(/not in your original text/i)).toBeInTheDocument()
+  })
+})
+
 describe('AtsScorePanel keyword exclusion toggle', () => {
   it('clicking a missing-keyword chip excludes it, persists via setMeta, and re-analyzes', async () => {
     const afterExclusion: AtsScoreResult = {

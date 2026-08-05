@@ -1,4 +1,5 @@
 'use client'
+import { useId } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { inputClass as sharedInputClass } from './field-styles'
@@ -10,12 +11,15 @@ const createEmpty = (): Item => ({ language: '', fluency: '' })
 const inputClass = `${sharedInputClass} appearance-none`
 
 function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item) => void; onRemove: () => void }) {
+  const id = useId()
   const set = (f: keyof Item, v: string) => onUpdate({ ...item, [f]: v })
   return (
     <div className="flex gap-2 items-center">
-      <input type="text" value={item.language ?? ''} onChange={(e) => set('language', e.target.value)}
+      <label htmlFor={`${id}-language`} className="sr-only">Language</label>
+      <input id={`${id}-language`} type="text" value={item.language ?? ''} onChange={(e) => set('language', e.target.value)}
         placeholder="Language" className={`${inputClass} flex-1`} />
-      <select value={item.fluency ?? ''} onChange={(e) => set('fluency', e.target.value)}
+      <label htmlFor={`${id}-fluency`} className="sr-only">Fluency</label>
+      <select id={`${id}-fluency`} value={item.fluency ?? ''} onChange={(e) => set('fluency', e.target.value)}
         className={`${inputClass} flex-1`}>
         <option value="">Select fluency…</option>
         <option value="Native">Native</option>

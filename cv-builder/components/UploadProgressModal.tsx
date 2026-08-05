@@ -53,6 +53,8 @@ export default function UploadProgressModal({
   const [label, setLabel] = useState('')
   const intervalRef = useRef<number | null>(null)
   const swapTimerRef = useRef<number | null>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     function clearTimers() {
@@ -92,9 +94,32 @@ export default function UploadProgressModal({
     return clearTimers
   }, [open, stage, filename])
 
-  if (!open) return null
-
   const dismissible = stage === 'error'
+
+  // Remember what had focus before the dialog opened, so it can be restored
+  // on close; move focus into the dialog once there's an action to take.
+  useEffect(() => {
+    if (open) {
+      previousFocusRef.current = document.activeElement as HTMLElement | null
+    } else {
+      previousFocusRef.current?.focus()
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (open && dismissible) closeButtonRef.current?.focus()
+  }, [open, dismissible])
+
+  useEffect(() => {
+    if (!open || !dismissible) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open, dismissible, onClose])
+
+  if (!open) return null
 
   return createPortal(
     <div
@@ -113,6 +138,7 @@ export default function UploadProgressModal({
             <p className="mb-4 text-sm text-red-600">{errorMessage}</p>
             <div className="flex justify-end gap-2">
               <button
+                ref={closeButtonRef}
                 onClick={onClose}
                 className="rounded-lg border border-indigo-200 px-3 py-2 text-sm text-indigo-700 hover:bg-indigo-50"
               >

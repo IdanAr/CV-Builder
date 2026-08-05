@@ -40,7 +40,7 @@ export function AppNavbar({
             aria-label="CV Builder home"
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 z-20 rounded-lg pointer-events-auto transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
           >
-            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="h-18 w-18 shrink-0">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 shrink-0">
               <polygon points="50,25 65,35 65,55 50,65 35,55 35,35" fill="#7C3AED" />
               <circle cx="30" cy="30" r="4" fill="#A78BFA" />
               <circle cx="70" cy="30" r="4" fill="#A78BFA" />

@@ -213,6 +213,20 @@ describe('ApplicationsView sorting', () => {
     })
   })
 
+  it('closes the column dialog on Escape and returns focus to the "+ Column" trigger', () => {
+    renderView()
+
+    const trigger = screen.getByRole('button', { name: '+ Column' })
+    // jsdom's fireEvent.click doesn't auto-focus like a real browser click does.
+    trigger.focus()
+    fireEvent.click(trigger)
+    expect(screen.getByRole('dialog', { name: /add column/i })).toBeInTheDocument()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+  })
+
   it('deleting a custom column asks for confirmation first', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
     renderView()

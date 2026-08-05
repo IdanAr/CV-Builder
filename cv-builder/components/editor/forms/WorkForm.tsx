@@ -1,6 +1,7 @@
 // components/editor/forms/WorkForm.tsx
 'use client'
 
+import { useId } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { AiSuggestButton } from '@/components/ai/AiSuggestButton'
@@ -28,6 +29,7 @@ function WorkItemForm({
   onUpdate: (v: WorkItem) => void
   onRemove: () => void
 }) {
+  const id = useId()
   const set = (field: keyof WorkItem, value: string) => onUpdate({ ...item, [field]: value })
 
   const setHighlights = (highlights: string[]) => onUpdate({ ...item, highlights })
@@ -41,9 +43,11 @@ function WorkItemForm({
     <div className="space-y-2">
       <div className="flex justify-between items-start gap-2">
         <div className="grid grid-cols-2 gap-2 flex-1">
-          <input type="text" value={item.name ?? ''} onChange={(e) => set('name', e.target.value)}
+          <label htmlFor={`${id}-name`} className="sr-only">Company name</label>
+          <input id={`${id}-name`} type="text" value={item.name ?? ''} onChange={(e) => set('name', e.target.value)}
             placeholder="Company name" className={inputClass} />
-          <input type="text" value={item.position ?? ''} onChange={(e) => set('position', e.target.value)}
+          <label htmlFor={`${id}-position`} className="sr-only">Job title</label>
+          <input id={`${id}-position`} type="text" value={item.position ?? ''} onChange={(e) => set('position', e.target.value)}
             placeholder="Job title" className={inputClass} />
         </div>
         <button type="button" onClick={onRemove} aria-label="Remove work entry"
@@ -53,20 +57,23 @@ function WorkItemForm({
         <MonthYearPicker value={item.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
         <MonthYearPicker value={item.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
       </div>
+      <label htmlFor={`${id}-summary`} className="sr-only">Role summary</label>
       <RichTextField
+        id={`${id}-summary`}
         value={item.summary ?? ''}
         onChange={(v) => set('summary', v)}
         placeholder="Role summary..."
         rows={2}
       />
-      <div className="space-y-1">
-        <label className="block text-xs font-medium text-indigo-600">Bullet points</label>
+      <fieldset className="space-y-1 border-0 p-0 m-0">
+        <legend className="block text-xs font-medium text-indigo-600 p-0">Bullet points</legend>
         {(item.highlights ?? []).map((h, i) => (
           <div key={i} className="flex gap-1 items-start">
             <RichTextField
               value={h}
               onChange={(v) => updateHighlight(i, v)}
               placeholder="Achieved X by doing Y, resulting in Z"
+              ariaLabel={`Bullet point ${i + 1}`}
               rows={1}
               className="flex-1"
             />
@@ -82,7 +89,7 @@ function WorkItemForm({
         ))}
         <button type="button" onClick={addHighlight}
           className="text-xs text-indigo-600 hover:text-indigo-800">+ Add bullet</button>
-      </div>
+      </fieldset>
     </div>
   )
 }

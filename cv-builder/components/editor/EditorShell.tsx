@@ -196,6 +196,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
           type="text"
           value={storeTitle}
           onChange={(e) => setTitle(e.target.value)}
+          aria-label="Resume title"
           className="font-semibold text-sm bg-transparent border-none outline-none focus:ring-1 focus:ring-indigo-400 rounded px-1 min-w-0 flex-1 text-indigo-900"
         />
       </div>
@@ -304,7 +305,11 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
               ← My CVs
             </Link>
             <span className="text-indigo-200">|</span>
-            <span className={`text-xs ${saveError ? 'text-red-500' : 'text-indigo-400'}`}>
+            <span
+              role="status"
+              aria-live="polite"
+              className={`text-xs ${saveError ? 'text-red-500' : 'text-indigo-400'}`}
+            >
               {saveError ?? saveStatus}
             </span>
             <div className="w-px h-4 bg-indigo-200 mx-1" />
