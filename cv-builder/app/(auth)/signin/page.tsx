@@ -3,9 +3,26 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { PlasmaBackground } from '@/components/ui/PlasmaBackground'
 
-export default async function SignInPage() {
+// Auth.js redirects back here with ?error=<code> on OAuth failure — surface it
+// instead of silently dropping the user back on this page with no explanation.
+const ERROR_MESSAGES: Record<string, string> = {
+  OAuthAccountNotLinked:
+    'That email is already linked to a different sign-in method. Try the provider you used originally.',
+  AccessDenied: 'Access was denied, or sign-in was cancelled. Please try again.',
+  Configuration: 'Sign-in is temporarily unavailable. Please try again in a moment.',
+  Verification: 'That sign-in link is no longer valid. Please try again.',
+}
+
+interface SignInPageProps {
+  searchParams: Promise<{ error?: string }>
+}
+
+export default async function SignInPage({ searchParams }: SignInPageProps) {
   const session = await auth()
   if (session) redirect('/dashboard')
+
+  const { error } = await searchParams
+  const errorMessage = error ? (ERROR_MESSAGES[error] ?? 'Something went wrong signing you in. Please try again.') : null
 
   return (
     <PlasmaBackground>
@@ -45,6 +62,12 @@ export default async function SignInPage() {
             </h1>
             <p className="text-sm text-indigo-400">Sign in to continue</p>
           </div>
+
+          {errorMessage && (
+            <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+              {errorMessage}
+            </p>
+          )}
 
           <div className="flex flex-col gap-3">
             <form

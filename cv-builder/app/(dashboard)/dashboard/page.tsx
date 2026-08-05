@@ -18,6 +18,7 @@ export default async function DashboardPage() {
   return (
     <>
  <AppNavbar
+        containerClassName="mx-auto w-full max-w-4xl px-4"
         actions={
           // CV actions sit on the left; ml-auto on the Applications link pushes
           // the navigation/profile cluster to the right edge.

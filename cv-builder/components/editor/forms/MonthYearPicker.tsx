@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useId, useState, useEffect } from 'react'
 
 export interface MonthYearPickerProps {
   value: string          // "YYYY-MM", "" for empty, or "Present" (end dates only)
@@ -42,6 +42,11 @@ function parseValue(value: string): { year: string; month: string; isPresent: bo
 }
 
 export function MonthYearPicker({ value, onChange, allowPresent = false, placeholder }: MonthYearPickerProps) {
+  // Unique per rendered instance so month/year <label htmlFor> ids never
+  // collide when multiple pickers (e.g. start + end date) render on one page.
+  const baseId = useId()
+  const monthId = `${baseId}-month`
+  const yearId = `${baseId}-year`
   const parsed = parseValue(value)
   const [month, setMonth] = useState(parsed.month)
   const [year, setYear] = useState(parsed.year)
@@ -117,11 +122,14 @@ export function MonthYearPicker({ value, onChange, allowPresent = false, placeho
 
   return (
     <div className="flex items-center gap-1.5">
+      <label htmlFor={monthId} className="sr-only">
+        {placeholder ? `${placeholder} month` : 'Month'}
+      </label>
       <select
+        id={monthId}
         value={month}
         onChange={handleMonthChange}
         className={`${fieldClass} w-20`}
-        aria-label={placeholder ? `${placeholder} month` : 'Month'}
       >
         <option value="">Month</option>
         {MONTHS.map((m) => (
@@ -131,7 +139,11 @@ export function MonthYearPicker({ value, onChange, allowPresent = false, placeho
         ))}
       </select>
 
+      <label htmlFor={yearId} className="sr-only">
+        {placeholder ? `${placeholder} year` : 'Year'}
+      </label>
       <input
+        id={yearId}
         type="text"
         value={year}
         onChange={handleYearChange}
@@ -139,7 +151,6 @@ export function MonthYearPicker({ value, onChange, allowPresent = false, placeho
         maxLength={4}
         placeholder="YYYY"
         className={`${fieldClass} w-16`}
-        aria-label={placeholder ? `${placeholder} year` : 'Year'}
       />
 
       {allowPresent && (

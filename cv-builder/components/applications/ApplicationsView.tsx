@@ -82,6 +82,29 @@ export default function ApplicationsView({
   const [filters, setFilters] = useState<ColumnFilter[]>([])
   const [view, setView] = useState<ViewMode>('table')
   const pendingDeletesRef = useRef(new Map<string, PendingDelete>())
+  // Captured synchronously at open time (not in an effect) — ColumnForm's own
+  // first field autoFocuses as soon as the dialog mounts, which would already
+  // have moved document.activeElement away from the trigger by the time a
+  // parent effect ran.
+  const columnModalTriggerRef = useRef<HTMLElement | null>(null)
+  function openColumnModal(next: { mode: 'add' } | { mode: 'edit'; column: BoardColumn }) {
+    columnModalTriggerRef.current = document.activeElement as HTMLElement | null
+    setColumnModal(next)
+  }
+
+  // Escape closes the column add/edit dialog; focus returns to whatever
+  // opened it.
+  useEffect(() => {
+    if (!columnModal) {
+      columnModalTriggerRef.current?.focus()
+      return
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setColumnModal(null)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [columnModal])
 
   // Restore the persisted view preference after mount (SSR-safe).
   useEffect(() => {
@@ -475,14 +498,14 @@ export default function ApplicationsView({
               column={column}
               sort={boardConfig.sort}
               onToggleSort={handleToggleSort}
-              onEdit={(col) => setColumnModal({ mode: 'edit', column: col })}
+              onEdit={(col) => openColumnModal({ mode: 'edit', column: col })}
               onDelete={handleDeleteColumn}
             />
           )}
           headerAccessory={
             <button
               type="button"
-              onClick={() => setColumnModal({ mode: 'add' })}
+              onClick={() => openColumnModal({ mode: 'add' })}
               title="Add a custom column"
               className="whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium text-indigo-500 hover:bg-indigo-50 hover:text-indigo-700"
             >

@@ -56,12 +56,16 @@ export async function createApplication(userId: string, input: CreateApplication
 
   let company = input.company
   let role = input.role
+  // Only trust resumeId once ownership is confirmed — otherwise drop it rather
+  // than persist a reference to a resume that isn't (or may not be) the caller's.
+  let resumeId: string | undefined
   if (input.resumeId) {
     const resume = (await Resume.findOne({ _id: input.resumeId, userId }).lean()) as {
       targetCompany?: string
       targetRole?: string
     } | null
     if (resume) {
+      resumeId = input.resumeId
       if (!company && resume.targetCompany) company = resume.targetCompany
       if (!role && resume.targetRole) role = resume.targetRole
     }
@@ -83,7 +87,7 @@ export async function createApplication(userId: string, input: CreateApplication
 
   const created = await Application.create({
     userId,
-    resumeId: input.resumeId,
+    resumeId,
     company,
     role,
     status,
@@ -149,17 +153,23 @@ export async function patchApplication(userId: string, id: string, patch: PatchA
   // --- resumeId (logged as resume titles for a readable feed) --------------
   if (patch.resumeId !== undefined) {
     const next = patch.resumeId ?? undefined
-    setPayload.resumeId = patch.resumeId
-    if (next !== current.resumeId) {
-      const ids = [current.resumeId, next].filter(Boolean) as string[]
-      let titleById = new Map<string, string>()
-      if (ids.length > 0) {
-        const resumes = (await Resume.find({ _id: { $in: ids }, userId }, 'title').lean()) as unknown as Array<{
-          _id: unknown
-          title: string
-        }>
-        titleById = new Map(resumes.map((r) => [String(r._id), r.title]))
-      }
+    const ids = [current.resumeId, next].filter(Boolean) as string[]
+    let titleById = new Map<string, string>()
+    if (ids.length > 0) {
+      // Ownership-scoped by construction: only resumes belonging to userId are
+      // found here, so a next id absent from this map isn't the caller's.
+      const resumes = (await Resume.find({ _id: { $in: ids }, userId }, 'title').lean()) as unknown as Array<{
+        _id: unknown
+        title: string
+      }>
+      titleById = new Map(resumes.map((r) => [String(r._id), r.title]))
+    }
+    // Only persist resumeId once ownership is confirmed (or it's being cleared)
+    // — never link an application to a resume that isn't the caller's, and
+    // don't log a change that wasn't actually applied.
+    const ownershipOk = !next || titleById.has(String(next))
+    if (ownershipOk) setPayload.resumeId = patch.resumeId
+    if (ownershipOk && next !== current.resumeId) {
       const column = columnByKey.get('resumeId')
       logChange(
         'resumeId',

@@ -63,10 +63,13 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ input: currentValue, ...context }),
       })
-      if (!res.ok) throw new Error('AI suggestion failed')
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error((json as { error?: string }).error ?? 'Failed to generate suggestion. Please try again.')
+      }
       setResult(await res.json())
-    } catch {
-      setError('Failed to generate suggestion. Please try again.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate suggestion. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -93,7 +96,11 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
       </button>
 
       {error && (
-        <div className="absolute top-full right-0 z-20 mt-1 w-56 rounded-lg border border-red-200 bg-red-50 p-2 shadow-sm">
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute top-full right-0 z-20 mt-1 w-56 rounded-lg border border-red-200 bg-red-50 p-2 shadow-sm"
+        >
           <p className="text-xs text-red-600">{error}</p>
           <button
             onClick={() => setError(null)}
@@ -105,7 +112,11 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
       )}
 
       {result && (
-        <div className="absolute top-full right-0 z-20 mt-1 w-80 rounded-xl border border-indigo-200 bg-white/90 backdrop-blur-xl p-3 shadow-xl">
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute top-full right-0 z-20 mt-1 w-80 rounded-xl border border-indigo-200 bg-white/90 backdrop-blur-xl p-3 shadow-xl"
+        >
           {result.pendingApprovals.length > 0 && (
             <p className="mb-2 rounded border border-yellow-200 bg-yellow-50 px-2 py-1 text-xs text-yellow-700">
               Highlighted items were not in your original notes — verify before accepting.

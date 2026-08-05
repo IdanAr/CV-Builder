@@ -106,13 +106,16 @@ export function AtsScorePanel() {
           keywordPriorities: cachedKeywordPriorities,
         }),
       })
-      if (!res.ok) throw new Error('Analysis failed')
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error((json as { error?: string }).error ?? 'Analysis failed. Please try again.')
+      }
       const json: AtsScoreResponse = await res.json()
       setResult(json)
       setJdKeywords(json.jdKeywords)
       setKeywordPriorities(json.keywordPriorities ?? {})
-    } catch {
-      setError('Analysis failed. Please try again.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Analysis failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -139,12 +142,15 @@ export function AtsScorePanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ missingKeywords: result.missingKeywords }),
       })
-      if (!res.ok) throw new Error('Fix generation failed')
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error((json as { error?: string }).error ?? 'Could not generate fixes. Please try again.')
+      }
       const fetchedFixes: AtsFix[] = await res.json()
       setFixes(fetchedFixes)
       setFixStatus('ready')
-    } catch {
-      setFixError('Could not generate fixes. Please try again.')
+    } catch (err) {
+      setFixError(err instanceof Error ? err.message : 'Could not generate fixes. Please try again.')
       setFixStatus('error')
     }
   }
@@ -159,12 +165,15 @@ export function AtsScorePanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ missingKeywords: result.missingKeywords }),
       })
-      if (!res.ok) throw new Error('Semantic match failed')
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error((json as { error?: string }).error ?? 'Semantic match failed. Please try again.')
+      }
       const { confirmedMatches } = await res.json()
       await handleAnalyze(excludedKeywords, confirmedMatches, jdKeywords, keywordPriorities)
       setSemanticStatus('ready')
-    } catch {
-      setSemanticError('Semantic match failed. Please try again.')
+    } catch (err) {
+      setSemanticError(err instanceof Error ? err.message : 'Semantic match failed. Please try again.')
       setSemanticStatus('error')
     }
   }
@@ -189,8 +198,10 @@ export function AtsScorePanel() {
     setDismissedIds((prev) => new Set(prev).add(id))
   }, [])
 
+  // Bulk-apply only fixes with no unverified claims — anything flagged by the
+  // hallucination guard still requires an individual, deliberate "Apply".
   const applyAll = useCallback(() => {
-    const visible = fixes.filter((f) => !dismissedIds.has(f.id))
+    const visible = fixes.filter((f) => !dismissedIds.has(f.id) && f.pendingApprovals.length === 0)
     for (const fix of visible) {
       applyFix(fix)
     }

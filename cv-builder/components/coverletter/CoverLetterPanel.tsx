@@ -3,6 +3,49 @@
 import { useState } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 
+interface CoverLetterDraft {
+  content: string
+  pendingApprovals: string[]
+}
+
+// Mirrors AiSuggestButton's highlightApprovals: marks AI-generated claims that
+// couldn't be traced back to the user's original notes.
+function highlightApprovals(text: string, approvals: string[]): React.ReactNode {
+  if (approvals.length === 0) return <>{text}</>
+  let nodes: Array<string | React.ReactElement> = [text]
+  for (const phrase of approvals) {
+    const nextNodes: Array<string | React.ReactElement> = []
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i]
+      if (typeof node !== 'string') {
+        nextNodes.push(node)
+        continue
+      }
+      const lowerNode = node.toLowerCase()
+      const idx = lowerNode.indexOf(phrase.toLowerCase())
+      if (idx === -1) {
+        nextNodes.push(node)
+        continue
+      }
+      if (idx > 0) nextNodes.push(node.slice(0, idx))
+      nextNodes.push(
+        <mark
+          key={`${i}-${phrase}`}
+          className="bg-amber-200 text-amber-900 rounded px-0.5"
+          title="Not in your original notes — please verify before accepting"
+        >
+          {node.slice(idx, idx + phrase.length)}
+        </mark>
+      )
+      if (idx + phrase.length < node.length) {
+        nextNodes.push(node.slice(idx + phrase.length))
+      }
+    }
+    nodes = nextNodes
+  }
+  return <>{nodes}</>
+}
+
 export function CoverLetterPanel() {
   const resumeId = useResumeEditorStore((s) => s.resumeId)
   const data = useResumeEditorStore((s) => s.data)
@@ -13,12 +56,13 @@ export function CoverLetterPanel() {
   const [roleName, setRoleName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [pendingApprovals, setPendingApprovals] = useState<string[]>([])
+  const [draft, setDraft] = useState<CoverLetterDraft | null>(null)
 
   async function handleGenerate() {
     if (!resumeId || !jobDescription.trim()) return
     setLoading(true)
     setError(null)
+    setDraft(null)
     try {
       const res = await fetch(`/api/resumes/${resumeId}/cover-letter`, {
         method: 'POST',
@@ -29,15 +73,23 @@ export function CoverLetterPanel() {
           roleName: roleName.trim() || undefined,
         }),
       })
-      if (!res.ok) throw new Error('Generation failed')
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error((json as { error?: string }).error ?? 'Could not generate a cover letter. Please try again.')
+      }
       const result: { content: string; pendingApprovals: string[] } = await res.json()
-      setData({ coverLetter: result.content })
-      setPendingApprovals(result.pendingApprovals ?? [])
-    } catch {
-      setError('Could not generate a cover letter. Please try again.')
+      setDraft({ content: result.content, pendingApprovals: result.pendingApprovals ?? [] })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not generate a cover letter. Please try again.')
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleUseDraft() {
+    if (!draft) return
+    setData({ coverLetter: draft.content })
+    setDraft(null)
   }
 
   return (
@@ -80,20 +132,33 @@ export function CoverLetterPanel() {
         {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
       </div>
 
-      {pendingApprovals.length > 0 && (
-        <div className="rounded bg-amber-50 border border-amber-200 px-3 py-2">
-          <p className="text-xs text-amber-700 font-medium mb-1">
-            Double-check these before using this letter:
+      {draft && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-lg border border-indigo-200 bg-white/90 p-3 shadow-sm"
+        >
+          {draft.pendingApprovals.length > 0 && (
+            <p className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-700">
+              Highlighted items were not in your original notes — verify before using this letter.
+            </p>
+          )}
+          <p className="mb-3 whitespace-pre-wrap text-sm leading-relaxed text-gray-800">
+            {highlightApprovals(draft.content, draft.pendingApprovals)}
           </p>
-          <div className="flex flex-wrap gap-1">
-            {pendingApprovals.map((claim) => (
-              <span
-                key={claim}
-                className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
-              >
-                {claim}
-              </span>
-            ))}
+          <div className="flex gap-2">
+            <button
+              onClick={handleUseDraft}
+              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700"
+            >
+              Use this letter
+            </button>
+            <button
+              onClick={() => setDraft(null)}
+              className="rounded px-3 py-1.5 text-xs text-indigo-500 transition-colors hover:text-indigo-700"
+            >
+              Discard
+            </button>
           </div>
         </div>
       )}

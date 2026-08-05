@@ -192,6 +192,25 @@ describe('createApplication', () => {
       expect.objectContaining({ company: 'Chosen Co', role: 'Chosen Role' })
     )
   })
+
+  it('drops resumeId when it does not belong to the caller (ownership not confirmed)', async () => {
+    mockAppFindOne.mockReturnValue(sortLeanChain(null))
+    mockAppCreate.mockResolvedValue({ toObject: () => ({}) })
+    // Resume.findOne is scoped by userId — a resume owned by someone else (or
+    // a bogus id) resolves to null here, same as the real query would.
+    mockResumeFindOne.mockReturnValue(leanChain(null))
+
+    await createApplication('u1', {
+      resumeId: 'not-mine',
+      company: 'Acme',
+      role: 'Eng',
+      customFields: {},
+    })
+
+    expect(mockAppCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ resumeId: undefined })
+    )
+  })
 })
 
 describe('patchApplication (diff-and-log)', () => {
@@ -340,6 +359,22 @@ describe('patchApplication (diff-and-log)', () => {
         toValue: 'Frontend CV',
       })
     )
+  })
+
+  it('ignores a resumeId patch pointing at a resume the caller does not own', async () => {
+    // Resume.find is scoped by userId, so a resume owned by someone else (or a
+    // bogus id) simply never appears in the batched result.
+    mockResumeFind.mockReturnValue(leanChain([]))
+    mockAppFindOne.mockReturnValue(leanChain({ ...current, resumeId: 'r1' }))
+
+    await patchApplication('u1', 'a1', { resumeId: 'not-mine' })
+
+    expect(mockAppFindOneAndUpdate).toHaveBeenCalledWith(
+      { _id: 'a1', userId: 'u1' },
+      { $set: {} },
+      { new: true }
+    )
+    expect(mockActivityInsertMany).not.toHaveBeenCalled()
   })
 
   it('logs a cleared field as null, not the string "null"', async () => {

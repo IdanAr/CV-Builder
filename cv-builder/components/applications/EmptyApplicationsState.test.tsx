@@ -12,9 +12,11 @@ describe('EmptyApplicationsState', () => {
     expect(onCreate).toHaveBeenCalled()
   })
 
-  it('points at the resume-based entry path', () => {
+  it('points at the resume-based entry path, quoting the CV card button label verbatim', () => {
     render(<EmptyApplicationsState onCreate={vi.fn()} />)
     expect(screen.getByRole('link', { name: /My CVs/i })).toHaveAttribute('href', '/dashboard')
-    expect(screen.getByText(/Track application/)).toBeInTheDocument()
+    // Matches ResumeCard's actual visible button text ("📋 Track"), not a
+    // paraphrase — see components/ResumeCard.tsx.
+    expect(screen.getByText(/📋 Track/)).toBeInTheDocument()
   })
 })

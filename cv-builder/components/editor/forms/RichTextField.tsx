@@ -9,6 +9,10 @@ export interface RichTextFieldProps {
   placeholder?: string
   rows?: number
   className?: string
+  /** Associates an external <label htmlFor> with the underlying textarea. */
+  id?: string
+  /** Accessible name for the textarea when no visible/external <label> applies. */
+  ariaLabel?: string
 }
 
 const MARKERS = {
@@ -37,6 +41,8 @@ export function RichTextField({
   placeholder,
   rows = 5,
   className,
+  id,
+  ariaLabel,
 }: RichTextFieldProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -119,10 +125,12 @@ export function RichTextField({
       </div>
       <textarea
         ref={textareaRef}
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
+        aria-label={ariaLabel}
         className={textareaClass}
       />
     </div>

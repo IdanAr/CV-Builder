@@ -1,4 +1,5 @@
 'use client'
+import { useId } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { MonthYearPicker } from './MonthYearPicker'
@@ -13,6 +14,7 @@ const createEmpty = (): Item => ({
 })
 
 function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item) => void; onRemove: () => void }) {
+  const id = useId()
   const set = (f: keyof Item, v: string) => onUpdate({ ...item, [f]: v })
   const setHighlights = (highlights: string[]) => onUpdate({ ...item, highlights })
   const addH = () => setHighlights([...(item.highlights ?? []), ''])
@@ -25,9 +27,11 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
     <div className="space-y-2">
       <div className="flex gap-2 items-start">
         <div className="grid grid-cols-2 gap-2 flex-1">
-          <input type="text" value={item.organization ?? ''} onChange={(e) => set('organization', e.target.value)}
+          <label htmlFor={`${id}-organization`} className="sr-only">Organization</label>
+          <input id={`${id}-organization`} type="text" value={item.organization ?? ''} onChange={(e) => set('organization', e.target.value)}
             placeholder="Organization" className={inputClass} />
-          <input type="text" value={item.position ?? ''} onChange={(e) => set('position', e.target.value)}
+          <label htmlFor={`${id}-position`} className="sr-only">Role</label>
+          <input id={`${id}-position`} type="text" value={item.position ?? ''} onChange={(e) => set('position', e.target.value)}
             placeholder="Role" className={inputClass} />
         </div>
         <button type="button" onClick={onRemove} aria-label="Remove volunteer entry"
@@ -37,20 +41,23 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
         <MonthYearPicker value={item.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
         <MonthYearPicker value={item.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
       </div>
+      <label htmlFor={`${id}-summary`} className="sr-only">Summary</label>
       <RichTextField
+        id={`${id}-summary`}
         value={item.summary ?? ''}
         onChange={(v) => set('summary', v)}
         placeholder="Summary..."
         rows={2}
       />
-      <div className="space-y-1">
-        <label className="block text-xs font-medium text-indigo-600">Highlights</label>
+      <fieldset className="space-y-1 border-0 p-0 m-0">
+        <legend className="block text-xs font-medium text-indigo-600 p-0">Highlights</legend>
         {(item.highlights ?? []).map((h, i) => (
           <div key={i} className="flex gap-1 items-start">
             <RichTextField
               value={h}
               onChange={(v) => updateH(i, v)}
               placeholder="Achievement..."
+              ariaLabel={`Highlight ${i + 1}`}
               rows={1}
               className="flex-1"
             />
@@ -61,7 +68,7 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
         <button type="button" onClick={addH} className="text-xs text-indigo-600 hover:text-indigo-800">
           + Add highlight
         </button>
-      </div>
+      </fieldset>
     </div>
   )
 }

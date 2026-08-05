@@ -31,7 +31,7 @@ export function EmptyApplicationsState({ onCreate }: { onCreate: () => void }) {
           <span className="text-2xl" aria-hidden="true">📄</span>
           <h3 className="mt-3 font-semibold text-indigo-900">Track from a CV</h3>
           <p className="mb-4 mt-1 flex-1 text-sm text-indigo-400">
-            Use &ldquo;Track application&rdquo; on any CV card to create a pre-filled row linked to
+            Use &ldquo;📋 Track&rdquo; on any CV card to create a pre-filled row linked to
             that resume.
           </p>
           <Link

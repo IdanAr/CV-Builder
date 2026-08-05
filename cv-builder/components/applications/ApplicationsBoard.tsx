@@ -5,7 +5,14 @@
 // enum). Cross-container card drag PATCHes the application's status through
 // the same diff-and-log handler as any other edit, so Kanban moves produce
 // activity rows with no separate logging path.
-import { DndContext, closestCorners, useDroppable, type DragEndEvent } from '@dnd-kit/core'
+import {
+  DndContext,
+  closestCorners,
+  useDroppable,
+  type DragEndEvent,
+  type Announcements,
+  type ScreenReaderInstructions,
+} from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { BoardColumn, ColumnOption } from '@/lib/schemas/application.zod'
@@ -13,9 +20,57 @@ import type { ApplicationRow } from '@/lib/applications/types'
 
 const COLUMN_DROPPABLE_PREFIX = 'status:'
 
+const screenReaderInstructions: ScreenReaderInstructions = {
+  draggable:
+    'To move an application to a different status column: press space or enter to pick it up, use the arrow keys to move it over a column or another card, then press space or enter again to drop it. Press escape to cancel.',
+}
+
+function describeCard(appId: string, applications: ApplicationRow[]): string {
+  const app = applications.find((a) => a._id === appId)
+  return app?.company ? `the application at ${app.company}` : 'the application'
+}
+
+function describeTarget(
+  overId: string | null,
+  applications: ApplicationRow[],
+  options: ColumnOption[]
+): string {
+  if (!overId) return 'outside any column'
+  if (overId.startsWith(COLUMN_DROPPABLE_PREFIX)) {
+    const statusId = overId.slice(COLUMN_DROPPABLE_PREFIX.length)
+    const option = options.find((o) => o.id === statusId)
+    return option ? `the ${option.label} column` : 'a column'
+  }
+  const overApp = applications.find((a) => a._id === overId)
+  return overApp ? `next to the application at ${overApp.company || 'unknown company'}` : 'another card'
+}
+
+function buildAnnouncements(applications: ApplicationRow[], options: ColumnOption[]): Announcements {
+  return {
+    onDragStart({ active }) {
+      return `Picked up ${describeCard(String(active.id), applications)}.`
+    },
+    onDragOver({ active, over }) {
+      const card = describeCard(String(active.id), applications)
+      return over ? `${card} is over ${describeTarget(String(over.id), applications, options)}.` : `${card} is no longer over a droppable area.`
+    },
+    onDragEnd({ active, over }) {
+      const card = describeCard(String(active.id), applications)
+      return over ? `${card} was moved to ${describeTarget(String(over.id), applications, options)}.` : `${card} was dropped.`
+    },
+    onDragCancel({ active }) {
+      return `Moving ${describeCard(String(active.id), applications)} was cancelled.`
+    },
+  }
+}
+
 function BoardCard({ app, customChips }: { app: ApplicationRow; customChips: string[] }) {
+  // role: 'listitem' matches the lane's role="list" container — passed as a
+  // dnd-kit attributes option (rather than overridden via JSX spread order)
+  // so dnd-kit itself skips the button-only aria-pressed it would otherwise add.
   const { listeners, attributes, setNodeRef, transform, transition, isDragging } = useSortable({
     id: app._id,
+    attributes: { role: 'listitem' },
   })
   return (
     <div
@@ -23,7 +78,6 @@ function BoardCard({ app, customChips }: { app: ApplicationRow; customChips: str
       style={{ transform: CSS.Transform.toString(transform), transition }}
       {...attributes}
       {...listeners}
-      role="listitem"
       aria-label={`Application at ${app.company || 'unknown company'}`}
       className={`cursor-grab touch-none rounded-lg border border-indigo-100 bg-white p-3 shadow-sm transition hover:border-indigo-300 hover:shadow ${
         isDragging ? 'z-10 opacity-80 shadow-lg' : ''
@@ -143,9 +197,15 @@ export default function ApplicationsBoard({
     else unmatched.push(app)
   }
 
+  const announcements = buildAnnouncements(applications, options)
+
   return (
     <div className="overflow-x-auto pb-2">
-      <DndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+      <DndContext
+        collisionDetection={closestCorners}
+        onDragEnd={handleDragEnd}
+        accessibility={{ announcements, screenReaderInstructions }}
+      >
         <div className="flex items-stretch gap-3">
           {options.map((option) => (
             <BoardColumnLane
