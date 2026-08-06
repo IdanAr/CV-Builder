@@ -11,12 +11,15 @@ export interface ResumeEditorStore {
   isDirty: boolean
   isSaving: boolean
   saveError: string | null
+  pendingFocus: string | null
   _history: Array<{ title: string; data: ResumeData; meta: ResumeMeta }>
   _future:  Array<{ title: string; data: ResumeData; meta: ResumeMeta }>
   canUndo: boolean
   canRedo: boolean
   undo: () => void
   redo: () => void
+  requestFocus: (section: string) => void
+  clearFocus: () => void
   setTitle: (title: string) => void
   setData: (patch: Partial<ResumeData>) => void
   setMeta: (patch: Partial<ResumeMeta>) => void
@@ -85,6 +88,7 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
     isDirty: false,
     isSaving: false,
     saveError: null,
+    pendingFocus: null,
     _history: [],
     _future: [],
     canUndo: false,
@@ -126,6 +130,8 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
           isDirty: true,
         }
       }),
+    requestFocus: (section) => set({ pendingFocus: section }),
+    clearFocus: () => set({ pendingFocus: null }),
     setTitle: (title) =>
       set((s) => ({ ...pushHistory(s), title, isDirty: true })),
     setData: (patch) =>
@@ -191,7 +197,7 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
       }),
     hydrate: (resumeId, title, data, meta) => {
       _lastPushAt = 0
-      set({ resumeId, title, data, meta, isDirty: false, saveError: null, _history: [], _future: [], canUndo: false, canRedo: false })
+      set({ resumeId, title, data, meta, isDirty: false, saveError: null, pendingFocus: null, _history: [], _future: [], canUndo: false, canRedo: false })
     },
     _setIsSaving: (isSaving) => set({ isSaving }),
     _setIsDirty: (isDirty) => set({ isDirty }),

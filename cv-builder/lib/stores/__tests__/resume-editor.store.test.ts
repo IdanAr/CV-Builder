@@ -21,7 +21,7 @@ const defaultMeta: ResumeMeta = {
 beforeEach(() => {
   useResumeEditorStore.setState({
     resumeId: '', title: '', data: emptyData, meta: defaultMeta,
-    isDirty: false, isSaving: false, saveError: null,
+    isDirty: false, isSaving: false, saveError: null, pendingFocus: null,
     _history: [], _future: [], canUndo: false, canRedo: false,
   })
 })
@@ -383,5 +383,35 @@ describe('module default meta — updated sectionOrder default', () => {
       'interests',
       'projects',
     ])
+  })
+})
+
+describe('pendingFocus', () => {
+  it('starts as null', () => {
+    expect(useResumeEditorStore.getState().pendingFocus).toBeNull()
+  })
+
+  it('requestFocus sets the section key', () => {
+    useResumeEditorStore.getState().requestFocus('work')
+    expect(useResumeEditorStore.getState().pendingFocus).toBe('work')
+  })
+
+  it('clearFocus resets to null', () => {
+    useResumeEditorStore.getState().requestFocus('work')
+    useResumeEditorStore.getState().clearFocus()
+    expect(useResumeEditorStore.getState().pendingFocus).toBeNull()
+  })
+
+  it('does not affect undo/redo history', () => {
+    const before = useResumeEditorStore.getState()._history.length
+    useResumeEditorStore.getState().requestFocus('education')
+    expect(useResumeEditorStore.getState()._history.length).toBe(before)
+    expect(useResumeEditorStore.getState().canUndo).toBe(false)
+  })
+
+  it('hydrate resets pendingFocus to null', () => {
+    useResumeEditorStore.getState().requestFocus('work')
+    useResumeEditorStore.getState().hydrate('r2', 'Other CV', emptyData, defaultMeta)
+    expect(useResumeEditorStore.getState().pendingFocus).toBeNull()
   })
 })
