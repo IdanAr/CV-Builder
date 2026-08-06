@@ -107,3 +107,74 @@ describe('ListFieldManager reordering', () => {
     expect(handle.getAttribute('aria-label')).toBe('Drag to reorder')
   })
 })
+
+describe('ListFieldManager item-identity key regression', () => {
+  // Mirrors CustomSectionItemSchema: items carry their own stable `id`,
+  // separate from array position. `ListFieldManager`'s row wrapper must key
+  // off that id, not the index, or React reconciliation will reuse a DOM
+  // node across an add/remove for a *different* underlying item.
+  function IdentityHarness() {
+    const [items, setItems] = useState<Item[]>([
+      { id: 'a', value: 'first' },
+      { id: 'b', value: 'second' },
+      { id: 'c', value: 'third' },
+    ])
+    return (
+      <ListFieldManager<Item>
+        items={items}
+        onChange={setItems}
+        createEmpty={() => ({ id: 'new', value: '' })}
+        renderItem={(item, _, onUpdate, onRemove) => (
+          <div>
+            <input
+              aria-label={`item-${item.id}`}
+              value={item.value}
+              onChange={(e) => onUpdate({ ...item, value: e.target.value })}
+            />
+            <button aria-label={`remove-${item.id}`} onClick={onRemove}>
+              remove
+            </button>
+          </div>
+        )}
+      />
+    )
+  }
+
+  it('keeps a later item bound to its own id (not its position) when an earlier item is removed', () => {
+    render(<IdentityHarness />)
+
+    // Focus the input belonging to item 'b', currently at position 1.
+    const inputB = screen.getByLabelText('item-b') as HTMLInputElement
+    inputB.focus()
+    expect(document.activeElement).toBe(inputB)
+
+    // Remove item 'a' (position 0, an *earlier* item). 'b' shifts from
+    // position 1 to position 0. If the row wrapper were still keyed by
+    // position (key={i}), React would match old key=1 (which held focus,
+    // rendering 'b') against new key=1 (now item 'c', since 'c' shifted
+    // into position 1) and reuse that same DOM node for 'c' — the focused
+    // input would silently start showing/editing item 'c''s data instead
+    // of 'b''s, and a query for 'item-b' would resolve to a different
+    // (recycled) node than the one that actually has focus.
+    fireEvent.click(screen.getByLabelText('remove-a'))
+
+    // With an id-keyed wrapper, 'b' keeps its own DOM node/identity
+    // regardless of its new position: the previously-focused element is
+    // the SAME node, still labeled and valued for 'b', and focus survives
+    // the removal untouched.
+    const inputBAfter = screen.getByLabelText('item-b') as HTMLInputElement
+    expect(inputBAfter).toBe(inputB)
+    expect(document.activeElement).toBe(inputBAfter)
+    expect(inputBAfter.value).toBe('second')
+
+    // Item 'c' — now sitting at the position 'b' used to occupy — must NOT
+    // have been silently merged into the previously-focused node; it keeps
+    // its own separate node with its own value, untouched by 'b''s focus.
+    const inputC = screen.getByLabelText('item-c') as HTMLInputElement
+    expect(inputC).not.toBe(inputB)
+    expect(inputC.value).toBe('third')
+
+    // 'a' is gone.
+    expect(screen.queryByLabelText('item-a')).toBeNull()
+  })
+})

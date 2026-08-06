@@ -109,7 +109,13 @@ export function ListFieldManager<T>({
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={ids} strategy={verticalListSortingStrategy}>
           {items.map((item, i) => (
-            <SortableRow key={i} id={String(i)}>
+            // React's reconciliation key must track item identity (stable
+            // across add/remove so DOM/component state like input focus
+            // doesn't get silently reused for a different underlying item)
+            // — separate from dnd-kit's `id` below, which is intentionally
+            // positional and only needs to stay stable within one drag
+            // gesture. Do not conflate these two.
+            <SortableRow key={(item as { id?: string }).id ?? i} id={String(i)}>
               {({ setNodeRef, style, listeners, attributes, isDragging }) => (
                 <div
                   ref={setNodeRef}
