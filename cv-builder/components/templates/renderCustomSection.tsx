@@ -14,16 +14,17 @@ interface RenderStyles {
 
 export function renderCustomSection(
   section: CustomSection,
-  styles: RenderStyles
+  styles: RenderStyles,
+  sectionKey: string
 ): React.ReactNode {
   const { name, enabledFields, items } = section
   if (!items.length) return null
 
   return (
-    <div>
+    <div data-pv-section={sectionKey}>
       <div style={styles.sectionTitle}>{name}</div>
       {items.map((item, i) => (
-        <div key={item.id || i} style={{ marginBottom: '10px' }}>
+        <div key={item.id || i} data-pv-entry={i} style={{ marginBottom: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             {item.title && <strong style={{ fontSize: '11pt' }}>{item.title}</strong>}
             {enabledFields.includes('dateRange') && (item.startDate || item.endDate) && (

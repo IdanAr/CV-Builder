@@ -46,7 +46,7 @@ export function ModernTemplate({ data, meta }: TemplateProps) {
       const id = section.slice(7)
       const cs = data.customSections?.find((s) => s.id === id)
       if (!cs) return null
-      return renderCustomSection(cs, { sectionTitle, accentColor: meta.accentColor })
+      return renderCustomSection(cs, { sectionTitle, accentColor: meta.accentColor }, section)
     }
     switch (section) {
       case 'work': {

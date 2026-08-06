@@ -13,7 +13,7 @@ const styles = {
 describe('renderCustomSection', () => {
   it('returns null when items array is empty', () => {
     const section: CustomSection = { id: '1', name: 'Empty', enabledFields: [], items: [] }
-    const result = renderCustomSection(section, styles)
+    const result = renderCustomSection(section, styles, 'custom:1')
     expect(result).toBeNull()
   })
 
@@ -22,7 +22,7 @@ describe('renderCustomSection', () => {
       id: '1', name: 'My Publications', enabledFields: [],
       items: [{ id: 'i1', title: 'Paper One' }],
     }
-    render(<div>{renderCustomSection(section, styles)}</div>)
+    render(<div>{renderCustomSection(section, styles, 'custom:1')}</div>)
     expect(screen.getByText('My Publications')).toBeTruthy()
   })
 
@@ -31,7 +31,7 @@ describe('renderCustomSection', () => {
       id: '1', name: 'S', enabledFields: [],
       items: [{ id: 'i1', title: 'The Title' }],
     }
-    render(<div>{renderCustomSection(section, styles)}</div>)
+    render(<div>{renderCustomSection(section, styles, 'custom:1')}</div>)
     expect(screen.getByText('The Title')).toBeTruthy()
   })
 
@@ -40,7 +40,7 @@ describe('renderCustomSection', () => {
       id: '1', name: 'S', enabledFields: ['subtitle'],
       items: [{ id: 'i1', title: 'T', subtitle: 'Sub Text' }],
     }
-    render(<div>{renderCustomSection(section, styles)}</div>)
+    render(<div>{renderCustomSection(section, styles, 'custom:1')}</div>)
     expect(screen.getByText('Sub Text')).toBeTruthy()
   })
 
@@ -49,7 +49,7 @@ describe('renderCustomSection', () => {
       id: '1', name: 'S', enabledFields: [],
       items: [{ id: 'i1', title: 'T', subtitle: 'Hidden' }],
     }
-    render(<div>{renderCustomSection(section, styles)}</div>)
+    render(<div>{renderCustomSection(section, styles, 'custom:1')}</div>)
     expect(screen.queryByText('Hidden')).toBeNull()
   })
 
@@ -58,7 +58,7 @@ describe('renderCustomSection', () => {
       id: '1', name: 'S', enabledFields: ['summary'],
       items: [{ id: 'i1', title: 'T', summary: 'Detail text here' }],
     }
-    render(<div>{renderCustomSection(section, styles)}</div>)
+    render(<div>{renderCustomSection(section, styles, 'custom:1')}</div>)
     expect(screen.getByText('Detail text here')).toBeTruthy()
   })
 
@@ -67,7 +67,7 @@ describe('renderCustomSection', () => {
       id: '1', name: 'S', enabledFields: ['highlights'],
       items: [{ id: 'i1', title: 'T', highlights: ['Bullet A', 'Bullet B'] }],
     }
-    render(<div>{renderCustomSection(section, styles)}</div>)
+    render(<div>{renderCustomSection(section, styles, 'custom:1')}</div>)
     expect(screen.getByText('Bullet A')).toBeTruthy()
     expect(screen.getByText('Bullet B')).toBeTruthy()
   })
@@ -77,7 +77,7 @@ describe('renderCustomSection', () => {
       id: '1', name: 'S', enabledFields: ['keywords'],
       items: [{ id: 'i1', title: 'T', keywords: ['React', 'TypeScript'] }],
     }
-    render(<div>{renderCustomSection(section, styles)}</div>)
+    render(<div>{renderCustomSection(section, styles, 'custom:1')}</div>)
     expect(screen.getByText('React · TypeScript')).toBeTruthy()
   })
 
@@ -86,7 +86,7 @@ describe('renderCustomSection', () => {
       id: '1', name: 'S', enabledFields: ['level'],
       items: [{ id: 'i1', title: 'T', level: 'Advanced' }],
     }
-    render(<div>{renderCustomSection(section, styles)}</div>)
+    render(<div>{renderCustomSection(section, styles, 'custom:1')}</div>)
     expect(screen.getByText('Level: Advanced')).toBeTruthy()
   })
 
@@ -95,7 +95,7 @@ describe('renderCustomSection', () => {
       id: '1', name: 'S', enabledFields: ['dateRange'],
       items: [{ id: 'i1', title: 'T', startDate: '2022-01', endDate: '2023-06' }],
     }
-    render(<div>{renderCustomSection(section, styles)}</div>)
+    render(<div>{renderCustomSection(section, styles, 'custom:1')}</div>)
     expect(screen.getByText('01/2022 - 06/2023')).toBeTruthy()
   })
 
@@ -104,7 +104,7 @@ describe('renderCustomSection', () => {
       id: '1', name: 'S', enabledFields: ['url'],
       items: [{ id: 'i1', title: 'T', url: 'https://example.com' }],
     }
-    render(<div>{renderCustomSection(section, styles)}</div>)
+    render(<div>{renderCustomSection(section, styles, 'custom:1')}</div>)
     expect(screen.getByText('https://example.com')).toBeTruthy()
   })
 
@@ -113,7 +113,7 @@ describe('renderCustomSection', () => {
       id: '1', name: 'S', enabledFields: [],
       items: [{ id: 'i1', title: 'T', url: 'https://hidden.com' }],
     }
-    render(<div>{renderCustomSection(section, styles)}</div>)
+    render(<div>{renderCustomSection(section, styles, 'custom:1')}</div>)
     expect(screen.queryByText('https://hidden.com')).toBeNull()
   })
 })
