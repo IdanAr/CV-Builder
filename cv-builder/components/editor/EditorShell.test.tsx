@@ -214,12 +214,37 @@ describe('EditorShell — mobile layout (below breakpoint)', () => {
 describe('EditorShell pendingFocus', () => {
   it('switches the active tab to Edit when pendingFocus is set', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    // First move off the Edit tab so the assertion below can actually
+    // discriminate wired-vs-unwired behavior: the Edit tab is the default
+    // active tab on mount, so asserting aria-selected="true" without first
+    // leaving it would pass even if the pendingFocus effect were deleted.
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }))
+    expect(screen.getByRole('tab', { name: 'Edit' }).getAttribute('aria-selected')).toBe('false')
+
     // Set pendingFocus AFTER mount — EditorShell's own hydrate() call on
     // mount resets pendingFocus to null (Task 3), so setting it beforehand
     // would be immediately overwritten.
     act(() => {
       useResumeEditorStore.getState().requestFocus('work')
     })
+
     expect(screen.getByRole('tab', { name: 'Edit' }).getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('switches the mobile view back to Edit when pendingFocus is set', () => {
+    setViewport(true)
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    // Move to the Preview side of the mobile switcher first, so the effect
+    // has something real to reverse.
+    fireEvent.click(screen.getByRole('tab', { name: 'Preview' }))
+    expect(screen.queryByText('EditTabContent')).not.toBeInTheDocument()
+    expect(screen.getByText('PreviewTabContent')).toBeInTheDocument()
+
+    act(() => {
+      useResumeEditorStore.getState().requestFocus('work')
+    })
+
+    expect(screen.getByText('EditTabContent')).toBeInTheDocument()
+    expect(screen.queryByText('PreviewTabContent')).not.toBeInTheDocument()
   })
 })
