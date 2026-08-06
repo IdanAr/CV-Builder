@@ -75,10 +75,10 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         const work = data.work ?? []
         if (!work.length) return null
         return (
-          <div key="work">
+          <div key="work" data-pv-section="work">
             <div style={mainTitleStyle}>Work Experience</div>
             {work.map((job, i) => (
-              <div key={i} style={{ marginBottom: px(T.entryMarginBottom) }}>
+              <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.entryMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong style={{ fontSize: '11pt' }}>{job.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -101,10 +101,10 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         const education = data.education ?? []
         if (!education.length) return null
         return (
-          <div key="education">
+          <div key="education" data-pv-section="education">
             <div style={mainTitleStyle}>Education</div>
             {education.map((edu, i) => (
-              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
+              <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{edu.institution}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -122,10 +122,10 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         const vol = data.volunteer ?? []
         if (!vol.length) return null
         return (
-          <div key="volunteer">
+          <div key="volunteer" data-pv-section="volunteer">
             <div style={mainTitleStyle}>Volunteer</div>
             {vol.map((v, i) => (
-              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
+              <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{v.organization}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -148,10 +148,10 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         const certificates = data.certificates ?? []
         if (!certificates.length) return null
         return (
-          <div key="certificates">
+          <div key="certificates" data-pv-section="certificates">
             <div style={mainTitleStyle}>Certifications</div>
             {certificates.map((c, i) => (
-              <div key={i} style={{ marginBottom: '6px', fontSize: '10pt' }}>
+              <div key={i} data-pv-entry={i} style={{ marginBottom: '6px', fontSize: '10pt' }}>
                 <strong>{c.name}</strong>
                 {c.issuer && <span style={{ color: '#666' }}> — {c.issuer}</span>}
                 {c.date && <span style={{ color: '#666' }}>  ·  {c.date}</span>}
@@ -164,10 +164,10 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         const awards = data.awards ?? []
         if (!awards.length) return null
         return (
-          <div key="awards">
+          <div key="awards" data-pv-section="awards">
             <div style={mainTitleStyle}>Awards</div>
             {awards.map((a, i) => (
-              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
+              <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{a.title}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>{a.date}</span>
@@ -183,10 +183,10 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         const publications = data.publications ?? []
         if (!publications.length) return null
         return (
-          <div key="publications">
+          <div key="publications" data-pv-section="publications">
             <div style={mainTitleStyle}>Publications</div>
             {publications.map((p, i) => (
-              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
+              <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{p.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>{p.releaseDate}</span>
@@ -202,15 +202,15 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         const interests = data.interests ?? []
         if (!interests.length) return null
         return (
-          <div key="interests">
+          <div key="interests" data-pv-section="interests">
             <div style={mainTitleStyle}>Interests</div>
             <div style={{ fontSize: '10pt' }}>
               {interests.map((int, i) => (
-                <React.Fragment key={i}>
+                <div key={i} data-pv-entry={i} style={{ display: 'inline' }}>
                   <strong>{int.name}</strong>
                   {(int.keywords ?? []).length > 0 && <span style={{ color: '#555' }}>: {(int.keywords ?? []).join(', ')}</span>}
                   {i < interests.length - 1 && '  |  '}
-                </React.Fragment>
+                </div>
               ))}
             </div>
           </div>
@@ -220,10 +220,10 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         const projects = data.projects ?? []
         if (!projects.length) return null
         return (
-          <div key="projects">
+          <div key="projects" data-pv-section="projects">
             <div style={mainTitleStyle}>Projects</div>
             {projects.map((p, i) => (
-              <div key={i} style={{ marginBottom: px(T.projectMarginBottom) }}>
+              <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.projectMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{p.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -281,11 +281,11 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
 
         {/* Rail: skills */}
         {railSections.includes('skills') && (data.skills ?? []).length > 0 && (
-          <div>
+          <div data-pv-section="skills">
             <div style={railTitleStyle}>Skills</div>
             <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
               {(data.skills ?? []).map((s, i) => (
-                <div key={i} style={{ marginBottom: '6px' }}>
+                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
                   <div style={{ fontWeight: 600 }}>
                     {s.name}
                     {s.level && <span style={{ fontWeight: 400, opacity: 0.8 }}> · {s.level}</span>}
@@ -301,11 +301,11 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
 
         {/* Rail: languages */}
         {railSections.includes('languages') && (data.languages ?? []).length > 0 && (
-          <div>
+          <div data-pv-section="languages">
             <div style={railTitleStyle}>Languages</div>
             <div style={{ fontSize: '10pt', lineHeight: 1.7 }}>
               {(data.languages ?? []).map((l, i) => (
-                <div key={i}>
+                <div key={i} data-pv-entry={i}>
                   <strong>{l.language}</strong>
                   {l.fluency && <span style={{ opacity: 0.85 }}> - {l.fluency}</span>}
                 </div>
@@ -316,11 +316,11 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
 
         {/* Rail: certificates */}
         {railSections.includes('certificates') && (data.certificates ?? []).length > 0 && (
-          <div>
+          <div data-pv-section="certificates">
             <div style={railTitleStyle}>Certifications</div>
             <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
               {(data.certificates ?? []).map((c, i) => (
-                <div key={i} style={{ marginBottom: '6px' }}>
+                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
                   <strong>{c.name}</strong>
                   {c.issuer && <span style={{ opacity: 0.85 }}> — {c.issuer}</span>}
                   {c.date && <span style={{ opacity: 0.8 }}>  ·  {c.date}</span>}
@@ -332,11 +332,11 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
 
         {/* Rail: awards */}
         {railSections.includes('awards') && (data.awards ?? []).length > 0 && (
-          <div>
+          <div data-pv-section="awards">
             <div style={railTitleStyle}>Awards</div>
             <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
               {(data.awards ?? []).map((a, i) => (
-                <div key={i} style={{ marginBottom: '6px' }}>
+                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
                   <strong>{a.title}</strong>
                   {a.date && <span style={{ opacity: 0.8 }}>  ·  {a.date}</span>}
                   {a.awarder && <div style={{ opacity: 0.85 }}>{a.awarder}</div>}
@@ -348,11 +348,11 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
 
         {/* Rail: publications */}
         {railSections.includes('publications') && (data.publications ?? []).length > 0 && (
-          <div>
+          <div data-pv-section="publications">
             <div style={railTitleStyle}>Publications</div>
             <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
               {(data.publications ?? []).map((p, i) => (
-                <div key={i} style={{ marginBottom: '6px' }}>
+                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
                   <strong>{p.name}</strong>
                   {p.releaseDate && <span style={{ opacity: 0.8 }}>  ·  {p.releaseDate}</span>}
                   {p.publisher && <div style={{ opacity: 0.85 }}>{p.publisher}</div>}
@@ -364,11 +364,11 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
 
         {/* Rail: interests */}
         {railSections.includes('interests') && (data.interests ?? []).length > 0 && (
-          <div>
+          <div data-pv-section="interests">
             <div style={railTitleStyle}>Interests</div>
             <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
               {(data.interests ?? []).map((int, i) => (
-                <div key={i}>
+                <div key={i} data-pv-entry={i}>
                   <strong>{int.name}</strong>
                   {(int.keywords ?? []).length > 0 && <span style={{ opacity: 0.85 }}>: {(int.keywords ?? []).join(', ')}</span>}
                 </div>
@@ -379,11 +379,11 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
 
         {/* Rail: projects */}
         {railSections.includes('projects') && (data.projects ?? []).length > 0 && (
-          <div>
+          <div data-pv-section="projects">
             <div style={railTitleStyle}>Projects</div>
             <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
               {(data.projects ?? []).map((p, i) => (
-                <div key={i} style={{ marginBottom: '6px' }}>
+                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
                   <strong>{p.name}</strong>
                   {formatDateRange(p.startDate, p.endDate) && (
                     <span style={{ opacity: 0.8 }}>  ·  {formatDateRange(p.startDate, p.endDate)}</span>
