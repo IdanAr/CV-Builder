@@ -84,6 +84,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
   const redo = useResumeEditorStore((s) => s.redo)
   const canUndo = useResumeEditorStore((s) => s.canUndo)
   const canRedo = useResumeEditorStore((s) => s.canRedo)
+  const pendingFocus = useResumeEditorStore((s) => s.pendingFocus)
 
   useEffect(() => {
     hydrate(resumeId, title, data, meta)
@@ -92,6 +93,12 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
   useEffect(() => {
     return initAutoSave()
   }, [])
+
+  useEffect(() => {
+    if (!pendingFocus) return
+    setActiveTab('edit')
+    setMobileView('edit')
+  }, [pendingFocus])
 
   useEffect(() => {
     const saved = localStorage.getItem(PANEL_WIDTH_KEY)
@@ -207,6 +214,8 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
           <button
             key={tab}
             type="button"
+            role="tab"
+            aria-selected={activeTab === tab}
             onClick={() => setActiveTab(tab)}
             className={`relative flex items-center justify-center min-h-[44px] px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === tab ? 'text-indigo-600' : 'text-indigo-400 hover:text-indigo-600'

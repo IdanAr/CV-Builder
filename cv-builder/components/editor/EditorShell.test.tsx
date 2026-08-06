@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within, act } from '@testing-library/react'
 import { EditorShell } from './EditorShell'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import type { ResumeMeta } from '@/lib/schemas/resume.zod'
@@ -77,7 +77,7 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
 
   it('still switches between Edit/Design/ATS tabs', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Design' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }))
     expect(screen.getByText('DesignPanelContent')).toBeInTheDocument()
   })
 
@@ -89,14 +89,14 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
 
   it('shows the Undo/Redo controls on the Design tab', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Design' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }))
     expect(screen.getByRole('button', { name: /Undo/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Redo/i })).toBeInTheDocument()
   })
 
   it('hides the Undo/Redo controls on the ATS tab', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
-    fireEvent.click(screen.getByRole('button', { name: 'ATS' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'ATS' }))
     expect(screen.queryByRole('button', { name: /Undo/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Redo/i })).not.toBeInTheDocument()
   })
@@ -175,9 +175,13 @@ describe('EditorShell — mobile layout (below breakpoint)', () => {
 
   it('renders an Edit/Preview switcher control', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
-    expect(screen.getByRole('tablist', { name: /view/i })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Edit' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Preview' })).toBeInTheDocument()
+    const switcher = screen.getByRole('tablist', { name: /view/i })
+    expect(switcher).toBeInTheDocument()
+    // Scoped to the switcher itself: the Edit/Design/ATS/Cover Letter tab bar
+    // rendered inside the edit view (mobileView defaults to 'edit') now also
+    // exposes an "Edit" tab (role="tab"), so an unscoped query would match both.
+    expect(within(switcher).getByRole('tab', { name: 'Edit' })).toBeInTheDocument()
+    expect(within(switcher).getByRole('tab', { name: 'Preview' })).toBeInTheDocument()
   })
 
   it('does not render the resize divider', () => {
@@ -202,7 +206,20 @@ describe('EditorShell — mobile layout (below breakpoint)', () => {
 
   it('the existing Edit/Design/ATS tab bar still works inside the edit view', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Design' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }))
     expect(screen.getByText('DesignPanelContent')).toBeInTheDocument()
+  })
+})
+
+describe('EditorShell pendingFocus', () => {
+  it('switches the active tab to Edit when pendingFocus is set', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    // Set pendingFocus AFTER mount — EditorShell's own hydrate() call on
+    // mount resets pendingFocus to null (Task 3), so setting it beforehand
+    // would be immediately overwritten.
+    act(() => {
+      useResumeEditorStore.getState().requestFocus('work')
+    })
+    expect(screen.getByRole('tab', { name: 'Edit' }).getAttribute('aria-selected')).toBe('true')
   })
 })
