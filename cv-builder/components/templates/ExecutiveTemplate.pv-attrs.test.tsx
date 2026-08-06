@@ -34,4 +34,19 @@ describe('ExecutiveTemplate data-pv-* attributes', () => {
     expect(entries[0].getAttribute('data-pv-entry')).toBe('0')
     expect(entries[1].getAttribute('data-pv-entry')).toBe('1')
   })
+
+  it('tags custom section entries too', () => {
+    const { container } = render(
+      <ExecutiveTemplate data={data} meta={{ ...meta, sectionOrder: ['custom:abc'] }} />
+    )
+    const customSection = container.querySelector('[data-pv-section="custom:abc"]')!
+    expect(customSection.querySelector('[data-pv-entry="0"]')).toBeTruthy()
+  })
+
+  it('does not tag a section with zero entries (it does not render at all)', () => {
+    const { container } = render(
+      <ExecutiveTemplate data={{}} meta={{ ...meta, sectionOrder: ['work'] }} />
+    )
+    expect(container.querySelector('[data-pv-section="work"]')).toBeNull()
+  })
 })
