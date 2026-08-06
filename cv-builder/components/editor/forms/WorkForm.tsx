@@ -8,15 +8,12 @@ import { AiSuggestButton } from '@/components/ai/AiSuggestButton'
 import { MonthYearPicker } from './MonthYearPicker'
 import { RichTextField } from './RichTextField'
 import { inputClass } from './field-styles'
+import { createEmptyWork as createEmpty } from '@/lib/schemas/resume-empty-entries'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type WorkItem = NonNullable<ResumeData['work']>[number]
 
 const EMPTY_WORK: WorkItem[] = []
-
-const createEmpty = (): WorkItem => ({
-  name: '', position: '', url: '', startDate: '', endDate: '', summary: '', highlights: [],
-})
 
 function WorkItemForm({
   item,

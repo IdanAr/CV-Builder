@@ -3,11 +3,11 @@ import { useId } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { inputClass } from './field-styles'
+import { createEmptyInterest as createEmpty } from '@/lib/schemas/resume-empty-entries'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type Item = NonNullable<ResumeData['interests']>[number]
 const EMPTY_ITEMS: Item[] = []
-const createEmpty = (): Item => ({ name: '', keywords: [] })
 
 function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item) => void; onRemove: () => void }) {
   const id = useId()

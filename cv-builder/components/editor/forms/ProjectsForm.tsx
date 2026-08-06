@@ -5,6 +5,7 @@ import { ListFieldManager } from './ListFieldManager'
 import { MonthYearPicker } from './MonthYearPicker'
 import { RichTextField } from './RichTextField'
 import { inputClass } from './field-styles'
+import { createEmptyProject as createEmpty } from '@/lib/schemas/resume-empty-entries'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type Item = NonNullable<ResumeData['projects']>[number]
@@ -12,9 +13,6 @@ const EMPTY_ITEMS: Item[] = []
 // Note: `roles`, `entity`, and `type` exist on ProjectSchema but are intentionally
 // not exposed in this form (low practical usage). They are preserved on the item
 // object untouched and round-trip through read/write, just not editable here.
-const createEmpty = (): Item => ({
-  name: '', description: '', highlights: [], keywords: [], startDate: '', endDate: '', url: '',
-})
 
 function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item) => void; onRemove: () => void }) {
   const id = useId()

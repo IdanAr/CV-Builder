@@ -5,13 +5,11 @@ import { ListFieldManager } from './ListFieldManager'
 import { MonthYearPicker } from './MonthYearPicker'
 import { RichTextField } from './RichTextField'
 import { inputClass } from './field-styles'
+import { createEmptyVolunteer as createEmpty } from '@/lib/schemas/resume-empty-entries'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type Item = NonNullable<ResumeData['volunteer']>[number]
 const EMPTY_VOLUNTEER: Item[] = []
-const createEmpty = (): Item => ({
-  organization: '', position: '', url: '', startDate: '', endDate: '', summary: '', highlights: [],
-})
 
 function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item) => void; onRemove: () => void }) {
   const id = useId()
