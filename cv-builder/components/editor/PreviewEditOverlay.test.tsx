@@ -73,3 +73,58 @@ describe('PreviewEditOverlay measurement', () => {
     expect(screen.queryByTestId('pv-handle-section|education')).toBeNull()
   })
 })
+
+describe('parseHandleId', () => {
+  it('parses a section id', async () => {
+    const { parseHandleId } = await import('./PreviewEditOverlay')
+    expect(parseHandleId('section|work')).toEqual({ kind: 'section', sectionKey: 'work' })
+  })
+
+  it('parses an entry id, preserving colons in a custom section key', async () => {
+    const { parseHandleId } = await import('./PreviewEditOverlay')
+    expect(parseHandleId('entry|custom:abc-123|2')).toEqual({ kind: 'entry', sectionKey: 'custom:abc-123', index: 2 })
+  })
+
+  it('returns null for an unrecognized id', async () => {
+    const { parseHandleId } = await import('./PreviewEditOverlay')
+    expect(parseHandleId('nonsense')).toBeNull()
+  })
+})
+
+describe('resolveDragEnd', () => {
+  it('computes a new sectionOrder when two section handles are swapped', async () => {
+    const { resolveDragEnd } = await import('./PreviewEditOverlay')
+    const result = resolveDragEnd('section|work', 'section|education', ['work', 'education', 'skills'], {})
+    expect(result).toEqual({ kind: 'section', sectionOrder: ['education', 'work', 'skills'] })
+  })
+
+  it('computes reordered items when two entry handles in the same section are swapped', async () => {
+    const { resolveDragEnd } = await import('./PreviewEditOverlay')
+    const data: ResumeData = { work: [{ name: 'A' }, { name: 'B' }, { name: 'C' }] }
+    const result = resolveDragEnd('entry|work|0', 'entry|work|2', ['work'], data)
+    expect(result).toEqual({ kind: 'entry', sectionKey: 'work', items: [{ name: 'B' }, { name: 'C' }, { name: 'A' }] })
+  })
+
+  it('returns null when the two entries belong to different sections', async () => {
+    const { resolveDragEnd } = await import('./PreviewEditOverlay')
+    const data: ResumeData = { work: [{ name: 'A' }], education: [{ institution: 'U' }] }
+    expect(resolveDragEnd('entry|work|0', 'entry|education|0', ['work', 'education'], data)).toBeNull()
+  })
+
+  it('returns null when a section handle is dropped on an entry handle', async () => {
+    const { resolveDragEnd } = await import('./PreviewEditOverlay')
+    const data: ResumeData = { work: [{ name: 'A' }] }
+    expect(resolveDragEnd('section|work', 'entry|work|0', ['work'], data)).toBeNull()
+  })
+
+  it('returns null when dropped on itself', async () => {
+    const { resolveDragEnd } = await import('./PreviewEditOverlay')
+    expect(resolveDragEnd('section|work', 'section|work', ['work'], {})).toBeNull()
+  })
+
+  it('returns null for an out-of-range entry index', async () => {
+    const { resolveDragEnd } = await import('./PreviewEditOverlay')
+    const data: ResumeData = { work: [{ name: 'A' }] }
+    expect(resolveDragEnd('entry|work|0', 'entry|work|5', ['work'], data)).toBeNull()
+  })
+})
