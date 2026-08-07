@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef } from 'react'
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 
 interface ListFieldManagerProps<T> {
   items: T[]
@@ -11,6 +12,14 @@ interface ListFieldManagerProps<T> {
   createEmpty: () => T
   renderItem: (item: T, index: number, onUpdate: (v: T) => void, onRemove: () => void) => React.ReactNode
   addLabel?: string
+  // This section's key (e.g. 'work', 'custom:<uuid>') — when a "+" clicked on
+  // the Live Preview appends an entry, it calls requestFocus(sectionKey,
+  // newIndex). EditTab opens/scrolls to the section but deliberately leaves
+  // that request in the store; this component, once mounted inside the now-
+  // open accordion, is what actually scrolls to and focuses that specific
+  // entry, then clears the request. Omit this prop to opt out (no entry-level
+  // scroll — the section-level scroll from EditTab still happens either way).
+  sectionKey?: string
 }
 
 interface ListItemProps<T> {
@@ -66,7 +75,7 @@ function SortableRow({
 }
 
 export function ListFieldManager<T>({
-  items, onChange, createEmpty, renderItem, addLabel = 'Add entry',
+  items, onChange, createEmpty, renderItem, addLabel = 'Add entry', sectionKey,
 }: ListFieldManagerProps<T>) {
   // Keeps add/remove/update stable across renders (they'd otherwise be
   // recreated every time `items` changes — i.e. on every keystroke — which
@@ -79,6 +88,24 @@ export function ListFieldManager<T>({
   useEffect(() => {
     itemsRef.current = items
   })
+
+  const pendingFocus = useResumeEditorStore((s) => s.pendingFocus)
+  const pendingFocusEntryIndex = useResumeEditorStore((s) => s.pendingFocusEntryIndex)
+  const clearFocus = useResumeEditorStore((s) => s.clearFocus)
+  const itemRefs = useRef<Record<number, HTMLElement | null>>({})
+
+  useEffect(() => {
+    if (!sectionKey || pendingFocus !== sectionKey || pendingFocusEntryIndex === null) return
+    const el = itemRefs.current[pendingFocusEntryIndex]
+    if (!el) return
+    // Wait a frame for the row itself to have settled (it was likely just
+    // added this same render pass) before measuring/scrolling to it.
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.querySelector<HTMLElement>('input, textarea')?.focus()
+    })
+    clearFocus()
+  }, [sectionKey, pendingFocus, pendingFocusEntryIndex, clearFocus])
 
   const add = useCallback(() => onChange([...itemsRef.current, createEmpty()]), [onChange, createEmpty])
   const remove = useCallback(
@@ -118,7 +145,7 @@ export function ListFieldManager<T>({
             <SortableRow key={(item as { id?: string }).id ?? i} id={String(i)}>
               {({ setNodeRef, style, listeners, attributes, isDragging }) => (
                 <div
-                  ref={setNodeRef}
+                  ref={(el) => { setNodeRef(el); itemRefs.current[i] = el }}
                   style={style}
                   className={`flex items-start gap-1.5 border border-indigo-100 rounded-lg p-3 bg-white/60 backdrop-blur-sm${
                     isDragging ? ' opacity-60 border-dashed border-indigo-400' : ''

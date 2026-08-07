@@ -65,6 +65,7 @@ export function SkillsForm() {
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
     <ListFieldManager<SkillItem>
+      sectionKey="skills"
       items={skills}
       onChange={(items) => setSectionData('skills', items)}
       createEmpty={createEmpty}

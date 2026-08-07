@@ -154,6 +154,7 @@ describe('PreviewEditOverlay add-entry', () => {
       data: { work: [{ name: 'Acme' }] },
       meta: { ...useResumeEditorStore.getState().meta, sectionOrder: ['work'] },
       pendingFocus: null,
+      pendingFocusEntryIndex: null,
     })
   })
 
@@ -177,6 +178,10 @@ describe('PreviewEditOverlay add-entry', () => {
       name: '', position: '', url: '', startDate: '', endDate: '', summary: '', highlights: [],
     })
     expect(useResumeEditorStore.getState().pendingFocus).toBe('work')
+    // The new entry lands at index 1 (there was 1 entry before this click) —
+    // ListFieldManager needs this exact index to scroll to/focus the right
+    // row, not just the section as a whole.
+    expect(useResumeEditorStore.getState().pendingFocusEntryIndex).toBe(1)
   })
 })
 
@@ -186,6 +191,7 @@ describe('PreviewEditOverlay add-section', () => {
       data: { work: [{ name: 'Acme' }] },
       meta: { ...useResumeEditorStore.getState().meta, sectionOrder: ['work'] },
       pendingFocus: null,
+      pendingFocusEntryIndex: null,
     })
   })
 
@@ -210,6 +216,7 @@ describe('PreviewEditOverlay add-section', () => {
     expect(sections).toHaveLength(1)
     expect(useResumeEditorStore.getState().meta.sectionOrder).toContain(`custom:${sections[0].id}`)
     expect(useResumeEditorStore.getState().pendingFocus).toBe(`custom:${sections[0].id}`)
+    expect(useResumeEditorStore.getState().pendingFocusEntryIndex).toBeNull()
   })
 
   it('re-adds a removed built-in section', () => {
@@ -218,6 +225,7 @@ describe('PreviewEditOverlay add-section', () => {
     fireEvent.click(screen.getByText('Education'))
     expect(useResumeEditorStore.getState().meta.sectionOrder).toEqual(['work', 'education'])
     expect(useResumeEditorStore.getState().pendingFocus).toBe('education')
+    expect(useResumeEditorStore.getState().pendingFocusEntryIndex).toBeNull()
   })
 })
 
@@ -236,6 +244,7 @@ describe('PreviewEditOverlay writes read live store state, not stale props', () 
       data: { work: [{ name: 'Acme' }] },
       meta: { ...useResumeEditorStore.getState().meta, sectionOrder: ['work'] },
       pendingFocus: null,
+      pendingFocusEntryIndex: null,
     })
   })
 
@@ -498,5 +507,29 @@ describe('PreviewEditOverlay add-entry button placement', () => {
     // `right: 100`); an 18px button centered in it sits at (100-18)/2 = 41px,
     // nowhere near the old fixed `left - 20` positioning against the left edge.
     expect(addButton.style.left).toBe('41px')
+  })
+})
+
+// Regression test: handle rects passed to DragHandle are section-local (0,0
+// = the group's own top-left), not page-absolute. An entry flush with its
+// section's left edge — the common case, e.g. Languages/Skills entries with
+// no extra indentation — has local `rect.left === 0`. Clamping
+// `rect.left - offset` to a minimum of 0 (the pre-fix behavior) then always
+// placed the handle at local x=0: exactly on top of the entry's own text,
+// not in the margin to its left. The fix lets the position go negative,
+// which is the section's real left margin, not the page edge.
+describe('PreviewEditOverlay handles do not overlap entry text', () => {
+  it('positions the section and entry handles to the left of local x=0, not clamped onto it', async () => {
+    // Harness's mocked rects give every element left:0 — both the section
+    // and its entries share the same local left edge, reproducing the
+    // reported overlap exactly.
+    mockRects((el) => (el.dataset.pvEntry !== undefined ? TALL_ENOUGH : 200))
+    render(<Harness />)
+    await act(async () => {})
+
+    const sectionHandle = screen.getByTestId('pv-handle-section|work')
+    const entryHandle = screen.getByTestId('pv-handle-entry|work|0')
+    expect(sectionHandle.style.left).toBe('-24px')
+    expect(entryHandle.style.left).toBe('-20px')
   })
 })

@@ -200,6 +200,7 @@ export function CustomSectionForm({ sectionId }: { sectionId: string }) {
       </div>
 
       <ListFieldManager<CustomSectionItem>
+        sectionKey={`custom:${sectionId}`}
         items={section.items}
         onChange={(items) => updateCustomSection(sectionId, { items })}
         createEmpty={createEmptyItem}

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
 import { useEffect, useState } from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { arrayMove } from '@dnd-kit/sortable'
 import { ListFieldManager } from './ListFieldManager'
+import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 
 // CSS.Transform.toString is from @dnd-kit/utilities; mock it for jsdom
 vi.mock('@dnd-kit/utilities', () => ({
@@ -176,5 +177,85 @@ describe('ListFieldManager item-identity key regression', () => {
 
     // 'a' is gone.
     expect(screen.queryByLabelText('item-a')).toBeNull()
+  })
+})
+
+// jsdom doesn't implement scrollIntoView at all; stub it so the component's
+// call doesn't throw, and so its arguments are inspectable.
+function stubScrollIntoView(): ReturnType<typeof vi.fn> {
+  const spy = vi.fn()
+  Element.prototype.scrollIntoView = spy
+  return spy
+}
+
+describe('ListFieldManager entry-level focus (pendingFocus + pendingFocusEntryIndex)', () => {
+  function FocusHarness({ sectionKey }: { sectionKey: string }) {
+    const [items, setItems] = useState<Item[]>([
+      { id: 'a', value: 'first' },
+      { id: 'b', value: 'second' },
+    ])
+    return (
+      <ListFieldManager<Item>
+        sectionKey={sectionKey}
+        items={items}
+        onChange={setItems}
+        createEmpty={() => ({ id: 'new', value: '' })}
+        renderItem={(item, _, onUpdate) => <ItemForm item={item} onUpdate={onUpdate} />}
+      />
+    )
+  }
+
+  it('scrolls to and focuses the requested entry, then clears the focus request', async () => {
+    const scrollSpy = stubScrollIntoView()
+    useResumeEditorStore.getState().requestFocus('work', 1)
+
+    render(<FocusHarness sectionKey="work" />)
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+    })
+
+    expect(scrollSpy).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' })
+    expect(document.activeElement).toBe(screen.getByLabelText('item-b'))
+    expect(useResumeEditorStore.getState().pendingFocus).toBeNull()
+    expect(useResumeEditorStore.getState().pendingFocusEntryIndex).toBeNull()
+  })
+
+  it('does nothing when pendingFocus names a different section', async () => {
+    const scrollSpy = stubScrollIntoView()
+    useResumeEditorStore.getState().requestFocus('education', 0)
+
+    render(<FocusHarness sectionKey="work" />)
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+    })
+
+    expect(scrollSpy).not.toHaveBeenCalled()
+    // Left untouched for whichever section actually matches "education".
+    expect(useResumeEditorStore.getState().pendingFocus).toBe('education')
+    expect(useResumeEditorStore.getState().pendingFocusEntryIndex).toBe(0)
+  })
+
+  it('does nothing when no sectionKey prop is passed (opt-out)', async () => {
+    const scrollSpy = stubScrollIntoView()
+    useResumeEditorStore.getState().requestFocus('work', 1)
+
+    function NoKeyHarness() {
+      const [items, setItems] = useState<Item[]>([{ id: 'a', value: 'first' }])
+      return (
+        <ListFieldManager<Item>
+          items={items}
+          onChange={setItems}
+          createEmpty={() => ({ id: 'new', value: '' })}
+          renderItem={(item, _, onUpdate) => <ItemForm item={item} onUpdate={onUpdate} />}
+        />
+      )
+    }
+    render(<NoKeyHarness />)
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+    })
+
+    expect(scrollSpy).not.toHaveBeenCalled()
+    expect(useResumeEditorStore.getState().pendingFocus).toBe('work')
   })
 })

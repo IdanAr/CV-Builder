@@ -53,6 +53,7 @@ export function EducationForm() {
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
     <ListFieldManager<EduItem>
+      sectionKey="education"
       items={education}
       onChange={(items) => setSectionData('education', items)}
       createEmpty={createEmpty}

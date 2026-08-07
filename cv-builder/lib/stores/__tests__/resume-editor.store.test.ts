@@ -21,7 +21,7 @@ const defaultMeta: ResumeMeta = {
 beforeEach(() => {
   useResumeEditorStore.setState({
     resumeId: '', title: '', data: emptyData, meta: defaultMeta,
-    isDirty: false, isSaving: false, saveError: null, pendingFocus: null,
+    isDirty: false, isSaving: false, saveError: null, pendingFocus: null, pendingFocusEntryIndex: null,
     _history: [], _future: [], canUndo: false, canRedo: false,
   })
 })

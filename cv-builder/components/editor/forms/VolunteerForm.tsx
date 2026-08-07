@@ -75,7 +75,7 @@ export function VolunteerForm() {
   const items = useResumeEditorStore((s) => s.data.volunteer ?? EMPTY_VOLUNTEER)
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
-    <ListFieldManager<Item> items={items} onChange={(v) => setSectionData('volunteer', v)}
+    <ListFieldManager<Item> sectionKey="volunteer" items={items} onChange={(v) => setSectionData('volunteer', v)}
       createEmpty={createEmpty} addLabel="Add volunteer experience"
       renderItem={(item, _, onUpdate, onRemove) => <ItemForm item={item} onUpdate={onUpdate} onRemove={onRemove} />} />
   )

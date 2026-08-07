@@ -46,7 +46,7 @@ export function AwardsForm() {
   const items = useResumeEditorStore((s) => s.data.awards ?? EMPTY_ITEMS)
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
-    <ListFieldManager<Item> items={items} onChange={(v) => setSectionData('awards', v)}
+    <ListFieldManager<Item> sectionKey="awards" items={items} onChange={(v) => setSectionData('awards', v)}
       createEmpty={createEmpty} addLabel="Add award"
       renderItem={(item, _, onUpdate, onRemove) => <ItemForm item={item} onUpdate={onUpdate} onRemove={onRemove} />} />
   )

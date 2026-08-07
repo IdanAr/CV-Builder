@@ -204,7 +204,16 @@ function DragHandle({
       style={{
         position: 'absolute',
         top: rect.top,
-        left: Math.max(rect.left - offset, 0),
+        // `rect` is section-local (0,0 = the section group's own top-left,
+        // which itself sits at the section's real page position). Most
+        // entries start flush with their section's left edge, so `rect.left`
+        // is typically 0 — clamping `rect.left - offset` to a minimum of 0
+        // would then always land the handle at local x=0, directly on top of
+        // the entry's own text instead of in the real margin to its left.
+        // Going negative here is correct: it moves the handle further left,
+        // into the page's actual margin/gutter outside the group's own box
+        // (nothing in this overlay clips overflow).
+        left: rect.left - offset,
         width: size,
         height: size,
         display: 'flex',
@@ -412,7 +421,9 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
       if (!factory) return
       setSectionItems(sectionKey, [...items, factory()])
     }
-    requestFocus(sectionKey)
+    // The new entry lands at the end — its index is the pre-add length.
+    // ListFieldManager (once the accordion opens) scrolls to and focuses it.
+    requestFocus(sectionKey, items.length)
   }
 
   function handleAddCustomSection() {

@@ -88,6 +88,7 @@ export function EditTab() {
   const undo = useResumeEditorStore((s) => s.undo)
   const redo = useResumeEditorStore((s) => s.redo)
   const pendingFocus = useResumeEditorStore((s) => s.pendingFocus)
+  const pendingFocusEntryIndex = useResumeEditorStore((s) => s.pendingFocusEntryIndex)
   const clearFocus = useResumeEditorStore((s) => s.clearFocus)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
@@ -119,8 +120,14 @@ export function EditTab() {
     requestAnimationFrame(() => {
       sectionRefs.current[pendingFocus]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     })
-    clearFocus()
-  }, [pendingFocus, clearFocus])
+    // A specific entry within the section was requested (e.g. a new entry
+    // added from the Preview) — leave pendingFocus set. ListFieldManager only
+    // mounts once this accordion is actually open (a later render than this
+    // effect), so it's the one that scrolls to the exact entry and clears
+    // focus once that's done. Otherwise (no entry target, e.g. re-adding a
+    // removed section) there's nothing further to do — clear here.
+    if (pendingFocusEntryIndex === null) clearFocus()
+  }, [pendingFocus, pendingFocusEntryIndex, clearFocus])
 
   const orderedSections = (meta.sectionOrder?.length > 0
     ? meta.sectionOrder

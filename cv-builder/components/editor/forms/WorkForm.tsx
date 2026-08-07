@@ -97,6 +97,7 @@ export function WorkForm() {
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
     <ListFieldManager<WorkItem>
+      sectionKey="work"
       items={work}
       onChange={(items) => setSectionData('work', items)}
       createEmpty={createEmpty}

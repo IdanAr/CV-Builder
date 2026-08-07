@@ -39,7 +39,7 @@ export function LanguagesForm() {
   const items = useResumeEditorStore((s) => s.data.languages ?? EMPTY_LANGUAGES)
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
-    <ListFieldManager<Item> items={items} onChange={(v) => setSectionData('languages', v)}
+    <ListFieldManager<Item> sectionKey="languages" items={items} onChange={(v) => setSectionData('languages', v)}
       createEmpty={createEmpty} addLabel="Add language"
       renderItem={(item, _, onUpdate, onRemove) => <ItemForm item={item} onUpdate={onUpdate} onRemove={onRemove} />} />
   )

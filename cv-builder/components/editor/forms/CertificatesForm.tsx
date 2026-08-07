@@ -42,7 +42,7 @@ export function CertificatesForm() {
   const items = useResumeEditorStore((s) => s.data.certificates ?? EMPTY_ITEMS)
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
-    <ListFieldManager<Item> items={items} onChange={(v) => setSectionData('certificates', v)}
+    <ListFieldManager<Item> sectionKey="certificates" items={items} onChange={(v) => setSectionData('certificates', v)}
       createEmpty={createEmpty} addLabel="Add certificate"
       renderItem={(item, _, onUpdate, onRemove) => <ItemForm item={item} onUpdate={onUpdate} onRemove={onRemove} />} />
   )

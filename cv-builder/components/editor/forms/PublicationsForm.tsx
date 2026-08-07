@@ -51,7 +51,7 @@ export function PublicationsForm() {
   const items = useResumeEditorStore((s) => s.data.publications ?? EMPTY_ITEMS)
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
-    <ListFieldManager<Item> items={items} onChange={(v) => setSectionData('publications', v)}
+    <ListFieldManager<Item> sectionKey="publications" items={items} onChange={(v) => setSectionData('publications', v)}
       createEmpty={createEmpty} addLabel="Add publication"
       renderItem={(item, _, onUpdate, onRemove) => <ItemForm item={item} onUpdate={onUpdate} onRemove={onRemove} />} />
   )

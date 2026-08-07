@@ -97,7 +97,7 @@ export function ProjectsForm() {
   const items = useResumeEditorStore((s) => s.data.projects ?? EMPTY_ITEMS)
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
-    <ListFieldManager<Item> items={items} onChange={(v) => setSectionData('projects', v)}
+    <ListFieldManager<Item> sectionKey="projects" items={items} onChange={(v) => setSectionData('projects', v)}
       createEmpty={createEmpty} addLabel="Add project"
       renderItem={(item, _, onUpdate, onRemove) => <ItemForm item={item} onUpdate={onUpdate} onRemove={onRemove} />} />
   )

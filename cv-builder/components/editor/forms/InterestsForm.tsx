@@ -49,7 +49,7 @@ export function InterestsForm() {
   const items = useResumeEditorStore((s) => s.data.interests ?? EMPTY_ITEMS)
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
-    <ListFieldManager<Item> items={items} onChange={(v) => setSectionData('interests', v)}
+    <ListFieldManager<Item> sectionKey="interests" items={items} onChange={(v) => setSectionData('interests', v)}
       createEmpty={createEmpty} addLabel="Add interest"
       renderItem={(item, _, onUpdate, onRemove) => <ItemForm item={item} onUpdate={onUpdate} onRemove={onRemove} />} />
   )
