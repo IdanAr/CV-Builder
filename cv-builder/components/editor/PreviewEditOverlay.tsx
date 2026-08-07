@@ -90,6 +90,17 @@ export const sameKindClosestCenter: CollisionDetection = (args) => {
 // apart in practice that this doesn't occur.
 const MIN_ENTRY_HANDLE_RECT_HEIGHT = 14
 
+// The widest handle offset in use is 24px (the section handle) — handles
+// render that far to the *left* of a section group's own content box (see
+// DragHandle's `left: rect.left - offset`, which is allowed to go negative).
+// The group's hover-catching box is widened by this much so the handle
+// itself is inside the hoverable region, not just the content next to it —
+// otherwise moving the mouse onto the handle crosses out of the box that
+// keeps it visible, hiding it right as the user reaches for it. A few px of
+// slack beyond the exact 24px minimum absorbs fast mouse movement near the
+// boundary.
+const HANDLE_GUTTER = 32
+
 // Every control fades in/out together rather than each having its own
 // per-element hover state — hovering anywhere in a section (its title, any
 // entry, the gap between entries) reveals that section's own handle, all of
@@ -278,6 +289,16 @@ function SectionOverlayGroup({
   const groupHeight = Math.max(sectionRect.height, addTop + addButtonSize + 4)
 
   return (
+    // The hover-catching box must cover everywhere a handle can actually
+    // render, not just the section's own content box — handles sit in the
+    // page's left margin via a *negative* local `left` (see DragHandle),
+    // outside the content box's own bounds. Without this, moving the mouse
+    // from the content onto the handle itself crosses out of the hoverable
+    // region and hides the very thing being reached for. HANDLE_GUTTER
+    // covers the widest offset in use (24px, the section handle) plus a
+    // few px of slack; the inner div restores the original local origin
+    // (0,0 = the section's true position) so every child's existing
+    // `rect.left - offset` math is unaffected by this outer expansion.
     <div
       data-testid={`pv-section-group-${sectionKey}`}
       onMouseEnter={() => setHovered(true)}
@@ -285,12 +306,12 @@ function SectionOverlayGroup({
       style={{
         position: 'absolute',
         top: sectionRect.top,
-        left: sectionRect.left,
-        width: sectionRect.width,
+        left: sectionRect.left - HANDLE_GUTTER,
+        width: sectionRect.width + HANDLE_GUTTER,
         height: groupHeight,
       }}
     >
-      <div style={controlsVisibilityStyle(visible)}>
+      <div style={{ ...controlsVisibilityStyle(visible), position: 'absolute', top: 0, left: HANDLE_GUTTER, width: sectionRect.width, height: groupHeight }}>
         <DragHandle
           id={`section|${sectionKey}`}
           rect={{ top: 0, left: 0, width: sectionRect.width, height: sectionRect.height }}

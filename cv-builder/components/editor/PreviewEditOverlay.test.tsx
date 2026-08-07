@@ -532,4 +532,37 @@ describe('PreviewEditOverlay handles do not overlap entry text', () => {
     expect(sectionHandle.style.left).toBe('-24px')
     expect(entryHandle.style.left).toBe('-20px')
   })
+
+  // Regression: the hover-catching box used to match the section's own
+  // content box exactly, which does NOT include where the handles above
+  // actually render (negative local `left`, outside that box). Moving the
+  // mouse from the content onto a handle therefore crossed out of the
+  // hoverable region and hid it — impossible to ever grab. The catcher must
+  // extend far enough left to fully contain the widest handle offset (24px).
+  it('widens the hover-catching box to fully contain the handles it reveals, not just the section content', async () => {
+    mockRects((el) => (el.dataset.pvEntry !== undefined ? TALL_ENOUGH : 200))
+    render(<Harness />)
+    await act(async () => {})
+
+    const group = screen.getByTestId('pv-section-group-work')
+    const sectionHandle = screen.getByTestId('pv-handle-section|work')
+
+    // The catcher's own local box, in the *outer* group's coordinate space.
+    const groupLeft = parseFloat(group.style.left)
+    const groupWidth = parseFloat(group.style.width)
+
+    // The handle's position is expressed relative to the group's original
+    // (unexpanded) local origin; translate it into that same outer space by
+    // undoing the inner layer's own +HANDLE_GUTTER shift, matching how the
+    // component computes it.
+    const HANDLE_GUTTER = 32
+    const handleLeftInOuterSpace = groupLeft + HANDLE_GUTTER + parseFloat(sectionHandle.style.left)
+
+    // The handle's full width must sit within [groupLeft, groupLeft + groupWidth]
+    // — i.e. hovering anywhere across the handle never leaves the box that
+    // keeps it visible.
+    const handleWidth = parseFloat(sectionHandle.style.width)
+    expect(handleLeftInOuterSpace).toBeGreaterThanOrEqual(groupLeft)
+    expect(handleLeftInOuterSpace + handleWidth).toBeLessThanOrEqual(groupLeft + groupWidth)
+  })
 })
