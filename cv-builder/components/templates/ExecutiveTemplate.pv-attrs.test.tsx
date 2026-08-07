@@ -43,6 +43,26 @@ describe('ExecutiveTemplate data-pv-* attributes', () => {
     expect(customSection.querySelector('[data-pv-entry="0"]')).toBeTruthy()
   })
 
+  // `interests` is the one section whose entries were converted from a bare
+  // React.Fragment into a `display: inline` <div> so they could carry the
+  // measurement attributes — cover it explicitly.
+  it('tags interests entries with data-pv-entry (Fragment -> inline div conversion)', () => {
+    const { container } = render(
+      <ExecutiveTemplate
+        data={{ ...data, interests: [{ name: 'Chess', keywords: ['openings'] }, { name: 'Cycling' }] }}
+        meta={{ ...meta, sectionOrder: ['interests'] }}
+      />
+    )
+    const section = container.querySelector('[data-pv-section="interests"]')!
+    expect(section).toBeTruthy()
+    const entries = section.querySelectorAll('[data-pv-entry]')
+    expect(entries.length).toBe(2)
+    expect(entries[0].getAttribute('data-pv-entry')).toBe('0')
+    expect(entries[1].getAttribute('data-pv-entry')).toBe('1')
+    expect(entries[0].textContent).toContain('Chess')
+    expect(entries[1].textContent).toContain('Cycling')
+  })
+
   it('does not tag a section with zero entries (it does not render at all)', () => {
     const { container } = render(
       <ExecutiveTemplate data={{}} meta={{ ...meta, sectionOrder: ['work'] }} />

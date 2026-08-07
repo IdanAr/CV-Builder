@@ -43,6 +43,46 @@ describe('SidebarTemplate data-pv-* attributes', () => {
     expect(certSection.querySelector('[data-pv-entry="0"]')).toBeTruthy()
   })
 
+  // `interests` is the one section whose entries were converted from a bare
+  // React.Fragment into a `display: inline` <div> so they could carry the
+  // measurement attributes — cover it explicitly, in both columns, since
+  // Sidebar renders interests twice (main column and rail).
+  it('tags interests entries with data-pv-entry in the main column (Fragment -> inline div conversion)', () => {
+    const { container } = render(
+      <SidebarTemplate
+        data={{ ...data, interests: [{ name: 'Chess', keywords: ['openings'] }, { name: 'Cycling' }] }}
+        meta={{ ...meta, sectionOrder: ['interests'] }}
+      />
+    )
+    expect(container.querySelectorAll('[data-pv-section="interests"]').length).toBe(1)
+    const section = container.querySelector('[data-pv-section="interests"]')!
+    const entries = section.querySelectorAll<HTMLElement>('[data-pv-entry]')
+    expect(entries.length).toBe(2)
+    expect(entries[0].style.display).toBe('inline')
+    expect(entries[0].getAttribute('data-pv-entry')).toBe('0')
+    expect(entries[1].getAttribute('data-pv-entry')).toBe('1')
+    expect(entries[0].textContent).toContain('Chess')
+    expect(entries[1].textContent).toContain('Cycling')
+  })
+
+  it('tags interests entries with data-pv-entry in the rail when column-assigned there', () => {
+    const { container } = render(
+      <SidebarTemplate
+        data={{ ...data, interests: [{ name: 'Chess' }, { name: 'Cycling' }] }}
+        meta={{ ...meta, sectionOrder: ['interests'], columnAssignment: { interests: 'left' } }}
+      />
+    )
+    // Exactly one interests section renders — the rail one, not the main
+    // column's (whose entries carry the `display: inline` style instead).
+    expect(container.querySelectorAll('[data-pv-section="interests"]').length).toBe(1)
+    const section = container.querySelector('[data-pv-section="interests"]')!
+    const entries = section.querySelectorAll<HTMLElement>('[data-pv-entry]')
+    expect(entries.length).toBe(2)
+    expect(entries[0].style.display).toBe('')
+    expect(entries[0].getAttribute('data-pv-entry')).toBe('0')
+    expect(entries[1].getAttribute('data-pv-entry')).toBe('1')
+  })
+
   it('tags certificates in the rail when explicitly column-assigned there', () => {
     const { container } = render(
       <SidebarTemplate

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   DndContext, DragOverlay, closestCenter,
   useDraggable, useDroppable,
-  type DragStartEvent, type DragEndEvent,
+  type DragStartEvent, type DragEndEvent, type CollisionDetection,
 } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
@@ -66,6 +66,29 @@ export function parseHandleId(id: string): HandleId | null {
   }
   return null
 }
+
+// Every handle is both a draggable and a droppable, and section handles sit
+// only a section-title's height away from that section's own entry handles —
+// the same narrow vertical strip. Unfiltered `closestCenter` therefore often
+// picks an entry handle while a section handle is being dragged (or vice
+// versa), which lands in `resolveDragEnd`'s mismatched-kind branch and is a
+// silent no-op for the user. Restrict candidates to the active handle's own
+// kind before delegating to `closestCenter`, so a section drag can only ever
+// resolve against another section (and an entry against another entry).
+export const sameKindClosestCenter: CollisionDetection = (args) => {
+  const activeKind = parseHandleId(String(args.active.id))?.kind
+  const filtered = args.droppableContainers.filter(
+    (c) => parseHandleId(String(c.id))?.kind === activeKind
+  )
+  return closestCenter({ ...args, droppableContainers: filtered })
+}
+
+// Below this measured height, a fixed-size entry handle would visually
+// overlap its neighbors (entries render closer together than a legible
+// handle at low zoom) — skip the affordance rather than render a broken
+// one. Not needed for section handles: sections are spaced far enough
+// apart in practice that this doesn't occur.
+const MIN_ENTRY_HANDLE_RECT_HEIGHT = 14
 
 function useMeasuredRects(
   innerRef: React.RefObject<HTMLDivElement | null>,
@@ -234,8 +257,18 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
   const requestFocus = useResumeEditorStore((s) => s.requestFocus)
   const addCustomSection = useResumeEditorStore((s) => s.addCustomSection)
 
+  // NOTE on `useResumeEditorStore.getState()` in the mutating handlers below:
+  // `data`/`sectionOrder` arrive here from PreviewTab's *debounced* copies
+  // (300ms trailing, no maxWait — during a continuous typing burst they stay
+  // stale for the whole burst). Rendering off them is correct (handles should
+  // track what is actually painted), but a whole-array replacement computed
+  // from them would silently discard any newer store state — a double-click
+  // on "+", or "+" pressed mid-typing-burst, would drop the first addition or
+  // the burst. So every write reads live state at write time instead.
+  // `handleAddCustomSection` is exempt: `addCustomSection` uses a Zustand
+  // updater function internally and already sees current state.
   function handleAddEntry(sectionKey: string) {
-    const items = getSectionItems(data, sectionKey)
+    const items = getSectionItems(useResumeEditorStore.getState().data, sectionKey)
     if (sectionKey.startsWith('custom:')) {
       setSectionItems(sectionKey, [...items, { id: crypto.randomUUID() }])
     } else {
@@ -259,7 +292,8 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
   }
 
   function handleReAddBuiltIn(sectionKey: string) {
-    useResumeEditorStore.getState().setMeta({ sectionOrder: [...sectionOrder, sectionKey] })
+    const liveOrder = useResumeEditorStore.getState().meta.sectionOrder ?? []
+    useResumeEditorStore.getState().setMeta({ sectionOrder: [...liveOrder, sectionKey] })
     requestFocus(sectionKey)
     setAddMenuOpen(false)
   }
@@ -276,7 +310,8 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
     setActiveLabel(null)
     const { active, over } = event
     if (!over) return
-    const result = resolveDragEnd(String(active.id), String(over.id), sectionOrder, data)
+    const live = useResumeEditorStore.getState()
+    const result = resolveDragEnd(String(active.id), String(over.id), live.meta.sectionOrder ?? [], live.data)
     if (!result) return
     if (result.kind === 'section') {
       useResumeEditorStore.getState().setMeta({ sectionOrder: result.sectionOrder })
@@ -286,7 +321,7 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
   }
 
   return (
-    <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext collisionDetection={sameKindClosestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       {sectionOrder.map((sectionKey) => {
         const sectionRect = sectionRects[sectionKey]
         if (!sectionRect) return null
@@ -303,6 +338,9 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
             {items.map((_, i) => {
               const entryRect = entryRects.find((r) => r.sectionKey === sectionKey && r.index === i)
               if (!entryRect) return null
+              // Too visually compressed (low zoom) to carry a fixed-size
+              // handle without overlapping its neighbors — omit it.
+              if (entryRect.height < MIN_ENTRY_HANDLE_RECT_HEIGHT) return null
               return (
                 <DragHandle
                   key={i}
@@ -318,7 +356,16 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
               const lastEntryRect = entryRects
                 .filter((r) => r.sectionKey === sectionKey)
                 .reduce<Rect | null>((last, r) => (!last || r.top > last.top ? r : last), null)
-              const anchor = lastEntryRect ?? sectionRect
+              // Unlike the entry handles above, the "+" is not omitted when the
+              // last entry is too small — adding an entry is the section's only
+              // affordance here, and there is no neighbouring "+" for it to
+              // collide with. It just anchors off the section box instead, which
+              // is stable and lands in the same place (just under the section's
+              // last line) without hugging a sliver-thin entry rect.
+              const anchor =
+                lastEntryRect && lastEntryRect.height >= MIN_ENTRY_HANDLE_RECT_HEIGHT
+                  ? lastEntryRect
+                  : sectionRect
               return (
                 <button
                   type="button"
