@@ -5,15 +5,12 @@ import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { MonthYearPicker } from './MonthYearPicker'
 import { inputClass } from './field-styles'
+import { createEmptyEducation as createEmpty } from '@/lib/schemas/resume-empty-entries'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type EduItem = NonNullable<ResumeData['education']>[number]
 
 const EMPTY_EDUCATION: EduItem[] = []
-
-const createEmpty = (): EduItem => ({
-  institution: '', url: '', area: '', studyType: '', startDate: '', endDate: '', score: '', courses: [],
-})
 
 function EduItemForm({ item, onUpdate, onRemove }: { item: EduItem; onUpdate: (v: EduItem) => void; onRemove: () => void }) {
   const id = useId()
@@ -56,6 +53,7 @@ export function EducationForm() {
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
     <ListFieldManager<EduItem>
+      sectionKey="education"
       items={education}
       onChange={(items) => setSectionData('education', items)}
       createEmpty={createEmpty}

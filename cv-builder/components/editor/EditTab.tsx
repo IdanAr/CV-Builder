@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
@@ -87,6 +87,10 @@ export function EditTab() {
   const removeBuiltInSection = useResumeEditorStore((s) => s.removeBuiltInSection)
   const undo = useResumeEditorStore((s) => s.undo)
   const redo = useResumeEditorStore((s) => s.redo)
+  const pendingFocus = useResumeEditorStore((s) => s.pendingFocus)
+  const pendingFocusEntryIndex = useResumeEditorStore((s) => s.pendingFocusEntryIndex)
+  const clearFocus = useResumeEditorStore((s) => s.clearFocus)
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -107,6 +111,23 @@ export function EditTab() {
     window.addEventListener('keydown', onEsc)
     return () => window.removeEventListener('keydown', onEsc)
   }, [])
+
+  useEffect(() => {
+    if (!pendingFocus) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOpenSection(pendingFocus)
+    // Wait a frame so the accordion has expanded before scrolling to it.
+    requestAnimationFrame(() => {
+      sectionRefs.current[pendingFocus]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+    // A specific entry within the section was requested (e.g. a new entry
+    // added from the Preview) — leave pendingFocus set. ListFieldManager only
+    // mounts once this accordion is actually open (a later render than this
+    // effect), so it's the one that scrolls to the exact entry and clears
+    // focus once that's done. Otherwise (no entry target, e.g. re-adding a
+    // removed section) there's nothing further to do — clear here.
+    if (pendingFocusEntryIndex === null) clearFocus()
+  }, [pendingFocus, pendingFocusEntryIndex, clearFocus])
 
   const orderedSections = (meta.sectionOrder?.length > 0
     ? meta.sectionOrder
@@ -186,42 +207,46 @@ export function EditTab() {
               const customSection = data.customSections?.find((cs) => cs.id === customId)
               if (!customSection) return null
               return (
-                <SortableAccordionItem key={section} id={section}>
-                  {(dragHandleProps) => (
-                    <AccordionSection
-                      title={customSection.name}
-                      badge={getCustomBadge(customSection)}
-                      isOpen={openSection === section}
-                      onToggle={() => setOpenSection((prev) => (prev === section ? null : section))}
-                      onRename={(name) => updateCustomSection(customId, { name })}
-                      onDelete={() => removeCustomSection(customId)}
-                      dragHandleProps={dragHandleProps}
-                      icon={<SectionIcon section="custom" />}
-                    >
-                      <CustomSectionForm sectionId={customId} />
-                    </AccordionSection>
-                  )}
-                </SortableAccordionItem>
+                <div key={section} ref={(el) => { sectionRefs.current[section] = el }}>
+                  <SortableAccordionItem id={section}>
+                    {(dragHandleProps) => (
+                      <AccordionSection
+                        title={customSection.name}
+                        badge={getCustomBadge(customSection)}
+                        isOpen={openSection === section}
+                        onToggle={() => setOpenSection((prev) => (prev === section ? null : section))}
+                        onRename={(name) => updateCustomSection(customId, { name })}
+                        onDelete={() => removeCustomSection(customId)}
+                        dragHandleProps={dragHandleProps}
+                        icon={<SectionIcon section="custom" />}
+                      >
+                        <CustomSectionForm sectionId={customId} />
+                      </AccordionSection>
+                    )}
+                  </SortableAccordionItem>
+                </div>
               )
             }
             const FormComponent = SECTION_FORMS[section]
             if (!FormComponent) return null
             return (
-              <SortableAccordionItem key={section} id={section}>
-                {(dragHandleProps) => (
-                  <AccordionSection
-                    title={SECTION_LABELS[section] ?? section}
-                    badge={getBadge(section, data)}
-                    isOpen={openSection === section}
-                    onToggle={() => setOpenSection((prev) => (prev === section ? null : section))}
-                    onDelete={() => handleDeleteBuiltIn(section)}
-                    dragHandleProps={dragHandleProps}
-                    icon={<SectionIcon section={section} />}
-                  >
-                    <FormComponent />
-                  </AccordionSection>
-                )}
-              </SortableAccordionItem>
+              <div key={section} ref={(el) => { sectionRefs.current[section] = el }}>
+                <SortableAccordionItem id={section}>
+                  {(dragHandleProps) => (
+                    <AccordionSection
+                      title={SECTION_LABELS[section] ?? section}
+                      badge={getBadge(section, data)}
+                      isOpen={openSection === section}
+                      onToggle={() => setOpenSection((prev) => (prev === section ? null : section))}
+                      onDelete={() => handleDeleteBuiltIn(section)}
+                      dragHandleProps={dragHandleProps}
+                      icon={<SectionIcon section={section} />}
+                    >
+                      <FormComponent />
+                    </AccordionSection>
+                  )}
+                </SortableAccordionItem>
+              </div>
             )
           })}
         </SortableContext>

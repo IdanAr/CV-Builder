@@ -5,6 +5,7 @@ import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { usePdfPagination } from '@/lib/hooks/use-pdf-pagination'
 import { resolveAnchorTops, type ResolvedBreak } from '@/lib/preview-anchor'
+import { PreviewEditOverlay } from './PreviewEditOverlay'
 import { ClassicTemplate } from '@/components/templates/ClassicTemplate'
 import { ModernTemplate } from '@/components/templates/ModernTemplate'
 import { MinimalTemplate } from '@/components/templates/MinimalTemplate'
@@ -51,7 +52,14 @@ export function fitScaleFor(clientWidth: number): number {
   return clampZoom(Math.min(1, (clientWidth - 64) / A4_WIDTH_PX))
 }
 
-export function PreviewTab() {
+export interface PreviewTabProps {
+  // When false, the drag/add-on-preview overlay is not rendered at all —
+  // used for Expanded Preview mode, where the point is a clean, unobstructed
+  // look at the résumé rather than an editing surface.
+  interactive?: boolean
+}
+
+export function PreviewTab({ interactive = true }: PreviewTabProps) {
   const data = useResumeEditorStore((s) => s.data)
   const meta = useResumeEditorStore((s) => s.meta)
   const debouncedData = useDebounce(data, 300)
@@ -333,6 +341,16 @@ export function PreviewTab() {
               </div>
             </div>
           ))}
+
+          {interactive && (
+            <PreviewEditOverlay
+              innerRef={innerRef}
+              wrapperRef={wrapperRef}
+              scale={scale}
+              sectionOrder={debouncedMeta.sectionOrder ?? []}
+              data={debouncedData}
+            />
+          )}
         </div>
         </div>
       </div>

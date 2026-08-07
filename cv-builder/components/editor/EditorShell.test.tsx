@@ -1,12 +1,16 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within, act } from '@testing-library/react'
 import { EditorShell } from './EditorShell'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import type { ResumeMeta } from '@/lib/schemas/resume.zod'
 
 vi.mock('./EditTab', () => ({ EditTab: () => <div>EditTabContent</div> }))
-vi.mock('./PreviewTab', () => ({ PreviewTab: () => <div>PreviewTabContent</div> }))
+vi.mock('./PreviewTab', () => ({
+  PreviewTab: ({ interactive }: { interactive?: boolean }) => (
+    <div data-testid="preview-tab-mock" data-interactive={String(interactive)}>PreviewTabContent</div>
+  ),
+}))
 vi.mock('./DesignPanel', () => ({ DesignPanel: () => <div>DesignPanelContent</div> }))
 vi.mock('@/components/ats/AtsScorePanel', () => ({ AtsScorePanel: () => <div>AtsScorePanelContent</div> }))
 vi.mock('./ExportMenu', () => ({ ExportMenu: () => <button>Export</button> }))
@@ -77,7 +81,7 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
 
   it('still switches between Edit/Design/ATS tabs', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Design' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }))
     expect(screen.getByText('DesignPanelContent')).toBeInTheDocument()
   })
 
@@ -89,14 +93,14 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
 
   it('shows the Undo/Redo controls on the Design tab', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Design' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }))
     expect(screen.getByRole('button', { name: /Undo/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Redo/i })).toBeInTheDocument()
   })
 
   it('hides the Undo/Redo controls on the ATS tab', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
-    fireEvent.click(screen.getByRole('button', { name: 'ATS' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'ATS' }))
     expect(screen.queryByRole('button', { name: /Undo/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Redo/i })).not.toBeInTheDocument()
   })
@@ -107,6 +111,15 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
     // Edit panel collapses to the vertical tab strip; preview stays visible.
     expect(screen.getByText('PreviewTabContent')).toBeInTheDocument()
     expect(screen.queryByText('EditTabContent')).not.toBeInTheDocument()
+  })
+
+  it('tells PreviewTab to hide its edit overlay when Expanded Preview is on, and to show it otherwise', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    expect(screen.getByTestId('preview-tab-mock')).toHaveAttribute('data-interactive', 'true')
+    fireEvent.click(screen.getByTitle('Expand preview'))
+    expect(screen.getByTestId('preview-tab-mock')).toHaveAttribute('data-interactive', 'false')
+    fireEvent.click(screen.getByTitle('Collapse preview'))
+    expect(screen.getByTestId('preview-tab-mock')).toHaveAttribute('data-interactive', 'true')
   })
 
   it('title input still edits the store', () => {
@@ -175,9 +188,13 @@ describe('EditorShell — mobile layout (below breakpoint)', () => {
 
   it('renders an Edit/Preview switcher control', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
-    expect(screen.getByRole('tablist', { name: /view/i })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Edit' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Preview' })).toBeInTheDocument()
+    const switcher = screen.getByRole('tablist', { name: /view/i })
+    expect(switcher).toBeInTheDocument()
+    // Scoped to the switcher itself: the Edit/Design/ATS/Cover Letter tab bar
+    // rendered inside the edit view (mobileView defaults to 'edit') now also
+    // exposes an "Edit" tab (role="tab"), so an unscoped query would match both.
+    expect(within(switcher).getByRole('tab', { name: 'Edit' })).toBeInTheDocument()
+    expect(within(switcher).getByRole('tab', { name: 'Preview' })).toBeInTheDocument()
   })
 
   it('does not render the resize divider', () => {
@@ -202,7 +219,45 @@ describe('EditorShell — mobile layout (below breakpoint)', () => {
 
   it('the existing Edit/Design/ATS tab bar still works inside the edit view', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Design' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }))
     expect(screen.getByText('DesignPanelContent')).toBeInTheDocument()
+  })
+})
+
+describe('EditorShell pendingFocus', () => {
+  it('switches the active tab to Edit when pendingFocus is set', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    // First move off the Edit tab so the assertion below can actually
+    // discriminate wired-vs-unwired behavior: the Edit tab is the default
+    // active tab on mount, so asserting aria-selected="true" without first
+    // leaving it would pass even if the pendingFocus effect were deleted.
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }))
+    expect(screen.getByRole('tab', { name: 'Edit' }).getAttribute('aria-selected')).toBe('false')
+
+    // Set pendingFocus AFTER mount — EditorShell's own hydrate() call on
+    // mount resets pendingFocus to null (Task 3), so setting it beforehand
+    // would be immediately overwritten.
+    act(() => {
+      useResumeEditorStore.getState().requestFocus('work')
+    })
+
+    expect(screen.getByRole('tab', { name: 'Edit' }).getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('switches the mobile view back to Edit when pendingFocus is set', () => {
+    setViewport(true)
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    // Move to the Preview side of the mobile switcher first, so the effect
+    // has something real to reverse.
+    fireEvent.click(screen.getByRole('tab', { name: 'Preview' }))
+    expect(screen.queryByText('EditTabContent')).not.toBeInTheDocument()
+    expect(screen.getByText('PreviewTabContent')).toBeInTheDocument()
+
+    act(() => {
+      useResumeEditorStore.getState().requestFocus('work')
+    })
+
+    expect(screen.getByText('EditTabContent')).toBeInTheDocument()
+    expect(screen.queryByText('PreviewTabContent')).not.toBeInTheDocument()
   })
 })

@@ -3,11 +3,11 @@ import { useId } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { inputClass as sharedInputClass } from './field-styles'
+import { createEmptyLanguage as createEmpty } from '@/lib/schemas/resume-empty-entries'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type Item = NonNullable<ResumeData['languages']>[number]
 const EMPTY_LANGUAGES: Item[] = []
-const createEmpty = (): Item => ({ language: '', fluency: '' })
 const inputClass = `${sharedInputClass} appearance-none`
 
 function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item) => void; onRemove: () => void }) {
@@ -39,7 +39,7 @@ export function LanguagesForm() {
   const items = useResumeEditorStore((s) => s.data.languages ?? EMPTY_LANGUAGES)
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
-    <ListFieldManager<Item> items={items} onChange={(v) => setSectionData('languages', v)}
+    <ListFieldManager<Item> sectionKey="languages" items={items} onChange={(v) => setSectionData('languages', v)}
       createEmpty={createEmpty} addLabel="Add language"
       renderItem={(item, _, onUpdate, onRemove) => <ItemForm item={item} onUpdate={onUpdate} onRemove={onRemove} />} />
   )

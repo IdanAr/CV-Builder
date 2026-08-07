@@ -53,17 +53,17 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
       const id = section.slice(7)
       const cs = data.customSections?.find((s) => s.id === id)
       if (!cs) return null
-      return renderCustomSection(cs, { sectionTitle, accentColor: meta.accentColor })
+      return renderCustomSection(cs, { sectionTitle, accentColor: meta.accentColor }, section)
     }
     switch (section) {
       case 'work': {
         const work = data.work ?? []
         if (!work.length) return null
         return (
-          <div key="work">
+          <div key="work" data-pv-section="work">
             <div style={sectionTitle}>Work Experience</div>
             {work.map((job, i) => (
-              <div key={i} style={{ marginBottom: px(T.entryMarginBottom) }}>
+              <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.entryMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong style={{ fontSize: '11pt' }}>{job.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -86,10 +86,10 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
         const education = data.education ?? []
         if (!education.length) return null
         return (
-          <div key="education">
+          <div key="education" data-pv-section="education">
             <div style={sectionTitle}>Education</div>
             {education.map((edu, i) => (
-              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
+              <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{edu.institution}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -107,11 +107,11 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
         const skills = data.skills ?? []
         if (!skills.length) return null
         return (
-          <div key="skills">
+          <div key="skills" data-pv-section="skills">
             <div style={sectionTitle}>Skills</div>
             <div style={{ fontSize: '10pt', lineHeight: 1.7 }}>
               {skills.map((s, i) => (
-                <div key={i} style={{ display: 'flex', gap: '16px', marginBottom: '2px' }}>
+                <div key={i} data-pv-entry={i} style={{ display: 'flex', gap: '16px', marginBottom: '2px' }}>
                   <div style={{ minWidth: '130px', fontWeight: 600, flexShrink: 0 }}>
                     {s.name}
                     {s.level && <span style={{ fontWeight: 400, color: '#666' }}> · {s.level}</span>}
@@ -129,11 +129,11 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
         const langs = data.languages ?? []
         if (!langs.length) return null
         return (
-          <div key="languages">
+          <div key="languages" data-pv-section="languages">
             <div style={sectionTitle}>Languages</div>
             <div style={{ fontSize: '10pt', lineHeight: 1.8 }}>
               {langs.map((l, i) => (
-                <div key={i}>
+                <div key={i} data-pv-entry={i}>
                   <strong>{l.language}</strong>
                   {l.fluency && <span style={{ color: '#666' }}> - {l.fluency}</span>}
                 </div>
@@ -146,10 +146,10 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
         const vol = data.volunteer ?? []
         if (!vol.length) return null
         return (
-          <div key="volunteer">
+          <div key="volunteer" data-pv-section="volunteer">
             <div style={sectionTitle}>Volunteer</div>
             {vol.map((v, i) => (
-              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
+              <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{v.organization}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
@@ -172,10 +172,10 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
         const certificates = data.certificates ?? []
         if (!certificates.length) return null
         return (
-          <div key="certificates">
+          <div key="certificates" data-pv-section="certificates">
             <div style={sectionTitle}>Certifications</div>
             {certificates.map((c, i) => (
-              <div key={i} style={{ marginBottom: '6px', fontSize: '10pt' }}>
+              <div key={i} data-pv-entry={i} style={{ marginBottom: '6px', fontSize: '10pt' }}>
                 <strong>{c.name}</strong>
                 {c.issuer && <span style={{ color: '#666' }}> — {c.issuer}</span>}
                 {c.date && <span style={{ color: '#666' }}>  ·  {c.date}</span>}
@@ -188,10 +188,10 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
         const awards = data.awards ?? []
         if (!awards.length) return null
         return (
-          <div key="awards">
+          <div key="awards" data-pv-section="awards">
             <div style={sectionTitle}>Awards</div>
             {awards.map((a, i) => (
-              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
+              <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{a.title}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>{a.date}</span>
@@ -207,10 +207,10 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
         const publications = data.publications ?? []
         if (!publications.length) return null
         return (
-          <div key="publications">
+          <div key="publications" data-pv-section="publications">
             <div style={sectionTitle}>Publications</div>
             {publications.map((p, i) => (
-              <div key={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
+              <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{p.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>{p.releaseDate}</span>
@@ -226,15 +226,15 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
         const interests = data.interests ?? []
         if (!interests.length) return null
         return (
-          <div key="interests">
+          <div key="interests" data-pv-section="interests">
             <div style={sectionTitle}>Interests</div>
             <div style={{ fontSize: '10pt' }}>
               {interests.map((int, i) => (
-                <React.Fragment key={i}>
+                <div key={i} data-pv-entry={i} style={{ display: 'inline' }}>
                   <strong>{int.name}</strong>
                   {(int.keywords ?? []).length > 0 && <span style={{ color: '#555' }}>: {(int.keywords ?? []).join(', ')}</span>}
                   {i < interests.length - 1 && '  |  '}
-                </React.Fragment>
+                </div>
               ))}
             </div>
           </div>
@@ -244,10 +244,10 @@ export function ClassicTemplate({ data, meta }: TemplateProps) {
         const projects = data.projects ?? []
         if (!projects.length) return null
         return (
-          <div key="projects">
+          <div key="projects" data-pv-section="projects">
             <div style={sectionTitle}>Projects</div>
             {projects.map((p, i) => (
-              <div key={i} style={{ marginBottom: px(T.projectMarginBottom) }}>
+              <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.projectMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{p.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>

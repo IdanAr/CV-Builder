@@ -63,6 +63,7 @@ const removeCustomSection = vi.fn()
 const removeBuiltInSection = vi.fn()
 const undo = vi.fn()
 const redo = vi.fn()
+const clearFocus = vi.fn()
 
 const baseMeta = {
   sectionOrder: ['work', 'education', 'skills'],
@@ -77,18 +78,18 @@ const baseMeta = {
   columnAssignment: {},
 }
 
-function setupStore(overrides: { sectionOrder?: string[]; customSections?: CustomSection[] } = {}) {
+function setupStore(overrides: { sectionOrder?: string[]; customSections?: CustomSection[]; pendingFocus?: string | null; pendingFocusEntryIndex?: number | null } = {}) {
   const meta = { ...baseMeta, sectionOrder: overrides.sectionOrder ?? baseMeta.sectionOrder }
   const data = overrides.customSections ? { customSections: overrides.customSections } : {}
-  const state = { meta, data, setMeta, addCustomSection, updateCustomSection, removeCustomSection, removeBuiltInSection, undo, redo }
+  const state = { meta, data, setMeta, addCustomSection, updateCustomSection, removeCustomSection, removeBuiltInSection, undo, redo, pendingFocus: overrides.pendingFocus ?? null, pendingFocusEntryIndex: overrides.pendingFocusEntryIndex ?? null, clearFocus }
   vi.mocked(useResumeEditorStore).mockImplementation((sel) => sel(state as unknown as ResumeEditorStore))
   ;(useResumeEditorStore as unknown as { getState: ReturnType<typeof vi.fn> }).getState.mockReturnValue(state)
 }
 
-function setupStoreWithData(overrides: { sectionOrder?: string[]; data?: Record<string, unknown> } = {}) {
+function setupStoreWithData(overrides: { sectionOrder?: string[]; data?: Record<string, unknown>; pendingFocus?: string | null; pendingFocusEntryIndex?: number | null } = {}) {
   const meta = { ...baseMeta, sectionOrder: overrides.sectionOrder ?? baseMeta.sectionOrder }
   const data = overrides.data ?? {}
-  const state = { meta, data, setMeta, addCustomSection, updateCustomSection, removeCustomSection, removeBuiltInSection, undo, redo }
+  const state = { meta, data, setMeta, addCustomSection, updateCustomSection, removeCustomSection, removeBuiltInSection, undo, redo, pendingFocus: overrides.pendingFocus ?? null, pendingFocusEntryIndex: overrides.pendingFocusEntryIndex ?? null, clearFocus }
   vi.mocked(useResumeEditorStore).mockImplementation((sel) => sel(state as unknown as ResumeEditorStore))
   ;(useResumeEditorStore as unknown as { getState: ReturnType<typeof vi.fn> }).getState.mockReturnValue(state)
 }
@@ -99,6 +100,7 @@ beforeEach(() => {
   updateCustomSection.mockClear()
   removeCustomSection.mockClear()
   removeBuiltInSection.mockClear()
+  clearFocus.mockClear()
   capturedOnDragEnd = null
   setupStore()
 })
@@ -283,5 +285,50 @@ describe('EditTab — deleting built-in sections', () => {
     expect(confirmSpy).toHaveBeenCalled()
     expect(removeBuiltInSection).not.toHaveBeenCalled() // user declined
     confirmSpy.mockRestore()
+  })
+})
+
+// Note: this file fully mocks `useResumeEditorStore` (see the `vi.mock` at the
+// top) rather than exercising the real Zustand store, so — unlike the plan
+// brief's example, which drives the real store via `.setState`/`.getState()`
+// — these tests configure the mocked selector state via `setupStore*` and
+// assert on the `clearFocus` mock being invoked instead of re-reading store
+// state. `WorkForm` is also mocked to a plain `<div>WorkForm</div>` here (see
+// the `vi.mock('./forms/WorkForm', ...)` above), so "the accordion opened" is
+// verified via that mocked text rather than a real form field label.
+describe('EditTab — pendingFocus', () => {
+  it('opens the corresponding accordion section and clears pendingFocus (no entry target)', () => {
+    setupStoreWithData({
+      sectionOrder: ['work', 'education'],
+      data: { work: [{ name: 'Acme' }] },
+      pendingFocus: 'work',
+    })
+    render(<EditTab />)
+    expect(screen.getByText('WorkForm')).toBeTruthy()
+    expect(clearFocus).toHaveBeenCalled()
+  })
+
+  it('does nothing when pendingFocus is null', () => {
+    setupStoreWithData({ sectionOrder: ['work', 'education'], pendingFocus: null })
+    render(<EditTab />)
+    expect(clearFocus).not.toHaveBeenCalled()
+  })
+
+  it('opens the section but leaves focus set (does not clear) when an entry index is targeted', () => {
+    // WorkForm is mocked to a plain <div>WorkForm</div> here, so there's no
+    // real ListFieldManager mounted to pick up and eventually clear this —
+    // this test only verifies EditTab's own half of the handoff: it must not
+    // clear a focus request that names a specific entry, since ListFieldManager
+    // (mounted once the accordion is open, in the real app) is the one
+    // responsible for finishing that job.
+    setupStoreWithData({
+      sectionOrder: ['work', 'education'],
+      data: { work: [{ name: 'Acme' }] },
+      pendingFocus: 'work',
+      pendingFocusEntryIndex: 1,
+    })
+    render(<EditTab />)
+    expect(screen.getByText('WorkForm')).toBeTruthy()
+    expect(clearFocus).not.toHaveBeenCalled()
   })
 })

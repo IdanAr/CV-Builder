@@ -5,13 +5,11 @@ import { ListFieldManager } from './ListFieldManager'
 import { MonthYearPicker } from './MonthYearPicker'
 import { RichTextField } from './RichTextField'
 import { inputClass } from './field-styles'
+import { createEmptyPublication as createEmpty } from '@/lib/schemas/resume-empty-entries'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type Item = NonNullable<ResumeData['publications']>[number]
 const EMPTY_ITEMS: Item[] = []
-const createEmpty = (): Item => ({
-  name: '', publisher: '', releaseDate: '', url: '', summary: '',
-})
 
 function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item) => void; onRemove: () => void }) {
   const id = useId()
@@ -53,7 +51,7 @@ export function PublicationsForm() {
   const items = useResumeEditorStore((s) => s.data.publications ?? EMPTY_ITEMS)
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
-    <ListFieldManager<Item> items={items} onChange={(v) => setSectionData('publications', v)}
+    <ListFieldManager<Item> sectionKey="publications" items={items} onChange={(v) => setSectionData('publications', v)}
       createEmpty={createEmpty} addLabel="Add publication"
       renderItem={(item, _, onUpdate, onRemove) => <ItemForm item={item} onUpdate={onUpdate} onRemove={onRemove} />} />
   )

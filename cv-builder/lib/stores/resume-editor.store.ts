@@ -11,12 +11,22 @@ export interface ResumeEditorStore {
   isDirty: boolean
   isSaving: boolean
   saveError: string | null
+  pendingFocus: string | null
+  // Set alongside `pendingFocus` when the request targets one specific entry
+  // within that section (e.g. a newly-added entry from the Preview), not
+  // just the section as a whole. EditTab opens/scrolls to the section but
+  // deliberately leaves both fields set when this is non-null — ListFieldManager
+  // (which only mounts once the accordion is actually open) is responsible
+  // for the entry-level scroll and for clearing focus once it's done.
+  pendingFocusEntryIndex: number | null
   _history: Array<{ title: string; data: ResumeData; meta: ResumeMeta }>
   _future:  Array<{ title: string; data: ResumeData; meta: ResumeMeta }>
   canUndo: boolean
   canRedo: boolean
   undo: () => void
   redo: () => void
+  requestFocus: (section: string, entryIndex?: number) => void
+  clearFocus: () => void
   setTitle: (title: string) => void
   setData: (patch: Partial<ResumeData>) => void
   setMeta: (patch: Partial<ResumeMeta>) => void
@@ -85,6 +95,8 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
     isDirty: false,
     isSaving: false,
     saveError: null,
+    pendingFocus: null,
+    pendingFocusEntryIndex: null,
     _history: [],
     _future: [],
     canUndo: false,
@@ -126,6 +138,9 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
           isDirty: true,
         }
       }),
+    requestFocus: (section, entryIndex) =>
+      set({ pendingFocus: section, pendingFocusEntryIndex: entryIndex ?? null }),
+    clearFocus: () => set({ pendingFocus: null, pendingFocusEntryIndex: null }),
     setTitle: (title) =>
       set((s) => ({ ...pushHistory(s), title, isDirty: true })),
     setData: (patch) =>
@@ -191,7 +206,7 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
       }),
     hydrate: (resumeId, title, data, meta) => {
       _lastPushAt = 0
-      set({ resumeId, title, data, meta, isDirty: false, saveError: null, _history: [], _future: [], canUndo: false, canRedo: false })
+      set({ resumeId, title, data, meta, isDirty: false, saveError: null, pendingFocus: null, pendingFocusEntryIndex: null, _history: [], _future: [], canUndo: false, canRedo: false })
     },
     _setIsSaving: (isSaving) => set({ isSaving }),
     _setIsDirty: (isDirty) => set({ isDirty }),

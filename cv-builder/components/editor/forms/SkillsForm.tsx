@@ -4,13 +4,12 @@ import { useId } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { inputClass as sharedInputClass } from './field-styles'
+import { createEmptySkill as createEmpty } from '@/lib/schemas/resume-empty-entries'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type SkillItem = NonNullable<ResumeData['skills']>[number]
 
 const EMPTY_SKILLS: SkillItem[] = []
-
-const createEmpty = (): SkillItem => ({ name: '', level: '', keywords: [] })
 
 const inputClass = `${sharedInputClass} appearance-none`
 
@@ -66,6 +65,7 @@ export function SkillsForm() {
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
     <ListFieldManager<SkillItem>
+      sectionKey="skills"
       items={skills}
       onChange={(items) => setSectionData('skills', items)}
       createEmpty={createEmpty}
