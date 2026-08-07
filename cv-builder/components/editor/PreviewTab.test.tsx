@@ -135,3 +135,32 @@ describe('PreviewTab — zoom controls', () => {
     expect(localStorage.getItem(ZOOM_KEY)).toBe('fit')
   })
 })
+
+describe('PreviewEditOverlay integration', () => {
+  beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => okResponse({ pageCount: 1, anchors: [] }))
+    )
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('renders drag handles for sections that have content', async () => {
+    useResumeEditorStore.setState({
+      data: { work: [{ name: 'Acme' }] },
+      meta: { ...useResumeEditorStore.getState().meta, sectionOrder: ['work'] },
+    })
+    render(<PreviewTab />)
+    // Preview content is debounced 300ms; PreviewTab.test.tsx does not use
+    // fake timers elsewhere in this file, so wait it out with real timers via
+    // findByTestId's built-in polling rather than introducing a new
+    // vi.useFakeTimers() setup that would conflict with the rest of the file.
+    expect(await screen.findByTestId('pv-handle-section|work', {}, { timeout: 1500 })).toBeTruthy()
+  })
+})

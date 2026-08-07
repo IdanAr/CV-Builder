@@ -5,6 +5,7 @@ import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { usePdfPagination } from '@/lib/hooks/use-pdf-pagination'
 import { resolveAnchorTops, type ResolvedBreak } from '@/lib/preview-anchor'
+import { PreviewEditOverlay } from './PreviewEditOverlay'
 import { ClassicTemplate } from '@/components/templates/ClassicTemplate'
 import { ModernTemplate } from '@/components/templates/ModernTemplate'
 import { MinimalTemplate } from '@/components/templates/MinimalTemplate'
@@ -333,6 +334,14 @@ export function PreviewTab() {
               </div>
             </div>
           ))}
+
+          <PreviewEditOverlay
+            innerRef={innerRef}
+            wrapperRef={wrapperRef}
+            scale={scale}
+            sectionOrder={debouncedMeta.sectionOrder ?? []}
+            data={debouncedData}
+          />
         </div>
         </div>
       </div>
