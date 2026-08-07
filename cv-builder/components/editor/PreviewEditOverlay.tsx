@@ -90,6 +90,25 @@ export const sameKindClosestCenter: CollisionDetection = (args) => {
 // apart in practice that this doesn't occur.
 const MIN_ENTRY_HANDLE_RECT_HEIGHT = 14
 
+// Every control fades in/out together rather than each having its own
+// per-element hover state — hovering anywhere in a section (its title, any
+// entry, the gap between entries) reveals that section's own handle, all of
+// its entries' handles, and its "add entry" button as one group. This is a
+// deliberate simplification: pixel-precise nested hover regions (entry vs.
+// section) are fragile to get right without live visual feedback, and one
+// coherent "hover this section to see its controls" region is both simpler
+// and a well-understood pattern (comparable to row-hover actions in table/
+// list UIs elsewhere).
+const CONTROLS_FADE_MS = 120
+
+function controlsVisibilityStyle(visible: boolean): React.CSSProperties {
+  return {
+    opacity: visible ? 1 : 0,
+    pointerEvents: visible ? 'auto' : 'none',
+    transition: `opacity ${CONTROLS_FADE_MS}ms ease`,
+  }
+}
+
 function useMeasuredRects(
   innerRef: React.RefObject<HTMLDivElement | null>,
   wrapperRef: React.RefObject<HTMLDivElement | null>,
@@ -206,6 +225,121 @@ function DragHandle({
   )
 }
 
+// One hoverable group per section: a transparent, full-width-of-section
+// wrapper that tracks its own hover state and fades its children (section
+// handle, entry handles, add-entry button) in/out together. `dragActive`
+// overrides hover — while any drag is in progress, every group's controls
+// stay visible so the user can see valid drop targets, not just the one
+// they happen to be hovering.
+function SectionOverlayGroup({
+  sectionKey,
+  sectionRect,
+  entryRects,
+  dragActive,
+  onAddEntry,
+}: {
+  sectionKey: string
+  sectionRect: Rect
+  entryRects: EntryRectEntry[]
+  dragActive: boolean
+  onAddEntry: (sectionKey: string) => void
+}) {
+  const [hovered, setHovered] = useState(false)
+  const visible = hovered || dragActive
+
+  const lastEntryRect = entryRects.reduce<EntryRectEntry | null>(
+    (last, r) => (!last || r.top > last.top ? r : last),
+    null
+  )
+  // Unlike the entry handles below, the "+" is not omitted when the last
+  // entry is too small — adding an entry is the section's only affordance
+  // here, and there is no neighbouring "+" for it to collide with. It just
+  // anchors off the section box instead, landing in the same place (just
+  // under the section's last line) without hugging a sliver-thin entry rect.
+  const addAnchor =
+    lastEntryRect && lastEntryRect.height >= MIN_ENTRY_HANDLE_RECT_HEIGHT ? lastEntryRect : sectionRect
+  const addAnchorLocalTop = (addAnchor.top - sectionRect.top) + addAnchor.height
+  const addButtonSize = 18
+  const addTop = addAnchorLocalTop + 4
+  // Centered horizontally within the section's own width, not hugging the
+  // left margin — the "+" is the section's primary hover affordance now
+  // that it's revealed on hover rather than always-on, so it reads as
+  // belonging to the section itself rather than the next section's title.
+  const addLeft = Math.max(sectionRect.width / 2 - addButtonSize / 2, 0)
+  const groupHeight = Math.max(sectionRect.height, addTop + addButtonSize + 4)
+
+  return (
+    <div
+      data-testid={`pv-section-group-${sectionKey}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: 'absolute',
+        top: sectionRect.top,
+        left: sectionRect.left,
+        width: sectionRect.width,
+        height: groupHeight,
+      }}
+    >
+      <div style={controlsVisibilityStyle(visible)}>
+        <DragHandle
+          id={`section|${sectionKey}`}
+          rect={{ top: 0, left: 0, width: sectionRect.width, height: sectionRect.height }}
+          offset={24}
+          size={20}
+          label="Drag to reorder section"
+        />
+        {entryRects.map((entryRect) => {
+          // Too visually compressed (low zoom) to carry a fixed-size handle
+          // without overlapping its neighbors — omit it.
+          if (entryRect.height < MIN_ENTRY_HANDLE_RECT_HEIGHT) return null
+          return (
+            <DragHandle
+              key={entryRect.index}
+              id={`entry|${sectionKey}|${entryRect.index}`}
+              rect={{
+                top: entryRect.top - sectionRect.top,
+                left: entryRect.left - sectionRect.left,
+                width: entryRect.width,
+                height: entryRect.height,
+              }}
+              offset={20}
+              size={16}
+              label={`Drag to reorder entry ${entryRect.index + 1}`}
+            />
+          )
+        })}
+        <button
+          type="button"
+          data-testid={`pv-add-entry-${sectionKey}`}
+          aria-label={`Add entry to ${SECTION_LABELS[sectionKey] ?? sectionKey}`}
+          onClick={() => onAddEntry(sectionKey)}
+          style={{
+            position: 'absolute',
+            top: addTop,
+            left: addLeft,
+            width: addButtonSize,
+            height: addButtonSize,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 4,
+            border: '1px dashed rgba(99,102,241,0.5)',
+            background: 'rgba(99,102,241,0.08)',
+            color: '#4338ca',
+            fontSize: 12,
+            lineHeight: 1,
+            cursor: 'pointer',
+            zIndex: 25,
+          }}
+        >
+          +
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export type DragEndResolution =
   | { kind: 'section'; sectionOrder: string[] }
   | { kind: 'entry'; sectionKey: string; items: unknown[] }
@@ -253,9 +387,11 @@ export function resolveDragEnd(
 export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, data }: PreviewEditOverlayProps) {
   const { sectionRects, entryRects } = useMeasuredRects(innerRef, wrapperRef, [sectionOrder, data, scale])
   const [activeLabel, setActiveLabel] = useState<string | null>(null)
+  const [addSectionHovered, setAddSectionHovered] = useState(false)
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const requestFocus = useResumeEditorStore((s) => s.requestFocus)
   const addCustomSection = useResumeEditorStore((s) => s.addCustomSection)
+  const dragActive = activeLabel !== null
 
   // NOTE on `useResumeEditorStore.getState()` in the mutating handlers below:
   // `data`/`sectionOrder` arrive here from PreviewTab's *debounced* copies
@@ -320,79 +456,24 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
     }
   }
 
+  const addSectionVisible = addSectionHovered || addMenuOpen
+
   return (
     <DndContext collisionDetection={sameKindClosestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       {sectionOrder.map((sectionKey) => {
         const sectionRect = sectionRects[sectionKey]
         if (!sectionRect) return null
         const items = getSectionItems(data, sectionKey)
+        const sectionEntryRects = entryRects.filter((r) => r.sectionKey === sectionKey && r.index < items.length)
         return (
-          <div key={sectionKey}>
-            <DragHandle
-              id={`section|${sectionKey}`}
-              rect={sectionRect}
-              offset={24}
-              size={20}
-              label="Drag to reorder section"
-            />
-            {items.map((_, i) => {
-              const entryRect = entryRects.find((r) => r.sectionKey === sectionKey && r.index === i)
-              if (!entryRect) return null
-              // Too visually compressed (low zoom) to carry a fixed-size
-              // handle without overlapping its neighbors — omit it.
-              if (entryRect.height < MIN_ENTRY_HANDLE_RECT_HEIGHT) return null
-              return (
-                <DragHandle
-                  key={i}
-                  id={`entry|${sectionKey}|${i}`}
-                  rect={entryRect}
-                  offset={20}
-                  size={16}
-                  label={`Drag to reorder entry ${i + 1}`}
-                />
-              )
-            })}
-            {(() => {
-              const lastEntryRect = entryRects
-                .filter((r) => r.sectionKey === sectionKey)
-                .reduce<Rect | null>((last, r) => (!last || r.top > last.top ? r : last), null)
-              // Unlike the entry handles above, the "+" is not omitted when the
-              // last entry is too small — adding an entry is the section's only
-              // affordance here, and there is no neighbouring "+" for it to
-              // collide with. It just anchors off the section box instead, which
-              // is stable and lands in the same place (just under the section's
-              // last line) without hugging a sliver-thin entry rect.
-              const anchor =
-                lastEntryRect && lastEntryRect.height >= MIN_ENTRY_HANDLE_RECT_HEIGHT
-                  ? lastEntryRect
-                  : sectionRect
-              return (
-                <button
-                  type="button"
-                  data-testid={`pv-add-entry-${sectionKey}`}
-                  aria-label={`Add entry to ${SECTION_LABELS[sectionKey] ?? sectionKey}`}
-                  onClick={() => handleAddEntry(sectionKey)}
-                  style={{
-                    position: 'absolute',
-                    top: anchor.top + anchor.height + 4,
-                    left: Math.max(anchor.left - 20, 0),
-                    width: 16,
-                    height: 16,
-                    borderRadius: 4,
-                    border: '1px dashed rgba(99,102,241,0.5)',
-                    background: 'rgba(99,102,241,0.08)',
-                    color: '#4338ca',
-                    fontSize: 11,
-                    lineHeight: 1,
-                    cursor: 'pointer',
-                    zIndex: 25,
-                  }}
-                >
-                  +
-                </button>
-              )
-            })()}
-          </div>
+          <SectionOverlayGroup
+            key={sectionKey}
+            sectionKey={sectionKey}
+            sectionRect={sectionRect}
+            entryRects={sectionEntryRects}
+            dragActive={dragActive}
+            onAddEntry={handleAddEntry}
+          />
         )
       })}
       {(() => {
@@ -401,61 +482,67 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
           .filter((r): r is Rect => Boolean(r))
           .reduce<Rect | null>((last, r) => (!last || r.top > last.top ? r : last), null)
         if (!lastSectionRect) return null
-        const top = lastSectionRect.top + lastSectionRect.height + 12
+        const top = lastSectionRect.top + lastSectionRect.height + 4
         return (
-          <div style={{ position: 'absolute', top, left: 0 }}>
-            <button
-              type="button"
-              data-testid="pv-add-section-toggle"
-              aria-haspopup="menu"
-              aria-expanded={addMenuOpen}
-              onClick={() => setAddMenuOpen((o) => !o)}
-              style={{
-                padding: '4px 10px',
-                borderRadius: 6,
-                border: '1px dashed rgba(99,102,241,0.5)',
-                background: 'rgba(99,102,241,0.08)',
-                color: '#4338ca',
-                fontSize: 12,
-                cursor: 'pointer',
-              }}
-            >
-              + Add Section
-            </button>
-            {addMenuOpen && (
-              <div
-                role="menu"
+          <div
+            onMouseEnter={() => setAddSectionHovered(true)}
+            onMouseLeave={() => setAddSectionHovered(false)}
+            style={{ position: 'absolute', top, left: 0, right: 0, minHeight: 40 }}
+          >
+            <div style={{ ...controlsVisibilityStyle(addSectionVisible), position: 'relative' }}>
+              <button
+                type="button"
+                data-testid="pv-add-section-toggle"
+                aria-haspopup="menu"
+                aria-expanded={addMenuOpen}
+                onClick={() => setAddMenuOpen((o) => !o)}
                 style={{
-                  marginTop: 4,
-                  borderRadius: 8,
-                  border: '1px solid rgba(99,102,241,0.2)',
-                  background: '#fff',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                  overflow: 'hidden',
-                  minWidth: 180,
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  border: '1px dashed rgba(99,102,241,0.5)',
+                  background: 'rgba(99,102,241,0.08)',
+                  color: '#4338ca',
+                  fontSize: 12,
+                  cursor: 'pointer',
                 }}
               >
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={handleAddCustomSection}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 13, color: '#312e81', background: 'none', border: 'none', cursor: 'pointer' }}
+                + Add Section
+              </button>
+              {addMenuOpen && (
+                <div
+                  role="menu"
+                  style={{
+                    marginTop: 4,
+                    borderRadius: 8,
+                    border: '1px solid rgba(99,102,241,0.2)',
+                    background: '#fff',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    overflow: 'hidden',
+                    minWidth: 180,
+                  }}
                 >
-                  + New custom section
-                </button>
-                {removedBuiltIns.map((k) => (
                   <button
-                    key={k}
                     type="button"
                     role="menuitem"
-                    onClick={() => handleReAddBuiltIn(k)}
+                    onClick={handleAddCustomSection}
                     style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 13, color: '#312e81', background: 'none', border: 'none', cursor: 'pointer' }}
                   >
-                    {SECTION_LABELS[k]}
+                    + New custom section
                   </button>
-                ))}
-              </div>
-            )}
+                  {removedBuiltIns.map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => handleReAddBuiltIn(k)}
+                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 13, color: '#312e81', background: 'none', border: 'none', cursor: 'pointer' }}
+                    >
+                      {SECTION_LABELS[k]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )
       })()}

@@ -296,7 +296,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
           )}
         </div>
         <div className="flex-1 overflow-hidden flex flex-col">
-          <EditorErrorBoundary><PreviewTab /></EditorErrorBoundary>
+          <EditorErrorBoundary><PreviewTab interactive={!previewExpanded} /></EditorErrorBoundary>
         </div>
       </>
     )

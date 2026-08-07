@@ -6,7 +6,11 @@ import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import type { ResumeMeta } from '@/lib/schemas/resume.zod'
 
 vi.mock('./EditTab', () => ({ EditTab: () => <div>EditTabContent</div> }))
-vi.mock('./PreviewTab', () => ({ PreviewTab: () => <div>PreviewTabContent</div> }))
+vi.mock('./PreviewTab', () => ({
+  PreviewTab: ({ interactive }: { interactive?: boolean }) => (
+    <div data-testid="preview-tab-mock" data-interactive={String(interactive)}>PreviewTabContent</div>
+  ),
+}))
 vi.mock('./DesignPanel', () => ({ DesignPanel: () => <div>DesignPanelContent</div> }))
 vi.mock('@/components/ats/AtsScorePanel', () => ({ AtsScorePanel: () => <div>AtsScorePanelContent</div> }))
 vi.mock('./ExportMenu', () => ({ ExportMenu: () => <button>Export</button> }))
@@ -107,6 +111,15 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
     // Edit panel collapses to the vertical tab strip; preview stays visible.
     expect(screen.getByText('PreviewTabContent')).toBeInTheDocument()
     expect(screen.queryByText('EditTabContent')).not.toBeInTheDocument()
+  })
+
+  it('tells PreviewTab to hide its edit overlay when Expanded Preview is on, and to show it otherwise', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    expect(screen.getByTestId('preview-tab-mock')).toHaveAttribute('data-interactive', 'true')
+    fireEvent.click(screen.getByTitle('Expand preview'))
+    expect(screen.getByTestId('preview-tab-mock')).toHaveAttribute('data-interactive', 'false')
+    fireEvent.click(screen.getByTitle('Collapse preview'))
+    expect(screen.getByTestId('preview-tab-mock')).toHaveAttribute('data-interactive', 'true')
   })
 
   it('title input still edits the store', () => {

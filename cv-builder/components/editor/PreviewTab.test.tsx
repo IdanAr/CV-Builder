@@ -163,4 +163,18 @@ describe('PreviewEditOverlay integration', () => {
     // vi.useFakeTimers() setup that would conflict with the rest of the file.
     expect(await screen.findByTestId('pv-handle-section|work', {}, { timeout: 1500 })).toBeTruthy()
   })
+
+  it('renders no overlay controls at all when interactive is false (Expanded Preview mode)', async () => {
+    useResumeEditorStore.setState({
+      data: { work: [{ name: 'Acme' }] },
+      meta: { ...useResumeEditorStore.getState().meta, sectionOrder: ['work'] },
+    })
+    render(<PreviewTab interactive={false} />)
+    // Give the debounce/measurement pass the same window the sibling test
+    // waits out, then assert the handle never appears — a clean preview with
+    // no editing affordances, as Expanded Preview mode intends.
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(screen.queryByTestId('pv-handle-section|work')).toBeNull()
+    expect(screen.queryByTestId('pv-add-section-toggle')).toBeNull()
+  })
 })

@@ -424,3 +424,79 @@ describe('PreviewEditOverlay low-zoom entry handle suppression', () => {
     expect(addButton.style.top).toBe('204px')
   })
 })
+
+// Section/entry handles and the add-entry button used to be always-visible,
+// which read as cluttered — every control now starts hidden and fades in
+// only while the user is hovering that section's own region (its title, any
+// entry, or the gap around them), all together as one group.
+describe('PreviewEditOverlay hover-to-reveal', () => {
+  it('hides section and entry handles until the section group is hovered, then hides them again on mouseleave', async () => {
+    mockRects((el) => (el.dataset.pvEntry !== undefined ? TALL_ENOUGH : 200))
+    render(<Harness />)
+    await act(async () => {})
+
+    const group = screen.getByTestId('pv-section-group-work')
+    const sectionHandle = screen.getByTestId('pv-handle-section|work')
+    const entryHandle = screen.getByTestId('pv-handle-entry|work|0')
+
+    // Controls are mounted (so click handlers/tests can still target them)
+    // but visually and interactively hidden until hovered.
+    expect(sectionHandle.parentElement?.style.opacity).toBe('0')
+    expect(sectionHandle.parentElement?.style.pointerEvents).toBe('none')
+
+    fireEvent.mouseEnter(group)
+    expect(sectionHandle.parentElement?.style.opacity).toBe('1')
+    expect(sectionHandle.parentElement?.style.pointerEvents).toBe('auto')
+    expect(entryHandle.parentElement?.style.opacity).toBe('1')
+
+    fireEvent.mouseLeave(group)
+    expect(sectionHandle.parentElement?.style.opacity).toBe('0')
+    expect(sectionHandle.parentElement?.style.pointerEvents).toBe('none')
+  })
+
+  it('hides the document-level add-section control until its own region is hovered', async () => {
+    mockRects(() => 50)
+    render(<Harness />)
+    await act(async () => {})
+
+    const toggle = screen.getByTestId('pv-add-section-toggle')
+    expect(toggle.parentElement?.style.opacity).toBe('0')
+
+    const addSectionRegion = toggle.closest('div')?.parentElement
+    expect(addSectionRegion).toBeTruthy()
+    fireEvent.mouseEnter(addSectionRegion!)
+    expect(toggle.parentElement?.style.opacity).toBe('1')
+  })
+
+  it('keeps a section\'s controls visible while a drag is active, even without hovering it', async () => {
+    mockRects((el) => (el.dataset.pvEntry !== undefined ? TALL_ENOUGH : 200))
+    render(<Harness />)
+    await act(async () => {})
+
+    const sectionHandle = screen.getByTestId('pv-handle-section|work')
+    expect(sectionHandle.parentElement?.style.opacity).toBe('0')
+
+    // Simulate the effect of a drag being in progress via keyboard activation
+    // (Space on a focused draggable starts a dnd-kit keyboard drag without
+    // needing real pointer geometry, which jsdom can't provide).
+    sectionHandle.focus()
+    fireEvent.keyDown(sectionHandle, { code: 'Space' })
+    expect(sectionHandle.parentElement?.style.opacity).toBe('1')
+
+    fireEvent.keyDown(sectionHandle, { code: 'Escape' })
+  })
+})
+
+describe('PreviewEditOverlay add-entry button placement', () => {
+  it('is horizontally centered within the section, not hugging the left margin', async () => {
+    mockRects((el) => (el.dataset.pvEntry !== undefined ? TALL_ENOUGH : 200))
+    render(<Harness />)
+    await act(async () => {})
+
+    const addButton = screen.getByTestId('pv-add-entry-work')
+    // Harness's mocked section rect is 100px wide (see mockRects' fixed
+    // `right: 100`); an 18px button centered in it sits at (100-18)/2 = 41px,
+    // nowhere near the old fixed `left - 20` positioning against the left edge.
+    expect(addButton.style.left).toBe('41px')
+  })
+})
