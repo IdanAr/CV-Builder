@@ -76,6 +76,15 @@ function useMeasuredRects(
     setEntryRects(nextEntries)
   }, [innerRef, wrapperRef])
 
+  // useEffect instead of useLayoutEffect: this component is a sibling of
+  // wrapperRef's div, not an ancestor. React attaches refs during commit in
+  // depth-first order, so when this sibling's useLayoutEffect would fire,
+  // wrapperRef.current is still null. useEffect defers measurement until after
+  // the entire tree's layout phase is complete, ensuring both refs are set.
+  // Consequence: there is one frame of stale or zero handle positions after
+  // mount and after each sectionOrder/data/scale change. Consumers (Tasks 10-12
+  // drag handles, add/remove controls) should not assume positions are
+  // instantaneously current during fast sequences of edits.
   useEffect(() => {
     measure()
     const inner = innerRef.current
