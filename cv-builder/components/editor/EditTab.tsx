@@ -113,6 +113,7 @@ export function EditTab() {
 
   useEffect(() => {
     if (!pendingFocus) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOpenSection(pendingFocus)
     // Wait a frame so the accordion has expanded before scrolling to it.
     requestAnimationFrame(() => {

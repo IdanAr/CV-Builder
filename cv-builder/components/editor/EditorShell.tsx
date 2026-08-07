@@ -96,6 +96,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
 
   useEffect(() => {
     if (!pendingFocus) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveTab('edit')
     setMobileView('edit')
   }, [pendingFocus])
