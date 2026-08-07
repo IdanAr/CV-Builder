@@ -10,7 +10,8 @@ import {
 import { arrayMove } from '@dnd-kit/sortable'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { getSectionItems, setSectionItems } from '@/lib/editor/section-items'
-import type { ResumeData } from '@/lib/schemas/resume.zod'
+import { EMPTY_ENTRY_FACTORIES } from '@/lib/schemas/resume-empty-entries'
+import type { ResumeData, CustomSection } from '@/lib/schemas/resume.zod'
 
 export interface Rect {
   top: number
@@ -30,6 +31,20 @@ export interface PreviewEditOverlayProps {
   scale: number
   sectionOrder: string[]
   data: ResumeData
+}
+
+// Matches EditTab.tsx's SECTION_LABELS, excluding `basics` (never addable/removable).
+const SECTION_LABELS: Record<string, string> = {
+  work: 'Work Experience',
+  education: 'Education',
+  skills: 'Skills',
+  languages: 'Languages',
+  volunteer: 'Volunteer',
+  certificates: 'Certificates',
+  awards: 'Awards',
+  publications: 'Publications',
+  interests: 'Interests',
+  projects: 'Projects',
 }
 
 type HandleId =
@@ -215,6 +230,41 @@ export function resolveDragEnd(
 export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, data }: PreviewEditOverlayProps) {
   const { sectionRects, entryRects } = useMeasuredRects(innerRef, wrapperRef, [sectionOrder, data, scale])
   const [activeLabel, setActiveLabel] = useState<string | null>(null)
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
+  const requestFocus = useResumeEditorStore((s) => s.requestFocus)
+  const addCustomSection = useResumeEditorStore((s) => s.addCustomSection)
+
+  function handleAddEntry(sectionKey: string) {
+    const items = getSectionItems(data, sectionKey)
+    if (sectionKey.startsWith('custom:')) {
+      setSectionItems(sectionKey, [...items, { id: crypto.randomUUID() }])
+    } else {
+      const factory = EMPTY_ENTRY_FACTORIES[sectionKey]
+      if (!factory) return
+      setSectionItems(sectionKey, [...items, factory()])
+    }
+    requestFocus(sectionKey)
+  }
+
+  function handleAddCustomSection() {
+    const newSection: CustomSection = {
+      id: crypto.randomUUID(),
+      name: 'New Section',
+      enabledFields: ['summary'],
+      items: [],
+    }
+    addCustomSection(newSection)
+    requestFocus(`custom:${newSection.id}`)
+    setAddMenuOpen(false)
+  }
+
+  function handleReAddBuiltIn(sectionKey: string) {
+    useResumeEditorStore.getState().setMeta({ sectionOrder: [...sectionOrder, sectionKey] })
+    requestFocus(sectionKey)
+    setAddMenuOpen(false)
+  }
+
+  const removedBuiltIns = Object.keys(SECTION_LABELS).filter((k) => !sectionOrder.includes(k))
 
   function handleDragStart(event: DragStartEvent) {
     const parsed = parseHandleId(String(event.active.id))
@@ -264,9 +314,104 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
                 />
               )
             })}
+            {(() => {
+              const lastEntryRect = entryRects
+                .filter((r) => r.sectionKey === sectionKey)
+                .reduce<Rect | null>((last, r) => (!last || r.top > last.top ? r : last), null)
+              const anchor = lastEntryRect ?? sectionRect
+              return (
+                <button
+                  type="button"
+                  data-testid={`pv-add-entry-${sectionKey}`}
+                  aria-label={`Add entry to ${SECTION_LABELS[sectionKey] ?? sectionKey}`}
+                  onClick={() => handleAddEntry(sectionKey)}
+                  style={{
+                    position: 'absolute',
+                    top: anchor.top + anchor.height + 4,
+                    left: Math.max(anchor.left - 20, 0),
+                    width: 16,
+                    height: 16,
+                    borderRadius: 4,
+                    border: '1px dashed rgba(99,102,241,0.5)',
+                    background: 'rgba(99,102,241,0.08)',
+                    color: '#4338ca',
+                    fontSize: 11,
+                    lineHeight: 1,
+                    cursor: 'pointer',
+                    zIndex: 25,
+                  }}
+                >
+                  +
+                </button>
+              )
+            })()}
           </div>
         )
       })}
+      {(() => {
+        const lastSectionRect = sectionOrder
+          .map((k) => sectionRects[k])
+          .filter((r): r is Rect => Boolean(r))
+          .reduce<Rect | null>((last, r) => (!last || r.top > last.top ? r : last), null)
+        if (!lastSectionRect) return null
+        const top = lastSectionRect.top + lastSectionRect.height + 12
+        return (
+          <div style={{ position: 'absolute', top, left: 0 }}>
+            <button
+              type="button"
+              data-testid="pv-add-section-toggle"
+              aria-haspopup="menu"
+              aria-expanded={addMenuOpen}
+              onClick={() => setAddMenuOpen((o) => !o)}
+              style={{
+                padding: '4px 10px',
+                borderRadius: 6,
+                border: '1px dashed rgba(99,102,241,0.5)',
+                background: 'rgba(99,102,241,0.08)',
+                color: '#4338ca',
+                fontSize: 12,
+                cursor: 'pointer',
+              }}
+            >
+              + Add Section
+            </button>
+            {addMenuOpen && (
+              <div
+                role="menu"
+                style={{
+                  marginTop: 4,
+                  borderRadius: 8,
+                  border: '1px solid rgba(99,102,241,0.2)',
+                  background: '#fff',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  overflow: 'hidden',
+                  minWidth: 180,
+                }}
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={handleAddCustomSection}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 13, color: '#312e81', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  + New custom section
+                </button>
+                {removedBuiltIns.map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => handleReAddBuiltIn(k)}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 13, color: '#312e81', background: 'none', border: 'none', cursor: 'pointer' }}
+                  >
+                    {SECTION_LABELS[k]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
       <DragOverlay>
         {activeLabel ? (
           <div
