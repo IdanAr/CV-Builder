@@ -31,12 +31,15 @@ export default async function Home() {
         containerClassName="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
         actions={
           <div className="flex items-center gap-3 flex-1">
-            <Link href="/signin" className="ml-auto text-sm font-medium text-indigo-700 hover:text-indigo-900">
+            <Link
+              href="/signin"
+              className="ml-auto hidden text-sm font-medium text-indigo-700 hover:text-indigo-900 sm:inline"
+            >
               Sign In
             </Link>
             <Link
               href="/signin"
-              className="rounded-md bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+              className="ml-auto rounded-md bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 sm:ml-0"
             >
               Get Started
             </Link>
