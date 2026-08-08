@@ -33,4 +33,14 @@ describe('AppNavbar', () => {
     const svg = document.querySelector('svg')
     expect(svg?.className.baseVal ?? '').not.toMatch(/^hidden/)
   })
+
+  it('defaults the logo link to /dashboard when homeHref is omitted', () => {
+    render(<AppNavbar />)
+    expect(screen.getByLabelText('CV Builder home')).toHaveAttribute('href', '/dashboard')
+  })
+
+  it('points the logo link at homeHref when provided', () => {
+    render(<AppNavbar homeHref="/" />)
+    expect(screen.getByLabelText('CV Builder home')).toHaveAttribute('href', '/')
+  })
 })
