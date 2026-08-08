@@ -88,7 +88,6 @@ export function BasicsForm() {
           value={basics.summary ?? ''}
           onChange={(v) => set('summary', v)}
           placeholder="Brief professional summary..."
-          rows={4}
         />
       </div>
     </div>

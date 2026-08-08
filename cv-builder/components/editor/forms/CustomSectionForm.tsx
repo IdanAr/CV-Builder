@@ -78,7 +78,6 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
             value={item.summary ?? ''}
             onChange={(v) => set('summary', v)}
             placeholder="Description..."
-            rows={2}
           />
         </>
       )}
@@ -97,8 +96,8 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
                 }}
                 placeholder="Bullet point..."
                 ariaLabel={`Bullet ${i + 1}`}
-                rows={1}
                 className="flex-1"
+                height={120}
               />
               <button type="button"
                 onClick={() => setArr('highlights', (item.highlights ?? []).filter((_, idx) => idx !== i))}

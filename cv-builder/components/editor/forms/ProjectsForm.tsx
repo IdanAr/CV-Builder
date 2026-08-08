@@ -54,7 +54,6 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
         value={item.description ?? ''}
         onChange={(v) => set('description', v)}
         placeholder="Description..."
-        rows={2}
       />
       <fieldset className="space-y-1 border-0 p-0 m-0">
         <legend className="block text-xs font-medium text-indigo-600 p-0">Highlights</legend>
@@ -65,8 +64,8 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
               onChange={(v) => updateH(i, v)}
               placeholder="Achievement..."
               ariaLabel={`Highlight ${i + 1}`}
-              rows={1}
               className="flex-1"
+              height={120}
             />
             <button type="button" onClick={() => removeH(i)} aria-label="Remove highlight"
               className="text-gray-400 hover:text-red-500 text-xs px-1 mt-6">✕</button>

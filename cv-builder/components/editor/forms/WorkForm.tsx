@@ -60,7 +60,6 @@ function WorkItemForm({
         value={item.summary ?? ''}
         onChange={(v) => set('summary', v)}
         placeholder="Role summary..."
-        rows={2}
       />
       <fieldset className="space-y-1 border-0 p-0 m-0">
         <legend className="block text-xs font-medium text-indigo-600 p-0">Bullet points</legend>
@@ -71,8 +70,8 @@ function WorkItemForm({
               onChange={(v) => updateHighlight(i, v)}
               placeholder="Achieved X by doing Y, resulting in Z"
               ariaLabel={`Bullet point ${i + 1}`}
-              rows={1}
               className="flex-1"
+              height={120}
             />
             <AiSuggestButton
               resumeId={resumeId}

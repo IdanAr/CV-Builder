@@ -41,7 +41,6 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
         value={item.summary ?? ''}
         onChange={(v) => set('summary', v)}
         placeholder="Summary..."
-        rows={2}
       />
     </div>
   )

@@ -1,18 +1,19 @@
 'use client'
 
 import { useRef } from 'react'
-import { inputClass } from './field-styles'
+import { Bold, Italic, Underline } from 'lucide-react'
 
 export interface RichTextFieldProps {
   value: string
   onChange: (v: string) => void
   placeholder?: string
-  rows?: number
   className?: string
   /** Associates an external <label htmlFor> with the underlying textarea. */
   id?: string
   /** Accessible name for the textarea when no visible/external <label> applies. */
   ariaLabel?: string
+  /** Initial/default box height in px, still user-resizable via the drag handle. */
+  height?: number
 }
 
 const MARKERS = {
@@ -23,26 +24,20 @@ const MARKERS = {
 
 type Format = keyof typeof MARKERS
 
-const BUTTON_LABELS: Record<Format, string> = {
-  bold: 'B',
-  italic: 'I',
-  underline: 'U',
-}
-
-const BUTTON_STYLES: Record<Format, string> = {
-  bold: 'font-bold',
-  italic: 'italic',
-  underline: 'underline',
+const BUTTON_ICONS: Record<Format, typeof Bold> = {
+  bold: Bold,
+  italic: Italic,
+  underline: Underline,
 }
 
 export function RichTextField({
   value,
   onChange,
   placeholder,
-  rows = 5,
   className,
   id,
   ariaLabel,
+  height = 200,
 }: RichTextFieldProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -102,26 +97,30 @@ export function RichTextField({
     })
   }
 
-  const textareaClass = `${inputClass} resize-y`
+  const textareaClass =
+    'w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-indigo-950 transition-colors duration-150 hover:border-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/35 placeholder:text-slate-400'
 
   return (
-    <div className={className}>
-      <div className="flex gap-1 mb-1">
-        {(['bold', 'italic', 'underline'] as Format[]).map((fmt) => (
-          <button
-            key={fmt}
-            type="button"
-            onMouseDown={(e) => {
-              // Prevent textarea from losing focus/selection on click
-              e.preventDefault()
-              applyFormat(fmt)
-            }}
-            aria-label={`Format ${fmt}`}
-            className={`px-2 py-0.5 text-xs border border-indigo-200 rounded text-indigo-700 bg-white/70 hover:bg-indigo-50 hover:border-indigo-400 transition-colors ${BUTTON_STYLES[fmt]}`}
-          >
-            {BUTTON_LABELS[fmt]}
-          </button>
-        ))}
+    <div className={`relative group ${className ?? ''}`}>
+      <div className="absolute -top-3.5 right-2.5 flex gap-0.5 rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm opacity-0 pointer-events-none transition-opacity duration-150 group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+        {(['bold', 'italic', 'underline'] as Format[]).map((fmt) => {
+          const Icon = BUTTON_ICONS[fmt]
+          return (
+            <button
+              key={fmt}
+              type="button"
+              onMouseDown={(e) => {
+                // Prevent textarea from losing focus/selection on click
+                e.preventDefault()
+                applyFormat(fmt)
+              }}
+              aria-label={`Format ${fmt}`}
+              className="flex h-5 w-[22px] items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-indigo-600 transition-colors"
+            >
+              <Icon size={12} />
+            </button>
+          )
+        })}
       </div>
       <textarea
         ref={textareaRef}
@@ -129,9 +128,9 @@ export function RichTextField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        rows={rows}
         aria-label={ariaLabel}
         className={textareaClass}
+        style={{ height }}
       />
     </div>
   )
