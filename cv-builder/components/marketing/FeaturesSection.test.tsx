@@ -10,4 +10,11 @@ describe('FeaturesSection', () => {
     expect(screen.getByRole('heading', { name: /ats optimization & scoring/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /track your success/i })).toBeInTheDocument()
   })
+
+  it('renders a section heading above the feature grid', () => {
+    render(<FeaturesSection />)
+    expect(
+      screen.getByRole('heading', { level: 2, name: /everything you need to get hired/i })
+    ).toBeInTheDocument()
+  })
 })

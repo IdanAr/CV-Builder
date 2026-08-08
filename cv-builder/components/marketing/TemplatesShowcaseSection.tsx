@@ -13,7 +13,11 @@ export function TemplatesShowcaseSection() {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
       <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">Templates Designed by Recruiters</h2>
-      <div className="mt-10 flex gap-6 overflow-x-auto pb-4 snap-x">
+      <div
+        className="mt-10 flex gap-6 overflow-x-auto pb-4 snap-x"
+        tabIndex={0}
+        aria-label="Template previews"
+      >
         {TEMPLATES.map(({ id, label }) => (
           <div key={id} className="shrink-0 snap-start text-center">
             <TemplateThumbnail templateId={id} height={360} />

@@ -10,11 +10,19 @@ interface AppNavbarProps {
    * full width; only its contents are centered. Defaults to full-width padding.
    */
   containerClassName?: string
+  /**
+   * Destination for the logo/wordmark link. Defaults to "/dashboard" for the
+   * app's authenticated pages. Pass "/" on the public marketing homepage so
+   * signed-out visitors clicking the logo stay on "/" instead of bouncing
+   * through the dashboard auth wall.
+   */
+  homeHref?: string
 }
 
 export function AppNavbar({
   actions,
   containerClassName = 'w-full px-4 sm:px-6 lg:px-8',
+  homeHref = '/dashboard',
 }: AppNavbarProps) {
   return (
     <nav className="w-full bg-white/55 backdrop-blur-xl border-b border-white/30 shadow-sm">
@@ -36,7 +44,7 @@ export function AppNavbar({
               z-20 + pointer-events-auto keeps the link clickable in the (empty) center strip above the
               z-10 actions row, while the actions themselves sit on the sides and stay clickable. */}
           <Link
-            href="/dashboard"
+            href={homeHref}
             aria-label="CV Builder home"
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 z-20 rounded-lg pointer-events-auto transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
           >

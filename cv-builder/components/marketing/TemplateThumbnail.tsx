@@ -51,6 +51,7 @@ export function TemplateThumbnail({
       className={`relative overflow-hidden rounded-lg bg-white shadow-lg ${className}`}
       style={{ height, width }}
       aria-hidden="true"
+      inert
     >
       <div
         style={{

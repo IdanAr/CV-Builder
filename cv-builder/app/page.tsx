@@ -27,6 +27,8 @@ export default async function Home() {
   return (
     <PlasmaBackground>
       <AppNavbar
+        homeHref="/"
+        containerClassName="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
         actions={
           <div className="flex items-center gap-3 flex-1">
             <Link href="/signin" className="ml-auto text-sm font-medium text-indigo-700 hover:text-indigo-900">

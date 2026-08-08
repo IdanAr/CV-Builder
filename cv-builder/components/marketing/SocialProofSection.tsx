@@ -8,7 +8,7 @@ export function SocialProofSection() {
       </p>
       <ul aria-label="Companies" className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
         {PLACEHOLDER_COMPANIES.map((name) => (
-          <li key={name} className="text-lg font-bold tracking-widest text-gray-300 select-none">
+          <li key={name} className="text-lg font-bold tracking-widest text-gray-500 select-none">
             {name}
           </li>
         ))}
