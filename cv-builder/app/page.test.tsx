@@ -82,6 +82,12 @@ describe('Home page', () => {
     render(element)
     expect(redirectMock).not.toHaveBeenCalled()
     expect(screen.getByRole('heading', { level: 1, name: /create a job-winning cv in minutes/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /ready to land your dream job/i })).toBeInTheDocument()
+    expect(screen.getByText(/helping thousands land jobs at top companies/i)).toBeInTheDocument() // SocialProofSection
+    expect(screen.getByRole('heading', { name: /write with ai/i })).toBeInTheDocument() // FeaturesSection
+    expect(screen.getByRole('heading', { name: /templates designed by recruiters/i })).toBeInTheDocument() // TemplatesShowcaseSection
+    expect(screen.getByRole('heading', { name: /how it works/i })).toBeInTheDocument() // HowItWorksSection
+    expect(screen.getByRole('heading', { name: /success stories/i })).toBeInTheDocument() // TestimonialsSection
+    expect(screen.getByRole('heading', { name: /frequently asked questions/i })).toBeInTheDocument() // FaqSection
+    expect(screen.getByRole('heading', { name: /ready to land your dream job/i })).toBeInTheDocument() // FinalCtaSection
   })
 })
