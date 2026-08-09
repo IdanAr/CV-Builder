@@ -1,6 +1,7 @@
 import { signIn } from '@/lib/auth'
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { PlasmaBackground } from '@/components/ui/PlasmaBackground'
 
 // Auth.js redirects back here with ?error=<code> on OAuth failure — surface it
@@ -26,7 +27,10 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
 
   return (
     <PlasmaBackground>
-      <main className="flex min-h-screen items-center justify-center px-4">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-4">
+        <Link href="/" className="text-sm font-medium text-indigo-700 hover:text-indigo-900">
+          ← Back to home
+        </Link>
         <div className="w-full max-w-sm rounded-2xl border border-white/30 bg-white/70 backdrop-blur-xl p-8 shadow-xl">
           {/* Logo */}
           <div className="mb-6 flex flex-col items-center gap-2">

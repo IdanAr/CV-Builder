@@ -15,4 +15,10 @@ describe('MarketingFooter', () => {
     render(<MarketingFooter />)
     expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/signin')
   })
+
+  it('renders Privacy Policy and Terms of Use links', () => {
+    render(<MarketingFooter />)
+    expect(screen.getByRole('link', { name: /privacy policy/i })).toHaveAttribute('href', '/privacy')
+    expect(screen.getByRole('link', { name: /terms of use/i })).toHaveAttribute('href', '/terms')
+  })
 })

@@ -4,7 +4,15 @@ import { render, cleanup } from '@testing-library/react'
 import { Renderer } from 'ogl'
 import { Plasma } from './Plasma'
 
+type ResizeCallback = () => void
+
 class ResizeObserverStub {
+  static instances: ResizeObserverStub[] = []
+  callback: ResizeCallback
+  constructor(callback: ResizeCallback) {
+    this.callback = callback
+    ResizeObserverStub.instances.push(this)
+  }
   observe() {}
   unobserve() {}
   disconnect() {}
@@ -86,6 +94,7 @@ describe('Plasma — animation lifecycle', () => {
 
   beforeEach(() => {
     IntersectionObserverStub.instances = []
+    ResizeObserverStub.instances = []
     pendingFrame = null
     vi.stubGlobal('ResizeObserver', ResizeObserverStub)
     vi.stubGlobal('IntersectionObserver', IntersectionObserverStub)
@@ -111,6 +120,17 @@ describe('Plasma — animation lifecycle', () => {
   it('starts the rAF loop once mounted and intersecting', () => {
     render(<Plasma />)
     expect(rafSpy).toHaveBeenCalled()
+  })
+
+  it('does not crash when a queued ResizeObserver callback fires after unmount', () => {
+    // React nulls the container ref synchronously on unmount, but this
+    // component's effect cleanup (which disconnects the ResizeObserver) runs
+    // asynchronously afterward — so a resize callback already queued before
+    // unmount can fire against a null ref in that gap.
+    const { unmount } = render(<Plasma />)
+    const ro = ResizeObserverStub.instances[0]
+    unmount()
+    expect(() => ro.callback()).not.toThrow()
   })
 
   it('stops scheduling frames when scrolled off-screen', () => {

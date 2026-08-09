@@ -8,9 +8,17 @@ export function MarketingFooter() {
           CV Builder
         </span>
         <p className="text-sm text-gray-500">&copy; {new Date().getFullYear()} CV Builder. All rights reserved.</p>
-        <Link href="/signin" className="text-sm font-medium text-indigo-700 hover:text-indigo-900">
-          Sign In
-        </Link>
+        <nav className="flex items-center gap-4">
+          <Link href="/privacy" className="text-sm font-medium text-indigo-700 hover:text-indigo-900">
+            Privacy Policy
+          </Link>
+          <Link href="/terms" className="text-sm font-medium text-indigo-700 hover:text-indigo-900">
+            Terms of Use
+          </Link>
+          <Link href="/signin" className="text-sm font-medium text-indigo-700 hover:text-indigo-900">
+            Sign In
+          </Link>
+        </nav>
       </div>
     </footer>
   )
