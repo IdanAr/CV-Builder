@@ -23,6 +23,8 @@ interface TemplateThumbnailProps {
   height?: number
   className?: string
   'data-testid'?: string
+  /** Overrides the sample meta's default (schema-default black/blue) colors. */
+  colors?: { primaryColor: string; accentColor: string }
 }
 
 /**
@@ -36,9 +38,10 @@ export function TemplateThumbnail({
   height = 420,
   className = '',
   'data-testid': testId,
+  colors,
 }: TemplateThumbnailProps) {
   const Template = TEMPLATES[templateId]
-  const meta = sampleResumeMeta(templateId)
+  const meta = { ...sampleResumeMeta(templateId), ...colors }
   // Scale the full A4-width template down so its full A4 height maps to the
   // requested card height, then derive the card's width from that same scale
   // so the card keeps the real A4 aspect ratio (794 x 1123).
