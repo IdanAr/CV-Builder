@@ -1,29 +1,33 @@
 import Link from 'next/link'
 import { TemplateThumbnail, type MarketingTemplateId } from './TemplateThumbnail'
+import { Carousel } from './Carousel'
 
-const TEMPLATES: { id: MarketingTemplateId; label: string }[] = [
-  { id: 'classic', label: 'Classic' },
-  { id: 'minimal', label: 'Minimal' },
-  { id: 'modern', label: 'Modern' },
-  { id: 'executive', label: 'Executive' },
-  { id: 'sidebar', label: 'Sidebar' },
+const TEMPLATES: {
+  id: MarketingTemplateId
+  label: string
+  colors: { primaryColor: string; accentColor: string }
+}[] = [
+  { id: 'classic', label: 'Classic', colors: { primaryColor: '#1e293b', accentColor: '#0369a1' } },
+  { id: 'minimal', label: 'Minimal', colors: { primaryColor: '#18181b', accentColor: '#0d9488' } },
+  { id: 'modern', label: 'Modern', colors: { primaryColor: '#312e81', accentColor: '#7c3aed' } },
+  { id: 'executive', label: 'Executive', colors: { primaryColor: '#1c1917', accentColor: '#b45309' } },
+  { id: 'sidebar', label: 'Sidebar', colors: { primaryColor: '#064e3b', accentColor: '#059669' } },
 ]
 
 export function TemplatesShowcaseSection() {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
       <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">Templates Designed by Recruiters</h2>
-      <div
-        className="mt-10 flex gap-6 overflow-x-auto pb-4 snap-x"
-        tabIndex={0}
-        aria-label="Template previews"
-      >
-        {TEMPLATES.map(({ id, label }) => (
-          <div key={id} className="shrink-0 snap-start text-center">
-            <TemplateThumbnail templateId={id} height={360} />
-            <p className="mt-3 text-sm font-medium text-gray-700">{label}</p>
-          </div>
-        ))}
+      <div className="mx-auto mt-10 max-w-xs sm:max-w-sm">
+        <Carousel
+          ariaLabel="Template previews"
+          slides={TEMPLATES.map(({ id, label, colors }) => (
+            <div key={id} className="text-center">
+              <TemplateThumbnail templateId={id} height={360} colors={colors} className="mx-auto" />
+              <p className="mt-3 text-sm font-medium text-gray-700">{label}</p>
+            </div>
+          ))}
+        />
       </div>
       <div className="mt-8 text-center">
         <Link

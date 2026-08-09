@@ -23,4 +23,19 @@ describe('TemplateThumbnail', () => {
     const clip = screen.getByTestId('thumb')
     expect(clip).toHaveStyle({ height: '300px' })
   })
+
+  it('applies a custom color override to the rendered template when provided', () => {
+    render(
+      <TemplateThumbnail
+        templateId="classic"
+        colors={{ primaryColor: '#1e293b', accentColor: '#0369a1' }}
+      />
+    )
+    expect(screen.getByText('Work Experience')).toHaveStyle({ color: '#1e293b' })
+  })
+
+  it('falls back to the schema default colors when no override is given', () => {
+    render(<TemplateThumbnail templateId="classic" />)
+    expect(screen.getByText('Work Experience')).toHaveStyle({ color: '#000000' })
+  })
 })
