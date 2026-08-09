@@ -10,8 +10,8 @@ describe('TestimonialsSection', () => {
     expect(screen.getByRole('heading', { name: /success stories/i })).toBeInTheDocument()
   })
 
-  it('renders three testimonial quotes', () => {
+  it('renders four testimonial quotes', () => {
     const { container } = render(<TestimonialsSection />)
-    expect(container.querySelectorAll('blockquote').length).toBe(3)
+    expect(container.querySelectorAll('blockquote').length).toBe(4)
   })
 })
