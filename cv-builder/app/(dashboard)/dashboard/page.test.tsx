@@ -34,6 +34,9 @@ describe('Dashboard page', () => {
     expect(redirectMock).toHaveBeenCalledWith('/signin')
   })
 
+  // This link is only a real fix if `/` itself doesn't bounce a signed-in
+  // visitor straight back here — that's covered separately in app/page.test.tsx
+  // ("renders the marketing homepage for signed-in visitors too").
   it('renders a Homepage link to / for signed-in visitors', async () => {
     authMock.mockResolvedValue({ user: { id: 'user-1', name: 'Jordan', email: 'jordan@example.com' } })
     listResumesMock.mockResolvedValue([])

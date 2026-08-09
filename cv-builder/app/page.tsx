@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { AppNavbar } from '@/components/ui/AppNavbar'
 import { PlasmaBackground } from '@/components/ui/PlasmaBackground'
@@ -22,14 +21,13 @@ export const metadata: Metadata = {
 
 export default async function Home() {
   const session = await auth()
-  if (session) redirect('/dashboard')
 
   return (
     <PlasmaBackground>
       <AppNavbar
         homeHref="/"
         containerClassName="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
-        actions={<MarketingNavActions />}
+        actions={<MarketingNavActions isSignedIn={!!session} />}
       />
       <main>
         <HeroSection />
