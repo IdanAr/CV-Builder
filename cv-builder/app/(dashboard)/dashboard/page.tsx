@@ -25,8 +25,14 @@ export default async function DashboardPage() {
             <NewResumeButton />
             <UploadCVButton />
             <Link
-              href="/dashboard/applications"
+              href="/"
               className="ml-auto rounded-md border border-indigo-200 bg-white/50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50"
+            >
+              Homepage
+            </Link>
+            <Link
+              href="/dashboard/applications"
+              className="rounded-md border border-indigo-200 bg-white/50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50"
             >
               Applications
             </Link>
