@@ -20,7 +20,7 @@ export function LegalPageShell({ title, lastUpdated, children }: LegalPageShellP
         <div className="rounded-2xl border border-indigo-100 bg-white/80 backdrop-blur-xl p-8 sm:p-12 shadow-sm">
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900">{title}</h1>
           <p className="mt-2 text-sm text-gray-500">Last updated: {lastUpdated}</p>
-          <div className="legal-content mt-8 space-y-6 text-sm leading-relaxed text-gray-700">{children}</div>
+          <div className="mt-8 space-y-6 text-sm leading-relaxed text-gray-700">{children}</div>
         </div>
       </main>
       <MarketingFooter />

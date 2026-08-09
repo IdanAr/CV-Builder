@@ -40,6 +40,11 @@ export default function PrivacyPolicyPage() {
           parsed to extract its text in order to prefill your résumé. The uploaded file itself is processed in
           memory and is not stored — only the résumé data you subsequently save is retained.
         </p>
+        <p className="mt-2">
+          <strong>Job posting text.</strong> If you paste a job description into the ATS scoring or cover letter
+          tools, that text is processed to generate your results (see Section 3). It is held only in your browser
+          session and is not saved to our database.
+        </p>
       </section>
 
       <section>
@@ -62,11 +67,11 @@ export default function PrivacyPolicyPage() {
         <h2 className="text-xl font-semibold text-gray-900">3. AI-Assisted Features</h2>
         <p className="mt-2">
           Certain features — writing suggestions, ATS scoring and keyword matching, ATS-format rewrites, and cover
-          letter generation — send the relevant text of your résumé (not the raw uploaded file) to Anthropic&apos;s
-          Claude API for processing. Anthropic processes this text solely to generate the requested output and
-          according to its own terms. AI-generated suggestions are shown to you for review, and — where the system
-          flags a claim it cannot verify against your original text — for your explicit approval, before anything is
-          saved to your résumé.
+          letter generation — send the relevant text of your résumé and, where applicable, any job description you
+          paste in (not the raw uploaded file) to Anthropic&apos;s Claude API for processing. Anthropic processes
+          this text solely to generate the requested output and according to its own terms. AI-generated suggestions
+          are shown to you for review, and — where the system flags a claim it cannot verify against your original
+          text — for your explicit approval, before anything is saved to your résumé.
         </p>
       </section>
 
@@ -91,11 +96,13 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900">5. Cookies</h2>
+        <h2 className="text-xl font-semibold text-gray-900">5. Cookies &amp; Local Storage</h2>
         <p className="mt-2">
           We use only the cookies necessary to keep you signed in: a session cookie set by our authentication
           system, and short-lived cookies used during the Google/GitHub sign-in process itself. We do not use
-          advertising or cross-site tracking cookies.
+          advertising or cross-site tracking cookies. We also store display preferences — such as your chosen
+          application board view and preview zoom level — locally in your browser; this data never leaves your
+          device.
         </p>
       </section>
 
