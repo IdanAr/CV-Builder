@@ -12,7 +12,7 @@ import { TestimonialsSection } from '@/components/marketing/TestimonialsSection'
 import { FaqSection } from '@/components/marketing/FaqSection'
 import { FinalCtaSection } from '@/components/marketing/FinalCtaSection'
 import { MarketingFooter } from '@/components/marketing/MarketingFooter'
-import Link from 'next/link'
+import { MarketingNavActions } from '@/components/marketing/MarketingNavActions'
 
 export const metadata: Metadata = {
   title: 'Free AI CV Builder & Resume Maker | ATS-Friendly Templates',
@@ -29,22 +29,7 @@ export default async function Home() {
       <AppNavbar
         homeHref="/"
         containerClassName="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
-        actions={
-          <div className="flex items-center gap-3 flex-1">
-            <Link
-              href="/signin"
-              className="ml-auto hidden text-sm font-medium text-indigo-700 hover:text-indigo-900 sm:inline"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/signin"
-              className="ml-auto rounded-md bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 sm:ml-0"
-            >
-              Get Started
-            </Link>
-          </div>
-        }
+        actions={<MarketingNavActions />}
       />
       <main>
         <HeroSection />
