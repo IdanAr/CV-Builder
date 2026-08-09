@@ -26,11 +26,12 @@ describe('TemplatesShowcaseSection', () => {
     expect(screen.getByRole('heading', { name: /templates designed by recruiters/i })).toBeInTheDocument()
   })
 
-  it('renders a labeled slide for all five templates inside a carousel', () => {
+  it('renders a labeled item for all five templates inside an auto-scrolling strip', () => {
     render(<TemplatesShowcaseSection />)
     expect(screen.getByRole('region', { name: /template previews/i })).toBeInTheDocument()
+    // Marquee duplicates content for a seamless loop, so each label appears twice.
     for (const label of ['Classic', 'Minimal', 'Modern', 'Executive', 'Sidebar']) {
-      expect(screen.getByText(label)).toBeInTheDocument()
+      expect(screen.getAllByText(label).length).toBeGreaterThanOrEqual(1)
     }
   })
 
@@ -43,7 +44,7 @@ describe('TemplatesShowcaseSection', () => {
     render(<TemplatesShowcaseSection />)
     const ids = ['classic', 'minimal', 'modern', 'executive', 'sidebar']
     const pairs = ids.map((id) => {
-      const el = screen.getByTestId(`thumb-${id}`)
+      const [el] = screen.getAllByTestId(`thumb-${id}`) // real copy, first in DOM order
       return `${el.dataset.primaryColor}-${el.dataset.accentColor}`
     })
     for (const pair of pairs) {

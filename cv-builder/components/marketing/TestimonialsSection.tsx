@@ -1,5 +1,5 @@
 import { Star } from 'lucide-react'
-import { Carousel } from './Carousel'
+import { Marquee } from './Marquee'
 
 const TESTIMONIALS = [
   {
@@ -39,13 +39,14 @@ export function TestimonialsSection() {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
       <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">Success Stories</h2>
-      <div className="mx-auto mt-10 max-w-lg">
-        <Carousel
+      <div className="mt-10">
+        <Marquee
           ariaLabel="Success Stories"
-          slides={TESTIMONIALS.map(({ quote, author, role }) => (
+          durationSeconds={35}
+          items={TESTIMONIALS.map(({ quote, author, role }) => (
             <figure
               key={author}
-              className="rounded-2xl border border-indigo-100 bg-white/70 backdrop-blur-xl p-6 shadow-sm"
+              className="w-80 rounded-2xl border border-indigo-100 bg-white/70 backdrop-blur-xl p-6 shadow-sm"
             >
               <blockquote className="text-sm text-gray-700">&ldquo;{quote}&rdquo;</blockquote>
               <figcaption className="mt-4 text-sm font-semibold text-gray-900">

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { TemplateThumbnail, type MarketingTemplateId } from './TemplateThumbnail'
-import { Carousel } from './Carousel'
+import { Marquee } from './Marquee'
 
 const TEMPLATES: {
   id: MarketingTemplateId
@@ -18,12 +18,13 @@ export function TemplatesShowcaseSection() {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
       <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">Templates Designed by Recruiters</h2>
-      <div className="mx-auto mt-10 max-w-xs sm:max-w-sm">
-        <Carousel
+      <div className="mt-10">
+        <Marquee
           ariaLabel="Template previews"
-          slides={TEMPLATES.map(({ id, label, colors }) => (
+          durationSeconds={45}
+          items={TEMPLATES.map(({ id, label, colors }) => (
             <div key={id} className="text-center">
-              <TemplateThumbnail templateId={id} height={360} colors={colors} className="mx-auto" />
+              <TemplateThumbnail templateId={id} height={360} colors={colors} />
               <p className="mt-3 text-sm font-medium text-gray-700">{label}</p>
             </div>
           ))}

@@ -18,3 +18,28 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Marquee.tsx: the track renders its items twice back to back, then loops by
+   translating exactly one set's width — since both halves are pixel-identical,
+   the wrap is seamless. The animation itself lives in this static class (not
+   an inline `style.animation` shorthand rebuilt on every render) — reassigning
+   the `animation` shorthand via inline style restarts it from 0% on every
+   value write, even when the string is unchanged, which starved it of any
+   visible progress. Only the duration varies per instance, via a single CSS
+   custom property that doesn't carry that restart behavior. */
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  animation: marquee-scroll var(--marquee-duration, 40s) linear infinite;
+}
+
+.marquee-track.marquee-paused {
+  animation-play-state: paused;
+}
