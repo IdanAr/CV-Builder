@@ -10,6 +10,7 @@ export type VolunteerEntry = NonNullable<ResumeData['volunteer']>[number]
 export type LanguageEntry = NonNullable<ResumeData['languages']>[number]
 export type InterestEntry = NonNullable<ResumeData['interests']>[number]
 export type ProjectEntry = NonNullable<ResumeData['projects']>[number]
+export type ProfileEntry = NonNullable<NonNullable<ResumeData['basics']>['profiles']>[number]
 
 export function createEmptyWork(): WorkEntry {
   return { name: '', position: '', url: '', startDate: '', endDate: '', summary: '', highlights: [] }
@@ -49,6 +50,10 @@ export function createEmptyInterest(): InterestEntry {
 
 export function createEmptyProject(): ProjectEntry {
   return { name: '', description: '', highlights: [], keywords: [], startDate: '', endDate: '', url: '' }
+}
+
+export function createEmptyProfile(): ProfileEntry {
+  return { id: crypto.randomUUID(), label: '', url: '' }
 }
 
 export const EMPTY_ENTRY_FACTORIES: Record<string, () => unknown> = {
