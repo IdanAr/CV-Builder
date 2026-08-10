@@ -53,4 +53,55 @@ describe('renderPdfRichText', () => {
     const children = React.Children.toArray(renderPdfRichText('Just one.') as React.ReactNode)
     expect(children).toHaveLength(1)
   })
+
+  it('renders a soft line break as a nested <Text> per line within one paragraph block', () => {
+    const children = React.Children.toArray(renderPdfRichText('Line one\nLine two') as React.ReactNode)
+    // Still exactly one paragraph-level <Text> block (no blank-line phantom risk)...
+    expect(children).toHaveLength(1)
+    // ...but that block now nests one <Text> per line rather than one flat string.
+    const paragraph = children[0] as React.ReactElement<{ children: React.ReactNode }>
+    const lines = React.Children.toArray(paragraph.props.children)
+    expect(lines).toHaveLength(2)
+  })
+
+  it('keeps rendering multiple paragraphs as separate <Text> blocks when combined with soft breaks', () => {
+    const children = React.Children.toArray(
+      renderPdfRichText('A1\nA2\n\nB1\nB2') as React.ReactNode
+    )
+    expect(children).toHaveLength(2)
+  })
+})
+
+const TWO_LINES = 'First line here.\nSecond line here.'
+
+describe('soft line break rendering (PDF)', () => {
+  // Not a byte-level fontDiagnostics().usesBase14 check like the paragraph-gap
+  // test above: rendering the soft break requires a literal '\n' inside the
+  // Text run, and @react-pdf's own font-substitution engine (verified against
+  // both the installed @react-pdf/textkit and the latest published release)
+  // unconditionally falls back to the standard, unembedded Helvetica for any
+  // codepoint no font in the stack can shape — and no font ships a glyph for
+  // U+000A. That forces a `/BaseFont /Helvetica` entry into the PDF's
+  // resource dictionary purely to hold the invisible line-break character,
+  // even though every embedded custom font is otherwise used correctly. It's
+  // the same benign "empty-line phantom" category already known in this
+  // codebase (see pdf-hebrew-font-fallback memory note) — a resource that is
+  // declared but never used to paint a visible glyph. So assert the thing
+  // that actually matters for font fidelity: no *visible* glyph run is drawn
+  // with Helvetica.
+  it('does not render any visible glyph in a base-14 font on a soft-break field', async () => {
+    const runs = await renderToGlyphRuns(
+      selectPdfTemplate(resumeWithSummary(TWO_LINES), meta, 'designed', 'CV') as React.ReactElement
+    )
+    expect(runs.some(r => /helvetica|times|courier/i.test(r.fontName))).toBe(false)
+  })
+
+  it('renders both lines on separate visual lines', async () => {
+    const runs = await renderToGlyphRuns(
+      selectPdfTemplate(resumeWithSummary(TWO_LINES), meta, 'designed', 'CV') as React.ReactElement
+    )
+    const first = runs.find(r => r.str.includes('First'))!
+    const second = runs.find(r => r.str.includes('Second'))!
+    expect(second.y).toBeLessThan(first.y)
+  })
 })
