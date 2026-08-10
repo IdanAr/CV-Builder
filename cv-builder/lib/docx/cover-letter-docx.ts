@@ -2,20 +2,28 @@ import { Document, Paragraph, TextRun, convertInchesToTwip } from 'docx'
 import { parseRichText, splitParagraphs } from '@/lib/rich-text'
 
 function richTextRuns(text: string, font: string): TextRun[] {
-  return parseRichText(text).map((run) => new TextRun({
-    text: run.text,
-    font,
-    size: 22,
-    bold: run.bold || false,
-    italics: run.italic || false,
-    underline: run.underline ? {} : undefined,
-  }))
+  const lines = text.replace(/\r\n?/g, '\n').split('\n')
+  const out: TextRun[] = []
+  lines.forEach((line, i) => {
+    if (i > 0) out.push(new TextRun({ text: '', break: 1, font, size: 22 }))
+    for (const run of parseRichText(line)) {
+      out.push(new TextRun({
+        text: run.text,
+        font,
+        size: 22,
+        bold: run.bold || false,
+        italics: run.italic || false,
+        underline: run.underline ? {} : undefined,
+      }))
+    }
+  })
+  return out
 }
 
 /** Plain single-column DOCX for cover letter text only — no résumé template involved. */
 export function buildCoverLetterDocx(content: string, name?: string, font = 'Arial'): Document {
-  const bodyParagraphs = splitParagraphs(content).map((paragraph) => new Paragraph({
-    children: richTextRuns(paragraph, font),
+  const bodyParagraphs = splitParagraphs(content).map((lines) => new Paragraph({
+    children: richTextRuns(lines.join('\n'), font),
     spacing: { after: 200 },
   }))
 

@@ -16,23 +16,35 @@ function richTextRuns(
   size: number,
   extraProps?: Partial<{ bold: boolean; color: string; italics: boolean }>
 ): TextRun[] {
-  const runs: RichTextRun[] = parseRichText(text)
-  return runs.map(run => new TextRun({
-    text: run.text,
-    font,
-    size,
-    bold: run.bold || extraProps?.bold || false,
-    italics: run.italic || extraProps?.italics || false,
-    underline: run.underline ? {} : undefined,
-    ...(extraProps?.color ? { color: extraProps.color } : {}),
-  }))
+  const lines = text.replace(/\r\n?/g, '\n').split('\n')
+  const out: TextRun[] = []
+  lines.forEach((line, i) => {
+    if (i > 0) {
+      out.push(new TextRun({ text: '', break: 1, font, size }))
+    }
+    const runs: RichTextRun[] = parseRichText(line)
+    for (const run of runs) {
+      out.push(new TextRun({
+        text: run.text,
+        font,
+        size,
+        bold: run.bold || extraProps?.bold || false,
+        italics: run.italic || extraProps?.italics || false,
+        underline: run.underline ? {} : undefined,
+        ...(extraProps?.color ? { color: extraProps.color } : {}),
+      }))
+    }
+  })
+  return out
 }
 
 /**
  * Renders a rich-text field as one Word paragraph per blank-line-separated
  * paragraph, so a multi-paragraph summary shows real breaks — a single
- * Paragraph with embedded newlines does not. The given paragraph props
- * (spacing, alignment, keepLines) apply to every generated paragraph, so
+ * Paragraph with embedded newlines does not. Soft line breaks within a
+ * paragraph are handled by richTextRuns (a Break run between lines), so a
+ * paragraph here may itself span multiple visual lines. The given paragraph
+ * props (spacing, alignment, keepLines) apply to every generated paragraph, so
  * single-paragraph text produces exactly one Paragraph, unchanged from before.
  */
 function richTextParagraphs(
@@ -42,9 +54,11 @@ function richTextParagraphs(
   extraProps: Partial<{ bold: boolean; color: string; italics: boolean }> | undefined,
   paraProps: Omit<IParagraphOptions, 'children'>
 ): Paragraph[] {
-  return splitParagraphs(text).map(paragraph =>
-    new Paragraph({ ...paraProps, children: richTextRuns(paragraph, font, size, extraProps) })
-  )
+  return splitParagraphs(text)
+    .map((lines) => lines.join('\n'))
+    .map(paragraphText =>
+      new Paragraph({ ...paraProps, children: richTextRuns(paragraphText, font, size, extraProps) })
+    )
 }
 
 function mapFont(font: string): string {

@@ -314,6 +314,26 @@ async function docxParts(doc: ReturnType<typeof buildDocx>): Promise<{ documentX
   return { documentXml, stylesXml }
 }
 
+describe('soft line breaks', () => {
+  it('renders a single newline within a highlight as a line break, not a space', async () => {
+    const data: ResumeData = {
+      work: [{ name: 'Acme', position: 'Engineer', highlights: ['Line one\nLine two'] }],
+    }
+    const xml = await documentXml(buildDocx(data, defaultMeta))
+    expect(xml).toContain('<w:br')
+    expect(xml).not.toMatch(/Line one\s+Line two/) // not collapsed to a space by any earlier step
+  })
+
+  it('renders a blank line as a separate Paragraph, not a Break', async () => {
+    const data: ResumeData = {
+      basics: { name: 'X', summary: 'Para one\n\nPara two' },
+    }
+    const xml = await documentXml(buildDocx(data, defaultMeta))
+    expect(xml).toContain('Para one')
+    expect(xml).toContain('Para two')
+  })
+})
+
 describe('docx outline verification (Word nav pane / ATS outline, structural replacement for opening in Word)', () => {
   it('styles.xml defines Heading1 and Title exactly once each, under their real built-in Word names', async () => {
     const { stylesXml } = await docxParts(buildDocx(sampleData, defaultMeta, 'designed'))
