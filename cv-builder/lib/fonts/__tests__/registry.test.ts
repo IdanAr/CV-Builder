@@ -48,6 +48,42 @@ describe('font registry', () => {
   }
 })
 
+const HEBREW = 'שלום עולם'
+
+function hebrewDoc(pickerName: string) {
+  registerPdfFonts()
+  const styles = StyleSheet.create({
+    page: { fontFamily: pdfFontFamily(pickerName), fontSize: 12, padding: 40 },
+  })
+  return React.createElement(
+    Document, null,
+    React.createElement(Page, { size: 'A4', style: styles.page },
+      React.createElement(Text, null, HEBREW))
+  )
+}
+
+describe('Hebrew glyph fallback', () => {
+  // Carlito (Calibri's substitute) has no `hebrew` @fontsource subset — this
+  // exercises the ArimoHebrew fallback link, not a family that already covers
+  // Hebrew on its own.
+  for (const pickerName of ['Calibri', 'Arial']) {
+    it(`${pickerName}: renders real Hebrew glyphs, not blank/missing characters`, async () => {
+      const { buffer, runs } = await renderToBufferAndRuns(hebrewDoc(pickerName))
+      const diag = fontDiagnostics(buffer)
+      expect(diag.embedded).toBe(true)
+      expect(diag.usesBase14).toBe(false)
+      // Bidi reordering (via @react-pdf/textkit's bidi-js) legitimately flips
+      // word order for RTL text — pdfjs reports runs in left-to-right x
+      // position, which is the reverse of Hebrew reading order. Assert each
+      // word's glyphs are present rather than the original logical order.
+      const extracted = collapse(runs.map(r => r.str).join(' '))
+      for (const word of HEBREW.split(' ')) {
+        expect(extracted).toContain(word)
+      }
+    })
+  }
+})
+
 describe('hyphenation', () => {
   it('never breaks a word across lines with an inserted hyphen', async () => {
     registerPdfFonts()

@@ -57,6 +57,18 @@ export const STYLES = ['normal', 'italic'] as const
 export const GLYPH_FALLBACK = 'CarlitoExt'
 
 /**
+ * Fallback face for Hebrew script (U+0590–05FF: אבג..., not just the ₪ sign
+ * `GLYPH_FALLBACK` already covers). None of the nine picker fonts'
+ * @fontsource packages ship a `hebrew` subset except Arimo's — verified
+ * against @fontsource 5.3.0 file listings — so Hebrew text is drawn through
+ * this dedicated face regardless of the résumé's chosen font. Same trade-off
+ * as GLYPH_FALLBACK: a glyph-level typeface mismatch beats a blank/missing
+ * character, which is what every other picker font does with no Hebrew
+ * glyphs registered at all.
+ */
+export const HEBREW_FALLBACK = 'ArimoHebrew'
+
+/**
  * `@font-face` rules so the browser preview loads the same files the PDF
  * embeds. Must cover italic as well as normal: ExecutiveTemplate and
  * ClassicTemplate render `fontStyle: 'italic'`, and without a matching

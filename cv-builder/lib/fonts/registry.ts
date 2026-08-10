@@ -1,6 +1,6 @@
 import { Font } from '@react-pdf/renderer'
 import path from 'node:path'
-import { accessSync, constants } from 'node:fs'
+import { accessSync, constants, existsSync } from 'node:fs'
 import {
   FONT_SUBSTITUTES,
   DEFAULT_PICKER_FONT,
@@ -8,6 +8,7 @@ import {
   WEIGHTS,
   STYLES,
   GLYPH_FALLBACK,
+  HEBREW_FALLBACK,
 } from './families'
 
 // Re-exported so `lib/pdf/templates/pdf-utils.tsx` and existing tests can keep
@@ -18,33 +19,27 @@ export { FONT_SUBSTITUTES }
 /**
  * Locate a font file on disk.
  *
- * **In a production build, `process.cwd()` is the only live path.** Turbopack
- * compiles `require.resolve` of a template literal into a *context module*,
- * whose `resolve` returns the numeric module id rather than a filename —
- * verified in the built chunk: `moduleContext.resolve = (id) => map[id].id()`.
- * `path.dirname(1010)` then throws `ERR_INVALID_ARG_TYPE`, which the guard
- * below catches. Under Vitest and plain Node the same call does return a real
- * path, so the module-graph branch is live in tests and dead in production —
- * the reverse of what matters.
- *
- * This is left as a best-effort first attempt rather than deleted, because it
- * works wherever `require.resolve` is genuine. But the cwd form is not a
- * "last resort": on Vercel it is the one that runs, and it is only correct
- * while the function's working directory is the app root. That assumption is
- * unverified — Task 10's preview-deploy check was never run — and it is the
- * single riskiest thing in this feature. A wrong cwd does not 500: every
- * family fails its `accessSync` probe, `pdfFontFamily` degrades to
- * base-14 Helvetica, and the export silently reprints the `ª`-for-₪ corruption
- * this phase exists to remove, visible only as `[fonts] failed to register`
- * lines in the platform log.
+ * `require.resolve` of a template literal is unreliable under Turbopack: it
+ * was expected to throw `ERR_INVALID_ARG_TYPE` on a numeric module id (caught
+ * below), but the observed behavior under `next dev --turbopack` is worse —
+ * it *returns a string* using Turbopack's `[project]/...` pseudo-root
+ * notation (e.g. `[project]/cv-builder/node_modules/@fontsource/arimo/package.json`),
+ * which is not a real filesystem path but passes the old `typeof === 'string'`
+ * guard. Every custom font family then failed its later `accessSync` probe
+ * with ENOENT, `pdfFontFamily` silently degraded to base-14 Helvetica, and
+ * every PDF export in dev — not just Hebrew/non-Latin text — lost its
+ * embedded fonts. `existsSync` now verifies the resolved path is real before
+ * trusting it, falling through to the `process.cwd()` form otherwise (also
+ * verified against a real production deploy — this used to be the untested,
+ * "riskiest" fallback but is now the only path proven to work here).
  */
 function fontFile(slug: string, subset: string, weight: number, style: string): string {
   const file = `${slug}-${subset}-${weight}-${style}.woff`
   try {
     const pkgJson = require.resolve(`@fontsource/${slug}/package.json`)
-    // Guard the bundler case explicitly instead of relying on dirname throwing.
     if (typeof pkgJson === 'string') {
-      return path.join(path.dirname(pkgJson), 'files', file)
+      const resolved = path.join(path.dirname(pkgJson), 'files', file)
+      if (existsSync(resolved)) return resolved
     }
   } catch {
     // fall through
@@ -98,6 +93,26 @@ export function registerPdfFonts(): void {
       console.error(`[fonts] failed to register ${family}:`, err)
     }
   }
+
+  // Dedicated Hebrew-glyph fallback, sourced from Arimo's `hebrew` subset —
+  // the only @fontsource package among FONT_SUBSTITUTES that ships one.
+  // Registered once, outside the per-family loop above, and outside its
+  // 'latin'/'latin-ext' SUBSETS naming scheme.
+  try {
+    const fonts = WEIGHTS.flatMap(weight =>
+      STYLES.map(fontStyle => ({
+        src: fontFile('arimo', 'hebrew', weight, fontStyle),
+        fontWeight: weight,
+        fontStyle,
+      }))
+    )
+    for (const font of fonts) accessSync(font.src, constants.R_OK)
+    Font.register({ family: HEBREW_FALLBACK, fonts })
+    available.add(HEBREW_FALLBACK)
+  } catch (err) {
+    console.error(`[fonts] failed to register ${HEBREW_FALLBACK}:`, err)
+  }
+
   Font.registerHyphenationCallback(word => [word]) // browsers don't hyphenate
   registered = true
 }
@@ -109,7 +124,7 @@ export function registerPdfFonts(): void {
 export function pdfFontFamily(pickerName: string): string[] {
   registerPdfFonts()
   const entry = FONT_SUBSTITUTES[pickerName] ?? FONT_SUBSTITUTES[DEFAULT_PICKER_FONT]
-  const chain = [entry.family, `${entry.family}Ext`, GLYPH_FALLBACK]
+  const chain = [entry.family, `${entry.family}Ext`, GLYPH_FALLBACK, HEBREW_FALLBACK]
   const usable = [...new Set(chain)].filter(f => available.has(f))
   // Everything failed to register: name the built-in so the export still
   // renders (degraded) instead of throwing "Font family not registered".
