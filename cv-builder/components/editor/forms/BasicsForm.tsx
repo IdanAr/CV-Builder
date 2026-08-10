@@ -4,12 +4,16 @@
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { AiSuggestButton } from '@/components/ai/AiSuggestButton'
 import { RichTextField } from './RichTextField'
+import { ListFieldManager } from './ListFieldManager'
 import { inputClass, labelClass } from './field-styles'
+import { createEmptyProfile } from '@/lib/schemas/resume-empty-entries'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 type Basics = NonNullable<ResumeData['basics']>
+type Profile = NonNullable<Basics['profiles']>[number]
 
 const EMPTY_BASICS: Basics = {}
+const EMPTY_PROFILES: Profile[] = []
 
 export function BasicsForm() {
   const basics = useResumeEditorStore((s) => s.data.basics ?? EMPTY_BASICS)
@@ -21,6 +25,19 @@ export function BasicsForm() {
 
   const setLocation = (field: string, value: string) =>
     setSectionData('basics', { ...basics, location: { ...basics.location, [field]: value } })
+
+  // Legacy résumés carry a single `url` field; once profiles has any entry of
+  // its own that entry list is authoritative. This derives what the list
+  // shows without writing anything until the user actually edits a row.
+  const profiles: Profile[] =
+    basics.profiles && basics.profiles.length > 0
+      ? basics.profiles
+      : basics.url
+        ? [{ id: 'migrated-url', label: '', url: basics.url }]
+        : EMPTY_PROFILES
+
+  const setProfiles = (items: Profile[]) =>
+    setSectionData('basics', { ...basics, profiles: items, url: undefined })
 
   return (
     <div className="space-y-3">
@@ -49,9 +66,35 @@ export function BasicsForm() {
         </div>
       </div>
       <div>
-        <label htmlFor="basics-url" className={labelClass}>Website URL</label>
-        <input id="basics-url" type="url" value={basics.url ?? ''} onChange={(e) => set('url', e.target.value)}
-          placeholder="https://janesmith.dev" className={inputClass} />
+        <label className={labelClass}>Links</label>
+        <ListFieldManager<Profile>
+          items={profiles}
+          onChange={setProfiles}
+          createEmpty={createEmptyProfile}
+          addLabel="Add URL"
+          renderItem={(item, _, onUpdate, onRemove) => (
+            <div className="flex gap-2 items-start">
+              <label className="sr-only">Label</label>
+              <input
+                type="text"
+                value={item.label ?? ''}
+                onChange={(e) => onUpdate({ ...item, label: e.target.value })}
+                placeholder="Label (optional — leave blank to show the link itself)"
+                className={`${inputClass} w-2/5`}
+              />
+              <label className="sr-only">URL</label>
+              <input
+                type="url"
+                value={item.url ?? ''}
+                onChange={(e) => onUpdate({ ...item, url: e.target.value })}
+                placeholder="https://..."
+                className={`${inputClass} flex-1`}
+              />
+              <button type="button" onClick={onRemove} aria-label="Remove URL"
+                className="text-gray-400 hover:text-red-500 text-sm mt-1.5">✕</button>
+            </div>
+          )}
+        />
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div>
