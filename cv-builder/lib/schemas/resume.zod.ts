@@ -16,6 +16,8 @@ const LocationSchema = z.object({
 })
 
 const ProfileSchema = z.object({
+  id: z.string(),
+  label: z.string().optional(),
   network: z.string().optional(),
   username: z.string().optional(),
   url: optionalUrl(),

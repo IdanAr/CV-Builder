@@ -240,3 +240,33 @@ describe('ResumeMetaPatchSchema — excludedAtsKeywords', () => {
     }
   })
 })
+
+describe('BasicsSchema.profiles', () => {
+  it('accepts a profile with id, label, and url', () => {
+    const result = ResumeDataSchema.safeParse({
+      basics: { profiles: [{ id: 'p1', label: 'LinkedIn', url: 'https://linkedin.com/in/jane' }] },
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a profile with no label (falls back to raw URL at render time)', () => {
+    const result = ResumeDataSchema.safeParse({
+      basics: { profiles: [{ id: 'p1', url: 'https://janesmith.dev' }] },
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('still accepts legacy network/username fields for backward compat', () => {
+    const result = ResumeDataSchema.safeParse({
+      basics: { profiles: [{ id: 'p1', network: 'GitHub', username: 'janesmith', url: 'https://github.com/janesmith' }] },
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a profile with no id', () => {
+    const result = ResumeDataSchema.safeParse({
+      basics: { profiles: [{ url: 'https://janesmith.dev' }] },
+    })
+    expect(result.success).toBe(false)
+  })
+})
