@@ -124,6 +124,61 @@ describe('CoverLetterPanel', () => {
     await waitFor(() => expect(screen.getByText(/could not generate|failed/i)).toBeInTheDocument())
   })
 
+  it('Copy and Export buttons are disabled when there is no cover letter text', () => {
+    render(<CoverLetterPanel />)
+    expect(screen.getByText('Copy')).toBeDisabled()
+    expect(screen.getByText('Export DOCX')).toBeDisabled()
+    expect(screen.getByText('Export PDF')).toBeDisabled()
+  })
+
+  it('clicking Copy writes the cover letter text to the clipboard', async () => {
+    useResumeEditorStore.setState({
+      data: { basics: { name: 'Jane Doe' }, coverLetter: 'Existing letter text.' },
+    })
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
+
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByText('Copy'))
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('Existing letter text.'))
+    await waitFor(() => expect(screen.getByText('Copied!')).toBeInTheDocument())
+  })
+
+  it('clicking Export DOCX posts the cover letter text and triggers a download', async () => {
+    useResumeEditorStore.setState({
+      data: { basics: { name: 'Jane Doe' }, coverLetter: 'Existing letter text.' },
+    })
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, blob: async () => new Blob(['docx-bytes']) })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:fake'), revokeObjectURL: vi.fn() })
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByText('Export DOCX'))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    const [url, opts] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/resumes/r1/cover-letter/export/docx')
+    expect(JSON.parse(opts.body)).toEqual({ content: 'Existing letter text.' })
+    await waitFor(() => expect(clickSpy).toHaveBeenCalled())
+
+    clickSpy.mockRestore()
+  })
+
+  it('a failed export shows an inline error message', async () => {
+    useResumeEditorStore.setState({
+      data: { basics: { name: 'Jane Doe' }, coverLetter: 'Existing letter text.' },
+    })
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByText('Export PDF'))
+
+    await waitFor(() => expect(screen.getByText(/export failed/i)).toBeInTheDocument())
+  })
+
   it('accepts optional company name and role name inputs and includes them in the request', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(
       jsonResponse({ content: 'Dear Hiring Manager, ...', pendingApprovals: [] })

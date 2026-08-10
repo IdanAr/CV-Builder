@@ -57,6 +57,9 @@ export function CoverLetterPanel() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [draft, setDraft] = useState<CoverLetterDraft | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [exporting, setExporting] = useState<'docx' | 'pdf' | null>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   async function handleGenerate() {
     if (!resumeId || !jobDescription.trim()) return
@@ -90,6 +93,45 @@ export function CoverLetterPanel() {
     if (!draft) return
     setData({ coverLetter: draft.content })
     setDraft(null)
+  }
+
+  async function handleCopy() {
+    const text = data.coverLetter ?? ''
+    if (!text.trim()) return
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function handleExport(format: 'docx' | 'pdf') {
+    const text = data.coverLetter ?? ''
+    if (!resumeId || !text.trim()) return
+    setExporting(format)
+    setExportError(null)
+    try {
+      const res = await fetch(`/api/resumes/${resumeId}/cover-letter/export/${format}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: text }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error((json as { error?: string }).error ?? 'Export failed. Please try again.')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Cover-Letter.${format}`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Export failed. Please try again.')
+    } finally {
+      setExporting(null)
+    }
   }
 
   return (
@@ -164,9 +206,38 @@ export function CoverLetterPanel() {
       )}
 
       <div>
-        <label className="block text-sm font-medium text-indigo-700 mb-1">
-          Your cover letter
-        </label>
+        <div className="mb-1 flex items-center justify-between">
+          <label className="block text-sm font-medium text-indigo-700">
+            Your cover letter
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleCopy}
+              disabled={!(data.coverLetter ?? '').trim()}
+              className="rounded px-2 py-1 text-xs font-medium text-indigo-600 transition-colors hover:bg-indigo-50 disabled:opacity-40 disabled:hover:bg-transparent"
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleExport('docx')}
+              disabled={!(data.coverLetter ?? '').trim() || exporting !== null}
+              className="rounded px-2 py-1 text-xs font-medium text-indigo-600 transition-colors hover:bg-indigo-50 disabled:opacity-40 disabled:hover:bg-transparent"
+            >
+              {exporting === 'docx' ? 'Exporting…' : 'Export DOCX'}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleExport('pdf')}
+              disabled={!(data.coverLetter ?? '').trim() || exporting !== null}
+              className="rounded px-2 py-1 text-xs font-medium text-indigo-600 transition-colors hover:bg-indigo-50 disabled:opacity-40 disabled:hover:bg-transparent"
+            >
+              {exporting === 'pdf' ? 'Exporting…' : 'Export PDF'}
+            </button>
+          </div>
+        </div>
+        {exportError && <p className="mb-1 text-xs text-red-500">{exportError}</p>}
         <textarea
           value={data.coverLetter ?? ''}
           onChange={(e) => setData({ coverLetter: e.target.value })}

@@ -217,7 +217,7 @@ export function AtsScorePanel() {
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
           placeholder="Paste the full job description here to see how well your CV matches…"
-          className="w-full h-40 rounded-lg border border-indigo-200 bg-white/70 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full h-[480px] rounded-lg border border-indigo-200 bg-white/70 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <button
           onClick={() => handleAnalyze()}
