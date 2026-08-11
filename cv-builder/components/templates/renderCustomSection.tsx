@@ -61,6 +61,27 @@ export function renderCustomSection(
           {enabledFields.includes('level') && item.level && (
             <div style={{ fontSize: '9pt', color: '#555' }}>Level: {item.level}</div>
           )}
+          {enabledFields.includes('roles') && (item.roles ?? []).length > 0 && (
+            <div style={{ marginTop: '4px' }}>
+              {(item.roles ?? []).map((role, ri) => (
+                <div key={role.id ?? ri} style={{ marginTop: ri === 0 ? 0 : '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    {role.title && <span style={{ color: styles.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{role.title}</span>}
+                    {(role.startDate || role.endDate) && (
+                      <span style={{ fontSize: '10pt', color: '#666' }}>{formatDateRange(role.startDate, role.endDate)}</span>
+                    )}
+                  </div>
+                  {role.subtitle && <div style={{ fontSize: '10pt', color: '#555' }}>{role.subtitle}</div>}
+                  {role.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(role.summary)}</div>}
+                  {(role.highlights ?? []).length > 0 && (
+                    <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                      {(role.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>
