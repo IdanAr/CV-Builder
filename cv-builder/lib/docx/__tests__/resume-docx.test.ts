@@ -370,3 +370,28 @@ describe('docx outline verification (Word nav pane / ATS outline, structural rep
     expect(headingParagraph![0]).not.toContain('<w:sz')
   })
 })
+
+describe('multiple labeled URLs', () => {
+  const dataWithProfiles: ResumeData = {
+    basics: {
+      name: 'Jane Smith',
+      profiles: [
+        { id: 'p1', label: 'Portfolio', url: 'https://janesmith.dev' },
+        { id: 'p2', url: 'https://github.com/janesmith' },
+      ],
+    },
+  }
+
+  it('renders each profile as a hyperlink in the main header contact row', async () => {
+    const xml = await documentXml(buildDocx(dataWithProfiles, defaultMeta))
+    expect(xml).toContain('Portfolio')
+    expect(xml).toContain('github.com/janesmith')
+    expect(xml).toContain('hyperlink') // ExternalHyperlink relationship marker, per existing XML-inspection convention
+  })
+
+  it('renders each profile in the Sidebar rail contact block', async () => {
+    const xml = await documentXml(buildDocx(dataWithProfiles, { ...defaultMeta, templateId: 'sidebar' }))
+    expect(xml).toContain('Portfolio')
+    expect(xml).toContain('github.com/janesmith')
+  })
+})

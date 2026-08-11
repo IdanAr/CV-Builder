@@ -293,18 +293,32 @@ function buildRailParas(
       spacing: { after: 40 },
     }))
   }
-  const contactItems = [
-    basics?.email,
-    basics?.phone,
-    basics?.url,
-    [basics?.location?.city, basics?.location?.region].filter(Boolean).join(', '),
-  ].filter(Boolean) as string[]
-  contactItems.forEach((item, idx) => {
-    paras.push(new Paragraph({
+  const railContactParas: Paragraph[] = []
+  const plainItems = [basics?.email, basics?.phone].filter(Boolean) as string[]
+  plainItems.forEach((item, idx) => {
+    railContactParas.push(new Paragraph({
       children: [new TextRun({ text: item, font: bodyFont, size: 20, color: railSoft })],
       spacing: { before: idx === 0 ? 180 : 0, after: 40 },
     }))
   })
+  for (const profile of basics?.profiles ?? []) {
+    if (!profile.url) continue
+    railContactParas.push(new Paragraph({
+      children: [new ExternalHyperlink({
+        children: [new TextRun({ text: profile.label || profile.url, font: bodyFont, size: 20, color: railSoft, underline: {} })],
+        link: /^https?:\/\//i.test(profile.url) ? profile.url : `https://${profile.url}`,
+      })],
+      spacing: { after: 40 },
+    }))
+  }
+  const loc = [basics?.location?.city, basics?.location?.region].filter(Boolean).join(', ')
+  if (loc) {
+    railContactParas.push(new Paragraph({
+      children: [new TextRun({ text: loc, font: bodyFont, size: 20, color: railSoft })],
+      spacing: { after: 40 },
+    }))
+  }
+  paras.push(...railContactParas)
 
   const railHeading = (text: string) => new Paragraph({
     children: [new TextRun({ text: text.toUpperCase(), bold: true, font: headFont, size: 24, color: railText })],
@@ -801,9 +815,13 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta, mode: ExportMode =
     if (contactRuns.length) contactRuns.push(sep())
     contactRuns.push(new TextRun({ text: basics.phone, font: bodyFont, size: 20, color: contactColor }))
   }
-  if (basics.url) {
+  for (const profile of basics.profiles ?? []) {
+    if (!profile.url) continue
     if (contactRuns.length) contactRuns.push(sep())
-    contactRuns.push(new ExternalHyperlink({ children: [new TextRun({ text: basics.url, font: bodyFont, size: 20, color: linkColor, underline: linkUnderline })], link: ensureHttps(basics.url) }))
+    contactRuns.push(new ExternalHyperlink({
+      children: [new TextRun({ text: profile.label || profile.url, font: bodyFont, size: 20, color: linkColor, underline: linkUnderline })],
+      link: ensureHttps(profile.url),
+    }))
   }
   const contactLocation = [basics.location?.city, basics.location?.region].filter(Boolean).join(', ')
   if (contactLocation) {
