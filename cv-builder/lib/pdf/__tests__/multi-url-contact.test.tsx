@@ -38,3 +38,25 @@ describe('multi-URL contact row (PDF, designed mode)', () => {
     expect(buf.length).toBeGreaterThan(0)
   })
 })
+
+describe('multi-URL contact row (PDF, Sidebar template)', () => {
+  it('renders each profile as a clickable link in the rail', async () => {
+    const runs = await renderToGlyphRuns(
+      selectPdfTemplate(dataWithProfiles, { ...meta, templateId: 'sidebar' }, 'designed', 'CV') as React.ReactElement
+    )
+    const text = runs.map(r => r.str).join(' ')
+    expect(text).toContain('Portfolio')
+    expect(text).toContain('github.com/janesmith')
+  })
+})
+
+describe('multi-URL contact row (PDF, ats mode)', () => {
+  it('joins every profile URL into the single plain-text contact line', async () => {
+    const runs = await renderToGlyphRuns(
+      selectPdfTemplate(dataWithProfiles, meta, 'ats', 'CV') as React.ReactElement
+    )
+    const text = runs.map(r => r.str).join(' ')
+    expect(text).toContain('Portfolio')
+    expect(text).toContain('github.com/janesmith')
+  })
+})

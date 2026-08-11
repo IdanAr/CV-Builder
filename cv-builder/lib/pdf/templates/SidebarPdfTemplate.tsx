@@ -1,7 +1,7 @@
 import React from 'react'
-import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/renderer'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
-import { mapToPdfFont, inToPt, resolveSectionOrder, renderPdfRichText, renderPdfRichTextRuns, pdfDocumentProps } from './pdf-utils'
+import { mapToPdfFont, inToPt, resolveSectionOrder, renderPdfRichText, renderPdfRichTextRuns, ensureHttps, pdfDocumentProps } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { formatDateRange } from '@/lib/format-date'
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
@@ -503,14 +503,16 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
           <Text style={styles.railName}>{basics.name ?? ''}</Text>
           {basics.label ? <Text style={styles.railLabel}>{basics.label}</Text> : null}
           <View style={styles.railContact}>
-            {[
-              basics.email,
-              basics.phone,
-              basics.url,
-              [basics.location?.city, basics.location?.region].filter(Boolean).join(', '),
-            ].filter(Boolean).map((p, i) => (
-              <Text key={i} style={styles.railContactLine}>{p}</Text>
+            {basics.email ? <Text style={styles.railContactLine}>{basics.email}</Text> : null}
+            {basics.phone ? <Text style={styles.railContactLine}>{basics.phone}</Text> : null}
+            {(basics.profiles ?? []).filter((p) => p.url).map((p) => (
+              <Link key={p.id} src={ensureHttps(p.url!)} style={{ textDecoration: 'none' }}>
+                <Text style={styles.railContactLine}>{p.label || p.url}</Text>
+              </Link>
             ))}
+            {[basics.location?.city, basics.location?.region].filter(Boolean).join(', ') ? (
+              <Text style={styles.railContactLine}>{[basics.location?.city, basics.location?.region].filter(Boolean).join(', ')}</Text>
+            ) : null}
           </View>
           {railSections.map(renderRailSection)}
         </View>
