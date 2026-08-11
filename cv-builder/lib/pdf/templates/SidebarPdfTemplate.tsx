@@ -3,7 +3,7 @@ import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/rendere
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, renderPdfRichText, renderPdfRichTextRuns, ensureHttps, pdfDocumentProps } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
-import { formatDateRange } from '@/lib/format-date'
+import { formatDateRange, aggregateDateRange } from '@/lib/format-date'
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
 import { withLineHeights, PdfBullet, PdfEntryHead, sectionReserve, entryReserve } from './pdf-primitives'
 import { SIDEBAR_TOKENS as T } from '@/lib/design/tokens'
@@ -295,7 +295,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
               <Text style={styles.sectionTitle}>Work Experience</Text>
             </View>
             {work.map((job, i) => {
-              const dates = formatDateRange(job.startDate, job.endDate, true)
+              const dates = aggregateDateRange([{ startDate: job.startDate, endDate: job.endDate }, ...(job.roles ?? [])], true)
               return (
                 <View key={i} style={{ marginBottom: T.entryMarginBottom }}>
                   <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
@@ -317,6 +317,29 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
                       {renderPdfRichTextRuns(h)}
                     </PdfBullet>
                   ))}
+                  {(job.roles ?? []).map((role, ri) => {
+                    const roleDates = formatDateRange(role.startDate, role.endDate, true)
+                    return (
+                      <View key={role.id ?? ri} wrap={false} minPresenceAhead={ENTRY_RESERVE} style={{ marginTop: 4 }}>
+                        <PdfEntryHead
+                          style={{ marginBottom: 2 }}
+                          left={<Text style={styles.accent}>{role.position ?? ''}</Text>}
+                          right={roleDates ? <Text style={styles.small}>{roleDates}</Text> : undefined}
+                        />
+                        {renderPdfRichText(role.summary, styles.entrySummary)}
+                        {(role.highlights ?? []).map((h, hi) => (
+                          <PdfBullet
+                            key={hi}
+                            style={hi === 0 ? [styles.bulletHang, styles.bulletFirst] : styles.bulletHang}
+                            indent={T.bulletIndent}
+                            gap={T.bulletGap}
+                          >
+                            {renderPdfRichTextRuns(h)}
+                          </PdfBullet>
+                        ))}
+                      </View>
+                    )
+                  })}
                 </View>
               )
             })}
@@ -330,7 +353,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
               <Text style={styles.sectionTitle}>Education</Text>
             </View>
             {education.map((edu, i) => {
-              const dates = formatDateRange(edu.startDate, edu.endDate)
+              const dates = aggregateDateRange([{ startDate: edu.startDate, endDate: edu.endDate }, ...(edu.roles ?? [])])
               return (
                 <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                   <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
@@ -342,6 +365,19 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
                     <Text style={styles.degree}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
                   </View>
                   {edu.score ? <Text style={styles.small}>Score: {edu.score}</Text> : null}
+                  {(edu.roles ?? []).map((role, ri) => {
+                    const roleDates = formatDateRange(role.startDate, role.endDate)
+                    return (
+                      <View key={role.id ?? ri} wrap={false} minPresenceAhead={ENTRY_RESERVE} style={{ marginTop: 3 }}>
+                        <PdfEntryHead
+                          style={{ marginBottom: 2 }}
+                          left={<Text style={styles.degree}>{[role.studyType, role.area].filter(Boolean).join(' in ')}</Text>}
+                          right={roleDates ? <Text style={styles.small}>{roleDates}</Text> : undefined}
+                        />
+                        {role.score ? <Text style={styles.small}>Score: {role.score}</Text> : null}
+                      </View>
+                    )
+                  })}
                 </View>
               )
             })}
