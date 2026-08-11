@@ -50,6 +50,25 @@ describe('ExecutiveTemplate new sections', () => {
   })
 })
 
+describe('ExecutiveTemplate multi-URL contact row', () => {
+  it('renders each profile as a clickable link, using the label when present and the raw URL when not', () => {
+    const dataWithProfiles: ResumeData = {
+      basics: {
+        name: 'Jane Smith',
+        profiles: [
+          { id: 'p1', label: 'Portfolio', url: 'https://janesmith.dev' },
+          { id: 'p2', url: 'https://github.com/janesmith' },
+        ],
+      },
+    }
+    const { container } = render(<ExecutiveTemplate data={dataWithProfiles} meta={meta} />)
+    const links = Array.from(container.querySelectorAll('a')).filter(a => a.href.includes('janesmith'))
+    expect(links).toHaveLength(2)
+    expect(links.find(a => a.href === 'https://janesmith.dev/')?.textContent).toBe('Portfolio')
+    expect(links.find(a => a.href === 'https://github.com/janesmith')?.textContent).toBe('https://github.com/janesmith')
+  })
+})
+
 describe('ExecutiveTemplate layout', () => {
   it('renders a single column by default', () => {
     const { container } = render(<ExecutiveTemplate data={data} meta={meta} />)

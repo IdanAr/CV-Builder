@@ -305,7 +305,10 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
           const parts: React.ReactNode[] = []
           if (basics.email) parts.push(<a key="em" href={`mailto:${basics.email}`} style={{ color: 'inherit', textDecoration: 'none' }}>{basics.email}</a>)
           if (basics.phone) parts.push(basics.phone)
-          if (basics.url) parts.push(<a key="ul" href={eu(basics.url)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{basics.url}</a>)
+          for (const profile of basics.profiles ?? []) {
+            if (!profile.url) continue
+            parts.push(<a key={profile.id} href={eu(profile.url)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{profile.label || profile.url}</a>)
+          }
           const loc = [basics.location?.city, basics.location?.region].filter(Boolean).join(', ')
           if (loc) parts.push(loc)
           return parts.flatMap((p, i) => i < parts.length - 1 ? [p, '   |   '] : [p])
