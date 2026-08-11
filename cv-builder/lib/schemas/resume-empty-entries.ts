@@ -1,4 +1,4 @@
-import type { ResumeData } from './resume.zod'
+import type { ResumeData, WorkRole, EducationRole } from './resume.zod'
 
 export type WorkEntry = NonNullable<ResumeData['work']>[number]
 export type EducationEntry = NonNullable<ResumeData['education']>[number]
@@ -54,6 +54,14 @@ export function createEmptyProject(): ProjectEntry {
 
 export function createEmptyProfile(): ProfileEntry {
   return { id: crypto.randomUUID(), label: '', url: '' }
+}
+
+export function createEmptyWorkRole(): WorkRole {
+  return { id: crypto.randomUUID(), position: '', startDate: '', endDate: '', summary: '', highlights: [] }
+}
+
+export function createEmptyEducationRole(): EducationRole {
+  return { id: crypto.randomUUID(), studyType: '', area: '', startDate: '', endDate: '', score: '', courses: [] }
 }
 
 export const EMPTY_ENTRY_FACTORIES: Record<string, () => unknown> = {
