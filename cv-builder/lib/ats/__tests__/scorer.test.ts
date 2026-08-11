@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { scoreResume } from '../scorer'
+import { scoreResume, flattenAllText } from '../scorer'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 const fullData: ResumeData = {
@@ -360,5 +360,32 @@ describe('scoreResume — jdKeywordsOverride', () => {
   it('empty-jobDescription short-circuit still includes an empty jdKeywords field', () => {
     const result = scoreResume({}, '')
     expect(result.jdKeywords).toEqual([])
+  })
+})
+
+describe('nested roles', () => {
+  it('flattenAllText includes a second role\'s position, summary, and highlights', () => {
+    const data: ResumeData = {
+      work: [{
+        name: 'Meta', position: 'Data Analyst', highlights: [],
+        roles: [{ id: 'r1', position: 'Data Team Lead', summary: 'Led the team.', highlights: ['Grew headcount 3x'] }],
+      }],
+    }
+    const text = flattenAllText(data)
+    expect(text).toContain('Data Team Lead')
+    expect(text).toContain('Led the team.')
+    expect(text).toContain('Grew headcount 3x')
+  })
+
+  it('scoreResume matches a JD keyword that only appears in a second role\'s highlights', () => {
+    const data: ResumeData = {
+      basics: { name: 'Jane', email: 'jane@example.com' },
+      work: [{
+        name: 'Meta', position: 'Data Analyst', startDate: '2019', highlights: ['Built dashboards'],
+        roles: [{ id: 'r1', position: 'Data Team Lead', startDate: '2021', highlights: ['Led Snowflake migration'] }],
+      }],
+    }
+    const result = scoreResume(data, 'Looking for someone with Snowflake experience')
+    expect(result.matchedKeywords).toContain('snowflake')
   })
 })

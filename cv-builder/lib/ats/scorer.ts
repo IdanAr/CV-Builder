@@ -30,11 +30,20 @@ export function flattenAllText(data: ResumeData): string {
     if (job.position) parts.push(job.position)
     if (job.summary) parts.push(job.summary)
     parts.push(...(job.highlights ?? []))
+    for (const role of job.roles ?? []) {
+      if (role.position) parts.push(role.position)
+      if (role.summary) parts.push(role.summary)
+      parts.push(...(role.highlights ?? []))
+    }
   }
   for (const edu of data.education ?? []) {
     if (edu.institution) parts.push(edu.institution)
     if (edu.area) parts.push(edu.area)
     if (edu.studyType) parts.push(edu.studyType)
+    for (const role of edu.roles ?? []) {
+      if (role.area) parts.push(role.area)
+      if (role.studyType) parts.push(role.studyType)
+    }
   }
   for (const s of data.skills ?? []) {
     if (s.name) parts.push(s.name)
@@ -67,6 +76,10 @@ function flattenHighValueText(data: ResumeData): string {
     if (job.position) parts.push(job.position)
     if (job.name) parts.push(job.name)
     parts.push(...(job.highlights ?? []))
+    for (const role of job.roles ?? []) {
+      if (role.position) parts.push(role.position)
+      parts.push(...(role.highlights ?? []))
+    }
   }
   return parts.join(' ')
 }
@@ -90,7 +103,7 @@ function scoreFormat(data: ResumeData): number {
 
   // 4. Highlights are real bullets (10-400 chars), not placeholders or paragraph-dumps
   const highlights = [
-    ...work.flatMap(j => j.highlights ?? []),
+    ...work.flatMap(j => [...(j.highlights ?? []), ...(j.roles ?? []).flatMap(r => r.highlights ?? [])]),
     ...(data.volunteer ?? []).flatMap(v => v.highlights ?? []),
     ...(data.projects ?? []).flatMap(p => p.highlights ?? []),
   ]
@@ -116,7 +129,7 @@ const METRIC_PATTERN = /\d+%|\$\d+|\d+[xX]|\d{2,}|\d+\s*(people|team|users|custo
 
 function scoreMetrics(data: ResumeData): number {
   const highlights = [
-    ...(data.work ?? []).flatMap(j => j.highlights ?? []),
+    ...(data.work ?? []).flatMap(j => [...(j.highlights ?? []), ...(j.roles ?? []).flatMap(r => r.highlights ?? [])]),
     ...(data.volunteer ?? []).flatMap(v => v.highlights ?? []),
     ...(data.projects ?? []).flatMap(p => p.highlights ?? []),
   ]
