@@ -14,11 +14,16 @@ const SYSTEM_PROMPT = `You are a CV parser. Extract structured data from the CV 
 
 Rules:
 - Only include fields explicitly stated in the text
-- Dates must be strings in YYYY-MM or YYYY format
+- Dates must be strings in YYYY-MM or YYYY format. If an end date is described as ongoing (e.g. "Present", "Current", "Now", regardless of the capitalization used in the text), omit endDate entirely instead of writing that word — a missing endDate is how this app represents "still ongoing"
 - skills[].keywords = flat array of individual skill strings
 - If a section is absent, omit it entirely — do not return empty arrays
 - Any CV section that does not map to a field below (e.g. Military Service, Courses, Achievements) goes into customSections with its original heading as "name" — never discard section content
 - Military service is not volunteer work and not employment — it always goes into customSections
+- Every "work" entry's job title(s) and every "education" entry's degree(s) always go in that entry's "roles" array — never on the entry's own top-level fields, even when the company/institution has only one role. "roles" always has at least one element for every work/education entry
+- A company or institution can list more than one role in two different text shapes: (a) each title has its own date range printed next to it, or (b) ONE date range is printed once for the whole company/institution block and multiple title lines follow it with no date of their own (a promotion/role change within one tenure — the title lines are still each role's own heading, distinct from the summary/bullet text that follows them). Recognize both shapes as multi-role; in shape (b), leave startDate/endDate blank on every role that has no date printed next to its own title — do not invent one or copy the block's shared date onto it
+- Count roles strictly by the number of distinct title lines actually printed for that company/institution — never merge two differently-titled roles into one, and never split a single title into two roles. List roles in the exact top-to-bottom order they are printed in the source text — do not reorder them by guessing which is more recent
+- Keep each bullet point as its own separate string in the "highlights" array of whichever role's title it physically appears under in the text — copy it verbatim, do not paraphrase it into a "summary" sentence, do not move it to a different role, and do not repeat it under more than one role
+- Apply the same one-role-per-title, verbatim-bullet, source-order rules to a Military Service customSections item when it lists more than one rank or role in sequence — group those into that item's "roles" array the same way
 - Do not generate ids
 - Return raw JSON only — no markdown fences, no explanation, no prose
 
@@ -26,9 +31,11 @@ JSON shape (all fields optional):
 {
   "basics": { "name", "label", "email", "phone", "url", "summary",
     "location": { "city", "region", "countryCode" },
-    "profiles": [{ "network", "username", "url" }] },
-  "work": [{ "name", "position", "startDate", "endDate", "summary", "highlights": [] }],
-  "education": [{ "institution", "area", "studyType", "startDate", "endDate", "score" }],
+    "profiles": [{ "label", "network", "username", "url" }] },
+  "work": [{ "name",
+    "roles": [{ "position", "startDate", "endDate", "summary", "highlights": [] }] }],
+  "education": [{ "institution",
+    "roles": [{ "studyType", "area", "startDate", "endDate", "score" }] }],
   "skills": [{ "name", "keywords": [] }],
   "certificates": [{ "name", "date", "issuer" }],
   "awards": [{ "title", "date", "awarder", "summary" }],
@@ -37,7 +44,8 @@ JSON shape (all fields optional):
   "languages": [{ "language", "fluency" }],
   "interests": [{ "name", "keywords": [] }],
   "projects": [{ "name", "description", "keywords": [], "startDate", "endDate" }],
-  "customSections": [{ "name", "items": [{ "title", "subtitle", "url", "startDate", "endDate", "summary", "highlights": [], "keywords": [] }] }]
+  "customSections": [{ "name", "items": [{ "title", "subtitle", "url", "startDate", "endDate", "summary", "highlights": [], "keywords": [],
+    "roles": [{ "title", "subtitle", "startDate", "endDate", "summary", "highlights": [] }] }] }]
 }`
 
 const MAX_TEXT_LENGTH = 50_000
@@ -49,6 +57,10 @@ export async function extractResume(text: string): Promise<ResumeData> {
   const msg = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 4096,
+    // Extraction must be deterministic — the same CV text uploaded twice
+    // should parse the same way. Uncontrolled sampling (the SDK default)
+    // was the main source of run-to-run differences in role/bullet splitting.
+    temperature: 0,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: `CV text:\n\n${truncated}` }],
   })
@@ -66,7 +78,7 @@ export async function extractResume(text: string): Promise<ResumeData> {
     throw new ExtractionError('AI returned unstructured output. Please try again.')
   }
 
-  const normalized = normalizeCustomSections(sanitizeForSchema(parsed))
+  const normalized = assignRoleIds(normalizeCustomSections(assignProfileIds(sanitizeForSchema(parsed))))
   const result = ResumeDataSchema.safeParse(normalized)
   if (!result.success) {
     throw new ExtractionError('AI returned data that did not match the expected resume format. Please try again.')
@@ -157,6 +169,7 @@ function normalizeCustomSections(data: unknown): unknown {
         startDate: str(item.startDate), endDate: str(item.endDate),
         summary: str(item.summary), highlights: strArr(item.highlights),
         keywords: strArr(item.keywords), level: str(item.level),
+        roles: Array.isArray(item.roles) ? item.roles : undefined,
       }))))
     }
   }
@@ -175,6 +188,53 @@ function normalizeCustomSections(data: unknown): unknown {
 
   if (sections.length > 0) obj.customSections = sections
   else delete obj.customSections
+  return obj
+}
+
+// The prompt explicitly tells the model not to generate ids, but ProfileSchema.id
+// is required — assign one to each AI-returned profile before schema validation.
+function assignProfileIds(data: unknown): unknown {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return data
+  const obj = data as Record<string, unknown>
+  const basics = obj.basics
+  if (!basics || typeof basics !== 'object' || Array.isArray(basics)) return data
+  const b = basics as Record<string, unknown>
+  if (!Array.isArray(b.profiles)) return data
+  return {
+    ...obj,
+    basics: {
+      ...b,
+      profiles: b.profiles.map((p) => (p && typeof p === 'object' ? { id: randomUUID(), ...p } : p)),
+    },
+  }
+}
+
+// The prompt tells the model to group consecutive same-company/institution
+// roles into a "roles" array but not to generate ids — WorkRoleSchema,
+// EducationRoleSchema, and CustomSectionRoleSchema all require one, so assign
+// them here, after normalizeCustomSections (which is what moves AI-returned
+// customSections items — and their nested roles — into their final shape).
+function assignRoleIds(data: unknown): unknown {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return data
+  const obj = { ...(data as Record<string, unknown>) }
+
+  const withRoleIds = (entry: unknown): unknown => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry
+    const e = entry as Record<string, unknown>
+    if (!Array.isArray(e.roles)) return e
+    return { ...e, roles: e.roles.map((r) => (r && typeof r === 'object' ? { id: randomUUID(), ...r } : r)) }
+  }
+
+  if (Array.isArray(obj.work)) obj.work = obj.work.map(withRoleIds)
+  if (Array.isArray(obj.education)) obj.education = obj.education.map(withRoleIds)
+  if (Array.isArray(obj.customSections)) {
+    obj.customSections = obj.customSections.map((section: unknown) => {
+      if (!section || typeof section !== 'object' || Array.isArray(section)) return section
+      const s = section as Record<string, unknown>
+      if (!Array.isArray(s.items)) return s
+      return { ...s, items: s.items.map(withRoleIds) }
+    })
+  }
   return obj
 }
 

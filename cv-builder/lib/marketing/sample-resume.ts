@@ -11,7 +11,7 @@ export const SAMPLE_RESUME_DATA: ResumeData = {
     location: { city: 'Austin', region: 'TX' },
     summary:
       'Product designer with 8+ years crafting data-heavy B2B tools. Led design for a checkout redesign that lifted conversion 18%.',
-    profiles: [{ network: 'LinkedIn', username: 'jordanavery', url: 'https://linkedin.com/in/jordanavery' }],
+    profiles: [{ id: 'linkedin', network: 'LinkedIn', username: 'jordanavery', url: 'https://linkedin.com/in/jordanavery' }],
   },
   work: [
     {

@@ -28,6 +28,7 @@ const fixture: ResumeData = {
   basics: {
     name: 'Jane Smith', label: 'Principal Architect',
     email: 'jane.smith@example.com', phone: '+1 555 0100', url: 'janesmith.dev',
+    profiles: [{ id: 'p1', url: 'janesmith.dev' }],
     location: { city: 'Tel Aviv', region: 'IL' },
     summary: 'Engineer with a decade of platform experience.',
   },

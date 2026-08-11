@@ -45,22 +45,34 @@ export function renderPdfRichText(
   // One <Text> block per paragraph: paragraphs stay visually distinct via a
   // real inter-block gap instead of a blank line inside a single <Text> — an
   // empty line there has no glyphs to carry the font and forces a bare, unembedded
-  // Helvetica fallback into the file.
+  // Helvetica fallback into the file. Within a paragraph, each line is its own
+  // nested <Text> so a soft line break (single \n) renders as a real new line
+  // without the full paragraph gap.
   const paragraphs = splitParagraphs(text)
   if (paragraphs.length === 0) return null
   const base: Style[] = Array.isArray(baseStyle) ? baseStyle : baseStyle ? [baseStyle] : []
-  return paragraphs.map((paragraph, i) => (
+  return paragraphs.map((lines, i) => (
     <Text key={i} style={i === 0 ? base : [...base, { marginTop: PARAGRAPH_GAP_PT }]}>
-      {richTextInlineRuns(paragraph)}
+      {lines.map((line, li) => (
+        <Text key={li} style={li === 0 ? undefined : { marginTop: 0 }}>
+          {richTextInlineRuns(line, li > 0 ? '\n' : '')}
+        </Text>
+      ))}
     </Text>
   ))
 }
 
-/** Inline <Text> run nodes for one paragraph, carrying bold/italic/underline. */
-function richTextInlineRuns(paragraph: string): React.ReactNode {
-  const runs = parseRichText(paragraph)
+/**
+ * Inline <Text> run nodes for one line, carrying bold/italic/underline.
+ * `prefix` (a literal '\n' for soft-break lines after the first) is folded
+ * into the first run's own text rather than rendered as a sibling text node —
+ * a bare '\n' as its own child hits the same base-14 fallback as an empty
+ * line, since it carries no glyphs of its own to anchor an embedded font.
+ */
+function richTextInlineRuns(line: string, prefix = ''): React.ReactNode {
+  const runs = parseRichText(line)
   if (runs.length === 1 && !runs[0].bold && !runs[0].italic && !runs[0].underline) {
-    return runs[0].text
+    return prefix + runs[0].text
   }
   return runs.map((run, i) => {
     const style: Record<string, string> = {}
@@ -69,7 +81,7 @@ function richTextInlineRuns(paragraph: string): React.ReactNode {
     if (run.underline) style.textDecoration = 'underline'
     return (
       <Text key={i} style={Object.keys(style).length ? style : undefined}>
-        {run.text}
+        {i === 0 ? prefix + run.text : run.text}
       </Text>
     )
   })

@@ -89,4 +89,70 @@ describe('CustomSectionForm', () => {
     render(<CustomSectionForm sectionId="sec1" />)
     expect(screen.getByDisplayValue('Existing summary')).toBeTruthy()
   })
+
+  it('shows the Roles toggle in the field chips', () => {
+    mockStore({
+      id: 'cs1',
+      name: 'Military Service',
+      enabledFields: [] as CustomSectionFieldType[],
+      items: [],
+    })
+    render(<CustomSectionForm sectionId="cs1" />)
+    expect(screen.getByText('Roles')).toBeInTheDocument()
+  })
+
+  it('shows the add-role control on an item only when Roles is enabled', () => {
+    mockStore({
+      id: 'cs1',
+      name: 'Military Service',
+      enabledFields: ['roles'] as CustomSectionFieldType[],
+      items: [{ id: 'i1', title: 'IDF' }],
+    })
+    render(<CustomSectionForm sectionId="cs1" />)
+    expect(screen.getByText('+ Add role')).toBeInTheDocument()
+  })
+
+  it('adds a role to an item', () => {
+    mockStore({
+      id: 'cs1',
+      name: 'Military Service',
+      enabledFields: ['roles'] as CustomSectionFieldType[],
+      items: [{ id: 'i1', title: 'IDF' }],
+    })
+    render(<CustomSectionForm sectionId="cs1" />)
+    fireEvent.click(screen.getByText('+ Add role'))
+    expect(updateCustomSection).toHaveBeenCalledWith('cs1', {
+      items: [{ id: 'i1', title: 'IDF', roles: [expect.objectContaining({ id: expect.any(String) })] }],
+    })
+  })
+
+  it('shows a role card seeded from legacy item.subtitle when Roles is toggled on for a pre-existing item', () => {
+    mockStore({
+      id: 'cs1',
+      name: 'Military Service',
+      enabledFields: ['subtitle', 'roles'] as CustomSectionFieldType[],
+      items: [{ id: 'i1', title: 'IDF', subtitle: 'Team Commander' }],
+    })
+    render(<CustomSectionForm sectionId="cs1" />)
+    // The legacy subtitle becomes the first (only) role's own subtitle field —
+    // not lost, and not shown a second time as a flat item-level field.
+    expect(screen.getByDisplayValue('Team Commander')).toBeTruthy()
+  })
+
+  it('folds the legacy role into roles[] and clears the flat fields once any role is edited', () => {
+    mockStore({
+      id: 'cs1',
+      name: 'Military Service',
+      enabledFields: ['subtitle', 'roles'] as CustomSectionFieldType[],
+      items: [{ id: 'i1', title: 'IDF', subtitle: 'Team Commander' }],
+    })
+    render(<CustomSectionForm sectionId="cs1" />)
+    fireEvent.click(screen.getByText('+ Add role'))
+    const call = updateCustomSection.mock.calls[0]
+    expect(call[0]).toBe('cs1')
+    const updatedItem = call[1].items[0]
+    expect(updatedItem.subtitle).toBeUndefined()
+    expect(updatedItem.roles).toHaveLength(2)
+    expect(updatedItem.roles[0].subtitle).toBe('Team Commander')
+  })
 })

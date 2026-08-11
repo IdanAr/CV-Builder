@@ -185,20 +185,26 @@ export function stripRichText(input: string): string {
 }
 
 /**
- * Splits a text field into its visual paragraphs, separated by blank lines.
+ * Splits a text field into paragraphs, each as an array of its lines.
  *
  * A blank line (one or more consecutive newlines, CRLF-normalized) starts a new
- * paragraph; a lone newline inside a paragraph is collapsed to a space, exactly
- * as HTML flow layout does — this keeps the browser preview, the PDF and any
- * other consumer in agreement about where a break falls. Callers render each
- * returned string as its own block so paragraphs are visually distinct without
- * embedding an empty line (an empty line in a @react-pdf <Text> has no glyphs
+ * paragraph. A single newline within a paragraph is preserved as a soft line
+ * break — callers render each line of a paragraph on its own visual line
+ * (e.g. joined by <br/> on the web, one nested block per line in the PDF, a
+ * Break run in DOCX) without starting a new paragraph block. Callers render
+ * each paragraph as its own block so paragraphs stay visually distinct without
+ * embedding a blank line (an empty line in a @react-pdf <Text> has no glyphs
  * to carry the font and forces a bare-Helvetica fallback).
  */
-export function splitParagraphs(input: string): string[] {
+export function splitParagraphs(input: string): string[][] {
   return input
     .replace(/\r\n?/g, '\n')
-    .split(/\n[ \t]*\n+/)
-    .map((p) => p.replace(/\s+/g, ' ').trim())
-    .filter((p) => p.length > 0)
+    .split(/\n\n+/)
+    .map((para) =>
+      para
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+    )
+    .filter((lines) => lines.length > 0)
 }

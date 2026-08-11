@@ -7,7 +7,9 @@ import {
 } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { formatDate, formatDateRange } from '@/lib/format-date'
+import { resolveWorkRoles, resolveEducationRoles } from '@/lib/roles'
 import { withLineHeights, sectionReserve, entryReserve } from './pdf-primitives'
+import { resolveProfiles } from '@/lib/basics-profiles'
 
 const PAGE_FONT_SIZE = 10.5
 
@@ -49,7 +51,8 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
   }), lineHeight)
 
   const contactLine = [
-    basics.email, basics.phone, basics.url,
+    basics.email, basics.phone,
+    ...resolveProfiles(basics).filter((p) => p.url).map((p) => (p.label ? `${p.label}: ${p.url}` : p.url)),
     [basics.location?.city, basics.location?.region].filter(Boolean).join(', '),
   ].filter(Boolean).join(' | ')
 
@@ -90,18 +93,27 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
             <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
               <Text style={styles.sectionTitle}>WORK EXPERIENCE</Text>
             </View>
-            {work.map((job, i) => (
-              <View key={i} style={{ marginBottom: 5 }}>
-                <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
-                  {entryHead(job.name ?? '', formatDateRange(job.startDate, job.endDate, true))}
-                  {job.position ? <Text style={styles.position}>{job.position}</Text> : null}
+            {work.map((job, i) => {
+              const roles = resolveWorkRoles(job)
+              return (
+                <View key={i} style={{ marginBottom: 5 }}>
+                  <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                    {entryHead(job.name ?? '', '')}
+                  </View>
+                  {roles.map((role, ri) => (
+                    <React.Fragment key={role.id ?? ri}>
+                      <View wrap={false} minPresenceAhead={ENTRY_RESERVE} style={{ marginTop: ri === 0 ? 0 : 3 }}>
+                        {entryHead(role.position ?? '', formatDateRange(role.startDate, role.endDate))}
+                      </View>
+                      {renderPdfRichText(role.summary, styles.body)}
+                      {(role.highlights ?? []).map((h, hi) => (
+                        <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                      ))}
+                    </React.Fragment>
+                  ))}
                 </View>
-                {renderPdfRichText(job.summary, styles.body)}
-                {(job.highlights ?? []).map((h, hi) => (
-                  <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
-                ))}
-              </View>
-            ))}
+              )
+            })}
           </View>
         )
       case 'education':
@@ -111,15 +123,22 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
             <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
               <Text style={styles.sectionTitle}>EDUCATION</Text>
             </View>
-            {education.map((edu, i) => (
-              <View key={i} style={{ marginBottom: 4 }}>
-                <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
-                  {entryHead(edu.institution ?? '', formatDateRange(edu.startDate, edu.endDate))}
-                  <Text style={styles.body}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
+            {education.map((edu, i) => {
+              const roles = resolveEducationRoles(edu)
+              return (
+                <View key={i} style={{ marginBottom: 4 }}>
+                  <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
+                    {entryHead(edu.institution ?? '', '')}
+                  </View>
+                  {roles.map((role, ri) => (
+                    <View key={role.id ?? ri} wrap={false} minPresenceAhead={ENTRY_RESERVE} style={{ marginTop: ri === 0 ? 0 : 2 }}>
+                      {entryHead([role.studyType, role.area].filter(Boolean).join(' in '), formatDateRange(role.startDate, role.endDate))}
+                      {role.score ? <Text style={styles.small}>Score: {role.score}</Text> : null}
+                    </View>
+                  ))}
                 </View>
-                {edu.score ? <Text style={styles.small}>Score: {edu.score}</Text> : null}
-              </View>
-            ))}
+              )
+            })}
           </View>
         )
       case 'skills':
@@ -215,7 +234,7 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
             {volunteer.map((v, i) => (
               <View key={i} style={{ marginBottom: 5 }}>
                 <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
-                  {entryHead(v.organization ?? '', formatDateRange(v.startDate, v.endDate, true))}
+                  {entryHead(v.organization ?? '', formatDateRange(v.startDate, v.endDate))}
                   {v.position ? <Text style={styles.position}>{v.position}</Text> : null}
                 </View>
                 {renderPdfRichText(v.summary, styles.body)}

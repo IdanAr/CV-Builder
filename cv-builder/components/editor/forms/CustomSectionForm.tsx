@@ -5,9 +5,10 @@ import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { MonthYearPicker } from './MonthYearPicker'
 import { RichTextField } from './RichTextField'
+import { resolveCustomSectionRoles } from '@/lib/roles'
 import { CUSTOM_SECTION_FIELDS } from '@/lib/schemas/resume.zod'
 import { inputClass as sharedInputClass } from './field-styles'
-import type { CustomSection, CustomSectionItem, CustomSectionFieldType } from '@/lib/schemas/resume.zod'
+import type { CustomSection, CustomSectionItem, CustomSectionRole, CustomSectionFieldType } from '@/lib/schemas/resume.zod'
 
 const FIELD_LABELS: Record<CustomSectionFieldType, string> = {
   subtitle: 'Subtitle',
@@ -17,11 +18,16 @@ const FIELD_LABELS: Record<CustomSectionFieldType, string> = {
   highlights: 'Bullets',
   keywords: 'Keywords',
   level: 'Level',
+  roles: 'Roles',
 }
 
 const inputClass = `${sharedInputClass} appearance-none`
 
 function createEmptyItem(): CustomSectionItem {
+  return { id: crypto.randomUUID() }
+}
+
+function createEmptyRole(): CustomSectionRole {
   return { id: crypto.randomUUID() }
 }
 
@@ -36,17 +42,27 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
   const id = useId()
   const set = (f: keyof CustomSectionItem, v: string) => onUpdate({ ...item, [f]: v })
   const setArr = (f: 'highlights' | 'keywords', v: string[]) => onUpdate({ ...item, [f]: v })
+  const hasRoles = enabledFields.includes('roles')
 
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-2 items-start">
-        <label htmlFor={`${id}-title`} className="sr-only">Title</label>
-        <input id={`${id}-title`} type="text" value={item.title ?? ''} onChange={(e) => set('title', e.target.value)}
-          placeholder="Title" className={`${inputClass} flex-1`} />
-        <button type="button" onClick={onRemove} aria-label="Remove item"
-          className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
-      </div>
+  const roles = resolveCustomSectionRoles(item)
+  const setRoles = (roles: CustomSectionRole[]) => onUpdate({
+    ...item, roles,
+    subtitle: undefined, startDate: undefined, endDate: undefined, summary: undefined,
+    highlights: undefined, keywords: undefined, level: undefined,
+  })
 
+  // url has no per-role equivalent (same as Work/Education's company-level
+  // url) — it always stays on the item, whether or not roles is enabled.
+  const urlField = enabledFields.includes('url') && (
+    <>
+      <label htmlFor={`${id}-url`} className="sr-only">URL</label>
+      <input id={`${id}-url`} type="url" value={item.url ?? ''} onChange={(e) => set('url', e.target.value)}
+        placeholder="URL" className={inputClass} />
+    </>
+  )
+
+  const flatFields = (
+    <>
       {enabledFields.includes('subtitle') && (
         <>
           <label htmlFor={`${id}-subtitle`} className="sr-only">Subtitle</label>
@@ -62,13 +78,7 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
         </div>
       )}
 
-      {enabledFields.includes('url') && (
-        <>
-          <label htmlFor={`${id}-url`} className="sr-only">URL</label>
-          <input id={`${id}-url`} type="url" value={item.url ?? ''} onChange={(e) => set('url', e.target.value)}
-            placeholder="URL" className={inputClass} />
-        </>
-      )}
+      {urlField}
 
       {enabledFields.includes('summary') && (
         <>
@@ -150,6 +160,134 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
             <option value="Beginner">Beginner</option>
           </select>
         </>
+      )}
+    </>
+  )
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2 items-start">
+        <label htmlFor={`${id}-title`} className="sr-only">Title</label>
+        <input id={`${id}-title`} type="text" value={item.title ?? ''} onChange={(e) => set('title', e.target.value)}
+          placeholder="Title" className={`${inputClass} flex-1`} />
+        <button type="button" onClick={onRemove} aria-label="Remove item"
+          className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
+      </div>
+
+      {hasRoles ? (
+        <div className="pl-3 border-l-2 border-indigo-100 space-y-3">
+          {urlField && <div className="space-y-2">{urlField}</div>}
+          <ListFieldManager<CustomSectionRole>
+            items={roles}
+            onChange={setRoles}
+            createEmpty={createEmptyRole}
+            addLabel="Add role"
+            renderItem={(role, _, onUpdateRole, onRemoveRole) => (
+              <RoleForm role={role} enabledFields={enabledFields} onUpdate={onUpdateRole} onRemove={onRemoveRole} />
+            )}
+          />
+        </div>
+      ) : (
+        <div className="space-y-2">{flatFields}</div>
+      )}
+    </div>
+  )
+}
+
+function RoleForm({
+  role, enabledFields, onUpdate, onRemove,
+}: {
+  role: CustomSectionRole
+  enabledFields: CustomSectionFieldType[]
+  onUpdate: (v: CustomSectionRole) => void
+  onRemove: () => void
+}) {
+  const id = useId()
+  const set = (f: 'title' | 'subtitle' | 'startDate' | 'endDate' | 'summary' | 'level', v: string) => onUpdate({ ...role, [f]: v })
+  const setArr = (f: 'highlights' | 'keywords', v: string[]) => onUpdate({ ...role, [f]: v })
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2 items-start">
+        <label htmlFor={`${id}-title`} className="sr-only">Title</label>
+        <input id={`${id}-title`} type="text" value={role.title ?? ''} onChange={(e) => set('title', e.target.value)}
+          placeholder="Title" className={`${inputClass} flex-1`} />
+        <button type="button" onClick={onRemove} aria-label="Remove role"
+          className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
+      </div>
+      {enabledFields.includes('subtitle') && (
+        <input type="text" value={role.subtitle ?? ''} onChange={(e) => set('subtitle', e.target.value)}
+          placeholder="Subtitle" className={inputClass} />
+      )}
+      {enabledFields.includes('dateRange') && (
+        <div className="grid grid-cols-2 gap-2">
+          <MonthYearPicker value={role.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
+          <MonthYearPicker value={role.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
+        </div>
+      )}
+      {enabledFields.includes('summary') && (
+        <RichTextField value={role.summary ?? ''} onChange={(v) => set('summary', v)} placeholder="Description..." />
+      )}
+      {enabledFields.includes('highlights') && (
+        <fieldset className="space-y-1 border-0 p-0 m-0">
+          <legend className="text-xs text-indigo-500 font-medium p-0">Bullets</legend>
+          {(role.highlights ?? []).map((h, i) => (
+            <div key={i} className="flex gap-2 items-start">
+              <RichTextField
+                value={h}
+                onChange={(v) => {
+                  const next = [...(role.highlights ?? [])]
+                  next[i] = v
+                  setArr('highlights', next)
+                }}
+                placeholder="Bullet point..."
+                ariaLabel={`Bullet ${i + 1}`}
+                className="flex-1"
+                height={120}
+              />
+              <button type="button"
+                onClick={() => setArr('highlights', (role.highlights ?? []).filter((_, idx) => idx !== i))}
+                className="text-gray-400 hover:text-red-500 text-sm mt-6">✕</button>
+            </div>
+          ))}
+          <button type="button"
+            onClick={() => setArr('highlights', [...(role.highlights ?? []), ''])}
+            className="text-xs text-indigo-500 hover:text-indigo-700">+ Add bullet</button>
+        </fieldset>
+      )}
+      {enabledFields.includes('keywords') && (
+        <div className="space-y-1">
+          <div className="text-xs text-indigo-500 font-medium">Keywords</div>
+          <div className="flex flex-wrap gap-1">
+            {(role.keywords ?? []).map((kw, i) => (
+              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs">
+                {kw}
+                <button type="button"
+                  onClick={() => setArr('keywords', (role.keywords ?? []).filter((_, idx) => idx !== i))}
+                  className="hover:text-red-500">×</button>
+              </span>
+            ))}
+          </div>
+          <input type="text" placeholder="Add keyword, press Enter" className={inputClass}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                const val = (e.target as HTMLInputElement).value.trim()
+                if (val) {
+                  setArr('keywords', [...(role.keywords ?? []), val]);
+                  (e.target as HTMLInputElement).value = ''
+                }
+              }
+            }} />
+        </div>
+      )}
+      {enabledFields.includes('level') && (
+        <select value={role.level ?? ''} onChange={(e) => set('level', e.target.value)} className={inputClass}>
+          <option value="">Select level…</option>
+          <option value="Expert">Expert</option>
+          <option value="Advanced">Advanced</option>
+          <option value="Intermediate">Intermediate</option>
+          <option value="Beginner">Beginner</option>
+        </select>
       )}
     </div>
   )

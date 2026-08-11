@@ -1,5 +1,6 @@
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 import { extractKeywords, keywordOverlap } from './keywords'
+import { resolveWorkRoles, resolveEducationRoles } from '@/lib/roles'
 
 export interface AtsScoreResult {
   total: number
@@ -27,14 +28,18 @@ export function flattenAllText(data: ResumeData): string {
   if (b.summary) parts.push(b.summary)
   for (const job of data.work ?? []) {
     if (job.name) parts.push(job.name)
-    if (job.position) parts.push(job.position)
-    if (job.summary) parts.push(job.summary)
-    parts.push(...(job.highlights ?? []))
+    for (const role of resolveWorkRoles(job)) {
+      if (role.position) parts.push(role.position)
+      if (role.summary) parts.push(role.summary)
+      parts.push(...(role.highlights ?? []))
+    }
   }
   for (const edu of data.education ?? []) {
     if (edu.institution) parts.push(edu.institution)
-    if (edu.area) parts.push(edu.area)
-    if (edu.studyType) parts.push(edu.studyType)
+    for (const role of resolveEducationRoles(edu)) {
+      if (role.area) parts.push(role.area)
+      if (role.studyType) parts.push(role.studyType)
+    }
   }
   for (const s of data.skills ?? []) {
     if (s.name) parts.push(s.name)
@@ -64,9 +69,11 @@ function flattenHighValueText(data: ResumeData): string {
   if (b.label) parts.push(b.label)
   if (b.summary) parts.push(b.summary)
   for (const job of (data.work ?? []).slice(0, 2)) {
-    if (job.position) parts.push(job.position)
     if (job.name) parts.push(job.name)
-    parts.push(...(job.highlights ?? []))
+    for (const role of resolveWorkRoles(job)) {
+      if (role.position) parts.push(role.position)
+      parts.push(...(role.highlights ?? []))
+    }
   }
   return parts.join(' ')
 }
@@ -81,16 +88,16 @@ function scoreFormat(data: ResumeData): number {
   // 2. Meaningful summary: at least 40 characters after trimming
   if (b.summary && b.summary.trim().length >= 40) score += 5
 
-  // 3. Work entries structurally complete: name + position + startDate
+  // 3. Work entries structurally complete: name + at least one role with position + startDate
   const work = data.work ?? []
   if (work.length > 0) {
-    const complete = work.filter(j => j.name && j.position && j.startDate)
+    const complete = work.filter(j => j.name && resolveWorkRoles(j).some(r => r.position && r.startDate))
     score += Math.round(5 * (complete.length / work.length))
   }
 
   // 4. Highlights are real bullets (10-400 chars), not placeholders or paragraph-dumps
   const highlights = [
-    ...work.flatMap(j => j.highlights ?? []),
+    ...work.flatMap(j => resolveWorkRoles(j).flatMap(r => r.highlights ?? [])),
     ...(data.volunteer ?? []).flatMap(v => v.highlights ?? []),
     ...(data.projects ?? []).flatMap(p => p.highlights ?? []),
   ]
@@ -116,7 +123,7 @@ const METRIC_PATTERN = /\d+%|\$\d+|\d+[xX]|\d{2,}|\d+\s*(people|team|users|custo
 
 function scoreMetrics(data: ResumeData): number {
   const highlights = [
-    ...(data.work ?? []).flatMap(j => j.highlights ?? []),
+    ...(data.work ?? []).flatMap(j => resolveWorkRoles(j).flatMap(r => r.highlights ?? [])),
     ...(data.volunteer ?? []).flatMap(v => v.highlights ?? []),
     ...(data.projects ?? []).flatMap(p => p.highlights ?? []),
   ]

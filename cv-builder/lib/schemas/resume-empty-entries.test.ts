@@ -6,16 +6,22 @@ import {
 } from './resume-empty-entries'
 
 describe('resume-empty-entries', () => {
-  it('creates an empty work entry with the expected shape', () => {
-    expect(createEmptyWork()).toEqual({
-      name: '', position: '', url: '', startDate: '', endDate: '', summary: '', highlights: [],
-    })
+  it('creates an empty work entry seeded with one empty role', () => {
+    const work = createEmptyWork()
+    expect(work.name).toBe('')
+    expect(work.url).toBe('')
+    expect(work.roles).toHaveLength(1)
+    expect(work.roles?.[0]).toMatchObject({ position: '', startDate: '', endDate: '', summary: '', highlights: [] })
+    expect(work.roles?.[0].id).toBeTruthy()
   })
 
-  it('creates an empty education entry with the expected shape', () => {
-    expect(createEmptyEducation()).toEqual({
-      institution: '', url: '', area: '', studyType: '', startDate: '', endDate: '', score: '', courses: [],
-    })
+  it('creates an empty education entry seeded with one empty role', () => {
+    const education = createEmptyEducation()
+    expect(education.institution).toBe('')
+    expect(education.url).toBe('')
+    expect(education.roles).toHaveLength(1)
+    expect(education.roles?.[0]).toMatchObject({ studyType: '', area: '', startDate: '', endDate: '', score: '', courses: [] })
+    expect(education.roles?.[0].id).toBeTruthy()
   })
 
   it('creates an empty skill entry with the expected shape', () => {
@@ -59,6 +65,6 @@ describe('resume-empty-entries', () => {
       'awards', 'certificates', 'education', 'interests', 'languages',
       'projects', 'publications', 'skills', 'volunteer', 'work',
     ])
-    expect(EMPTY_ENTRY_FACTORIES.work()).toEqual(createEmptyWork())
+    expect(EMPTY_ENTRY_FACTORIES.work()).toMatchObject({ name: '', url: '' })
   })
 })

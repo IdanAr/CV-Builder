@@ -240,3 +240,95 @@ describe('ResumeMetaPatchSchema — excludedAtsKeywords', () => {
     }
   })
 })
+
+describe('BasicsSchema.profiles', () => {
+  it('accepts a profile with id, label, and url', () => {
+    const result = ResumeDataSchema.safeParse({
+      basics: { profiles: [{ id: 'p1', label: 'LinkedIn', url: 'https://linkedin.com/in/jane' }] },
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a profile with no label (falls back to raw URL at render time)', () => {
+    const result = ResumeDataSchema.safeParse({
+      basics: { profiles: [{ id: 'p1', url: 'https://janesmith.dev' }] },
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('still accepts legacy network/username fields for backward compat', () => {
+    const result = ResumeDataSchema.safeParse({
+      basics: { profiles: [{ id: 'p1', network: 'GitHub', username: 'janesmith', url: 'https://github.com/janesmith' }] },
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('self-heals a profile with no id by assigning a fresh one', () => {
+    const result = ResumeDataSchema.safeParse({
+      basics: { profiles: [{ url: 'https://janesmith.dev' }] },
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.basics?.profiles?.[0]?.id).toBeTruthy()
+    }
+  })
+
+  it('self-heals a legacy id-less profile (pre-existing AI-extracted data) instead of rejecting it', () => {
+    const result = PatchResumeSchema.safeParse({
+      data: { basics: { profiles: [{ network: 'LinkedIn', username: 'jane', url: 'https://linkedin.com/in/jane' }] } },
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      const profile = result.data.data?.basics?.profiles?.[0]
+      expect(profile?.id).toBeTruthy()
+      expect(typeof profile?.id).toBe('string')
+    }
+  })
+})
+
+describe('nested roles', () => {
+  it('accepts a work entry with an empty roles array (default single-role shape unaffected)', () => {
+    const result = ResumeDataSchema.safeParse({
+      work: [{ name: 'Acme', position: 'Engineer' }],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a work entry with additional roles', () => {
+    const result = ResumeDataSchema.safeParse({
+      work: [{
+        name: 'Meta', position: 'Data Analyst', startDate: '2019-01', endDate: '2021-01',
+        roles: [{ id: 'r1', position: 'Data Team Lead', startDate: '2021-01', endDate: undefined, summary: 'Led the team.', highlights: ['Grew headcount 3x'] }],
+      }],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts an education entry with additional roles (programs)', () => {
+    const result = ResumeDataSchema.safeParse({
+      education: [{
+        institution: 'MIT', studyType: 'BSc', area: 'CS',
+        roles: [{ id: 'r1', studyType: 'MSc', area: 'CS', startDate: '2020-09', endDate: '2022-06' }],
+      }],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a custom section item with additional roles when enabledFields includes roles', () => {
+    const result = CustomSectionSchema.safeParse({
+      id: 'cs1', name: 'Military Service', enabledFields: ['dateRange', 'roles'],
+      items: [{
+        id: 'i1', title: 'IDF - Intelligence Corps',
+        roles: [{ id: 'r1', title: 'Team Commander', startDate: '2018-01', endDate: '2020-01' }],
+      }],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a role missing an id', () => {
+    const result = ResumeDataSchema.safeParse({
+      work: [{ name: 'Meta', roles: [{ position: 'Lead' }] }],
+    })
+    expect(result.success).toBe(false)
+  })
+})

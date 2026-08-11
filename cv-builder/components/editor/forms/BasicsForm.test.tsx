@@ -44,3 +44,46 @@ it('preserves existing fields when updating one', () => {
   expect(b?.email).toBe('jane@test.com')
   expect(b?.phone).toBe('555-0000')
 })
+
+it('migrates a legacy basics.url into the profiles list on render, unlabeled', () => {
+  useResumeEditorStore.setState({
+    ...useResumeEditorStore.getState(),
+    data: { basics: { url: 'https://janesmith.dev' } },
+  })
+  render(<BasicsForm />)
+  expect(screen.getByDisplayValue('https://janesmith.dev')).toBeInTheDocument()
+})
+
+it('adds a new URL row when Add URL is clicked', () => {
+  useResumeEditorStore.setState({
+    ...useResumeEditorStore.getState(),
+    data: { basics: {} },
+  })
+  render(<BasicsForm />)
+  fireEvent.click(screen.getByText('+ Add URL'))
+  expect(useResumeEditorStore.getState().data.basics?.profiles).toHaveLength(1)
+})
+
+it('persists the migrated URL into profiles and clears basics.url once any URL row is edited', () => {
+  useResumeEditorStore.setState({
+    ...useResumeEditorStore.getState(),
+    data: { basics: { url: 'https://janesmith.dev' } },
+  })
+  render(<BasicsForm />)
+  fireEvent.change(screen.getByPlaceholderText('Label (optional — leave blank to show the link itself)'), {
+    target: { value: 'Portfolio' },
+  })
+  const basics = useResumeEditorStore.getState().data.basics
+  expect(basics?.url).toBeUndefined()
+  expect(basics?.profiles).toEqual([{ id: 'migrated-url', label: 'Portfolio', url: 'https://janesmith.dev' }])
+})
+
+it('removes a URL row', () => {
+  useResumeEditorStore.setState({
+    ...useResumeEditorStore.getState(),
+    data: { basics: { profiles: [{ id: 'p1', label: '', url: 'https://a.dev' }] } },
+  })
+  render(<BasicsForm />)
+  fireEvent.click(screen.getByLabelText('Remove URL'))
+  expect(useResumeEditorStore.getState().data.basics?.profiles).toHaveLength(0)
+})

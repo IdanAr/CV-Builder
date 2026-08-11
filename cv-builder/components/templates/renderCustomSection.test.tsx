@@ -116,4 +116,31 @@ describe('renderCustomSection', () => {
     render(<div>{renderCustomSection(section, styles, 'custom:1')}</div>)
     expect(screen.queryByText('https://hidden.com')).toBeNull()
   })
+
+  it('renders nested roles beneath the item when enabledFields includes roles', () => {
+    const section: CustomSection = {
+      id: 'cs1', name: 'Military Service', enabledFields: ['dateRange', 'summary', 'roles'],
+      items: [{
+        id: 'i1', title: 'IDF - Intelligence Corps', startDate: '2016-03', endDate: '2018-03',
+        roles: [{ id: 'r1', title: 'Team Commander', startDate: '2018-03', endDate: '2019-03', summary: 'Led a 6-person team.' }],
+      }],
+    }
+    const { container } = render(
+      <div>{renderCustomSection(section, { sectionTitle: {}, accentColor: '#0066cc' }, 'custom:cs1')}</div>
+    )
+    const text = container.textContent ?? ''
+    expect(text).toContain('Team Commander')
+    expect(text).toContain('Led a 6-person team.')
+  })
+
+  it('does not render a roles block when enabledFields excludes roles', () => {
+    const section: CustomSection = {
+      id: 'cs1', name: 'Military Service', enabledFields: ['dateRange'],
+      items: [{ id: 'i1', title: 'IDF', roles: [{ id: 'r1', title: 'Team Commander' }] }],
+    }
+    const { container } = render(
+      <div>{renderCustomSection(section, { sectionTitle: {}, accentColor: '#0066cc' }, 'custom:cs1')}</div>
+    )
+    expect(container.textContent ?? '').not.toContain('Team Commander')
+  })
 })

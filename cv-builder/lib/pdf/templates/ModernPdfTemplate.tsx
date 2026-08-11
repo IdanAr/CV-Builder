@@ -2,9 +2,11 @@
 import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/renderer'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns, pdfDocumentProps } from './pdf-utils'
+import { resolveProfiles } from '@/lib/basics-profiles'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { getColumnSide } from '@/lib/get-column-side'
 import { formatDateRange } from '@/lib/format-date'
+import { resolveWorkRoles, resolveEducationRoles } from '@/lib/roles'
 import { withLineHeights, PdfBullet, PdfEntryHead, sectionReserve, entryReserve } from './pdf-primitives'
 import { MODERN_TOKENS as T } from '@/lib/design/tokens'
 
@@ -49,7 +51,10 @@ export function ModernPdfTemplate({ data, meta, title }: { data: ResumeData; met
     const items: Array<{ label: string; href: string }> = []
     if (basics.email) items.push({ label: basics.email, href: `mailto:${basics.email}` })
     if (basics.phone) items.push({ label: basics.phone, href: '' })
-    if (basics.url) items.push({ label: basics.url, href: ensureHttps(basics.url) })
+    for (const profile of resolveProfiles(basics)) {
+      if (!profile.url) continue
+      items.push({ label: profile.label || profile.url, href: ensureHttps(profile.url) })
+    }
     const loc = [basics.location?.city, basics.location?.region].filter(Boolean).join(', ')
     if (loc) items.push({ label: loc, href: '' })
     if (!items.length) return null
@@ -84,28 +89,43 @@ export function ModernPdfTemplate({ data, meta, title }: { data: ResumeData; met
               <Text style={styles.sectionTitle}>Work Experience</Text>
             </View>
             {work.map((job, i) => {
-              const dates = formatDateRange(job.startDate, job.endDate, true)
+              const roles = resolveWorkRoles(job)
               return (
                 <View key={i} style={{ marginBottom: T.entryMarginBottom }}>
                   <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
                     <PdfEntryHead
                       style={{ marginBottom: 2 }}
                       left={<Text style={styles.bold}>{job.name ?? ''}</Text>}
-                      right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
                     />
-                    <Text style={styles.accent}>{job.position ?? ''}</Text>
                   </View>
-                  {renderPdfRichText(job.summary, styles.entrySummary)}
-                  {(job.highlights ?? []).map((h, hi) => (
-                    <PdfBullet
-                      key={hi}
-                      style={hi === 0 ? [styles.bulletHang, styles.bulletFirst] : styles.bulletHang}
-                      indent={T.bulletIndent}
-                      gap={T.bulletGap}
-                    >
-                      {renderPdfRichTextRuns(h)}
-                    </PdfBullet>
-                  ))}
+                  {roles.map((role, ri) => {
+                    const roleDates = formatDateRange(role.startDate, role.endDate)
+                    return (
+                      <React.Fragment key={role.id ?? ri}>
+                        <View wrap={false} minPresenceAhead={ENTRY_RESERVE} style={{ marginTop: ri === 0 ? 0 : 4 }}>
+                          <PdfEntryHead
+                            style={{ marginBottom: 2 }}
+                            left={<Text style={styles.accent}>{role.position ?? ''}</Text>}
+                            right={roleDates ? <Text style={styles.small}>{roleDates}</Text> : undefined}
+                          />
+                        </View>
+                        {/* summary/highlights stay outside wrap={false} — an
+                            unbounded highlight longer than a page must still
+                            paginate instead of crashing react-pdf. */}
+                        {renderPdfRichText(role.summary, styles.entrySummary)}
+                        {(role.highlights ?? []).map((h, hi) => (
+                          <PdfBullet
+                            key={hi}
+                            style={hi === 0 ? [styles.bulletHang, styles.bulletFirst] : styles.bulletHang}
+                            indent={T.bulletIndent}
+                            gap={T.bulletGap}
+                          >
+                            {renderPdfRichTextRuns(h)}
+                          </PdfBullet>
+                        ))}
+                      </React.Fragment>
+                    )
+                  })}
                 </View>
               )
             })}
@@ -119,18 +139,28 @@ export function ModernPdfTemplate({ data, meta, title }: { data: ResumeData; met
               <Text style={styles.sectionTitle}>Education</Text>
             </View>
             {education.map((edu, i) => {
-              const dates = formatDateRange(edu.startDate, edu.endDate)
+              const roles = resolveEducationRoles(edu)
               return (
                 <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                   <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
                     <PdfEntryHead
                       style={{ marginBottom: 2 }}
                       left={<Text style={styles.bold}>{edu.institution ?? ''}</Text>}
-                      right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
                     />
-                    <Text style={styles.degree}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
                   </View>
-                  {edu.score ? <Text style={styles.small}>Score: {edu.score}</Text> : null}
+                  {roles.map((role, ri) => {
+                    const roleDates = formatDateRange(role.startDate, role.endDate)
+                    return (
+                      <View key={role.id ?? ri} wrap={false} minPresenceAhead={ENTRY_RESERVE} style={{ marginTop: ri === 0 ? 0 : 3 }}>
+                        <PdfEntryHead
+                          style={{ marginBottom: 2 }}
+                          left={<Text style={styles.degree}>{[role.studyType, role.area].filter(Boolean).join(' in ')}</Text>}
+                          right={roleDates ? <Text style={styles.small}>{roleDates}</Text> : undefined}
+                        />
+                        {role.score ? <Text style={styles.small}>Score: {role.score}</Text> : null}
+                      </View>
+                    )
+                  })}
                 </View>
               )
             })}
@@ -240,7 +270,7 @@ export function ModernPdfTemplate({ data, meta, title }: { data: ResumeData; met
               <Text style={styles.sectionTitle}>Volunteer</Text>
             </View>
             {volunteer.map((v, i) => {
-              const dates = formatDateRange(v.startDate, v.endDate, true)
+              const dates = formatDateRange(v.startDate, v.endDate)
               return (
                 <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                   <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>

@@ -15,21 +15,21 @@ describe('formatDateRange', () => {
   it('joins start and end with a plain hyphen', () => {
     expect(formatDateRange('2020-01', '2022-06')).toBe('01/2020 - 06/2022')
   })
-  it('falls back to Present for open-ended ranges when requested', () => {
-    expect(formatDateRange('2020-01', undefined, true)).toBe('01/2020 - Present')
+  it('shows Present when end is literally "Present"', () => {
+    expect(formatDateRange('2020-01', 'Present')).toBe('01/2020 - Present')
   })
-  it('omits Present when not requested', () => {
+  it('omits any end token when end is missing — never assumes Present', () => {
     expect(formatDateRange('2020-01', undefined)).toBe('01/2020')
   })
-  it('returns Present alone when only the flag applies', () => {
-    expect(formatDateRange(undefined, undefined, true)).toBe('Present')
+  it('returns Present alone when only end is "Present"', () => {
+    expect(formatDateRange(undefined, 'Present')).toBe('Present')
   })
   it('returns empty string when nothing is set', () => {
     expect(formatDateRange(undefined, undefined)).toBe('')
   })
-  it('treats null the same as undefined', () => {
+  it('treats null the same as undefined — no assumed Present', () => {
     expect(formatDateRange(null, null)).toBe('')
-    expect(formatDateRange('2020-01', null, true)).toBe('01/2020 - Present')
+    expect(formatDateRange('2020-01', null)).toBe('01/2020')
   })
   it('returns only end when start is absent', () => {
     expect(formatDateRange(undefined, '2022-06')).toBe('06/2022')

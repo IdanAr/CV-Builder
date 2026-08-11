@@ -108,3 +108,56 @@ describe('SidebarTemplate rail typography bands', () => {
     expect(parseFloat(langBlock.style.fontSize)).toBeGreaterThanOrEqual(10)
   })
 })
+
+describe('SidebarTemplate rail contact links', () => {
+  it('renders each profile in the rail as a clickable link', () => {
+    const dataWithProfiles: ResumeData = {
+      basics: {
+        name: 'Jane Smith',
+        profiles: [{ id: 'p1', label: 'Portfolio', url: 'https://janesmith.dev' }],
+      },
+    }
+    const { container } = render(<SidebarTemplate data={dataWithProfiles} meta={meta} />)
+    const link = container.querySelector('a[href="https://janesmith.dev"]')
+    expect(link?.textContent).toBe('Portfolio')
+  })
+})
+
+describe('SidebarTemplate nested work roles', () => {
+  it('shows each role\'s own date range, with no company-level aggregate', () => {
+    const dataWithRoles: ResumeData = {
+      work: [{
+        name: 'Meta', position: 'Data Analyst', startDate: '2019-01', endDate: '2021-01', highlights: [],
+        roles: [{ id: 'r1', position: 'Data Team Lead', startDate: '2021-01', endDate: 'Present', summary: 'Led the team.', highlights: ['Grew headcount 3x'] }],
+      }],
+    }
+    const { container } = render(<SidebarTemplate data={dataWithRoles} meta={meta} />)
+    const text = container.textContent ?? ''
+    expect(text).not.toContain('01/2019 - Present') // no more company-level aggregate
+    expect(text).toContain('Data Analyst')
+    expect(text).toContain('01/2019') // role 1's own date
+    expect(text).toContain('01/2021 - Present') // role 2's own date
+    expect(text).toContain('Data Team Lead')
+    expect(text).toContain('Led the team.')
+    expect(text).toContain('Grew headcount 3x')
+  })
+})
+
+describe('SidebarTemplate nested education roles', () => {
+  it('shows each program\'s own date range, with no institution-level aggregate', () => {
+    const dataWithRoles: ResumeData = {
+      education: [{
+        institution: 'MIT', studyType: 'BSc', area: 'CS', startDate: '2015-09', endDate: '2019-06',
+        roles: [{ id: 'r1', studyType: 'MSc', area: 'CS', startDate: '2020-09', endDate: '2022-06', score: '3.9' }],
+      }],
+    }
+    const { container } = render(<SidebarTemplate data={dataWithRoles} meta={meta} />)
+    const text = container.textContent ?? ''
+    expect(text).not.toContain('09/2015 - 06/2022') // no more institution-level aggregate
+    expect(text).toContain('BSc in CS')
+    expect(text).toContain('09/2015 - 06/2019') // role 1's own date
+    expect(text).toContain('09/2020 - 06/2022') // role 2's own date
+    expect(text).toContain('MSc in CS')
+    expect(text).toContain('Score: 3.9')
+  })
+})

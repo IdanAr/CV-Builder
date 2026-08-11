@@ -1,4 +1,4 @@
-import type { ResumeData } from './resume.zod'
+import type { ResumeData, WorkRole, EducationRole } from './resume.zod'
 
 export type WorkEntry = NonNullable<ResumeData['work']>[number]
 export type EducationEntry = NonNullable<ResumeData['education']>[number]
@@ -10,13 +10,14 @@ export type VolunteerEntry = NonNullable<ResumeData['volunteer']>[number]
 export type LanguageEntry = NonNullable<ResumeData['languages']>[number]
 export type InterestEntry = NonNullable<ResumeData['interests']>[number]
 export type ProjectEntry = NonNullable<ResumeData['projects']>[number]
+export type ProfileEntry = NonNullable<NonNullable<ResumeData['basics']>['profiles']>[number]
 
 export function createEmptyWork(): WorkEntry {
-  return { name: '', position: '', url: '', startDate: '', endDate: '', summary: '', highlights: [] }
+  return { name: '', url: '', roles: [createEmptyWorkRole()] }
 }
 
 export function createEmptyEducation(): EducationEntry {
-  return { institution: '', url: '', area: '', studyType: '', startDate: '', endDate: '', score: '', courses: [] }
+  return { institution: '', url: '', roles: [createEmptyEducationRole()] }
 }
 
 export function createEmptySkill(): SkillEntry {
@@ -49,6 +50,18 @@ export function createEmptyInterest(): InterestEntry {
 
 export function createEmptyProject(): ProjectEntry {
   return { name: '', description: '', highlights: [], keywords: [], startDate: '', endDate: '', url: '' }
+}
+
+export function createEmptyProfile(): ProfileEntry {
+  return { id: crypto.randomUUID(), label: '', url: '' }
+}
+
+export function createEmptyWorkRole(): WorkRole {
+  return { id: crypto.randomUUID(), position: '', startDate: '', endDate: '', summary: '', highlights: [] }
+}
+
+export function createEmptyEducationRole(): EducationRole {
+  return { id: crypto.randomUUID(), studyType: '', area: '', startDate: '', endDate: '', score: '', courses: [] }
 }
 
 export const EMPTY_ENTRY_FACTORIES: Record<string, () => unknown> = {

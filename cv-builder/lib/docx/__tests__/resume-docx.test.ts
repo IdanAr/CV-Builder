@@ -314,6 +314,26 @@ async function docxParts(doc: ReturnType<typeof buildDocx>): Promise<{ documentX
   return { documentXml, stylesXml }
 }
 
+describe('soft line breaks', () => {
+  it('renders a single newline within a highlight as a line break, not a space', async () => {
+    const data: ResumeData = {
+      work: [{ name: 'Acme', position: 'Engineer', highlights: ['Line one\nLine two'] }],
+    }
+    const xml = await documentXml(buildDocx(data, defaultMeta))
+    expect(xml).toContain('<w:br')
+    expect(xml).not.toMatch(/Line one\s+Line two/) // not collapsed to a space by any earlier step
+  })
+
+  it('renders a blank line as a separate Paragraph, not a Break', async () => {
+    const data: ResumeData = {
+      basics: { name: 'X', summary: 'Para one\n\nPara two' },
+    }
+    const xml = await documentXml(buildDocx(data, defaultMeta))
+    expect(xml).toContain('Para one')
+    expect(xml).toContain('Para two')
+  })
+})
+
 describe('docx outline verification (Word nav pane / ATS outline, structural replacement for opening in Word)', () => {
   it('styles.xml defines Heading1 and Title exactly once each, under their real built-in Word names', async () => {
     const { stylesXml } = await docxParts(buildDocx(sampleData, defaultMeta, 'designed'))
@@ -348,5 +368,97 @@ describe('docx outline verification (Word nav pane / ATS outline, structural rep
     expect(headingParagraph![0]).toContain('Work Experience')
     // The style now owns sizing -- no inline <w:sz> left on the run
     expect(headingParagraph![0]).not.toContain('<w:sz')
+  })
+})
+
+describe('multiple labeled URLs', () => {
+  const dataWithProfiles: ResumeData = {
+    basics: {
+      name: 'Jane Smith',
+      profiles: [
+        { id: 'p1', label: 'Portfolio', url: 'https://janesmith.dev' },
+        { id: 'p2', url: 'https://github.com/janesmith' },
+      ],
+    },
+  }
+
+  it('renders each profile as a hyperlink in the main header contact row', async () => {
+    const xml = await documentXml(buildDocx(dataWithProfiles, defaultMeta))
+    expect(xml).toContain('Portfolio')
+    expect(xml).toContain('github.com/janesmith')
+    expect(xml).toContain('hyperlink') // ExternalHyperlink relationship marker, per existing XML-inspection convention
+  })
+
+  it('renders each profile in the Sidebar rail contact block', async () => {
+    const xml = await documentXml(buildDocx(dataWithProfiles, { ...defaultMeta, templateId: 'sidebar' }))
+    expect(xml).toContain('Portfolio')
+    expect(xml).toContain('github.com/janesmith')
+  })
+})
+
+describe('nested roles', () => {
+  const dataWithWorkRoles: ResumeData = {
+    work: [{
+      name: 'Meta', position: 'Data Analyst', startDate: '2019-01', endDate: '2021-01', highlights: [],
+      roles: [{ id: 'r1', position: 'Data Team Lead', startDate: '2021-01', endDate: undefined, summary: 'Led the team.', highlights: ['Grew headcount 3x'] }],
+    }],
+  }
+
+  it('renders the aggregate range in the work entry heading and both roles beneath it', async () => {
+    const xml = await documentXml(buildDocx(dataWithWorkRoles, defaultMeta))
+    expect(xml).toContain('Meta')
+    expect(xml).toContain('Data Analyst')
+    expect(xml).toContain('Data Team Lead')
+    expect(xml).toContain('Grew headcount 3x')
+  })
+
+  it('renders nested education roles', async () => {
+    const xml = await documentXml(buildDocx({
+      education: [{
+        institution: 'MIT', studyType: 'BSc', area: 'CS', startDate: '2015-09', endDate: '2019-06',
+        roles: [{ id: 'r1', studyType: 'MSc', area: 'CS', startDate: '2020-09', endDate: '2022-06' }],
+      }],
+    }, defaultMeta))
+    expect(xml).toContain('BSc')
+    expect(xml).toContain('MSc')
+  })
+
+  it('renders nested custom-section roles (Military Service)', async () => {
+    const xml = await documentXml(buildDocx({
+      customSections: [{
+        id: 'cs1', name: 'Military Service', enabledFields: ['dateRange', 'roles'],
+        items: [{ id: 'i1', title: 'IDF', roles: [{ id: 'r1', title: 'Team Commander' }] }],
+      }],
+    }, { ...defaultMeta, sectionOrder: ['custom:cs1'] }))
+    expect(xml).toContain('Team Commander')
+  })
+
+  it('renders nested work roles in the Sidebar rail when work is assigned left', async () => {
+    const xml = await documentXml(buildDocx(dataWithWorkRoles, { ...defaultMeta, templateId: 'sidebar', columnAssignment: { work: 'left' } }))
+    expect(xml).toContain('Data Team Lead')
+  })
+
+  it('does not render a roles block in the main column when enabledFields excludes roles', async () => {
+    const xml = await documentXml(buildDocx({
+      customSections: [{
+        id: 'cs1', name: 'Military Service', enabledFields: ['dateRange'],
+        items: [{ id: 'i1', title: 'IDF', roles: [{ id: 'r1', title: 'Team Commander', summary: 'Led a squad.' }] }],
+      }],
+    }, { ...defaultMeta, sectionOrder: ['custom:cs1'] }))
+    expect(xml).toContain('IDF')
+    expect(xml).not.toContain('Team Commander')
+    expect(xml).not.toContain('Led a squad.')
+  })
+
+  it('does not render a roles block in the Sidebar rail when enabledFields excludes roles', async () => {
+    const xml = await documentXml(buildDocx({
+      customSections: [{
+        id: 'cs1', name: 'Military Service', enabledFields: ['dateRange'],
+        items: [{ id: 'i1', title: 'IDF', roles: [{ id: 'r1', title: 'Team Commander', summary: 'Led a squad.' }] }],
+      }],
+    }, { ...defaultMeta, templateId: 'sidebar', sectionOrder: ['custom:cs1'], columnAssignment: { 'custom:cs1': 'left' } }))
+    expect(xml).toContain('IDF')
+    expect(xml).not.toContain('Team Commander')
+    expect(xml).not.toContain('Led a squad.')
   })
 })

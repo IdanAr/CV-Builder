@@ -54,6 +54,12 @@ describe('extractResume', () => {
     expect(sentContent.length).toBeLessThanOrEqual(50_020)
   })
 
+  it('pins temperature to 0 so identical CV text parses identically on repeat uploads', async () => {
+    mockResponse('{}')
+    await extractResume('CV text')
+    expect(mockCreate.mock.calls[0][0].temperature).toBe(0)
+  })
+
   it('throws ExtractionError when Claude returns a non-text content block', async () => {
     mockCreate.mockResolvedValueOnce({ content: [{ type: 'tool_use', id: 'x' }] })
     await expect(extractResume('CV text')).rejects.toThrow(ExtractionError)
@@ -134,5 +140,45 @@ describe('extractResume', () => {
     }))
     const result = await extractResume('CV text')
     expect(result.customSections?.map((cs) => cs.name)).toEqual(['Military Service', 'Projects'])
+  })
+
+  it('preserves a labeled profile URL from the AI response', async () => {
+    mockResponse(JSON.stringify({
+      basics: { name: 'Jane Smith', profiles: [{ label: 'Portfolio', url: 'https://janesmith.dev' }] },
+    }))
+    const result = await extractResume('Jane Smith\nPortfolio: https://janesmith.dev')
+    expect(result.basics?.profiles?.[0]).toMatchObject({ label: 'Portfolio', url: 'https://janesmith.dev' })
+  })
+
+  it('assigns ids to work-entry roles returned by the AI and preserves them through validation', async () => {
+    mockResponse(JSON.stringify({
+      work: [{
+        name: 'Meta', position: 'Data Analyst', startDate: '2019-01', endDate: '2021-01',
+        roles: [{ position: 'Data Team Lead', startDate: '2021-01', summary: 'Led the team.' }],
+      }],
+    }))
+    const result = await extractResume('Meta\nData Analyst 2019-2021\nData Team Lead 2021-Present\nLed the team.')
+    expect(result.work?.[0].roles?.[0]).toMatchObject({ position: 'Data Team Lead', summary: 'Led the team.' })
+    expect(result.work?.[0].roles?.[0].id).toBeTruthy()
+  })
+
+  it('assigns ids to education-entry roles', async () => {
+    mockResponse(JSON.stringify({
+      education: [{ institution: 'MIT', studyType: 'BSc', roles: [{ studyType: 'MSc', startDate: '2020-09' }] }],
+    }))
+    const result = await extractResume('MIT BSc\nMIT MSc 2020-09')
+    expect(result.education?.[0].roles?.[0].id).toBeTruthy()
+  })
+
+  it('assigns ids to custom-section-item roles (e.g. Military Service with rank progression)', async () => {
+    mockResponse(JSON.stringify({
+      customSections: [{
+        name: 'Military Service',
+        items: [{ title: 'IDF - Intelligence Corps', roles: [{ title: 'Team Commander', startDate: '2018-03' }] }],
+      }],
+    }))
+    const result = await extractResume('IDF - Intelligence Corps\nTeam Commander, 2018-03')
+    const section = result.customSections?.find(s => s.name === 'Military Service')
+    expect(section?.items[0].roles?.[0].id).toBeTruthy()
   })
 })

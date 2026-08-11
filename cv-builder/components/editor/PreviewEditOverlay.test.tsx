@@ -174,9 +174,10 @@ describe('PreviewEditOverlay add-entry', () => {
     render(<OneSectionHarness />)
     fireEvent.click(screen.getByTestId('pv-add-entry-work'))
     expect(useResumeEditorStore.getState().data.work).toHaveLength(2)
-    expect(useResumeEditorStore.getState().data.work?.[1]).toEqual({
-      name: '', position: '', url: '', startDate: '', endDate: '', summary: '', highlights: [],
-    })
+    const added = useResumeEditorStore.getState().data.work?.[1]
+    expect(added).toMatchObject({ name: '', url: '' })
+    expect(added?.roles).toHaveLength(1)
+    expect(added?.roles?.[0]).toMatchObject({ position: '', startDate: '', endDate: '', summary: '', highlights: [] })
     expect(useResumeEditorStore.getState().pendingFocus).toBe('work')
     // The new entry lands at index 1 (there was 1 entry before this click) —
     // ListFieldManager needs this exact index to scroll to/focus the right
@@ -267,8 +268,11 @@ describe('PreviewEditOverlay writes read live store state, not stale props', () 
     )
   }
 
-  const BLANK_WORK = {
-    name: '', position: '', url: '', startDate: '', endDate: '', summary: '', highlights: [],
+  function expectBlankWork(entry: unknown) {
+    expect(entry).toMatchObject({ name: '', url: '' })
+    const roles = (entry as { roles?: unknown[] }).roles
+    expect(roles).toHaveLength(1)
+    expect(roles?.[0]).toMatchObject({ position: '', startDate: '', endDate: '', summary: '', highlights: [] })
   }
 
   it('appends to the live work array when the store changed after render (concurrent edit is not discarded)', () => {
@@ -287,7 +291,7 @@ describe('PreviewEditOverlay writes read live store state, not stale props', () 
     expect(work).toHaveLength(3)
     expect(work[0].name).toBe('Acme Corp')
     expect(work[1].name).toBe('Globex')
-    expect(work[2]).toEqual(BLANK_WORK)
+    expectBlankWork(work[2])
   })
 
   it('keeps both additions when "+" is double-clicked before the props debounce catches up', () => {
@@ -303,8 +307,8 @@ describe('PreviewEditOverlay writes read live store state, not stale props', () 
     // first one's result, leaving length 2.
     expect(work).toHaveLength(3)
     expect(work[0].name).toBe('Acme')
-    expect(work[1]).toEqual(BLANK_WORK)
-    expect(work[2]).toEqual(BLANK_WORK)
+    expectBlankWork(work[1])
+    expectBlankWork(work[2])
   })
 
   it('re-adds a built-in onto the live sectionOrder when the store order changed after render', () => {

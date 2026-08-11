@@ -9,12 +9,13 @@ export function formatDate(dateStr: string | undefined | null): string {
 
 // Joins two dates with a plain hyphen (" - "), the most reliably parsed
 // separator for ATS date-range extraction (en-dashes confuse some parsers).
-// When `presentWhenOpen` is true, a missing end date renders as "Present".
+// "Present" only shows when `end` is literally that string (the sentinel
+// MonthYearPicker's "Present" checkbox writes) — a blank/unknown end date
+// must never be presented as "currently ongoing"; it just renders nothing.
 export function formatDateRange(
   start: string | undefined | null,
-  end: string | undefined | null,
-  presentWhenOpen = false
+  end: string | undefined | null
 ): string {
-  const endStr = formatDate(end) || (presentWhenOpen ? 'Present' : '')
+  const endStr = end === 'Present' ? 'Present' : formatDate(end)
   return [formatDate(start), endStr].filter(Boolean).join(' - ')
 }
