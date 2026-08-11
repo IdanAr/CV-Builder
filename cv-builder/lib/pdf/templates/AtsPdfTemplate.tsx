@@ -6,7 +6,7 @@ import {
   renderPdfRichText, renderPdfRichTextRuns,
 } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
-import { formatDate, formatDateRange } from '@/lib/format-date'
+import { formatDate, formatDateRange, aggregateDateRange } from '@/lib/format-date'
 import { withLineHeights, sectionReserve, entryReserve } from './pdf-primitives'
 
 const PAGE_FONT_SIZE = 10.5
@@ -94,12 +94,21 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
             {work.map((job, i) => (
               <View key={i} style={{ marginBottom: 5 }}>
                 <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
-                  {entryHead(job.name ?? '', formatDateRange(job.startDate, job.endDate, true))}
+                  {entryHead(job.name ?? '', aggregateDateRange([{ startDate: job.startDate, endDate: job.endDate }, ...(job.roles ?? [])], true))}
                   {job.position ? <Text style={styles.position}>{job.position}</Text> : null}
                 </View>
                 {renderPdfRichText(job.summary, styles.body)}
                 {(job.highlights ?? []).map((h, hi) => (
                   <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                ))}
+                {(job.roles ?? []).map((role, ri) => (
+                  <View key={role.id ?? ri} wrap={false} minPresenceAhead={ENTRY_RESERVE} style={{ marginTop: 3 }}>
+                    {entryHead(role.position ?? '', formatDateRange(role.startDate, role.endDate, true))}
+                    {renderPdfRichText(role.summary, styles.body)}
+                    {(role.highlights ?? []).map((h, hi) => (
+                      <Text key={hi} style={styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                    ))}
+                  </View>
                 ))}
               </View>
             ))}
@@ -115,10 +124,16 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
             {education.map((edu, i) => (
               <View key={i} style={{ marginBottom: 4 }}>
                 <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
-                  {entryHead(edu.institution ?? '', formatDateRange(edu.startDate, edu.endDate))}
+                  {entryHead(edu.institution ?? '', aggregateDateRange([{ startDate: edu.startDate, endDate: edu.endDate }, ...(edu.roles ?? [])]))}
                   <Text style={styles.body}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
                 </View>
                 {edu.score ? <Text style={styles.small}>Score: {edu.score}</Text> : null}
+                {(edu.roles ?? []).map((role, ri) => (
+                  <View key={role.id ?? ri} wrap={false} minPresenceAhead={ENTRY_RESERVE} style={{ marginTop: 2 }}>
+                    {entryHead([role.studyType, role.area].filter(Boolean).join(' in '), formatDateRange(role.startDate, role.endDate))}
+                    {role.score ? <Text style={styles.small}>Score: {role.score}</Text> : null}
+                  </View>
+                ))}
               </View>
             ))}
           </View>

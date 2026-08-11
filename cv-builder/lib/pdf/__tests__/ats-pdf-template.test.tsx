@@ -107,6 +107,30 @@ describe('AtsPdfTemplate', () => {
     expect(text).toContain('Level: Advanced')
   })
 
+  it('renders nested work roles in strict linear order (company, role 1, role 2)', async () => {
+    const withRoles: ResumeData = {
+      ...data,
+      work: [{
+        name: 'Meta', position: 'Data Analyst', startDate: '2019-01', endDate: '2021-01', highlights: [],
+        roles: [{ id: 'r1', position: 'Data Team Lead', startDate: '2021-01', endDate: undefined, highlights: [] }],
+      }],
+    }
+    const text = await extractText(<AtsPdfTemplate data={withRoles} meta={meta} />)
+    assertOrdered(text, ['Meta', 'Data Analyst', 'Data Team Lead'])
+  })
+
+  it('renders nested education roles in strict linear order (institution, role 1, role 2)', async () => {
+    const withRoles: ResumeData = {
+      ...data,
+      education: [{
+        institution: 'MIT', area: 'Computer Science', studyType: 'BSc', startDate: '2012-09', endDate: '2016-06',
+        roles: [{ id: 'r1', area: 'Data Science', studyType: 'MSc', startDate: '2016-09', endDate: '2018-06' }],
+      }],
+    }
+    const text = await extractText(<AtsPdfTemplate data={withRoles} meta={meta} />)
+    assertOrdered(text, ['MIT', 'BSc in Computer Science', 'MSc in Data Science'])
+  })
+
   it('preserves linear reading order across page breaks', async () => {
     const manyJobs: ResumeData = {
       ...data,
