@@ -19,6 +19,8 @@ Rules:
 - If a section is absent, omit it entirely — do not return empty arrays
 - Any CV section that does not map to a field below (e.g. Military Service, Courses, Achievements) goes into customSections with its original heading as "name" — never discard section content
 - Military service is not volunteer work and not employment — it always goes into customSections
+- When the CV text shows the same company or institution with more than one title/date-range pair in sequence (e.g. two job titles under one employer, or two degrees at one school), emit ONE entry with the earliest role's fields as the top-level position/startDate/endDate/summary/highlights, and put every additional role in that entry's "roles" array with the same per-role fields — do not emit separate top-level entries for each title
+- Apply the same grouping to a Military Service customSections item when it lists more than one rank or role in sequence
 - Do not generate ids
 - Return raw JSON only — no markdown fences, no explanation, no prose
 
@@ -27,8 +29,10 @@ JSON shape (all fields optional):
   "basics": { "name", "label", "email", "phone", "url", "summary",
     "location": { "city", "region", "countryCode" },
     "profiles": [{ "label", "network", "username", "url" }] },
-  "work": [{ "name", "position", "startDate", "endDate", "summary", "highlights": [] }],
-  "education": [{ "institution", "area", "studyType", "startDate", "endDate", "score" }],
+  "work": [{ "name", "position", "startDate", "endDate", "summary", "highlights": [],
+    "roles": [{ "position", "startDate", "endDate", "summary", "highlights": [] }] }],
+  "education": [{ "institution", "area", "studyType", "startDate", "endDate", "score",
+    "roles": [{ "studyType", "area", "startDate", "endDate", "score" }] }],
   "skills": [{ "name", "keywords": [] }],
   "certificates": [{ "name", "date", "issuer" }],
   "awards": [{ "title", "date", "awarder", "summary" }],
@@ -37,7 +41,8 @@ JSON shape (all fields optional):
   "languages": [{ "language", "fluency" }],
   "interests": [{ "name", "keywords": [] }],
   "projects": [{ "name", "description", "keywords": [], "startDate", "endDate" }],
-  "customSections": [{ "name", "items": [{ "title", "subtitle", "url", "startDate", "endDate", "summary", "highlights": [], "keywords": [] }] }]
+  "customSections": [{ "name", "items": [{ "title", "subtitle", "url", "startDate", "endDate", "summary", "highlights": [], "keywords": [],
+    "roles": [{ "title", "subtitle", "startDate", "endDate", "summary", "highlights": [] }] }] }]
 }`
 
 const MAX_TEXT_LENGTH = 50_000
@@ -66,7 +71,7 @@ export async function extractResume(text: string): Promise<ResumeData> {
     throw new ExtractionError('AI returned unstructured output. Please try again.')
   }
 
-  const normalized = normalizeCustomSections(assignProfileIds(sanitizeForSchema(parsed)))
+  const normalized = assignRoleIds(normalizeCustomSections(assignProfileIds(sanitizeForSchema(parsed))))
   const result = ResumeDataSchema.safeParse(normalized)
   if (!result.success) {
     throw new ExtractionError('AI returned data that did not match the expected resume format. Please try again.')
@@ -157,6 +162,7 @@ function normalizeCustomSections(data: unknown): unknown {
         startDate: str(item.startDate), endDate: str(item.endDate),
         summary: str(item.summary), highlights: strArr(item.highlights),
         keywords: strArr(item.keywords), level: str(item.level),
+        roles: Array.isArray(item.roles) ? item.roles : undefined,
       }))))
     }
   }
@@ -194,6 +200,35 @@ function assignProfileIds(data: unknown): unknown {
       profiles: b.profiles.map((p) => (p && typeof p === 'object' ? { id: randomUUID(), ...p } : p)),
     },
   }
+}
+
+// The prompt tells the model to group consecutive same-company/institution
+// roles into a "roles" array but not to generate ids — WorkRoleSchema,
+// EducationRoleSchema, and CustomSectionRoleSchema all require one, so assign
+// them here, after normalizeCustomSections (which is what moves AI-returned
+// customSections items — and their nested roles — into their final shape).
+function assignRoleIds(data: unknown): unknown {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return data
+  const obj = { ...(data as Record<string, unknown>) }
+
+  const withRoleIds = (entry: unknown): unknown => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry
+    const e = entry as Record<string, unknown>
+    if (!Array.isArray(e.roles)) return e
+    return { ...e, roles: e.roles.map((r) => (r && typeof r === 'object' ? { id: randomUUID(), ...r } : r)) }
+  }
+
+  if (Array.isArray(obj.work)) obj.work = obj.work.map(withRoleIds)
+  if (Array.isArray(obj.education)) obj.education = obj.education.map(withRoleIds)
+  if (Array.isArray(obj.customSections)) {
+    obj.customSections = obj.customSections.map((section: unknown) => {
+      if (!section || typeof section !== 'object' || Array.isArray(section)) return section
+      const s = section as Record<string, unknown>
+      if (!Array.isArray(s.items)) return s
+      return { ...s, items: s.items.map(withRoleIds) }
+    })
+  }
+  return obj
 }
 
 function sanitizeForSchema(data: unknown): unknown {
