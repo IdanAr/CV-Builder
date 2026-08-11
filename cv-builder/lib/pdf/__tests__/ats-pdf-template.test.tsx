@@ -23,7 +23,7 @@ const data: ResumeData = {
     summary: 'Engineer with a decade of platform experience.',
   },
   work: [{
-    name: 'Acme Corp', position: 'Senior Engineer', startDate: '2020-01',
+    name: 'Acme Corp', position: 'Senior Engineer', startDate: '2020-01', endDate: 'Present',
     summary: 'Led the platform team.',
     highlights: ['Cut infra costs 40%', 'Shipped v2 to 1M users'],
   }],
@@ -53,7 +53,7 @@ describe('AtsPdfTemplate', () => {
     const text = await extractText(<AtsPdfTemplate data={data} meta={meta} title="My Resume" />)
     assertOrdered(text, [
       'Jane Smith', 'Principal Architect', 'jane.smith@example.com',
-      'WORK EXPERIENCE', 'Acme Corp', '01/2020 - Present', 'Senior Engineer',
+      'WORK EXPERIENCE', 'Acme Corp', 'Senior Engineer', '01/2020 - Present',
       'Cut infra costs 40%',
       'EDUCATION', 'MIT', 'BSc in Computer Science',
       'SKILLS', 'TypeScript',
@@ -112,7 +112,7 @@ describe('AtsPdfTemplate', () => {
       ...data,
       work: [{
         name: 'Meta', position: 'Data Analyst', startDate: '2019-01', endDate: '2021-01', highlights: [],
-        roles: [{ id: 'r1', position: 'Data Team Lead', startDate: '2021-01', endDate: undefined, highlights: [] }],
+        roles: [{ id: 'r1', position: 'Data Team Lead', startDate: '2021-01', endDate: 'Present', highlights: [] }],
       }],
     }
     const text = await extractText(<AtsPdfTemplate data={withRoles} meta={meta} />)

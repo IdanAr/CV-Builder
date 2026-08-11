@@ -125,4 +125,34 @@ describe('CustomSectionForm', () => {
       items: [{ id: 'i1', title: 'IDF', roles: [expect.objectContaining({ id: expect.any(String) })] }],
     })
   })
+
+  it('shows a role card seeded from legacy item.subtitle when Roles is toggled on for a pre-existing item', () => {
+    mockStore({
+      id: 'cs1',
+      name: 'Military Service',
+      enabledFields: ['subtitle', 'roles'] as CustomSectionFieldType[],
+      items: [{ id: 'i1', title: 'IDF', subtitle: 'Team Commander' }],
+    })
+    render(<CustomSectionForm sectionId="cs1" />)
+    // The legacy subtitle becomes the first (only) role's own subtitle field —
+    // not lost, and not shown a second time as a flat item-level field.
+    expect(screen.getByDisplayValue('Team Commander')).toBeTruthy()
+  })
+
+  it('folds the legacy role into roles[] and clears the flat fields once any role is edited', () => {
+    mockStore({
+      id: 'cs1',
+      name: 'Military Service',
+      enabledFields: ['subtitle', 'roles'] as CustomSectionFieldType[],
+      items: [{ id: 'i1', title: 'IDF', subtitle: 'Team Commander' }],
+    })
+    render(<CustomSectionForm sectionId="cs1" />)
+    fireEvent.click(screen.getByText('+ Add role'))
+    const call = updateCustomSection.mock.calls[0]
+    expect(call[0]).toBe('cs1')
+    const updatedItem = call[1].items[0]
+    expect(updatedItem.subtitle).toBeUndefined()
+    expect(updatedItem.roles).toHaveLength(2)
+    expect(updatedItem.roles[0].subtitle).toBe('Team Commander')
+  })
 })

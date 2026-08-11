@@ -26,15 +26,19 @@ const data: ResumeData = {
 }
 
 describe('minimal entry layout', () => {
-  it('right-aligns the entry dates against the company name', async () => {
+  it('right-aligns the role dates against the role position — dates now live at role level, not on the company line', async () => {
     const runs = await renderToGlyphRuns(MinimalPdfTemplate({ data, meta, title: 'CV' }))
     const company = runs.find(r => r.str.includes('SAS Israel'))!
+    const position = runs.find(r => r.str.includes('Data Solutions Architect'))!
     const dates = runs.find(r => r.str.includes('2022'))!
     expect(company).toBeDefined()
+    expect(position).toBeDefined()
     expect(dates).toBeDefined()
-    // Same visual line…
-    expect(Math.abs(company.y - dates.y)).toBeLessThan(1)
-    // …but the dates sit in the right half of the text column.
+    // The company name carries no date of its own anymore.
+    expect(Math.abs(company.y - dates.y)).toBeGreaterThan(1)
+    // The role's own line does, on the same visual line as its position…
+    expect(Math.abs(position.y - dates.y)).toBeLessThan(1)
+    // …right-aligned in the right half of the text column.
     expect(dates.x).toBeGreaterThan(300)
   })
 

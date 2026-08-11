@@ -7,9 +7,10 @@ import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import type { ExportMode } from '@/lib/export-mode'
 import { parseRichText, splitParagraphs, TextRun as RichTextRun } from '@/lib/rich-text'
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
-import { formatDate, formatDateRange, aggregateDateRange } from '@/lib/format-date'
+import { formatDate, formatDateRange } from '@/lib/format-date'
 import { buildDocxStyles } from './styles'
 import { resolveProfiles } from '@/lib/basics-profiles'
+import { resolveWorkRoles, resolveEducationRoles, resolveCustomSectionRoles } from '@/lib/roles'
 
 function richTextRuns(
   text: string,
@@ -269,6 +270,20 @@ function jobEntry(
   return paras
 }
 
+// Company/institution header line only — no position and no date, since
+// dates now show per-role via roleEntry()/the education role block below,
+// not aggregated at the company level.
+function companyHeading(name: string, font: string): Paragraph {
+  return new Paragraph({
+    style: 'Heading2',
+    children: [
+      new TextRun({ text: name, bold: true, font, size: 22, color: '000000' }),
+    ],
+    spacing: { before: 150, after: 0 },
+    keepNext: true,
+  })
+}
+
 function roleEntry(
   position: string, dates: string, summary: string | undefined,
   highlights: string[], font: string, theme: DocxTheme, tabWidthTwips: number
@@ -282,6 +297,7 @@ function roleEntry(
       tabStops: [{ type: 'right' as never, position: tabWidthTwips }],
       spacing: { before: 80, after: 0 },
       keepNext: true,
+      keepLines: true,
     }),
   ]
   if (summary) {
@@ -369,11 +385,16 @@ function buildRailParas(
       const cs = customSections.find(s => s.id === id)
       if (!cs || !cs.items.length) continue
       paras.push(railHeading(cs.name))
+      const csHasRoles = cs.enabledFields.includes('roles')
       for (const item of cs.items) {
         if (item.title) paras.push(new Paragraph({ children: [new TextRun({ text: item.title, bold: true, font: bodyFont, size: 20, color: railText })], spacing: { after: 40 } }))
-        if (cs.enabledFields.includes('summary') && item.summary) paras.push(new Paragraph({ children: [new TextRun({ text: item.summary, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 40 } }))
-        for (const role of (cs.enabledFields.includes('roles') ? (item.roles ?? []) : [])) {
+        if (!csHasRoles && cs.enabledFields.includes('subtitle') && item.subtitle) {
+          paras.push(new Paragraph({ children: [new TextRun({ text: item.subtitle, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 40 } }))
+        }
+        if (!csHasRoles && cs.enabledFields.includes('summary') && item.summary) paras.push(new Paragraph({ children: [new TextRun({ text: item.summary, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 40 } }))
+        for (const role of (csHasRoles ? resolveCustomSectionRoles(item) : [])) {
           if (role.title) paras.push(new Paragraph({ children: [new TextRun({ text: role.title, bold: true, font: bodyFont, size: 20, color: railText })], spacing: { after: 30 } }))
+          if (cs.enabledFields.includes('subtitle') && role.subtitle) paras.push(new Paragraph({ children: [new TextRun({ text: role.subtitle, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 30 } }))
           if (cs.enabledFields.includes('summary') && role.summary) paras.push(new Paragraph({ children: [new TextRun({ text: role.summary, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 30 } }))
         }
       }
@@ -400,29 +421,34 @@ function buildRailParas(
         if (!work.length) break
         paras.push(railHeading('Work Experience'))
         for (const job of work) {
-          const dates = aggregateDateRange([{ startDate: job.startDate, endDate: job.endDate }, ...(job.roles ?? [])], true)
-          paras.push(new Paragraph({ children: [new TextRun({ text: job.name ?? '', bold: true, font: bodyFont, size: 20, color: railText }), ...(dates ? [new TextRun({ text: `  ·  ${dates}`, font: bodyFont, size: 20, color: railMuted })] : [])], spacing: { before: 100, after: 20 } }))
-          if (job.position) paras.push(new Paragraph({ children: [new TextRun({ text: job.position, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 40 } }))
-          for (const h of job.highlights ?? []) paras.push(new Paragraph({ children: richTextRuns(h, bodyFont, 20), bullet: { level: 0 }, spacing: { after: 20 } }))
-          for (const role of job.roles ?? []) {
-            const roleDates = formatDateRange(role.startDate, role.endDate, true)
-            paras.push(new Paragraph({ children: [new TextRun({ text: role.position ?? '', bold: true, font: bodyFont, size: 20, color: railText }), ...(roleDates ? [new TextRun({ text: `  ·  ${roleDates}`, font: bodyFont, size: 20, color: railMuted })] : [])], spacing: { before: 60, after: 20 } }))
+          const roles = resolveWorkRoles(job)
+          paras.push(new Paragraph({ children: [new TextRun({ text: job.name ?? '', bold: true, font: bodyFont, size: 20, color: railText })], spacing: { before: 100, after: 20 } }))
+          roles.forEach((role, ri) => {
+            const roleDates = formatDateRange(role.startDate, role.endDate)
+            paras.push(new Paragraph({ children: [new TextRun({ text: role.position ?? '', bold: true, font: bodyFont, size: 20, color: railText }), ...(roleDates ? [new TextRun({ text: `  ·  ${roleDates}`, font: bodyFont, size: 20, color: railMuted })] : [])], spacing: { before: ri === 0 ? 0 : 60, after: 20 } }))
             for (const h of role.highlights ?? []) paras.push(new Paragraph({ children: richTextRuns(h, bodyFont, 20), bullet: { level: 0 }, spacing: { after: 20 } }))
-          }
+          })
         }
         break
       case 'education':
         if (!education.length) break
         paras.push(railHeading('Education'))
         for (const edu of education) {
-          const dates = aggregateDateRange([{ startDate: edu.startDate, endDate: edu.endDate }, ...(edu.roles ?? [])])
-          paras.push(new Paragraph({ children: [new TextRun({ text: edu.institution ?? '', bold: true, font: bodyFont, size: 20, color: railText }), ...(dates ? [new TextRun({ text: `  ·  ${dates}`, font: bodyFont, size: 20, color: railMuted })] : [])], spacing: { before: 100, after: 20 } }))
-          const degree = [edu.studyType, edu.area].filter(Boolean).join(' in ')
-          if (degree) paras.push(new Paragraph({ children: [new TextRun({ text: degree, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 40 } }))
-          for (const role of edu.roles ?? []) {
+          const roles = resolveEducationRoles(edu)
+          paras.push(new Paragraph({ children: [new TextRun({ text: edu.institution ?? '', bold: true, font: bodyFont, size: 20, color: railText })], spacing: { before: 100, after: 20 } }))
+          roles.forEach((role) => {
             const roleDegree = [role.studyType, role.area].filter(Boolean).join(' in ')
-            if (roleDegree) paras.push(new Paragraph({ children: [new TextRun({ text: roleDegree, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 30 } }))
-          }
+            const roleDates = formatDateRange(role.startDate, role.endDate)
+            if (roleDegree || roleDates) {
+              paras.push(new Paragraph({
+                children: [
+                  new TextRun({ text: roleDegree, font: bodyFont, size: 20, color: railSoft }),
+                  ...(roleDates ? [new TextRun({ text: `  ·  ${roleDates}`, font: bodyFont, size: 20, color: railMuted })] : []),
+                ],
+                spacing: { after: 30 },
+              }))
+            }
+          })
         }
         break
       case 'certificates':
@@ -450,7 +476,7 @@ function buildRailParas(
         if (!volunteer.length) break
         paras.push(railHeading('Volunteer'))
         for (const v of volunteer) {
-          const dates = formatDateRange(v.startDate, v.endDate, true)
+          const dates = formatDateRange(v.startDate, v.endDate)
           paras.push(new Paragraph({ children: [new TextRun({ text: v.organization ?? '', bold: true, font: bodyFont, size: 20, color: railText }), ...(dates ? [new TextRun({ text: `  ·  ${dates}`, font: bodyFont, size: 20, color: railMuted })] : [])], spacing: { before: 100, after: 20 } }))
           if (v.position) paras.push(new Paragraph({ children: [new TextRun({ text: v.position, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 40 } }))
         }
@@ -501,9 +527,11 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
       const cs = customSections.find((s) => s.id === id)
       if (!cs || !cs.items.length) continue
       out.push(sectionHeading(cs.name, headFont, theme))
+      const csHasRoles = cs.enabledFields.includes('roles')
       for (const item of cs.items) {
+        const roles = csHasRoles ? resolveCustomSectionRoles(item) : []
         if (item.title) {
-          const dateText = cs.enabledFields.includes('dateRange') && (item.startDate || item.endDate)
+          const dateText = !csHasRoles && cs.enabledFields.includes('dateRange')
             ? formatDateRange(item.startDate, item.endDate)
             : ''
           out.push(new Paragraph({
@@ -515,7 +543,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
             spacing: { before: 100 },
           }))
         }
-        if (cs.enabledFields.includes('subtitle') && item.subtitle) {
+        if (!csHasRoles && cs.enabledFields.includes('subtitle') && item.subtitle) {
           out.push(new Paragraph({ children: [new TextRun({ text: item.subtitle, font: bodyFont, size: 21, color: theme.accentColor })], spacing: { after: 40 } }))
         }
         if (cs.enabledFields.includes('url') && item.url) {
@@ -524,19 +552,19 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
             spacing: { after: 20 },
           }))
         }
-        if (cs.enabledFields.includes('summary') && item.summary) {
+        if (!csHasRoles && cs.enabledFields.includes('summary') && item.summary) {
           out.push(...richTextParagraphs(item.summary, bodyFont, 20, undefined, { spacing: { after: 40 } }))
         }
-        for (const h of (cs.enabledFields.includes('highlights') ? (item.highlights ?? []) : [])) {
+        for (const h of (!csHasRoles && cs.enabledFields.includes('highlights') ? (item.highlights ?? []) : [])) {
           out.push(new Paragraph({ children: richTextRuns(h, bodyFont, 20), bullet: { level: 0 }, spacing: { after: 20 } }))
         }
-        if (cs.enabledFields.includes('keywords') && (item.keywords ?? []).length > 0) {
+        if (!csHasRoles && cs.enabledFields.includes('keywords') && (item.keywords ?? []).length > 0) {
           out.push(new Paragraph({ children: [new TextRun({ text: (item.keywords ?? []).join(' · '), font: bodyFont, size: 18, color: '555555' })], spacing: { after: 40 } }))
         }
-        if (cs.enabledFields.includes('level') && item.level) {
+        if (!csHasRoles && cs.enabledFields.includes('level') && item.level) {
           out.push(new Paragraph({ children: [new TextRun({ text: `Level: ${item.level}`, font: bodyFont, size: 18, color: '555555' })], spacing: { after: 40 } }))
         }
-        for (const role of (cs.enabledFields.includes('roles') ? (item.roles ?? []) : [])) {
+        roles.forEach((role, ri) => {
           const roleDateText = cs.enabledFields.includes('dateRange') && (role.startDate || role.endDate)
             ? formatDateRange(role.startDate, role.endDate)
             : ''
@@ -547,19 +575,25 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
                 ...(roleDateText ? [new TextRun({ text: `\t${roleDateText}`, font: bodyFont, size: 20, color: '666666' })] : []),
               ],
               tabStops: [{ type: 'right' as never, position: tabWidthTwips }],
-              spacing: { before: 60 },
+              spacing: { before: ri === 0 ? 0 : 60 },
             }))
           }
-          if (role.subtitle) {
+          if (cs.enabledFields.includes('subtitle') && role.subtitle) {
             out.push(new Paragraph({ children: [new TextRun({ text: role.subtitle, font: bodyFont, size: 20, color: theme.accentColor })], spacing: { after: 30 } }))
           }
-          if (role.summary) {
+          if (cs.enabledFields.includes('summary') && role.summary) {
             out.push(...richTextParagraphs(role.summary, bodyFont, 20, undefined, { spacing: { after: 30 } }))
           }
-          for (const h of role.highlights ?? []) {
+          for (const h of (cs.enabledFields.includes('highlights') ? (role.highlights ?? []) : [])) {
             out.push(new Paragraph({ children: richTextRuns(h, bodyFont, 20), bullet: { level: 0 }, spacing: { after: 20 } }))
           }
-        }
+          if (cs.enabledFields.includes('keywords') && (role.keywords ?? []).length > 0) {
+            out.push(new Paragraph({ children: [new TextRun({ text: (role.keywords ?? []).join(' · '), font: bodyFont, size: 18, color: '555555' })], spacing: { after: 40 } }))
+          }
+          if (cs.enabledFields.includes('level') && role.level) {
+            out.push(new Paragraph({ children: [new TextRun({ text: `Level: ${role.level}`, font: bodyFont, size: 18, color: '555555' })], spacing: { after: 40 } }))
+          }
+        })
       }
       continue
     }
@@ -569,10 +603,10 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
         if (!work.length) break
         out.push(sectionHeading('Work Experience', headFont, theme))
         for (const job of work) {
-          const dates = aggregateDateRange([{ startDate: job.startDate, endDate: job.endDate }, ...(job.roles ?? [])], true)
-          out.push(...jobEntry(job.name ?? '', job.position ?? '', dates, job.summary, job.highlights ?? [], bodyFont, theme, tabWidthTwips))
-          for (const role of job.roles ?? []) {
-            out.push(...roleEntry(role.position ?? '', formatDateRange(role.startDate, role.endDate, true), role.summary, role.highlights ?? [], bodyFont, theme, tabWidthTwips))
+          const roles = resolveWorkRoles(job)
+          out.push(companyHeading(job.name ?? '', bodyFont))
+          for (const role of roles) {
+            out.push(...roleEntry(role.position ?? '', formatDateRange(role.startDate, role.endDate), role.summary, role.highlights ?? [], bodyFont, theme, tabWidthTwips))
           }
         }
         break
@@ -580,23 +614,16 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
         if (!education.length) break
         out.push(sectionHeading('Education', headFont, theme))
         for (const edu of education) {
-          const dates = aggregateDateRange([{ startDate: edu.startDate, endDate: edu.endDate }, ...(edu.roles ?? [])])
+          const roles = resolveEducationRoles(edu)
           out.push(
             new Paragraph({
               children: [
                 new TextRun({ text: edu.institution ?? '', bold: true, font: bodyFont, size: 22 }),
-                new TextRun({ text: `\t${dates}`, font: bodyFont, size: 20, color: '666666' }),
               ],
-              tabStops: [{ type: 'right' as never, position: tabWidthTwips }],
               spacing: { before: 100 },
-            }),
-            new Paragraph({
-              children: [new TextRun({ text: [edu.studyType, edu.area].filter(Boolean).join(' in '), font: bodyFont, size: 21 })],
-              spacing: { after: edu.score ? 20 : 80 },
-            }),
-            ...(edu.score ? [new Paragraph({ children: [new TextRun({ text: `Score: ${edu.score}`, font: bodyFont, size: 20, color: '666666' })], spacing: { after: 80 } })] : [])
+            })
           )
-          for (const role of edu.roles ?? []) {
+          roles.forEach((role, ri) => {
             const roleDates = formatDateRange(role.startDate, role.endDate)
             out.push(
               new Paragraph({
@@ -605,11 +632,11 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
                   new TextRun({ text: `\t${roleDates}`, font: bodyFont, size: 20, color: '666666' }),
                 ],
                 tabStops: [{ type: 'right' as never, position: tabWidthTwips }],
-                spacing: { before: 60, after: role.score ? 20 : 60 },
+                spacing: { before: ri === 0 ? 0 : 60, after: role.score ? 20 : 60 },
               }),
               ...(role.score ? [new Paragraph({ children: [new TextRun({ text: `Score: ${role.score}`, font: bodyFont, size: 20, color: '666666' })], spacing: { after: 60 } })] : [])
             )
-          }
+          })
         }
         break
       case 'skills':
@@ -701,7 +728,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
         if (!volunteer.length) break
         out.push(sectionHeading('Volunteer', headFont, theme))
         for (const v of volunteer) {
-          const dates = formatDateRange(v.startDate, v.endDate, true)
+          const dates = formatDateRange(v.startDate, v.endDate)
           out.push(...jobEntry(v.organization ?? '', v.position ?? '', dates, v.summary, v.highlights ?? [], bodyFont, theme, tabWidthTwips))
         }
         break

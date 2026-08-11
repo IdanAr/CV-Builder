@@ -4,7 +4,8 @@ import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns, pdfDocumentProps } from './pdf-utils'
 import { resolveProfiles } from '@/lib/basics-profiles'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
-import { formatDateRange, aggregateDateRange } from '@/lib/format-date'
+import { formatDateRange } from '@/lib/format-date'
+import { resolveWorkRoles, resolveEducationRoles } from '@/lib/roles'
 import { withLineHeights, PdfBullet, PdfEntryHead, sectionReserve, entryReserve } from './pdf-primitives'
 import { MINIMAL_TOKENS as T } from '@/lib/design/tokens'
 
@@ -85,37 +86,29 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
               <Text style={styles.sectionTitle}>Work Experience</Text>
             </View>
             {work.map((job, i) => {
-              const dates = aggregateDateRange([{ startDate: job.startDate, endDate: job.endDate }, ...(job.roles ?? [])], true)
+              const roles = resolveWorkRoles(job)
               return (
                 <View key={i} style={{ marginBottom: T.entryMarginBottom }}>
                   <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
                     <PdfEntryHead
                       style={{ marginBottom: 2 }}
                       left={<Text style={styles.bold}>{job.name ?? ''}</Text>}
-                      right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
                     />
-                    <Text style={styles.accent}>{job.position ?? ''}</Text>
                   </View>
-                  {renderPdfRichText(job.summary, styles.entrySummary)}
-                  {(job.highlights ?? []).map((h, hi) => (
-                    <PdfBullet
-                      key={hi}
-                      style={hi === 0 ? [styles.bulletHang, styles.bulletFirst] : styles.bulletHang}
-                      indent={T.bulletIndent}
-                      gap={T.bulletGap}
-                    >
-                      {renderPdfRichTextRuns(h)}
-                    </PdfBullet>
-                  ))}
-                  {(job.roles ?? []).map((role, ri) => {
-                    const roleDates = formatDateRange(role.startDate, role.endDate, true)
+                  {roles.map((role, ri) => {
+                    const roleDates = formatDateRange(role.startDate, role.endDate)
                     return (
-                      <View key={role.id ?? ri} wrap={false} minPresenceAhead={ENTRY_RESERVE} style={{ marginTop: 4 }}>
-                        <PdfEntryHead
-                          style={{ marginBottom: 2 }}
-                          left={<Text style={styles.accent}>{role.position ?? ''}</Text>}
-                          right={roleDates ? <Text style={styles.small}>{roleDates}</Text> : undefined}
-                        />
+                      <React.Fragment key={role.id ?? ri}>
+                        <View wrap={false} minPresenceAhead={ENTRY_RESERVE} style={{ marginTop: ri === 0 ? 0 : 4 }}>
+                          <PdfEntryHead
+                            style={{ marginBottom: 2 }}
+                            left={<Text style={styles.accent}>{role.position ?? ''}</Text>}
+                            right={roleDates ? <Text style={styles.small}>{roleDates}</Text> : undefined}
+                          />
+                        </View>
+                        {/* summary/highlights stay outside wrap={false} — an
+                            unbounded highlight longer than a page must still
+                            paginate instead of crashing react-pdf. */}
                         {renderPdfRichText(role.summary, styles.entrySummary)}
                         {(role.highlights ?? []).map((h, hi) => (
                           <PdfBullet
@@ -127,7 +120,7 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
                             {renderPdfRichTextRuns(h)}
                           </PdfBullet>
                         ))}
-                      </View>
+                      </React.Fragment>
                     )
                   })}
                 </View>
@@ -143,22 +136,19 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
               <Text style={styles.sectionTitle}>Education</Text>
             </View>
             {education.map((edu, i) => {
-              const dates = aggregateDateRange([{ startDate: edu.startDate, endDate: edu.endDate }, ...(edu.roles ?? [])])
+              const roles = resolveEducationRoles(edu)
               return (
                 <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                   <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>
                     <PdfEntryHead
                       style={{ marginBottom: 2 }}
                       left={<Text style={styles.bold}>{edu.institution ?? ''}</Text>}
-                      right={dates ? <Text style={styles.small}>{dates}</Text> : undefined}
                     />
-                    <Text style={styles.degree}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
                   </View>
-                  {edu.score ? <Text style={styles.small}>Score: {edu.score}</Text> : null}
-                  {(edu.roles ?? []).map((role, ri) => {
+                  {roles.map((role, ri) => {
                     const roleDates = formatDateRange(role.startDate, role.endDate)
                     return (
-                      <View key={role.id ?? ri} wrap={false} minPresenceAhead={ENTRY_RESERVE} style={{ marginTop: 3 }}>
+                      <View key={role.id ?? ri} wrap={false} minPresenceAhead={ENTRY_RESERVE} style={{ marginTop: ri === 0 ? 0 : 3 }}>
                         <PdfEntryHead
                           style={{ marginBottom: 2 }}
                           left={<Text style={styles.degree}>{[role.studyType, role.area].filter(Boolean).join(' in ')}</Text>}
@@ -277,7 +267,7 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
               <Text style={styles.sectionTitle}>Volunteer</Text>
             </View>
             {volunteer.map((v, i) => {
-              const dates = formatDateRange(v.startDate, v.endDate, true)
+              const dates = formatDateRange(v.startDate, v.endDate)
               return (
                 <View key={i} style={{ marginBottom: T.eduMarginBottom }}>
                   <View wrap={false} minPresenceAhead={ENTRY_RESERVE}>

@@ -6,12 +6,12 @@ import { ListFieldManager } from './ListFieldManager'
 import { MonthYearPicker } from './MonthYearPicker'
 import { inputClass } from './field-styles'
 import { createEmptyEducation as createEmpty, createEmptyEducationRole } from '@/lib/schemas/resume-empty-entries'
+import { resolveEducationRoles } from '@/lib/roles'
 import type { ResumeData, EducationRole } from '@/lib/schemas/resume.zod'
 
 type EduItem = NonNullable<ResumeData['education']>[number]
 
 const EMPTY_EDUCATION: EduItem[] = []
-const EMPTY_ROLES: EducationRole[] = []
 
 function RoleForm({ role, onUpdate, onRemove }: { role: EducationRole; onUpdate: (v: EducationRole) => void; onRemove: () => void }) {
   const id = useId()
@@ -46,8 +46,11 @@ function RoleForm({ role, onUpdate, onRemove }: { role: EducationRole; onUpdate:
 function EduItemForm({ item, onUpdate, onRemove }: { item: EduItem; onUpdate: (v: EduItem) => void; onRemove: () => void }) {
   const id = useId()
   const set = (field: keyof EduItem, value: string) => onUpdate({ ...item, [field as keyof EduItem]: value as never })
-  const roles = item.roles ?? EMPTY_ROLES
-  const setRoles = (roles: EducationRole[]) => onUpdate({ ...item, roles })
+  const roles = resolveEducationRoles(item)
+  const setRoles = (roles: EducationRole[]) => onUpdate({
+    ...item, roles,
+    studyType: undefined, area: undefined, startDate: undefined, endDate: undefined, score: undefined, courses: undefined,
+  })
   const addRoleLabel = item.institution ? `Add another program at ${item.institution}` : 'Add another program'
 
   return (
@@ -59,24 +62,7 @@ function EduItemForm({ item, onUpdate, onRemove }: { item: EduItem; onUpdate: (v
         <button type="button" onClick={onRemove} aria-label="Remove education entry"
           className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <label htmlFor={`${id}-studyType`} className="sr-only">Degree</label>
-        <input id={`${id}-studyType`} type="text" value={item.studyType ?? ''} onChange={(e) => set('studyType', e.target.value)}
-          placeholder="Degree (B.Sc.)" className={inputClass} />
-        <label htmlFor={`${id}-area`} className="sr-only">Field of study</label>
-        <input id={`${id}-area`} type="text" value={item.area ?? ''} onChange={(e) => set('area', e.target.value)}
-          placeholder="Field of study" className={inputClass} />
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <MonthYearPicker value={item.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
-        <MonthYearPicker value={item.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
-      </div>
-      <div>
-        <label htmlFor={`${id}-score`} className="sr-only">GPA / Score</label>
-        <input id={`${id}-score`} type="text" value={item.score ?? ''} onChange={(e) => set('score', e.target.value)}
-          placeholder="GPA / Score" className={inputClass} />
-      </div>
-      <div className="pl-3 border-l-2 border-indigo-100 space-y-2">
+      <div className="pl-3 border-l-2 border-indigo-100">
         <ListFieldManager<EducationRole>
           items={roles}
           onChange={setRoles}

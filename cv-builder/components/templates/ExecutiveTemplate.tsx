@@ -5,8 +5,9 @@ import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
 import { getColumnSide } from '@/lib/get-column-side'
 import { RichText } from './RichText'
-import { formatDateRange, aggregateDateRange } from '@/lib/format-date'
+import { formatDateRange } from '@/lib/format-date'
 import { resolveProfiles } from '@/lib/basics-profiles'
+import { resolveWorkRoles, resolveEducationRoles } from '@/lib/roles'
 import { webFontFamily } from '@/lib/fonts/families'
 import { EXECUTIVE_TOKENS as T, px } from '@/lib/design/tokens'
 
@@ -60,39 +61,30 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
         return (
           <div key="work" data-pv-section="work">
             <div style={sectionTitle}>Work Experience</div>
-            {work.map((job, i) => (
-              <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.entryMarginBottom) }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            {work.map((job, i) => {
+              const roles = resolveWorkRoles(job)
+              return (
+                <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.entryMarginBottom) }}>
                   <strong style={{ fontSize: '11pt' }}>{job.name}</strong>
-                  <span style={{ fontSize: '10pt', color: '#666' }}>
-                    {aggregateDateRange([{ startDate: job.startDate, endDate: job.endDate }, ...(job.roles ?? [])], true)}
-                  </span>
-                </div>
-                <div style={{ color: meta.accentColor, fontStyle: 'italic', fontSize: '10.5pt' }}>{job.position}</div>
-                {job.summary && <div style={{ fontSize: '10pt', marginTop: '3px', textAlign: 'justify' }}>{rt(job.summary)}</div>}
-                {(job.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
-                    {(job.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
-                  </ul>
-                )}
-                {(job.roles ?? []).map((role, ri) => (
-                  <div key={role.id ?? ri} style={{ marginTop: '6px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                      <span style={{ color: meta.accentColor, fontStyle: 'italic', fontSize: '10.5pt' }}>{role.position}</span>
-                      <span style={{ fontSize: '10pt', color: '#666' }}>
-                        {formatDateRange(role.startDate, role.endDate, true)}
-                      </span>
+                  {roles.map((role, ri) => (
+                    <div key={role.id ?? ri} style={{ marginTop: ri === 0 ? 0 : '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                        <span style={{ color: meta.accentColor, fontStyle: 'italic', fontSize: '10.5pt' }}>{role.position}</span>
+                        <span style={{ fontSize: '10pt', color: '#666' }}>
+                          {formatDateRange(role.startDate, role.endDate)}
+                        </span>
+                      </div>
+                      {role.summary && <div style={{ fontSize: '10pt', marginTop: '3px', textAlign: 'justify' }}>{rt(role.summary)}</div>}
+                      {(role.highlights ?? []).length > 0 && (
+                        <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
+                          {(role.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
+                        </ul>
+                      )}
                     </div>
-                    {role.summary && <div style={{ fontSize: '10pt', marginTop: '3px', textAlign: 'justify' }}>{rt(role.summary)}</div>}
-                    {(role.highlights ?? []).length > 0 && (
-                      <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
-                        {(role.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
-                      </ul>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))}
+                  ))}
+                </div>
+              )
+            })}
           </div>
         )
       }
@@ -102,29 +94,25 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
         return (
           <div key="education" data-pv-section="education">
             <div style={sectionTitle}>Education</div>
-            {education.map((edu, i) => (
-              <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            {education.map((edu, i) => {
+              const roles = resolveEducationRoles(edu)
+              return (
+                <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                   <strong>{edu.institution}</strong>
-                  <span style={{ fontSize: '10pt', color: '#666' }}>
-                    {aggregateDateRange([{ startDate: edu.startDate, endDate: edu.endDate }, ...(edu.roles ?? [])])}
-                  </span>
-                </div>
-                <div style={{ fontSize: '10.5pt', fontStyle: 'italic' }}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</div>
-                {edu.score && <div style={{ fontSize: '10pt', color: '#666' }}>Score: {edu.score}</div>}
-                {(edu.roles ?? []).map((role, ri) => (
-                  <div key={role.id ?? ri} style={{ marginTop: '4px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                      <span style={{ fontSize: '10.5pt', fontStyle: 'italic' }}>{[role.studyType, role.area].filter(Boolean).join(' in ')}</span>
-                      <span style={{ fontSize: '10pt', color: '#666' }}>
-                        {formatDateRange(role.startDate, role.endDate)}
-                      </span>
+                  {roles.map((role, ri) => (
+                    <div key={role.id ?? ri} style={{ marginTop: ri === 0 ? 0 : '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                        <span style={{ fontSize: '10.5pt', fontStyle: 'italic' }}>{[role.studyType, role.area].filter(Boolean).join(' in ')}</span>
+                        <span style={{ fontSize: '10pt', color: '#666' }}>
+                          {formatDateRange(role.startDate, role.endDate)}
+                        </span>
+                      </div>
+                      {role.score && <div style={{ fontSize: '10pt', color: '#666' }}>Score: {role.score}</div>}
                     </div>
-                    {role.score && <div style={{ fontSize: '10pt', color: '#666' }}>Score: {role.score}</div>}
-                  </div>
-                ))}
-              </div>
-            ))}
+                  ))}
+                </div>
+              )
+            })}
           </div>
         )
       }
@@ -178,7 +166,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{v.organization}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
-                    {formatDateRange(v.startDate, v.endDate, true)}
+                    {formatDateRange(v.startDate, v.endDate)}
                   </span>
                 </div>
                 <div style={{ color: meta.accentColor, fontStyle: 'italic', fontSize: '10.5pt' }}>{v.position}</div>

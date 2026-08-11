@@ -9,12 +9,12 @@ import { MonthYearPicker } from './MonthYearPicker'
 import { RichTextField } from './RichTextField'
 import { inputClass } from './field-styles'
 import { createEmptyWork as createEmpty, createEmptyWorkRole } from '@/lib/schemas/resume-empty-entries'
+import { resolveWorkRoles } from '@/lib/roles'
 import type { ResumeData, WorkRole } from '@/lib/schemas/resume.zod'
 
 type WorkItem = NonNullable<ResumeData['work']>[number]
 
 const EMPTY_WORK: WorkItem[] = []
-const EMPTY_ROLES: WorkRole[] = []
 
 function RoleForm({
   role, company, resumeId, onUpdate, onRemove,
@@ -94,73 +94,31 @@ function WorkItemForm({
   const id = useId()
   const set = (field: keyof WorkItem, value: string) => onUpdate({ ...item, [field]: value })
 
-  const setHighlights = (highlights: string[]) => onUpdate({ ...item, highlights })
-  const addHighlight = () => setHighlights([...(item.highlights ?? []), ''])
-  const updateHighlight = (i: number, v: string) =>
-    setHighlights((item.highlights ?? []).map((h, idx) => (idx === i ? v : h)))
-  const removeHighlight = (i: number) =>
-    setHighlights((item.highlights ?? []).filter((_, idx) => idx !== i))
-
-  const roles = item.roles ?? EMPTY_ROLES
-  const setRoles = (roles: WorkRole[]) => onUpdate({ ...item, roles })
-  const addRoleLabel = item.name ? `+ Add another role at ${item.name}` : '+ Add another role'
+  const roles = resolveWorkRoles(item)
+  const setRoles = (roles: WorkRole[]) => onUpdate({
+    ...item, roles,
+    // roles[] is the sole source of truth once edited through this list —
+    // clear the legacy flat fields so they don't linger as stale shadow
+    // data (same pattern BasicsForm uses for legacy basics.url).
+    position: undefined, startDate: undefined, endDate: undefined, summary: undefined, highlights: undefined,
+  })
+  const addRoleLabel = item.name ? `Add another role at ${item.name}` : 'Add another role'
 
   return (
     <div className="space-y-2">
       <div className="flex justify-between items-start gap-2">
-        <div className="grid grid-cols-2 gap-2 flex-1">
-          <label htmlFor={`${id}-name`} className="sr-only">Company name</label>
-          <input id={`${id}-name`} type="text" value={item.name ?? ''} onChange={(e) => set('name', e.target.value)}
-            placeholder="Company name" className={inputClass} />
-          <label htmlFor={`${id}-position`} className="sr-only">Job title</label>
-          <input id={`${id}-position`} type="text" value={item.position ?? ''} onChange={(e) => set('position', e.target.value)}
-            placeholder="Job title" className={inputClass} />
-        </div>
+        <label htmlFor={`${id}-name`} className="sr-only">Company name</label>
+        <input id={`${id}-name`} type="text" value={item.name ?? ''} onChange={(e) => set('name', e.target.value)}
+          placeholder="Company name" className={`${inputClass} flex-1`} />
         <button type="button" onClick={onRemove} aria-label="Remove work entry"
           className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <MonthYearPicker value={item.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
-        <MonthYearPicker value={item.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
-      </div>
-      <label htmlFor={`${id}-summary`} className="sr-only">Role summary</label>
-      <RichTextField
-        id={`${id}-summary`}
-        value={item.summary ?? ''}
-        onChange={(v) => set('summary', v)}
-        placeholder="Role summary..."
-      />
-      <fieldset className="space-y-1 border-0 p-0 m-0">
-        <legend className="block text-xs font-medium text-indigo-600 p-0">Bullet points</legend>
-        {(item.highlights ?? []).map((h, i) => (
-          <div key={i} className="flex gap-1 items-start">
-            <RichTextField
-              value={h}
-              onChange={(v) => updateHighlight(i, v)}
-              placeholder="Achieved X by doing Y, resulting in Z"
-              ariaLabel={`Bullet point ${i + 1}`}
-              className="flex-1"
-              height={120}
-            />
-            <AiSuggestButton
-              resumeId={resumeId}
-              currentValue={h}
-              context={{ jobTitle: item.position, company: item.name, field: 'highlight' }}
-              onAccept={(v) => updateHighlight(i, v)}
-            />
-            <button type="button" onClick={() => removeHighlight(i)} aria-label="Remove highlight"
-              className="text-gray-400 hover:text-red-500 text-xs px-1 mt-6">✕</button>
-          </div>
-        ))}
-        <button type="button" onClick={addHighlight}
-          className="text-xs text-indigo-600 hover:text-indigo-800">+ Add bullet</button>
-      </fieldset>
-      <div className="pl-3 border-l-2 border-indigo-100 space-y-2">
+      <div className="pl-3 border-l-2 border-indigo-100">
         <ListFieldManager<WorkRole>
           items={roles}
           onChange={setRoles}
           createEmpty={createEmptyWorkRole}
-          addLabel={addRoleLabel.replace('+ ', '')}
+          addLabel={addRoleLabel}
           renderItem={(role, _, onUpdateRole, onRemoveRole) => (
             <RoleForm role={role} company={item.name ?? ''} resumeId={resumeId} onUpdate={onUpdateRole} onRemove={onRemoveRole} />
           )}

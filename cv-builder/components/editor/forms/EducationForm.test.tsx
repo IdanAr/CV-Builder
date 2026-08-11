@@ -53,10 +53,12 @@ it('adds another program under the same institution when "+ Add another program"
   })
   render(<EducationForm />)
   fireEvent.click(screen.getByText('+ Add another program at MIT'))
-  expect(useResumeEditorStore.getState().data.education?.[0].roles).toHaveLength(1)
+  // The existing (legacy-field) program plus the newly-added one — both now
+  // live in roles[] as equal entries.
+  expect(useResumeEditorStore.getState().data.education?.[0].roles).toHaveLength(2)
 })
 
-it('updates a role field independently of the primary program', () => {
+it('updates a role field independently of the other role', () => {
   useResumeEditorStore.setState({
     ...useResumeEditorStore.getState(),
     data: { education: [{ institution: 'MIT', studyType: 'BSc', area: 'CS', roles: [{ id: 'r1', studyType: '', area: '', startDate: '', endDate: '', score: '', courses: [] }] }] },
@@ -64,16 +66,21 @@ it('updates a role field independently of the primary program', () => {
   render(<EducationForm />)
   const degreeInputs = screen.getAllByPlaceholderText('Degree (B.Sc.)')
   fireEvent.change(degreeInputs[1], { target: { value: 'MSc' } })
-  expect(useResumeEditorStore.getState().data.education?.[0].roles?.[0].studyType).toBe('MSc')
-  expect(useResumeEditorStore.getState().data.education?.[0].studyType).toBe('BSc')
+  expect(useResumeEditorStore.getState().data.education?.[0].roles?.[0].studyType).toBe('BSc')
+  expect(useResumeEditorStore.getState().data.education?.[0].roles?.[1].studyType).toBe('MSc')
+  expect(useResumeEditorStore.getState().data.education?.[0].studyType).toBeUndefined()
 })
 
-it('removes a role', () => {
+it('removes a role, leaving the other one intact in roles[]', () => {
   useResumeEditorStore.setState({
     ...useResumeEditorStore.getState(),
-    data: { education: [{ institution: 'MIT', roles: [{ id: 'r1', studyType: 'MSc', area: '', startDate: '', endDate: '', score: '', courses: [] }] }] },
+    data: { education: [{ institution: 'MIT', studyType: 'BSc', roles: [{ id: 'r1', studyType: 'MSc', area: '', startDate: '', endDate: '', score: '', courses: [] }] }] },
   })
   render(<EducationForm />)
-  fireEvent.click(screen.getByLabelText('Remove role'))
-  expect(useResumeEditorStore.getState().data.education?.[0].roles).toHaveLength(0)
+  const removeButtons = screen.getAllByLabelText('Remove role')
+  expect(removeButtons).toHaveLength(2)
+  fireEvent.click(removeButtons[1])
+  const roles = useResumeEditorStore.getState().data.education?.[0].roles
+  expect(roles).toHaveLength(1)
+  expect(roles?.[0].studyType).toBe('BSc')
 })

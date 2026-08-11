@@ -10,7 +10,7 @@ const styles = {
 }
 
 const section: CustomSection = {
-  id: 'cs1', name: 'Military Service', enabledFields: ['dateRange', 'roles'],
+  id: 'cs1', name: 'Military Service', enabledFields: ['dateRange', 'subtitle', 'summary', 'roles'],
   items: [{
     id: 'i1', title: 'IDF - Intelligence Corps', startDate: '2016-03', endDate: '2018-03',
     roles: [{ id: 'r1', title: 'Team Commander', subtitle: 'Special Operations Unit', startDate: '2018-03', endDate: '2019-03', summary: 'Led a 6-person team.' }],

@@ -74,22 +74,26 @@ export function BasicsForm() {
           addLabel="Add URL"
           renderItem={(item, _, onUpdate, onRemove) => (
             <div className="flex gap-2 items-start">
-              <label className="sr-only">Label</label>
-              <input
-                type="text"
-                value={item.label ?? ''}
-                onChange={(e) => onUpdate({ ...item, label: e.target.value })}
-                placeholder="Label (optional — leave blank to show the link itself)"
-                className={`${inputClass} w-2/5`}
-              />
-              <label className="sr-only">URL</label>
-              <input
-                type="url"
-                value={item.url ?? ''}
-                onChange={(e) => onUpdate({ ...item, url: e.target.value })}
-                placeholder="https://..."
-                className={`${inputClass} flex-1`}
-              />
+              <div className="w-[30%]">
+                <label className="sr-only">Label</label>
+                <input
+                  type="text"
+                  value={item.label ?? ''}
+                  onChange={(e) => onUpdate({ ...item, label: e.target.value })}
+                  placeholder="Label (optional — leave blank to show the link itself)"
+                  className={inputClass}
+                />
+              </div>
+              <div className="w-[70%]">
+                <label className="sr-only">URL</label>
+                <input
+                  type="url"
+                  value={item.url ?? ''}
+                  onChange={(e) => onUpdate({ ...item, url: e.target.value })}
+                  placeholder="https://..."
+                  className={inputClass}
+                />
+              </div>
               <button type="button" onClick={onRemove} aria-label="Remove URL"
                 className="text-gray-400 hover:text-red-500 text-sm mt-1.5">✕</button>
             </div>

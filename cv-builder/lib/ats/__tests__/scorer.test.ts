@@ -70,6 +70,19 @@ describe('scoreResume', () => {
     expect(result.breakdown.format).toBe(8)
   })
 
+  it('work completeness counts a roles[]-only entry too, not just the legacy flat fields', () => {
+    const data: ResumeData = {
+      basics: { name: 'Alice', email: 'a@b.co' },
+      work: [
+        { name: 'Acme', roles: [{ id: 'r1', position: 'Engineer', startDate: '2021-01' }] },
+        { name: 'Beta', position: 'Analyst' },
+      ],
+    }
+    // identity 5 + summary 0 + work 3 (Acme complete via roles[], Beta incomplete — no startDate) + highlights 0 + skills 0 = 8
+    const result = scoreResume(data, '')
+    expect(result.breakdown.format).toBe(8)
+  })
+
   it('paragraph-dump highlights are penalized: 2 of 3 valid bullets scores round(5 * 2/3) = 3', () => {
     const data: ResumeData = {
       basics: { name: 'Alice', email: 'a@b.co' },

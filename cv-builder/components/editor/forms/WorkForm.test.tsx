@@ -53,19 +53,19 @@ it('adds a highlight bullet', () => {
   })
   render(<WorkForm />)
   fireEvent.click(screen.getByText('+ Add bullet'))
-  expect(useResumeEditorStore.getState().data.work?.[0].highlights).toHaveLength(1)
+  expect(useResumeEditorStore.getState().data.work?.[0].roles?.[0].highlights).toHaveLength(1)
 })
 
 it('exposes accessible names for Company name and Job title via associated labels', () => {
   useResumeEditorStore.setState({
     ...useResumeEditorStore.getState(),
-    data: { work: [{ name: '', position: '', startDate: '' }] },
+    data: { work: [{ name: '', roles: [{ id: 'r1', position: '' }] }] },
   })
   render(<WorkForm />)
   fireEvent.change(screen.getByLabelText('Company name'), { target: { value: 'Acme' } })
   expect(useResumeEditorStore.getState().data.work?.[0].name).toBe('Acme')
   fireEvent.change(screen.getByLabelText('Job title'), { target: { value: 'Engineer' } })
-  expect(useResumeEditorStore.getState().data.work?.[0].position).toBe('Engineer')
+  expect(useResumeEditorStore.getState().data.work?.[0].roles?.[0].position).toBe('Engineer')
 })
 
 it('gives each work entry its own unique field ids, so labels never cross-wire between entries', () => {
@@ -92,7 +92,9 @@ it('adds another role under the same company when "+ Add another role" is clicke
   })
   render(<WorkForm />)
   fireEvent.click(screen.getByText('+ Add another role at Meta'))
-  expect(useResumeEditorStore.getState().data.work?.[0].roles).toHaveLength(1)
+  // The existing (legacy-field) role plus the newly-added one — both now
+  // live in roles[] as equal entries, not "primary field + 1 extra".
+  expect(useResumeEditorStore.getState().data.work?.[0].roles).toHaveLength(2)
 })
 
 it('labels the add-role button generically when the company name is blank', () => {
@@ -104,7 +106,7 @@ it('labels the add-role button generically when the company name is blank', () =
   expect(screen.getByText('+ Add another role')).toBeInTheDocument()
 })
 
-it('updates a role field independently of the primary role', () => {
+it('updates a role field independently of the other role', () => {
   useResumeEditorStore.setState({
     ...useResumeEditorStore.getState(),
     data: { work: [{ name: 'Meta', position: 'Data Analyst', startDate: '', roles: [{ id: 'r1', position: '', startDate: '', endDate: '', summary: '', highlights: [] }] }] },
@@ -112,16 +114,23 @@ it('updates a role field independently of the primary role', () => {
   render(<WorkForm />)
   const positionInputs = screen.getAllByPlaceholderText('Job title')
   fireEvent.change(positionInputs[1], { target: { value: 'Data Team Lead' } })
-  expect(useResumeEditorStore.getState().data.work?.[0].roles?.[0].position).toBe('Data Team Lead')
-  expect(useResumeEditorStore.getState().data.work?.[0].position).toBe('Data Analyst')
+  // Editing any role folds the legacy top-level fields into roles[] too —
+  // it becomes the single source of truth going forward.
+  expect(useResumeEditorStore.getState().data.work?.[0].roles?.[0].position).toBe('Data Analyst')
+  expect(useResumeEditorStore.getState().data.work?.[0].roles?.[1].position).toBe('Data Team Lead')
+  expect(useResumeEditorStore.getState().data.work?.[0].position).toBeUndefined()
 })
 
-it('removes a role', () => {
+it('removes a role, leaving the other one intact in roles[]', () => {
   useResumeEditorStore.setState({
     ...useResumeEditorStore.getState(),
     data: { work: [{ name: 'Meta', position: 'Data Analyst', startDate: '', roles: [{ id: 'r1', position: 'Lead', startDate: '', endDate: '', summary: '', highlights: [] }] }] },
   })
   render(<WorkForm />)
-  fireEvent.click(screen.getByLabelText('Remove role'))
-  expect(useResumeEditorStore.getState().data.work?.[0].roles).toHaveLength(0)
+  const removeButtons = screen.getAllByLabelText('Remove role')
+  expect(removeButtons).toHaveLength(2)
+  fireEvent.click(removeButtons[1])
+  const roles = useResumeEditorStore.getState().data.work?.[0].roles
+  expect(roles).toHaveLength(1)
+  expect(roles?.[0].position).toBe('Data Analyst')
 })

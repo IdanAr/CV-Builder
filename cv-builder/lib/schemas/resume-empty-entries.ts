@@ -13,11 +13,11 @@ export type ProjectEntry = NonNullable<ResumeData['projects']>[number]
 export type ProfileEntry = NonNullable<NonNullable<ResumeData['basics']>['profiles']>[number]
 
 export function createEmptyWork(): WorkEntry {
-  return { name: '', position: '', url: '', startDate: '', endDate: '', summary: '', highlights: [] }
+  return { name: '', url: '', roles: [createEmptyWorkRole()] }
 }
 
 export function createEmptyEducation(): EducationEntry {
-  return { institution: '', url: '', area: '', studyType: '', startDate: '', endDate: '', score: '', courses: [] }
+  return { institution: '', url: '', roles: [createEmptyEducationRole()] }
 }
 
 export function createEmptySkill(): SkillEntry {
