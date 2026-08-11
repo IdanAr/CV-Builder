@@ -49,7 +49,10 @@ export function ModernPdfTemplate({ data, meta, title }: { data: ResumeData; met
     const items: Array<{ label: string; href: string }> = []
     if (basics.email) items.push({ label: basics.email, href: `mailto:${basics.email}` })
     if (basics.phone) items.push({ label: basics.phone, href: '' })
-    if (basics.url) items.push({ label: basics.url, href: ensureHttps(basics.url) })
+    for (const profile of basics.profiles ?? []) {
+      if (!profile.url) continue
+      items.push({ label: profile.label || profile.url, href: ensureHttps(profile.url) })
+    }
     const loc = [basics.location?.city, basics.location?.region].filter(Boolean).join(', ')
     if (loc) items.push({ label: loc, href: '' })
     if (!items.length) return null
