@@ -4,7 +4,7 @@ import React from 'react'
 import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
 import { RichText } from './RichText'
-import { formatDateRange } from '@/lib/format-date'
+import { formatDateRange, aggregateDateRange } from '@/lib/format-date'
 import { webFontFamily } from '@/lib/fonts/families'
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
 import { SIDEBAR_TOKENS as T, px } from '@/lib/design/tokens'
@@ -82,7 +82,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong style={{ fontSize: '11pt' }}>{job.name}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
-                    {formatDateRange(job.startDate, job.endDate, true)}
+                    {aggregateDateRange([{ startDate: job.startDate, endDate: job.endDate }, ...(job.roles ?? [])], true)}
                   </span>
                 </div>
                 <div style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{job.position}</div>
@@ -92,6 +92,22 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
                     {(job.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
+                {(job.roles ?? []).map((role, ri) => (
+                  <div key={role.id ?? ri} style={{ marginTop: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <span style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{role.position}</span>
+                      <span style={{ fontSize: '10pt', color: '#666' }}>
+                        {formatDateRange(role.startDate, role.endDate, true)}
+                      </span>
+                    </div>
+                    {role.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(role.summary)}</div>}
+                    {(role.highlights ?? []).length > 0 && (
+                      <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
+                        {(role.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                ))}
               </div>
             ))}
           </div>

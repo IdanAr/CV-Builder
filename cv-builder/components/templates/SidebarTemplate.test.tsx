@@ -122,3 +122,21 @@ describe('SidebarTemplate rail contact links', () => {
     expect(link?.textContent).toBe('Portfolio')
   })
 })
+
+describe('SidebarTemplate nested work roles', () => {
+  it('shows the aggregate date range in the header and each role\'s own range beneath it', () => {
+    const dataWithRoles: ResumeData = {
+      work: [{
+        name: 'Meta', position: 'Data Analyst', startDate: '2019-01', endDate: '2021-01', highlights: [],
+        roles: [{ id: 'r1', position: 'Data Team Lead', startDate: '2021-01', endDate: undefined, summary: 'Led the team.', highlights: ['Grew headcount 3x'] }],
+      }],
+    }
+    const { container } = render(<SidebarTemplate data={dataWithRoles} meta={meta} />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('01/2019 - Present') // aggregate header range
+    expect(text).toContain('Data Analyst')
+    expect(text).toContain('Data Team Lead')
+    expect(text).toContain('Led the team.')
+    expect(text).toContain('Grew headcount 3x')
+  })
+})
