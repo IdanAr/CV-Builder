@@ -108,3 +108,17 @@ describe('SidebarTemplate rail typography bands', () => {
     expect(parseFloat(langBlock.style.fontSize)).toBeGreaterThanOrEqual(10)
   })
 })
+
+describe('SidebarTemplate rail contact links', () => {
+  it('renders each profile in the rail as a clickable link', () => {
+    const dataWithProfiles: ResumeData = {
+      basics: {
+        name: 'Jane Smith',
+        profiles: [{ id: 'p1', label: 'Portfolio', url: 'https://janesmith.dev' }],
+      },
+    }
+    const { container } = render(<SidebarTemplate data={dataWithProfiles} meta={meta} />)
+    const link = container.querySelector('a[href="https://janesmith.dev"]')
+    expect(link?.textContent).toBe('Portfolio')
+  })
+})

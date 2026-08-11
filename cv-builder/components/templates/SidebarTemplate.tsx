@@ -271,12 +271,21 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
           <div style={{ fontSize: `${T.labelSize}pt`, opacity: 0.85, marginTop: '3px' }}>{basics.label}</div>
         )}
         <div style={{ fontSize: `${T.contactSize}pt`, opacity: 0.9, marginTop: '12px', lineHeight: 1.9, wordBreak: 'break-word' }}>
-          {[
-            basics.email,
-            basics.phone,
-            basics.url,
-            [basics.location?.city, basics.location?.region].filter(Boolean).join(', '),
-          ].filter(Boolean).map((p, i) => <div key={i}>{p}</div>)}
+          {basics.email && <div>{basics.email}</div>}
+          {basics.phone && <div>{basics.phone}</div>}
+          {(basics.profiles ?? []).filter((p) => p.url).map((p) => {
+            const eu = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`
+            return (
+              <div key={p.id}>
+                <a href={eu(p.url!)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
+                  {p.label || p.url}
+                </a>
+              </div>
+            )
+          })}
+          {[basics.location?.city, basics.location?.region].filter(Boolean).join(', ') && (
+            <div>{[basics.location?.city, basics.location?.region].filter(Boolean).join(', ')}</div>
+          )}
         </div>
 
         {/* Rail: skills */}
