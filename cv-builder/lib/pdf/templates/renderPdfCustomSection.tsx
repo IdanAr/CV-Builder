@@ -60,6 +60,26 @@ export function renderPdfCustomSection(
           {enabledFields.includes('level') && item.level ? (
             <Text style={styles.level ?? { fontSize: 9, color: '#555555' }}>Level: {item.level}</Text>
           ) : null}
+          {enabledFields.includes('roles') && (item.roles ?? []).length > 0 ? (
+            <View style={{ marginTop: 3 }}>
+              {(item.roles ?? []).map((role, ri) => (
+                <View key={role.id || ri} style={{ marginTop: ri === 0 ? 0 : 5 }}>
+                  {(role.title || role.startDate || role.endDate) ? (
+                    <Text style={{ marginBottom: 1 }}>
+                      {role.title ? <Text style={styles.accent}>{role.title}</Text> : null}
+                      {(role.startDate || role.endDate) ? (
+                        <Text style={styles.small}>{'  ·  '}{formatDateRange(role.startDate, role.endDate)}</Text>
+                      ) : null}
+                    </Text>
+                  ) : null}
+                  {role.summary ? renderPdfRichText(role.summary, styles.body) : null}
+                  {(role.highlights ?? []).map((h, hi) => (
+                    <Text key={hi} style={hi === 0 ? [styles.bullet, { marginTop: 2 }] : styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
+                  ))}
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
       ))}
     </View>
