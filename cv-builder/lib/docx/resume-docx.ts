@@ -9,6 +9,7 @@ import { parseRichText, splitParagraphs, TextRun as RichTextRun } from '@/lib/ri
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
 import { formatDate, formatDateRange, aggregateDateRange } from '@/lib/format-date'
 import { buildDocxStyles } from './styles'
+import { resolveProfiles } from '@/lib/basics-profiles'
 
 function richTextRuns(
   text: string,
@@ -333,7 +334,7 @@ function buildRailParas(
       spacing: { before: idx === 0 ? 180 : 0, after: 40 },
     }))
   })
-  for (const profile of basics?.profiles ?? []) {
+  for (const profile of resolveProfiles(basics)) {
     if (!profile.url) continue
     railContactParas.push(new Paragraph({
       children: [new ExternalHyperlink({
@@ -901,7 +902,7 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta, mode: ExportMode =
     if (contactRuns.length) contactRuns.push(sep())
     contactRuns.push(new TextRun({ text: basics.phone, font: bodyFont, size: 20, color: contactColor }))
   }
-  for (const profile of basics.profiles ?? []) {
+  for (const profile of resolveProfiles(basics)) {
     if (!profile.url) continue
     if (contactRuns.length) contactRuns.push(sep())
     contactRuns.push(new ExternalHyperlink({

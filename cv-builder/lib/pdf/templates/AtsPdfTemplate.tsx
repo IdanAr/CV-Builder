@@ -8,6 +8,7 @@ import {
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { formatDate, formatDateRange, aggregateDateRange } from '@/lib/format-date'
 import { withLineHeights, sectionReserve, entryReserve } from './pdf-primitives'
+import { resolveProfiles } from '@/lib/basics-profiles'
 
 const PAGE_FONT_SIZE = 10.5
 
@@ -50,7 +51,7 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
 
   const contactLine = [
     basics.email, basics.phone,
-    ...(basics.profiles ?? []).filter((p) => p.url).map((p) => p.label || p.url),
+    ...resolveProfiles(basics).filter((p) => p.url).map((p) => p.label || p.url),
     [basics.location?.city, basics.location?.region].filter(Boolean).join(', '),
   ].filter(Boolean).join(' | ')
 

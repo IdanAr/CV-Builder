@@ -5,6 +5,7 @@ import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
 import { RichText } from './RichText'
 import { formatDateRange, aggregateDateRange } from '@/lib/format-date'
+import { resolveProfiles } from '@/lib/basics-profiles'
 import { webFontFamily } from '@/lib/fonts/families'
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
 import { SIDEBAR_TOKENS as T, px } from '@/lib/design/tokens'
@@ -300,7 +301,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
         <div style={{ fontSize: `${T.contactSize}pt`, opacity: 0.9, marginTop: '12px', lineHeight: 1.9, wordBreak: 'break-word' }}>
           {basics.email && <div>{basics.email}</div>}
           {basics.phone && <div>{basics.phone}</div>}
-          {(basics.profiles ?? []).filter((p) => p.url).map((p) => {
+          {resolveProfiles(basics).filter((p) => p.url).map((p) => {
             const eu = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`
             return (
               <div key={p.id}>

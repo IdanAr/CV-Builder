@@ -2,6 +2,7 @@ import React from 'react'
 import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/renderer'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, renderPdfRichText, renderPdfRichTextRuns, ensureHttps, pdfDocumentProps } from './pdf-utils'
+import { resolveProfiles } from '@/lib/basics-profiles'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { formatDateRange, aggregateDateRange } from '@/lib/format-date'
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
@@ -560,7 +561,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
           <View style={styles.railContact}>
             {basics.email ? <Text style={styles.railContactLine}>{basics.email}</Text> : null}
             {basics.phone ? <Text style={styles.railContactLine}>{basics.phone}</Text> : null}
-            {(basics.profiles ?? []).filter((p) => p.url).map((p) => (
+            {resolveProfiles(basics).filter((p) => p.url).map((p) => (
               <Link key={p.id} src={ensureHttps(p.url!)} style={{ textDecoration: 'none' }}>
                 <Text style={styles.railContactLine}>{p.label || p.url}</Text>
               </Link>

@@ -2,6 +2,7 @@
 import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/renderer'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns, pdfDocumentProps } from './pdf-utils'
+import { resolveProfiles } from '@/lib/basics-profiles'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { formatDateRange, aggregateDateRange } from '@/lib/format-date'
 import { withLineHeights, PdfBullet, PdfEntryHead, sectionReserve, entryReserve } from './pdf-primitives'
@@ -46,7 +47,7 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
     const items: Array<{ label: string; href: string }> = []
     if (basics.email) items.push({ label: basics.email, href: `mailto:${basics.email}` })
     if (basics.phone) items.push({ label: basics.phone, href: '' })
-    for (const profile of basics.profiles ?? []) {
+    for (const profile of resolveProfiles(basics)) {
       if (!profile.url) continue
       items.push({ label: profile.label || profile.url, href: ensureHttps(profile.url) })
     }

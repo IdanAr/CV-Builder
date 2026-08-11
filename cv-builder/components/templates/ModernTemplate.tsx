@@ -5,6 +5,7 @@ import { renderCustomSection } from './renderCustomSection'
 import { RichText } from './RichText'
 import { getColumnSide } from '@/lib/get-column-side'
 import { formatDateRange, aggregateDateRange } from '@/lib/format-date'
+import { resolveProfiles } from '@/lib/basics-profiles'
 import { webFontFamily } from '@/lib/fonts/families'
 import { MODERN_TOKENS as T, px } from '@/lib/design/tokens'
 
@@ -319,7 +320,7 @@ export function ModernTemplate({ data, meta }: TemplateProps) {
               const parts: React.ReactNode[] = []
               if (basics.email) parts.push(<a key="em" href={`mailto:${basics.email}`} style={{ color: 'inherit', textDecoration: 'none' }}>{basics.email}</a>)
               if (basics.phone) parts.push(basics.phone)
-              for (const profile of basics.profiles ?? []) {
+              for (const profile of resolveProfiles(basics)) {
                 if (!profile.url) continue
                 parts.push(<a key={profile.id} href={eu(profile.url)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{profile.label || profile.url}</a>)
               }

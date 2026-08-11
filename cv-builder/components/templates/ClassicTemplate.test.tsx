@@ -92,3 +92,12 @@ describe('ClassicTemplate nested education roles', () => {
     expect(text).toContain('Score: 3.9')
   })
 })
+
+describe('ClassicTemplate legacy basics.url fallback', () => {
+  it('renders the legacy basics.url as a link when profiles is empty', () => {
+    const legacyData: ResumeData = { basics: { name: 'Jane', url: 'https://janelegacy.dev' } }
+    const { container } = render(<ClassicTemplate data={legacyData} meta={meta} />)
+    const link = container.querySelector('a[href="https://janelegacy.dev"]')
+    expect(link).toBeTruthy()
+  })
+})
