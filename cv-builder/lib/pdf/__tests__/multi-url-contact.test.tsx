@@ -59,4 +59,13 @@ describe('multi-URL contact row (PDF, ats mode)', () => {
     expect(text).toContain('Portfolio')
     expect(text).toContain('github.com/janesmith')
   })
+
+  it('preserves the raw URL text even when the profile has a label, so ATS parsers can still extract it', async () => {
+    const runs = await renderToGlyphRuns(
+      selectPdfTemplate(dataWithProfiles, meta, 'ats', 'CV') as React.ReactElement
+    )
+    const text = runs.map(r => r.str).join(' ')
+    expect(text).toContain('Portfolio')
+    expect(text).toContain('janesmith.dev')
+  })
 })

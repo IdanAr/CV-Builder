@@ -13,7 +13,7 @@ const section: CustomSection = {
   id: 'cs1', name: 'Military Service', enabledFields: ['dateRange', 'roles'],
   items: [{
     id: 'i1', title: 'IDF - Intelligence Corps', startDate: '2016-03', endDate: '2018-03',
-    roles: [{ id: 'r1', title: 'Team Commander', startDate: '2018-03', endDate: '2019-03', summary: 'Led a 6-person team.' }],
+    roles: [{ id: 'r1', title: 'Team Commander', subtitle: 'Special Operations Unit', startDate: '2018-03', endDate: '2019-03', summary: 'Led a 6-person team.' }],
   }],
 }
 
@@ -28,5 +28,16 @@ describe('renderPdfCustomSection nested roles', () => {
     const text = runs.map(r => r.str).join(' ')
     expect(text).toContain('Team Commander')
     expect(text).toContain('Led a 6-person team.')
+  })
+
+  it('renders role.subtitle beneath the role title/date header', async () => {
+    const doc = (
+      <Document>
+        <Page size="A4">{renderPdfCustomSection(section, styles)}</Page>
+      </Document>
+    )
+    const runs = await renderToGlyphRuns(doc)
+    const text = runs.map(r => r.str).join(' ')
+    expect(text).toContain('Special Operations Unit')
   })
 })

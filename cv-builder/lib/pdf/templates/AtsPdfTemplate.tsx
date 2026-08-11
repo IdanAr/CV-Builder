@@ -51,7 +51,7 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
 
   const contactLine = [
     basics.email, basics.phone,
-    ...resolveProfiles(basics).filter((p) => p.url).map((p) => p.label || p.url),
+    ...resolveProfiles(basics).filter((p) => p.url).map((p) => (p.label ? `${p.label}: ${p.url}` : p.url)),
     [basics.location?.city, basics.location?.region].filter(Boolean).join(', '),
   ].filter(Boolean).join(' | ')
 

@@ -72,6 +72,7 @@ export function renderPdfCustomSection(
                       ) : null}
                     </Text>
                   ) : null}
+                  {role.subtitle ? <Text style={styles.accent}>{role.subtitle}</Text> : null}
                   {role.summary ? renderPdfRichText(role.summary, styles.body) : null}
                   {(role.highlights ?? []).map((h, hi) => (
                     <Text key={hi} style={hi === 0 ? [styles.bullet, { marginTop: 2 }] : styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>

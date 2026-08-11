@@ -16,7 +16,7 @@ const LocationSchema = z.object({
 })
 
 const ProfileSchema = z.object({
-  id: z.string(),
+  id: z.string().default(() => crypto.randomUUID()),
   label: z.string().optional(),
   network: z.string().optional(),
   username: z.string().optional(),

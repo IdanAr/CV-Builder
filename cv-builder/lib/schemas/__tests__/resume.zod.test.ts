@@ -263,11 +263,26 @@ describe('BasicsSchema.profiles', () => {
     expect(result.success).toBe(true)
   })
 
-  it('rejects a profile with no id', () => {
+  it('self-heals a profile with no id by assigning a fresh one', () => {
     const result = ResumeDataSchema.safeParse({
       basics: { profiles: [{ url: 'https://janesmith.dev' }] },
     })
-    expect(result.success).toBe(false)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.basics?.profiles?.[0]?.id).toBeTruthy()
+    }
+  })
+
+  it('self-heals a legacy id-less profile (pre-existing AI-extracted data) instead of rejecting it', () => {
+    const result = PatchResumeSchema.safeParse({
+      data: { basics: { profiles: [{ network: 'LinkedIn', username: 'jane', url: 'https://linkedin.com/in/jane' }] } },
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      const profile = result.data.data?.basics?.profiles?.[0]
+      expect(profile?.id).toBeTruthy()
+      expect(typeof profile?.id).toBe('string')
+    }
   })
 })
 
