@@ -54,6 +54,12 @@ describe('extractResume', () => {
     expect(sentContent.length).toBeLessThanOrEqual(50_020)
   })
 
+  it('pins temperature to 0 so identical CV text parses identically on repeat uploads', async () => {
+    mockResponse('{}')
+    await extractResume('CV text')
+    expect(mockCreate.mock.calls[0][0].temperature).toBe(0)
+  })
+
   it('throws ExtractionError when Claude returns a non-text content block', async () => {
     mockCreate.mockResolvedValueOnce({ content: [{ type: 'tool_use', id: 'x' }] })
     await expect(extractResume('CV text')).rejects.toThrow(ExtractionError)

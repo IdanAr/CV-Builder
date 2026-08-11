@@ -14,13 +14,16 @@ const SYSTEM_PROMPT = `You are a CV parser. Extract structured data from the CV 
 
 Rules:
 - Only include fields explicitly stated in the text
-- Dates must be strings in YYYY-MM or YYYY format
+- Dates must be strings in YYYY-MM or YYYY format. If an end date is described as ongoing (e.g. "Present", "Current", "Now", regardless of the capitalization used in the text), omit endDate entirely instead of writing that word — a missing endDate is how this app represents "still ongoing"
 - skills[].keywords = flat array of individual skill strings
 - If a section is absent, omit it entirely — do not return empty arrays
 - Any CV section that does not map to a field below (e.g. Military Service, Courses, Achievements) goes into customSections with its original heading as "name" — never discard section content
 - Military service is not volunteer work and not employment — it always goes into customSections
-- When the CV text shows the same company or institution with more than one title/date-range pair in sequence (e.g. two job titles under one employer, or two degrees at one school), emit ONE entry with the earliest role's fields as the top-level position/startDate/endDate/summary/highlights, and put every additional role in that entry's "roles" array with the same per-role fields — do not emit separate top-level entries for each title
-- Apply the same grouping to a Military Service customSections item when it lists more than one rank or role in sequence
+- Every "work" entry's job title(s) and every "education" entry's degree(s) always go in that entry's "roles" array — never on the entry's own top-level fields, even when the company/institution has only one role. "roles" always has at least one element for every work/education entry
+- A company or institution can list more than one role in two different text shapes: (a) each title has its own date range printed next to it, or (b) ONE date range is printed once for the whole company/institution block and multiple title lines follow it with no date of their own (a promotion/role change within one tenure — the title lines are still each role's own heading, distinct from the summary/bullet text that follows them). Recognize both shapes as multi-role; in shape (b), leave startDate/endDate blank on every role that has no date printed next to its own title — do not invent one or copy the block's shared date onto it
+- Count roles strictly by the number of distinct title lines actually printed for that company/institution — never merge two differently-titled roles into one, and never split a single title into two roles. List roles in the exact top-to-bottom order they are printed in the source text — do not reorder them by guessing which is more recent
+- Keep each bullet point as its own separate string in the "highlights" array of whichever role's title it physically appears under in the text — copy it verbatim, do not paraphrase it into a "summary" sentence, do not move it to a different role, and do not repeat it under more than one role
+- Apply the same one-role-per-title, verbatim-bullet, source-order rules to a Military Service customSections item when it lists more than one rank or role in sequence — group those into that item's "roles" array the same way
 - Do not generate ids
 - Return raw JSON only — no markdown fences, no explanation, no prose
 
@@ -29,9 +32,9 @@ JSON shape (all fields optional):
   "basics": { "name", "label", "email", "phone", "url", "summary",
     "location": { "city", "region", "countryCode" },
     "profiles": [{ "label", "network", "username", "url" }] },
-  "work": [{ "name", "position", "startDate", "endDate", "summary", "highlights": [],
+  "work": [{ "name",
     "roles": [{ "position", "startDate", "endDate", "summary", "highlights": [] }] }],
-  "education": [{ "institution", "area", "studyType", "startDate", "endDate", "score",
+  "education": [{ "institution",
     "roles": [{ "studyType", "area", "startDate", "endDate", "score" }] }],
   "skills": [{ "name", "keywords": [] }],
   "certificates": [{ "name", "date", "issuer" }],
@@ -54,6 +57,10 @@ export async function extractResume(text: string): Promise<ResumeData> {
   const msg = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 4096,
+    // Extraction must be deterministic — the same CV text uploaded twice
+    // should parse the same way. Uncontrolled sampling (the SDK default)
+    // was the main source of run-to-run differences in role/bullet splitting.
+    temperature: 0,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: `CV text:\n\n${truncated}` }],
   })

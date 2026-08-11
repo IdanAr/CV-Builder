@@ -5,6 +5,7 @@
 import { CanvasFactory } from 'pdf-parse/worker'
 import { PDFParse } from 'pdf-parse'
 import * as mammoth from 'mammoth'
+import { extractLayoutAwareText } from './pdf-layout-text'
 
 export class ParseError extends Error {
   constructor(message: string) {
@@ -22,9 +23,22 @@ export async function parseFile(buffer: Buffer, mimeType: string): Promise<strin
 
   try {
     if (mimeType === PDF_MIME) {
-      const parser = new PDFParse({ data: buffer, CanvasFactory })
-      const result = await parser.getText()
-      text = result.text
+      // Layout-aware extraction (reads by visual position, column-aware) is
+      // far more reliable for multi-column/sidebar résumé templates than the
+      // PDF's raw content-stream order, which pdf-parse's getText() below
+      // just follows as-is. Fall back to it only if the layout-aware pass
+      // throws or comes back too short to be useful — never silently prefer
+      // a worse result once the better one is available.
+      try {
+        text = await extractLayoutAwareText(buffer)
+      } catch {
+        text = ''
+      }
+      if (!text || text.trim().length < MIN_TEXT_LENGTH) {
+        const parser = new PDFParse({ data: buffer, CanvasFactory })
+        const result = await parser.getText()
+        text = result.text
+      }
     } else if (mimeType === DOCX_MIME) {
       const result = await mammoth.extractRawText({ buffer })
       text = result.value
