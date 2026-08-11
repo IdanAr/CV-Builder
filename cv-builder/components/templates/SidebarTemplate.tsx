@@ -124,11 +124,22 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{edu.institution}</strong>
                   <span style={{ fontSize: '10pt', color: '#666' }}>
-                    {formatDateRange(edu.startDate, edu.endDate)}
+                    {aggregateDateRange([{ startDate: edu.startDate, endDate: edu.endDate }, ...(edu.roles ?? [])])}
                   </span>
                 </div>
                 <div style={{ fontSize: '10.5pt' }}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</div>
                 {edu.score && <div style={{ fontSize: '10pt', color: '#666' }}>Score: {edu.score}</div>}
+                {(edu.roles ?? []).map((role, ri) => (
+                  <div key={role.id ?? ri} style={{ marginTop: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <span style={{ fontSize: '10.5pt' }}>{[role.studyType, role.area].filter(Boolean).join(' in ')}</span>
+                      <span style={{ fontSize: '10pt', color: '#666' }}>
+                        {formatDateRange(role.startDate, role.endDate)}
+                      </span>
+                    </div>
+                    {role.score && <div style={{ fontSize: '10pt', color: '#666' }}>Score: {role.score}</div>}
+                  </div>
+                ))}
               </div>
             ))}
           </div>

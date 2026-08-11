@@ -75,3 +75,20 @@ describe('MinimalTemplate nested work roles', () => {
     expect(text).toContain('Grew headcount 3x')
   })
 })
+
+describe('MinimalTemplate nested education roles', () => {
+  it('shows the aggregate date range in the header and each program\'s own range beneath it', () => {
+    const dataWithRoles: ResumeData = {
+      education: [{
+        institution: 'MIT', studyType: 'BSc', area: 'CS', startDate: '2015-09', endDate: '2019-06',
+        roles: [{ id: 'r1', studyType: 'MSc', area: 'CS', startDate: '2020-09', endDate: '2022-06', score: '3.9' }],
+      }],
+    }
+    const { container } = render(<MinimalTemplate data={dataWithRoles} meta={{ ...meta, sectionOrder: ['education'] }} />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('09/2015 - 06/2022') // aggregate header range
+    expect(text).toContain('BSc in CS')
+    expect(text).toContain('MSc in CS')
+    expect(text).toContain('Score: 3.9')
+  })
+})
