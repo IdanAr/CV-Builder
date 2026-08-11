@@ -395,3 +395,46 @@ describe('multiple labeled URLs', () => {
     expect(xml).toContain('github.com/janesmith')
   })
 })
+
+describe('nested roles', () => {
+  const dataWithWorkRoles: ResumeData = {
+    work: [{
+      name: 'Meta', position: 'Data Analyst', startDate: '2019-01', endDate: '2021-01', highlights: [],
+      roles: [{ id: 'r1', position: 'Data Team Lead', startDate: '2021-01', endDate: undefined, summary: 'Led the team.', highlights: ['Grew headcount 3x'] }],
+    }],
+  }
+
+  it('renders the aggregate range in the work entry heading and both roles beneath it', async () => {
+    const xml = await documentXml(buildDocx(dataWithWorkRoles, defaultMeta))
+    expect(xml).toContain('Meta')
+    expect(xml).toContain('Data Analyst')
+    expect(xml).toContain('Data Team Lead')
+    expect(xml).toContain('Grew headcount 3x')
+  })
+
+  it('renders nested education roles', async () => {
+    const xml = await documentXml(buildDocx({
+      education: [{
+        institution: 'MIT', studyType: 'BSc', area: 'CS', startDate: '2015-09', endDate: '2019-06',
+        roles: [{ id: 'r1', studyType: 'MSc', area: 'CS', startDate: '2020-09', endDate: '2022-06' }],
+      }],
+    }, defaultMeta))
+    expect(xml).toContain('BSc')
+    expect(xml).toContain('MSc')
+  })
+
+  it('renders nested custom-section roles (Military Service)', async () => {
+    const xml = await documentXml(buildDocx({
+      customSections: [{
+        id: 'cs1', name: 'Military Service', enabledFields: ['dateRange', 'roles'],
+        items: [{ id: 'i1', title: 'IDF', roles: [{ id: 'r1', title: 'Team Commander' }] }],
+      }],
+    }, { ...defaultMeta, sectionOrder: ['custom:cs1'] }))
+    expect(xml).toContain('Team Commander')
+  })
+
+  it('renders nested work roles in the Sidebar rail when work is assigned left', async () => {
+    const xml = await documentXml(buildDocx(dataWithWorkRoles, { ...defaultMeta, templateId: 'sidebar', columnAssignment: { work: 'left' } }))
+    expect(xml).toContain('Data Team Lead')
+  })
+})
