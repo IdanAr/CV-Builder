@@ -437,4 +437,28 @@ describe('nested roles', () => {
     const xml = await documentXml(buildDocx(dataWithWorkRoles, { ...defaultMeta, templateId: 'sidebar', columnAssignment: { work: 'left' } }))
     expect(xml).toContain('Data Team Lead')
   })
+
+  it('does not render a roles block in the main column when enabledFields excludes roles', async () => {
+    const xml = await documentXml(buildDocx({
+      customSections: [{
+        id: 'cs1', name: 'Military Service', enabledFields: ['dateRange'],
+        items: [{ id: 'i1', title: 'IDF', roles: [{ id: 'r1', title: 'Team Commander', summary: 'Led a squad.' }] }],
+      }],
+    }, { ...defaultMeta, sectionOrder: ['custom:cs1'] }))
+    expect(xml).toContain('IDF')
+    expect(xml).not.toContain('Team Commander')
+    expect(xml).not.toContain('Led a squad.')
+  })
+
+  it('does not render a roles block in the Sidebar rail when enabledFields excludes roles', async () => {
+    const xml = await documentXml(buildDocx({
+      customSections: [{
+        id: 'cs1', name: 'Military Service', enabledFields: ['dateRange'],
+        items: [{ id: 'i1', title: 'IDF', roles: [{ id: 'r1', title: 'Team Commander', summary: 'Led a squad.' }] }],
+      }],
+    }, { ...defaultMeta, templateId: 'sidebar', sectionOrder: ['custom:cs1'], columnAssignment: { 'custom:cs1': 'left' } }))
+    expect(xml).toContain('IDF')
+    expect(xml).not.toContain('Team Commander')
+    expect(xml).not.toContain('Led a squad.')
+  })
 })

@@ -371,7 +371,7 @@ function buildRailParas(
       for (const item of cs.items) {
         if (item.title) paras.push(new Paragraph({ children: [new TextRun({ text: item.title, bold: true, font: bodyFont, size: 20, color: railText })], spacing: { after: 40 } }))
         if (cs.enabledFields.includes('summary') && item.summary) paras.push(new Paragraph({ children: [new TextRun({ text: item.summary, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 40 } }))
-        for (const role of item.roles ?? []) {
+        for (const role of (cs.enabledFields.includes('roles') ? (item.roles ?? []) : [])) {
           if (role.title) paras.push(new Paragraph({ children: [new TextRun({ text: role.title, bold: true, font: bodyFont, size: 20, color: railText })], spacing: { after: 30 } }))
           if (cs.enabledFields.includes('summary') && role.summary) paras.push(new Paragraph({ children: [new TextRun({ text: role.summary, font: bodyFont, size: 20, color: railSoft })], spacing: { after: 30 } }))
         }
@@ -535,7 +535,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
         if (cs.enabledFields.includes('level') && item.level) {
           out.push(new Paragraph({ children: [new TextRun({ text: `Level: ${item.level}`, font: bodyFont, size: 18, color: '555555' })], spacing: { after: 40 } }))
         }
-        for (const role of item.roles ?? []) {
+        for (const role of (cs.enabledFields.includes('roles') ? (item.roles ?? []) : [])) {
           const roleDateText = cs.enabledFields.includes('dateRange') && (role.startDate || role.endDate)
             ? formatDateRange(role.startDate, role.endDate)
             : ''
