@@ -270,3 +270,50 @@ describe('BasicsSchema.profiles', () => {
     expect(result.success).toBe(false)
   })
 })
+
+describe('nested roles', () => {
+  it('accepts a work entry with an empty roles array (default single-role shape unaffected)', () => {
+    const result = ResumeDataSchema.safeParse({
+      work: [{ name: 'Acme', position: 'Engineer' }],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a work entry with additional roles', () => {
+    const result = ResumeDataSchema.safeParse({
+      work: [{
+        name: 'Meta', position: 'Data Analyst', startDate: '2019-01', endDate: '2021-01',
+        roles: [{ id: 'r1', position: 'Data Team Lead', startDate: '2021-01', endDate: undefined, summary: 'Led the team.', highlights: ['Grew headcount 3x'] }],
+      }],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts an education entry with additional roles (programs)', () => {
+    const result = ResumeDataSchema.safeParse({
+      education: [{
+        institution: 'MIT', studyType: 'BSc', area: 'CS',
+        roles: [{ id: 'r1', studyType: 'MSc', area: 'CS', startDate: '2020-09', endDate: '2022-06' }],
+      }],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a custom section item with additional roles when enabledFields includes roles', () => {
+    const result = CustomSectionSchema.safeParse({
+      id: 'cs1', name: 'Military Service', enabledFields: ['dateRange', 'roles'],
+      items: [{
+        id: 'i1', title: 'IDF - Intelligence Corps',
+        roles: [{ id: 'r1', title: 'Team Commander', startDate: '2018-01', endDate: '2020-01' }],
+      }],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a role missing an id', () => {
+    const result = ResumeDataSchema.safeParse({
+      work: [{ name: 'Meta', roles: [{ position: 'Lead' }] }],
+    })
+    expect(result.success).toBe(false)
+  })
+})

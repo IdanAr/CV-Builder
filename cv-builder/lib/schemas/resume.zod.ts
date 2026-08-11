@@ -35,6 +35,15 @@ const BasicsSchema = z.object({
   profiles: z.array(ProfileSchema).optional(),
 })
 
+export const WorkRoleSchema = z.object({
+  id: z.string(),
+  position: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  summary: z.string().optional(),
+  highlights: z.array(z.string()).optional(),
+})
+
 const WorkSchema = z.object({
   name: z.string().optional(),
   location: z.string().optional(),
@@ -45,6 +54,17 @@ const WorkSchema = z.object({
   endDate: z.string().optional(),
   summary: z.string().optional(),
   highlights: z.array(z.string()).optional(),
+  roles: z.array(WorkRoleSchema).optional(),
+})
+
+export const EducationRoleSchema = z.object({
+  id: z.string(),
+  studyType: z.string().optional(),
+  area: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  score: z.string().optional(),
+  courses: z.array(z.string()).optional(),
 })
 
 const EducationSchema = z.object({
@@ -56,6 +76,7 @@ const EducationSchema = z.object({
   endDate: z.string().optional(),
   score: z.string().optional(),
   courses: z.array(z.string()).optional(),
+  roles: z.array(EducationRoleSchema).optional(),
 })
 
 const SkillSchema = z.object({
@@ -120,8 +141,20 @@ const ProjectSchema = z.object({
 })
 
 export const CUSTOM_SECTION_FIELDS = [
-  'subtitle', 'url', 'dateRange', 'summary', 'highlights', 'keywords', 'level',
+  'subtitle', 'url', 'dateRange', 'summary', 'highlights', 'keywords', 'level', 'roles',
 ] as const
+
+export const CustomSectionRoleSchema = z.object({
+  id: z.string(),
+  title: z.string().optional(),
+  subtitle: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  summary: z.string().optional(),
+  highlights: z.array(z.string()).optional(),
+  keywords: z.array(z.string()).optional(),
+  level: z.string().optional(),
+})
 
 const CustomSectionItemSchema = z.object({
   id: z.string(),
@@ -134,6 +167,7 @@ const CustomSectionItemSchema = z.object({
   highlights: z.array(z.string()).optional(),
   keywords: z.array(z.string()).optional(),
   level: z.string().optional(),
+  roles: z.array(CustomSectionRoleSchema).optional(),
 })
 
 export const CustomSectionSchema = z.object({
@@ -226,5 +260,8 @@ export type ResumeMeta = z.infer<typeof ResumeMetaSchema>
 export type CustomSection = z.infer<typeof CustomSectionSchema>
 export type CustomSectionItem = z.infer<typeof CustomSectionItemSchema>
 export type CustomSectionFieldType = typeof CUSTOM_SECTION_FIELDS[number]
+export type WorkRole = z.infer<typeof WorkRoleSchema>
+export type EducationRole = z.infer<typeof EducationRoleSchema>
+export type CustomSectionRole = z.infer<typeof CustomSectionRoleSchema>
 export type CreateResumeInput = z.infer<typeof CreateResumeSchema>
 export type PatchResumeInput = z.infer<typeof PatchResumeSchema>

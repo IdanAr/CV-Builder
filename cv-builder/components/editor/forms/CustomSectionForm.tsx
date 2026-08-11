@@ -17,6 +17,7 @@ const FIELD_LABELS: Record<CustomSectionFieldType, string> = {
   highlights: 'Bullets',
   keywords: 'Keywords',
   level: 'Level',
+  roles: 'Roles',
 }
 
 const inputClass = `${sharedInputClass} appearance-none`
