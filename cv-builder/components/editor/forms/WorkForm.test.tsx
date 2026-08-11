@@ -84,3 +84,44 @@ it('gives each work entry its own unique field ids, so labels never cross-wire b
   const ids = companyInputs.map((el) => el.id)
   expect(new Set(ids).size).toBe(2)
 })
+
+it('adds another role under the same company when "+ Add another role" is clicked', () => {
+  useResumeEditorStore.setState({
+    ...useResumeEditorStore.getState(),
+    data: { work: [{ name: 'Meta', position: 'Data Analyst', startDate: '' }] },
+  })
+  render(<WorkForm />)
+  fireEvent.click(screen.getByText('+ Add another role at Meta'))
+  expect(useResumeEditorStore.getState().data.work?.[0].roles).toHaveLength(1)
+})
+
+it('labels the add-role button generically when the company name is blank', () => {
+  useResumeEditorStore.setState({
+    ...useResumeEditorStore.getState(),
+    data: { work: [{ name: '', position: '', startDate: '' }] },
+  })
+  render(<WorkForm />)
+  expect(screen.getByText('+ Add another role')).toBeInTheDocument()
+})
+
+it('updates a role field independently of the primary role', () => {
+  useResumeEditorStore.setState({
+    ...useResumeEditorStore.getState(),
+    data: { work: [{ name: 'Meta', position: 'Data Analyst', startDate: '', roles: [{ id: 'r1', position: '', startDate: '', endDate: '', summary: '', highlights: [] }] }] },
+  })
+  render(<WorkForm />)
+  const positionInputs = screen.getAllByPlaceholderText('Job title')
+  fireEvent.change(positionInputs[1], { target: { value: 'Data Team Lead' } })
+  expect(useResumeEditorStore.getState().data.work?.[0].roles?.[0].position).toBe('Data Team Lead')
+  expect(useResumeEditorStore.getState().data.work?.[0].position).toBe('Data Analyst')
+})
+
+it('removes a role', () => {
+  useResumeEditorStore.setState({
+    ...useResumeEditorStore.getState(),
+    data: { work: [{ name: 'Meta', position: 'Data Analyst', startDate: '', roles: [{ id: 'r1', position: 'Lead', startDate: '', endDate: '', summary: '', highlights: [] }] }] },
+  })
+  render(<WorkForm />)
+  fireEvent.click(screen.getByLabelText('Remove role'))
+  expect(useResumeEditorStore.getState().data.work?.[0].roles).toHaveLength(0)
+})

@@ -8,18 +8,83 @@ import { AiSuggestButton } from '@/components/ai/AiSuggestButton'
 import { MonthYearPicker } from './MonthYearPicker'
 import { RichTextField } from './RichTextField'
 import { inputClass } from './field-styles'
-import { createEmptyWork as createEmpty } from '@/lib/schemas/resume-empty-entries'
-import type { ResumeData } from '@/lib/schemas/resume.zod'
+import { createEmptyWork as createEmpty, createEmptyWorkRole } from '@/lib/schemas/resume-empty-entries'
+import type { ResumeData, WorkRole } from '@/lib/schemas/resume.zod'
 
 type WorkItem = NonNullable<ResumeData['work']>[number]
 
 const EMPTY_WORK: WorkItem[] = []
+const EMPTY_ROLES: WorkRole[] = []
+
+function RoleForm({
+  role, company, resumeId, onUpdate, onRemove,
+}: {
+  role: WorkRole
+  company: string
+  resumeId: string
+  onUpdate: (v: WorkRole) => void
+  onRemove: () => void
+}) {
+  const id = useId()
+  const set = (field: keyof WorkRole, value: string) => onUpdate({ ...role, [field]: value })
+  const setHighlights = (highlights: string[]) => onUpdate({ ...role, highlights })
+  const addHighlight = () => setHighlights([...(role.highlights ?? []), ''])
+  const updateHighlight = (i: number, v: string) =>
+    setHighlights((role.highlights ?? []).map((h, idx) => (idx === i ? v : h)))
+  const removeHighlight = (i: number) =>
+    setHighlights((role.highlights ?? []).filter((_, idx) => idx !== i))
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between items-start gap-2">
+        <label htmlFor={`${id}-position`} className="sr-only">Job title</label>
+        <input id={`${id}-position`} type="text" value={role.position ?? ''} onChange={(e) => set('position', e.target.value)}
+          placeholder="Job title" className={`${inputClass} flex-1`} />
+        <button type="button" onClick={onRemove} aria-label="Remove role"
+          className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <MonthYearPicker value={role.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
+        <MonthYearPicker value={role.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
+      </div>
+      <label htmlFor={`${id}-summary`} className="sr-only">Role summary</label>
+      <RichTextField
+        id={`${id}-summary`}
+        value={role.summary ?? ''}
+        onChange={(v) => set('summary', v)}
+        placeholder="Role summary..."
+      />
+      <fieldset className="space-y-1 border-0 p-0 m-0">
+        <legend className="block text-xs font-medium text-indigo-600 p-0">Bullet points</legend>
+        {(role.highlights ?? []).map((h, i) => (
+          <div key={i} className="flex gap-1 items-start">
+            <RichTextField
+              value={h}
+              onChange={(v) => updateHighlight(i, v)}
+              placeholder="Achieved X by doing Y, resulting in Z"
+              ariaLabel={`Bullet point ${i + 1}`}
+              className="flex-1"
+              height={120}
+            />
+            <AiSuggestButton
+              resumeId={resumeId}
+              currentValue={h}
+              context={{ jobTitle: role.position, company, field: 'highlight' }}
+              onAccept={(v) => updateHighlight(i, v)}
+            />
+            <button type="button" onClick={() => removeHighlight(i)} aria-label="Remove highlight"
+              className="text-gray-400 hover:text-red-500 text-xs px-1 mt-6">✕</button>
+          </div>
+        ))}
+        <button type="button" onClick={addHighlight}
+          className="text-xs text-indigo-600 hover:text-indigo-800">+ Add bullet</button>
+      </fieldset>
+    </div>
+  )
+}
 
 function WorkItemForm({
-  item,
-  resumeId,
-  onUpdate,
-  onRemove,
+  item, resumeId, onUpdate, onRemove,
 }: {
   item: WorkItem
   resumeId: string
@@ -35,6 +100,10 @@ function WorkItemForm({
     setHighlights((item.highlights ?? []).map((h, idx) => (idx === i ? v : h)))
   const removeHighlight = (i: number) =>
     setHighlights((item.highlights ?? []).filter((_, idx) => idx !== i))
+
+  const roles = item.roles ?? EMPTY_ROLES
+  const setRoles = (roles: WorkRole[]) => onUpdate({ ...item, roles })
+  const addRoleLabel = item.name ? `+ Add another role at ${item.name}` : '+ Add another role'
 
   return (
     <div className="space-y-2">
@@ -86,6 +155,17 @@ function WorkItemForm({
         <button type="button" onClick={addHighlight}
           className="text-xs text-indigo-600 hover:text-indigo-800">+ Add bullet</button>
       </fieldset>
+      <div className="pl-3 border-l-2 border-indigo-100 space-y-2">
+        <ListFieldManager<WorkRole>
+          items={roles}
+          onChange={setRoles}
+          createEmpty={createEmptyWorkRole}
+          addLabel={addRoleLabel.replace('+ ', '')}
+          renderItem={(role, _, onUpdateRole, onRemoveRole) => (
+            <RoleForm role={role} company={item.name ?? ''} resumeId={resumeId} onUpdate={onUpdateRole} onRemove={onRemoveRole} />
+          )}
+        />
+      </div>
     </div>
   )
 }
