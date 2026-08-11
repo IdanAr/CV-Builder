@@ -26,6 +26,10 @@ function createEmptyItem(): CustomSectionItem {
   return { id: crypto.randomUUID() }
 }
 
+function createEmptyRole(): NonNullable<CustomSectionItem['roles']>[number] {
+  return { id: crypto.randomUUID() }
+}
+
 interface ItemFormProps {
   item: CustomSectionItem
   enabledFields: CustomSectionFieldType[]
@@ -151,6 +155,56 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
             <option value="Beginner">Beginner</option>
           </select>
         </>
+      )}
+
+      {enabledFields.includes('roles') && (
+        <div className="pl-3 border-l-2 border-indigo-100 space-y-2">
+          <ListFieldManager<NonNullable<CustomSectionItem['roles']>[number]>
+            items={item.roles ?? []}
+            onChange={(roles) => onUpdate({ ...item, roles })}
+            createEmpty={createEmptyRole}
+            addLabel="Add role"
+            renderItem={(role, _, onUpdateRole, onRemoveRole) => (
+              <RoleForm role={role} enabledFields={enabledFields} onUpdate={onUpdateRole} onRemove={onRemoveRole} />
+            )}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function RoleForm({
+  role, enabledFields, onUpdate, onRemove,
+}: {
+  role: NonNullable<CustomSectionItem['roles']>[number]
+  enabledFields: CustomSectionFieldType[]
+  onUpdate: (v: NonNullable<CustomSectionItem['roles']>[number]) => void
+  onRemove: () => void
+}) {
+  const id = useId()
+  const set = (f: 'title' | 'subtitle' | 'startDate' | 'endDate' | 'summary', v: string) => onUpdate({ ...role, [f]: v })
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2 items-start">
+        <label htmlFor={`${id}-title`} className="sr-only">Title</label>
+        <input id={`${id}-title`} type="text" value={role.title ?? ''} onChange={(e) => set('title', e.target.value)}
+          placeholder="Title" className={`${inputClass} flex-1`} />
+        <button type="button" onClick={onRemove} aria-label="Remove role"
+          className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
+      </div>
+      {enabledFields.includes('subtitle') && (
+        <input type="text" value={role.subtitle ?? ''} onChange={(e) => set('subtitle', e.target.value)}
+          placeholder="Subtitle" className={inputClass} />
+      )}
+      {enabledFields.includes('dateRange') && (
+        <div className="grid grid-cols-2 gap-2">
+          <MonthYearPicker value={role.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
+          <MonthYearPicker value={role.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
+        </div>
+      )}
+      {enabledFields.includes('summary') && (
+        <RichTextField value={role.summary ?? ''} onChange={(v) => set('summary', v)} placeholder="Description..." />
       )}
     </div>
   )

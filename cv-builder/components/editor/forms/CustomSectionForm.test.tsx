@@ -89,4 +89,40 @@ describe('CustomSectionForm', () => {
     render(<CustomSectionForm sectionId="sec1" />)
     expect(screen.getByDisplayValue('Existing summary')).toBeTruthy()
   })
+
+  it('shows the Roles toggle in the field chips', () => {
+    mockStore({
+      id: 'cs1',
+      name: 'Military Service',
+      enabledFields: [] as CustomSectionFieldType[],
+      items: [],
+    })
+    render(<CustomSectionForm sectionId="cs1" />)
+    expect(screen.getByText('Roles')).toBeInTheDocument()
+  })
+
+  it('shows the add-role control on an item only when Roles is enabled', () => {
+    mockStore({
+      id: 'cs1',
+      name: 'Military Service',
+      enabledFields: ['roles'] as CustomSectionFieldType[],
+      items: [{ id: 'i1', title: 'IDF' }],
+    })
+    render(<CustomSectionForm sectionId="cs1" />)
+    expect(screen.getByText('+ Add role')).toBeInTheDocument()
+  })
+
+  it('adds a role to an item', () => {
+    mockStore({
+      id: 'cs1',
+      name: 'Military Service',
+      enabledFields: ['roles'] as CustomSectionFieldType[],
+      items: [{ id: 'i1', title: 'IDF' }],
+    })
+    render(<CustomSectionForm sectionId="cs1" />)
+    fireEvent.click(screen.getByText('+ Add role'))
+    expect(updateCustomSection).toHaveBeenCalledWith('cs1', {
+      items: [{ id: 'i1', title: 'IDF', roles: [expect.objectContaining({ id: expect.any(String) })] }],
+    })
+  })
 })
