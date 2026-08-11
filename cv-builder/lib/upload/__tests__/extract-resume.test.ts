@@ -135,4 +135,12 @@ describe('extractResume', () => {
     const result = await extractResume('CV text')
     expect(result.customSections?.map((cs) => cs.name)).toEqual(['Military Service', 'Projects'])
   })
+
+  it('preserves a labeled profile URL from the AI response', async () => {
+    mockResponse(JSON.stringify({
+      basics: { name: 'Jane Smith', profiles: [{ label: 'Portfolio', url: 'https://janesmith.dev' }] },
+    }))
+    const result = await extractResume('Jane Smith\nPortfolio: https://janesmith.dev')
+    expect(result.basics?.profiles?.[0]).toMatchObject({ label: 'Portfolio', url: 'https://janesmith.dev' })
+  })
 })

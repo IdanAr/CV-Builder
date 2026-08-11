@@ -26,7 +26,7 @@ JSON shape (all fields optional):
 {
   "basics": { "name", "label", "email", "phone", "url", "summary",
     "location": { "city", "region", "countryCode" },
-    "profiles": [{ "network", "username", "url" }] },
+    "profiles": [{ "label", "network", "username", "url" }] },
   "work": [{ "name", "position", "startDate", "endDate", "summary", "highlights": [] }],
   "education": [{ "institution", "area", "studyType", "startDate", "endDate", "score" }],
   "skills": [{ "name", "keywords": [] }],
@@ -66,7 +66,7 @@ export async function extractResume(text: string): Promise<ResumeData> {
     throw new ExtractionError('AI returned unstructured output. Please try again.')
   }
 
-  const normalized = normalizeCustomSections(sanitizeForSchema(parsed))
+  const normalized = normalizeCustomSections(assignProfileIds(sanitizeForSchema(parsed)))
   const result = ResumeDataSchema.safeParse(normalized)
   if (!result.success) {
     throw new ExtractionError('AI returned data that did not match the expected resume format. Please try again.')
@@ -176,6 +176,24 @@ function normalizeCustomSections(data: unknown): unknown {
   if (sections.length > 0) obj.customSections = sections
   else delete obj.customSections
   return obj
+}
+
+// The prompt explicitly tells the model not to generate ids, but ProfileSchema.id
+// is required — assign one to each AI-returned profile before schema validation.
+function assignProfileIds(data: unknown): unknown {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return data
+  const obj = data as Record<string, unknown>
+  const basics = obj.basics
+  if (!basics || typeof basics !== 'object' || Array.isArray(basics)) return data
+  const b = basics as Record<string, unknown>
+  if (!Array.isArray(b.profiles)) return data
+  return {
+    ...obj,
+    basics: {
+      ...b,
+      profiles: b.profiles.map((p) => (p && typeof p === 'object' ? { id: randomUUID(), ...p } : p)),
+    },
+  }
 }
 
 function sanitizeForSchema(data: unknown): unknown {
