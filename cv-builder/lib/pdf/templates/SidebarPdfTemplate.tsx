@@ -129,7 +129,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
           <View key="work">
             <Text style={styles.railSectionTitle}>Work Experience</Text>
             {work.map((job, i) => {
-              const dates = formatDateRange(job.startDate, job.endDate, true)
+              const dates = aggregateDateRange([{ startDate: job.startDate, endDate: job.endDate }, ...(job.roles ?? [])], true)
               return (
                 <View key={i} style={{ marginBottom: 6 }}>
                   <Text style={styles.railBold}>
@@ -139,6 +139,19 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
                   {job.position ? <Text style={styles.railBody}>{job.position}</Text> : null}
                   {(job.highlights ?? []).map((h, hi) => (
                     <Text key={hi} style={styles.railBody}>• {h}</Text>
+                  ))}
+                  {(job.roles ?? []).map((role, ri) => (
+                    <View key={role.id ?? ri} style={{ marginTop: 3 }}>
+                      <Text style={styles.railBold}>
+                        {role.position ?? ''}
+                        {formatDateRange(role.startDate, role.endDate, true) ? (
+                          <Text style={styles.railMuted}>{'  ·  '}{formatDateRange(role.startDate, role.endDate, true)}</Text>
+                        ) : null}
+                      </Text>
+                      {(role.highlights ?? []).map((h, hi) => (
+                        <Text key={hi} style={styles.railBody}>• {h}</Text>
+                      ))}
+                    </View>
                   ))}
                 </View>
               )
@@ -152,7 +165,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
           <View key="education">
             <Text style={styles.railSectionTitle}>Education</Text>
             {education.map((edu, i) => {
-              const dates = formatDateRange(edu.startDate, edu.endDate)
+              const dates = aggregateDateRange([{ startDate: edu.startDate, endDate: edu.endDate }, ...(edu.roles ?? [])])
               return (
                 <View key={i} style={{ marginBottom: 6 }}>
                   <Text style={styles.railBold}>
@@ -160,6 +173,12 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
                     {dates ? <Text style={styles.railMuted}>{'  ·  '}{dates}</Text> : null}
                   </Text>
                   <Text style={styles.railBody}>{[edu.studyType, edu.area].filter(Boolean).join(' in ')}</Text>
+                  {(edu.roles ?? []).map((role, ri) => (
+                    <Text key={role.id ?? ri} style={styles.railBody}>
+                      {[role.studyType, role.area].filter(Boolean).join(' in ')}
+                      {formatDateRange(role.startDate, role.endDate) ? ` · ${formatDateRange(role.startDate, role.endDate)}` : ''}
+                    </Text>
+                  ))}
                 </View>
               )
             })}

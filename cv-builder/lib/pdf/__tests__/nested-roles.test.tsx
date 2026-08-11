@@ -50,3 +50,18 @@ for (const templateId of ['classic', 'modern', 'minimal', 'executive'] as const)
     })
   })
 }
+
+describe('nested work roles (PDF, Sidebar rail)', () => {
+  it('shows both roles when work is assigned to the rail column', async () => {
+    const runs = await renderToGlyphRuns(
+      selectPdfTemplate(
+        dataWithWorkRoles,
+        { ...meta, templateId: 'sidebar', columnAssignment: { work: 'left' } },
+        'designed', 'CV'
+      ) as React.ReactElement
+    )
+    const text = runs.map(r => r.str).join(' ')
+    expect(text).toContain('Data Analyst')
+    expect(text).toContain('Data Team Lead')
+  })
+})
