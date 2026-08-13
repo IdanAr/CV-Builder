@@ -70,7 +70,7 @@ it('persists the migrated URL into profiles and clears basics.url once any URL r
     data: { basics: { url: 'https://janesmith.dev' } },
   })
   render(<BasicsForm />)
-  fireEvent.change(screen.getByPlaceholderText('Label (optional — leave blank to show the link itself)'), {
+  fireEvent.change(screen.getByPlaceholderText('Label - Optional'), {
     target: { value: 'Portfolio' },
   })
   const basics = useResumeEditorStore.getState().data.basics

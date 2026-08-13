@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { getAnthropic } from '@/lib/ai/models'
 import { ResumeDataSchema, CUSTOM_SECTION_FIELDS } from '@/lib/schemas/resume.zod'
-import type { ResumeData, CustomSection, CustomSectionItem, CustomSectionFieldType } from '@/lib/schemas/resume.zod'
+import type { ResumeData, CustomSection, CustomSectionItem, CustomSectionFieldType, WorkRole, EducationRole, CustomSectionRole } from '@/lib/schemas/resume.zod'
 
 export class ExtractionError extends Error {
   constructor(message: string) {
@@ -14,7 +14,7 @@ const SYSTEM_PROMPT = `You are a CV parser. Extract structured data from the CV 
 
 Rules:
 - Only include fields explicitly stated in the text
-- Dates must be strings in YYYY-MM or YYYY format. If an end date is described as ongoing (e.g. "Present", "Current", "Now", regardless of the capitalization used in the text), omit endDate entirely instead of writing that word — a missing endDate is how this app represents "still ongoing"
+- Dates must be strings in YYYY-MM or YYYY format. Only write startDate/endDate when the text actually contains a date range (a start date, or a start–end pair) next to that entry. Within a real date range, if the end side is expressed as ongoing (e.g. "Present", "Current", "Currently", "Now", "Ongoing", "Till date", regardless of capitalization) instead of a date, write endDate as the literal string "Present" — that is this app's sentinel for "still ongoing". This rule applies identically to EVERY real date range in the document — work, education, volunteer, projects, and custom-section roles alike; a résumé commonly has more than one thing still ongoing at once (e.g. a current job AND a degree in progress), so check each date range on its own, don't assume only one entry can be "Present". Only omit endDate when a startDate exists but no end is given at all; never guess or default to "Present" in that case. Example: "Technion  12/2025 – Present" → {"startDate": "2025-12", "endDate": "Present"} — not just {"startDate": "2025-12"}. Do NOT invent a date range from a status label that isn't a date — e.g. a project titled "CV-Builder (Active Development)" with no date printed anywhere near it gets no startDate and no endDate at all; "(Active Development)"/"(Ongoing)"/"(WIP)" next to a title is a status word, not a date
 - skills[].keywords = flat array of individual skill strings
 - If a section is absent, omit it entirely — do not return empty arrays
 - Any CV section that does not map to a field below (e.g. Military Service, Courses, Achievements) goes into customSections with its original heading as "name" — never discard section content
@@ -78,12 +78,12 @@ export async function extractResume(text: string): Promise<ResumeData> {
     throw new ExtractionError('AI returned unstructured output. Please try again.')
   }
 
-  const normalized = assignRoleIds(normalizeCustomSections(assignProfileIds(sanitizeForSchema(parsed))))
+  const normalized = assignRoleIds(normalizeCustomSections(assignProfileIds(sanitizeForSchema(dropOrphanEndDates(normalizeOngoingDates(parsed))))))
   const result = ResumeDataSchema.safeParse(normalized)
   if (!result.success) {
     throw new ExtractionError('AI returned data that did not match the expected resume format. Please try again.')
   }
-  return result.data
+  return patchAnchoredPresentDates(truncated, result.data)
 }
 
 // The editor and templates only render work/education/skills/volunteer/languages
@@ -236,6 +236,117 @@ function assignRoleIds(data: unknown): unknown {
     })
   }
   return obj
+}
+
+// Safety net independent of the prompt: however the model phrases an
+// ongoing end date ("Current", "Currently", "Now", "Ongoing", "Till date",
+// any capitalization), coerce it to the literal "Present" sentinel this app
+// renders/edits as the isPresent checkbox — never leave a synonym sitting
+// in endDate unrecognized by MonthYearPicker/formatDateRange.
+const ONGOING_DATE_PATTERN = /^(present|current(ly)?|now|ongoing|till date|to date|till now|to present|to now|actual)$/i
+
+function normalizeOngoingDates(data: unknown): unknown {
+  if (Array.isArray(data)) return data.map(normalizeOngoingDates)
+  if (!data || typeof data !== 'object') return data
+  const obj = data as Record<string, unknown>
+  const out: Record<string, unknown> = {}
+  for (const [key, val] of Object.entries(obj)) {
+    if (key === 'endDate' && typeof val === 'string' && ONGOING_DATE_PATTERN.test(val.trim())) {
+      out[key] = 'Present'
+    } else if (Array.isArray(val) || (val && typeof val === 'object')) {
+      out[key] = normalizeOngoingDates(val)
+    } else {
+      out[key] = val
+    }
+  }
+  return out
+}
+
+// Backstop for the model inventing an endDate (occasionally "Present") next
+// to a title that has no date range at all — e.g. a status label like
+// "(Active Development)" that isn't a date but got read as one. An endDate
+// with no startDate is meaningless in this app's model (there's nothing to
+// range from), so drop it outright rather than trust the model's read.
+function dropOrphanEndDates(data: unknown): unknown {
+  if (Array.isArray(data)) return data.map(dropOrphanEndDates)
+  if (!data || typeof data !== 'object') return data
+  const obj = data as Record<string, unknown>
+  const out: Record<string, unknown> = {}
+  for (const [key, val] of Object.entries(obj)) {
+    out[key] = Array.isArray(val) || (val && typeof val === 'object') ? dropOrphanEndDates(val) : val
+  }
+  if (out.endDate && !out.startDate) delete out.endDate
+  return out
+}
+
+// Second, independent safety net: normalizeOngoingDates only catches an
+// ongoing marker the model already decided to put in endDate. In practice
+// the model sometimes drops endDate entirely for one entry while getting a
+// sibling entry in the very same document right (observed: a work entry and
+// an in-progress-degree education entry in the same CV, both ending
+// "Present" in the source text — the model wrote "Present" for the job but
+// silently omitted endDate for the degree). Since that failure is the model
+// never emitting a value at all, no amount of post-hoc string matching on
+// its output can catch it — so this scans the original CV text directly for
+// "<name> ... <year> - Present/Current/..." lines and force-fills endDate
+// on the matching entry only when the model left it blank and a startDate
+// is otherwise present. Deliberately conservative: it fills gaps, it never
+// overrides a value the model actually produced.
+const ONGOING_WORD_PATTERN = /\b(present|current(?:ly)?|now|ongoing|till date|to date|till now|to present|to now|actual)\b/i
+const YEAR_PATTERN = /(19|20)\d{2}/
+
+function findOngoingAnchors(sourceText: string): string[] {
+  const anchors: string[] = []
+  for (const line of sourceText.split('\n')) {
+    if (!ONGOING_WORD_PATTERN.test(line)) continue
+    const yearMatch = YEAR_PATTERN.exec(line)
+    if (!yearMatch) continue
+    const anchor = line.slice(0, yearMatch.index).replace(/\t/g, ' ').trim().toLowerCase()
+    if (anchor) anchors.push(anchor)
+  }
+  return anchors
+}
+
+function matchesAnchor(name: string | undefined, anchors: string[]): boolean {
+  const n = name?.trim().toLowerCase()
+  if (!n) return false
+  return anchors.some((a) => a.includes(n) || n.includes(a))
+}
+
+function patchLastOpenRole<T extends { startDate?: string; endDate?: string }>(roles: T[] | undefined): T[] | undefined {
+  if (!roles || roles.length === 0) return roles
+  const lastOpenIndex = [...roles].reverse().findIndex((r) => r.startDate && !r.endDate)
+  if (lastOpenIndex === -1) return roles
+  const index = roles.length - 1 - lastOpenIndex
+  return roles.map((r, i) => (i === index ? { ...r, endDate: 'Present' } : r))
+}
+
+function patchAnchoredPresentDates(sourceText: string, data: ResumeData): ResumeData {
+  const anchors = findOngoingAnchors(sourceText)
+  if (anchors.length === 0) return data
+
+  return {
+    ...data,
+    work: data.work?.map((w) =>
+      matchesAnchor(w.name, anchors) ? { ...w, roles: patchLastOpenRole<WorkRole>(w.roles) } : w
+    ),
+    education: data.education?.map((e) =>
+      matchesAnchor(e.institution, anchors) ? { ...e, roles: patchLastOpenRole<EducationRole>(e.roles) } : e
+    ),
+    volunteer: data.volunteer?.map((v) =>
+      matchesAnchor(v.organization, anchors) && v.startDate && !v.endDate ? { ...v, endDate: 'Present' } : v
+    ),
+    customSections: data.customSections?.map((cs) => ({
+      ...cs,
+      items: cs.items.map((item) => {
+        if (!matchesAnchor(item.title, anchors)) return item
+        if (item.roles && item.roles.length > 0) {
+          return { ...item, roles: patchLastOpenRole<CustomSectionRole>(item.roles) }
+        }
+        return item.startDate && !item.endDate ? { ...item, endDate: 'Present' } : item
+      }),
+    })),
+  }
 }
 
 function sanitizeForSchema(data: unknown): unknown {
