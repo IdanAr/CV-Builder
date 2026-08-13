@@ -181,4 +181,79 @@ describe('extractResume', () => {
     const section = result.customSections?.find(s => s.name === 'Military Service')
     expect(section?.items[0].roles?.[0].id).toBeTruthy()
   })
+
+  it('normalizes an ongoing-synonym endDate to the "Present" sentinel on a work role', async () => {
+    mockResponse(JSON.stringify({
+      work: [{ name: 'Acme', roles: [{ position: 'Engineer', startDate: '2022-01', endDate: 'Current' }] }],
+    }))
+    const result = await extractResume('Acme\nEngineer 2022-Current')
+    expect(result.work?.[0].roles?.[0].endDate).toBe('Present')
+  })
+
+  it.each(['present', 'CURRENT', 'Currently', 'now', 'Ongoing', 'till date'])(
+    'normalizes endDate synonym %s to "Present" on an education role',
+    async (synonym) => {
+      mockResponse(JSON.stringify({
+        education: [{ institution: 'MIT', roles: [{ studyType: 'PhD', startDate: '2022-09', endDate: synonym }] }],
+      }))
+      const result = await extractResume('MIT PhD 2022-')
+      expect(result.education?.[0].roles?.[0].endDate).toBe('Present')
+    }
+  )
+
+  it('leaves an unrecognized endDate value untouched', async () => {
+    mockResponse(JSON.stringify({
+      work: [{ name: 'Acme', roles: [{ position: 'Engineer', startDate: '2020-01', endDate: '2022-06' }] }],
+    }))
+    const result = await extractResume('Acme\nEngineer 2020-01 to 2022-06')
+    expect(result.work?.[0].roles?.[0].endDate).toBe('2022-06')
+  })
+
+  it('omits endDate entirely when the AI provides no end-date information at all', async () => {
+    mockResponse(JSON.stringify({
+      work: [{ name: 'Acme', roles: [{ position: 'Engineer', startDate: '2020-01' }] }],
+    }))
+    const result = await extractResume('Acme\nEngineer since 2020')
+    expect(result.work?.[0].roles?.[0].endDate).toBeUndefined()
+  })
+
+  it('fills a missing endDate from the source text when the AI dropped it but a sibling entry ending "Present" is right there (regression: real CV where a job and an in-progress degree both end "Present," AI wrote it only for the job)', async () => {
+    mockResponse(JSON.stringify({
+      work: [{ name: 'SAS ISRAEL', roles: [{ position: 'Architect', startDate: '2022-07', endDate: 'Present' }] }],
+      education: [{ institution: 'Technion - Israel Institute of Technology', roles: [{ studyType: 'Generative AI & LLMs', startDate: '2025-12' }] }],
+    }))
+    const result = await extractResume(
+      'SAS ISRAEL\t07/2022 - Present\nArchitect\n\nTechnion - Israel Institute of Technology\t12/2025 – Present\nGenerative AI & LLMs'
+    )
+    expect(result.work?.[0].roles?.[0].endDate).toBe('Present')
+    expect(result.education?.[0].roles?.[0].endDate).toBe('Present')
+  })
+
+  it('does not invent an endDate for an entry with no date range in the source text, even if it sits near unrelated "Present" anchors', async () => {
+    mockResponse(JSON.stringify({
+      work: [{ name: 'SAS ISRAEL', roles: [{ position: 'Architect', startDate: '2022-07', endDate: 'Present' }] }],
+      customSections: [{
+        name: 'Projects',
+        items: [{ title: 'CV-Builder', summary: 'A resume builder.' }],
+      }],
+    }))
+    const result = await extractResume(
+      'SAS ISRAEL\t07/2022 - Present\nArchitect\n\nProjects\nCV-Builder (Active Development)\nA resume builder.'
+    )
+    const projects = result.customSections?.find((cs) => cs.name === 'Projects')
+    expect(projects?.items[0].startDate).toBeUndefined()
+    expect(projects?.items[0].endDate).toBeUndefined()
+  })
+
+  it('drops an endDate the AI returned with no matching startDate (orphan endDate)', async () => {
+    mockResponse(JSON.stringify({
+      customSections: [{
+        name: 'Projects',
+        items: [{ title: 'CV-Builder', endDate: 'Present', summary: 'A resume builder.' }],
+      }],
+    }))
+    const result = await extractResume('Projects\nCV-Builder (Active Development)\nA resume builder.')
+    const projects = result.customSections?.find((cs) => cs.name === 'Projects')
+    expect(projects?.items[0].endDate).toBeUndefined()
+  })
 })

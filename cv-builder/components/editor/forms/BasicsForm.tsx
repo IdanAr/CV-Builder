@@ -80,7 +80,7 @@ export function BasicsForm() {
                   type="text"
                   value={item.label ?? ''}
                   onChange={(e) => onUpdate({ ...item, label: e.target.value })}
-                  placeholder="Label (optional — leave blank to show the link itself)"
+                  placeholder="Label - Optional"
                   className={inputClass}
                 />
               </div>
