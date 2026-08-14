@@ -199,6 +199,54 @@ export function EditTab() {
         <BasicsForm />
       </AccordionSection>
 
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setAddMenuOpen((o) => !o)}
+          aria-haspopup="menu"
+          aria-expanded={addMenuOpen}
+          className="w-full py-2.5 border-2 border-dashed border-indigo-300 rounded-xl text-sm font-semibold text-indigo-500 bg-indigo-50/50 shadow-[0_0_14px_-2px_rgba(99,102,241,0.45)] hover:border-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 hover:shadow-[0_0_20px_-2px_rgba(99,102,241,0.6)] transition-all"
+        >
+          + Add Section
+        </button>
+        {addMenuOpen && (
+          <>
+            <div className="fixed inset-0 z-10" aria-hidden="true" onClick={() => setAddMenuOpen(false)} />
+            <div
+              role="menu"
+              className="absolute left-0 right-0 mt-1 z-20 rounded-xl border border-indigo-100 bg-white shadow-lg overflow-hidden"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleAddSection}
+                title="Custom sections hold content the built-in categories don't cover. Give it a name, pick which fields to show, and add as many entries as you like. Handy for things like Military Service, References, or Conferences."
+                className="w-full text-left px-4 py-2.5 text-sm text-indigo-900 hover:bg-indigo-50"
+              >
+                + New custom section
+              </button>
+              {removedBuiltIns.length > 0 && (
+                <div className="border-t border-indigo-50">
+                  <p className="px-4 pt-2 pb-1 text-[11px] uppercase tracking-wide text-indigo-300">Add built-in sections</p>
+                  {removedBuiltIns.map((section) => (
+                    <button
+                      key={section}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => handleReAddSection(section)}
+                      className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-indigo-800 hover:bg-indigo-50"
+                    >
+                      <SectionIcon section={section} />
+                      {SECTION_LABELS[section]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={orderedSections} strategy={verticalListSortingStrategy}>
           {orderedSections.map((section) => {
@@ -251,53 +299,6 @@ export function EditTab() {
           })}
         </SortableContext>
       </DndContext>
-
-      <div className="relative mt-2">
-        <button
-          type="button"
-          onClick={() => setAddMenuOpen((o) => !o)}
-          aria-haspopup="menu"
-          aria-expanded={addMenuOpen}
-          className="w-full py-2.5 border-2 border-dashed border-indigo-200 rounded-xl text-sm text-indigo-400 hover:border-indigo-400 hover:text-indigo-600 transition-colors font-medium"
-        >
-          + Add Section
-        </button>
-        {addMenuOpen && (
-          <>
-            <div className="fixed inset-0 z-10" aria-hidden="true" onClick={() => setAddMenuOpen(false)} />
-            <div
-              role="menu"
-              className="absolute left-0 right-0 mt-1 z-20 rounded-xl border border-indigo-100 bg-white shadow-lg overflow-hidden"
-            >
-              <button
-                type="button"
-                role="menuitem"
-                onClick={handleAddSection}
-                className="w-full text-left px-4 py-2.5 text-sm text-indigo-900 hover:bg-indigo-50"
-              >
-                + New custom section
-              </button>
-              {removedBuiltIns.length > 0 && (
-                <div className="border-t border-indigo-50">
-                  <p className="px-4 pt-2 pb-1 text-[11px] uppercase tracking-wide text-indigo-300">Add back</p>
-                  {removedBuiltIns.map((section) => (
-                    <button
-                      key={section}
-                      type="button"
-                      role="menuitem"
-                      onClick={() => handleReAddSection(section)}
-                      className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-indigo-800 hover:bg-indigo-50"
-                    >
-                      <SectionIcon section={section} />
-                      {SECTION_LABELS[section]}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </div>
     </div>
   )
 }

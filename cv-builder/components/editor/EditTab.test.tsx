@@ -112,6 +112,17 @@ describe('EditTab — built-in sections', () => {
     expect(screen.getAllByRole('button', { name: /work experience/i }).length).toBeGreaterThan(0)
   })
 
+  it('renders Add Section between Personal Info and the reorderable section list', () => {
+    render(<EditTab />)
+    const buttons = screen.getAllByRole('button').map((b) => b.textContent)
+    const personalInfoIndex = buttons.findIndex((t) => /personal info/i.test(t ?? ''))
+    const addSectionIndex = buttons.findIndex((t) => /\+ add section/i.test(t ?? ''))
+    const workIndex = buttons.findIndex((t) => /work experience/i.test(t ?? ''))
+    expect(personalInfoIndex).toBeGreaterThanOrEqual(0)
+    expect(addSectionIndex).toBeGreaterThan(personalInfoIndex)
+    expect(workIndex).toBeGreaterThan(addSectionIndex)
+  })
+
   it('basics section has no delete button', () => {
     render(<EditTab />)
     expect(screen.queryByRole('button', { name: /delete personal info/i })).toBeNull()

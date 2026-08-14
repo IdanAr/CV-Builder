@@ -117,11 +117,26 @@ describe('POST /api/resumes/upload/extract', () => {
     const res = await POST(req as never, {} as never) as Response
     expect(res.status).toBe(201)
     const meta = mockCreateResume.mock.calls[0][1].meta
-    expect(meta.sectionOrder).toEqual([
-      'work', 'education', 'skills', 'certificates', 'awards', 'publications',
-      'volunteer', 'languages', 'interests', 'projects',
-      'custom:cs-military', 'custom:cs-projects',
-    ])
+    expect(meta.sectionOrder).toEqual(['custom:cs-military', 'custom:cs-projects'])
+  })
+
+  it('excludes built-in sections with no extracted entries from meta.sectionOrder', async () => {
+    mockExtractResume.mockResolvedValueOnce({
+      basics: { name: 'Jane Smith' },
+      work: [{ name: 'Acme', position: 'Engineer' }],
+      skills: [],
+    })
+    mockCreateResume.mockResolvedValueOnce({ _id: 'resume999' })
+    const { POST } = await import('./route')
+    const req = new Request('http://localhost/api/resumes/upload/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: 'Jane Smith — Senior Engineer at Acme' }),
+    })
+    const res = await POST(req as never, {} as never) as Response
+    expect(res.status).toBe(201)
+    const meta = mockCreateResume.mock.calls[0][1].meta
+    expect(meta.sectionOrder).toEqual(['work'])
   })
 
   it('returns 422 when extractResume throws ExtractionError', async () => {

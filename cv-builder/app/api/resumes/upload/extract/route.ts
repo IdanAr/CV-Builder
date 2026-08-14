@@ -39,9 +39,13 @@ export const POST = auth(async function POST(req) {
       : `Uploaded CV — ${new Date().toISOString().slice(0, 10)}`
 
     const meta = ResumeMetaSchema.parse({})
-    // Custom sections are only rendered when their key is in sectionOrder
+    // Only surface built-in sections the parser actually found entries for —
+    // an empty section stays available via "+ Add Section" instead of
+    // cluttering the accordion. Custom sections are only rendered when their
+    // key is in sectionOrder.
+    const dataRecord = data as Record<string, unknown[] | undefined>
     meta.sectionOrder = [
-      ...meta.sectionOrder,
+      ...meta.sectionOrder.filter((section) => (dataRecord[section]?.length ?? 0) > 0),
       ...(data.customSections ?? []).map((cs) => `custom:${cs.id}`),
     ]
 
