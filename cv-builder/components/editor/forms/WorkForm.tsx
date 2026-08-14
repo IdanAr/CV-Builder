@@ -64,7 +64,7 @@ function RoleForm({
               placeholder="Achieved X by doing Y, resulting in Z"
               ariaLabel={`Bullet point ${i + 1}`}
               className="flex-1"
-              height={120}
+              height={80}
             />
             <AiSuggestButton
               resumeId={resumeId}

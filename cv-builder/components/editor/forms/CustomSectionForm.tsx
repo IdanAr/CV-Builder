@@ -107,7 +107,7 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
                 placeholder="Bullet point..."
                 ariaLabel={`Bullet ${i + 1}`}
                 className="flex-1"
-                height={120}
+                height={80}
               />
               <button type="button"
                 onClick={() => setArr('highlights', (item.highlights ?? []).filter((_, idx) => idx !== i))}

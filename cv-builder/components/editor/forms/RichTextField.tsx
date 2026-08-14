@@ -37,7 +37,7 @@ export function RichTextField({
   className,
   id,
   ariaLabel,
-  height = 200,
+  height = 120,
 }: RichTextFieldProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 

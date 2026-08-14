@@ -65,7 +65,7 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
               placeholder="Achievement..."
               ariaLabel={`Highlight ${i + 1}`}
               className="flex-1"
-              height={120}
+              height={80}
             />
             <button type="button" onClick={() => removeH(i)} aria-label="Remove highlight"
               className="text-gray-400 hover:text-red-500 text-xs px-1 mt-6">✕</button>
