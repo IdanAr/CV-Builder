@@ -94,7 +94,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
                       </div>
                       {role.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(role.summary)}</div>}
                       {(role.highlights ?? []).length > 0 && (
-                        <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
+                        <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt', listStyleType: 'disc' }}>
                           {(role.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                         </ul>
                       )}
@@ -151,7 +151,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
                 <div style={{ color: meta.accentColor, fontWeight: 500, fontSize: '10.5pt' }}>{v.position}</div>
                 {v.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(v.summary)}</div>}
                 {(v.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt', listStyleType: 'disc' }}>
                     {(v.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
@@ -248,7 +248,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
                 </div>
                 {p.description && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{p.description}</div>}
                 {(p.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt', listStyleType: 'disc' }}>
                     {(p.highlights ?? []).map((h, hi) => <li key={hi}>{h}</li>)}
                   </ul>
                 )}

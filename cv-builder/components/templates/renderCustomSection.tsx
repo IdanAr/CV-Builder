@@ -32,7 +32,7 @@ function renderFlatItem(item: CustomSectionItem, enabledFields: CustomSection['e
         <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(item.summary)}</div>
       )}
       {enabledFields.includes('highlights') && (item.highlights ?? []).length > 0 && (
-        <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+        <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt', listStyleType: 'disc' }}>
           {(item.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
         </ul>
       )}
@@ -93,7 +93,7 @@ export function renderCustomSection(
                     <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(role.summary)}</div>
                   )}
                   {enabledFields.includes('highlights') && (role.highlights ?? []).length > 0 && (
-                    <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt' }}>
+                    <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '10pt', listStyleType: 'disc' }}>
                       {(role.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                     </ul>
                   )}

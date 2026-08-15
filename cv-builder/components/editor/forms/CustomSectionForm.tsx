@@ -95,28 +95,26 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
       {enabledFields.includes('highlights') && (
         <fieldset className="space-y-1 border-0 p-0 m-0">
           <legend className="text-xs text-indigo-500 font-medium p-0">Bullets</legend>
-          {(item.highlights ?? []).map((h, i) => (
-            <div key={i} className="flex gap-2 items-start">
-              <RichTextField
-                value={h}
-                onChange={(v) => {
-                  const next = [...(item.highlights ?? [])]
-                  next[i] = v
-                  setArr('highlights', next)
-                }}
-                placeholder="Bullet point..."
-                ariaLabel={`Bullet ${i + 1}`}
-                className="flex-1"
-                height={80}
-              />
-              <button type="button"
-                onClick={() => setArr('highlights', (item.highlights ?? []).filter((_, idx) => idx !== i))}
-                className="text-gray-400 hover:text-red-500 text-sm mt-6">✕</button>
-            </div>
-          ))}
-          <button type="button"
-            onClick={() => setArr('highlights', [...(item.highlights ?? []), ''])}
-            className="text-xs text-indigo-500 hover:text-indigo-700">+ Add bullet</button>
+          <ListFieldManager<string>
+            items={item.highlights ?? []}
+            onChange={(v) => setArr('highlights', v)}
+            createEmpty={() => ''}
+            addLabel="Add bullet"
+            renderItem={(h, i, onUpdateHighlight, onRemoveHighlight) => (
+              <div className="flex gap-2 items-start">
+                <RichTextField
+                  value={h}
+                  onChange={onUpdateHighlight}
+                  placeholder="Bullet point..."
+                  ariaLabel={`Bullet ${i + 1}`}
+                  className="flex-1"
+                  height={80}
+                />
+                <button type="button" onClick={onRemoveHighlight}
+                  className="text-gray-400 hover:text-red-500 text-sm mt-6">✕</button>
+              </div>
+            )}
+          />
         </fieldset>
       )}
 
@@ -230,28 +228,26 @@ function RoleForm({
       {enabledFields.includes('highlights') && (
         <fieldset className="space-y-1 border-0 p-0 m-0">
           <legend className="text-xs text-indigo-500 font-medium p-0">Bullets</legend>
-          {(role.highlights ?? []).map((h, i) => (
-            <div key={i} className="flex gap-2 items-start">
-              <RichTextField
-                value={h}
-                onChange={(v) => {
-                  const next = [...(role.highlights ?? [])]
-                  next[i] = v
-                  setArr('highlights', next)
-                }}
-                placeholder="Bullet point..."
-                ariaLabel={`Bullet ${i + 1}`}
-                className="flex-1"
-                height={120}
-              />
-              <button type="button"
-                onClick={() => setArr('highlights', (role.highlights ?? []).filter((_, idx) => idx !== i))}
-                className="text-gray-400 hover:text-red-500 text-sm mt-6">✕</button>
-            </div>
-          ))}
-          <button type="button"
-            onClick={() => setArr('highlights', [...(role.highlights ?? []), ''])}
-            className="text-xs text-indigo-500 hover:text-indigo-700">+ Add bullet</button>
+          <ListFieldManager<string>
+            items={role.highlights ?? []}
+            onChange={(v) => setArr('highlights', v)}
+            createEmpty={() => ''}
+            addLabel="Add bullet"
+            renderItem={(h, i, onUpdateHighlight, onRemoveHighlight) => (
+              <div className="flex gap-2 items-start">
+                <RichTextField
+                  value={h}
+                  onChange={onUpdateHighlight}
+                  placeholder="Bullet point..."
+                  ariaLabel={`Bullet ${i + 1}`}
+                  className="flex-1"
+                  height={120}
+                />
+                <button type="button" onClick={onRemoveHighlight}
+                  className="text-gray-400 hover:text-red-500 text-sm mt-6">✕</button>
+              </div>
+            )}
+          />
         </fieldset>
       )}
       {enabledFields.includes('keywords') && (

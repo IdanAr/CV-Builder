@@ -28,11 +28,6 @@ function RoleForm({
   const id = useId()
   const set = (field: keyof WorkRole, value: string) => onUpdate({ ...role, [field]: value })
   const setHighlights = (highlights: string[]) => onUpdate({ ...role, highlights })
-  const addHighlight = () => setHighlights([...(role.highlights ?? []), ''])
-  const updateHighlight = (i: number, v: string) =>
-    setHighlights((role.highlights ?? []).map((h, idx) => (idx === i ? v : h)))
-  const removeHighlight = (i: number) =>
-    setHighlights((role.highlights ?? []).filter((_, idx) => idx !== i))
 
   return (
     <div className="space-y-2">
@@ -56,28 +51,32 @@ function RoleForm({
       />
       <fieldset className="space-y-1 border-0 p-0 m-0">
         <legend className="block text-xs font-medium text-indigo-600 p-0">Bullet points</legend>
-        {(role.highlights ?? []).map((h, i) => (
-          <div key={i} className="flex gap-1 items-start">
-            <RichTextField
-              value={h}
-              onChange={(v) => updateHighlight(i, v)}
-              placeholder="Achieved X by doing Y, resulting in Z"
-              ariaLabel={`Bullet point ${i + 1}`}
-              className="flex-1"
-              height={80}
-            />
-            <AiSuggestButton
-              resumeId={resumeId}
-              currentValue={h}
-              context={{ jobTitle: role.position, company, field: 'highlight' }}
-              onAccept={(v) => updateHighlight(i, v)}
-            />
-            <button type="button" onClick={() => removeHighlight(i)} aria-label="Remove highlight"
-              className="text-gray-400 hover:text-red-500 text-xs px-1 mt-6">✕</button>
-          </div>
-        ))}
-        <button type="button" onClick={addHighlight}
-          className="text-xs text-indigo-600 hover:text-indigo-800">+ Add bullet</button>
+        <ListFieldManager<string>
+          items={role.highlights ?? []}
+          onChange={setHighlights}
+          createEmpty={() => ''}
+          addLabel="Add bullet"
+          renderItem={(h, i, onUpdateHighlight, onRemoveHighlight) => (
+            <div className="flex gap-1 items-start">
+              <RichTextField
+                value={h}
+                onChange={onUpdateHighlight}
+                placeholder="Achieved X by doing Y, resulting in Z"
+                ariaLabel={`Bullet point ${i + 1}`}
+                className="flex-1"
+                height={80}
+              />
+              <AiSuggestButton
+                resumeId={resumeId}
+                currentValue={h}
+                context={{ jobTitle: role.position, company, field: 'highlight' }}
+                onAccept={onUpdateHighlight}
+              />
+              <button type="button" onClick={onRemoveHighlight} aria-label="Remove highlight"
+                className="text-gray-400 hover:text-red-500 text-xs px-1 mt-6">✕</button>
+            </div>
+          )}
+        />
       </fieldset>
     </div>
   )

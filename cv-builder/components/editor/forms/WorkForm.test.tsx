@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { WorkForm } from './WorkForm'
 import type { ResumeMeta } from '@/lib/schemas/resume.zod'
@@ -54,6 +54,16 @@ it('adds a highlight bullet', () => {
   render(<WorkForm />)
   fireEvent.click(screen.getByText('+ Add bullet'))
   expect(useResumeEditorStore.getState().data.work?.[0].roles?.[0].highlights).toHaveLength(1)
+})
+
+it('renders a drag handle per bullet so highlights can be reordered', () => {
+  useResumeEditorStore.setState({
+    ...useResumeEditorStore.getState(),
+    data: { work: [{ name: 'Acme', position: 'Dev', startDate: '', highlights: ['First', 'Second'] }] },
+  })
+  render(<WorkForm />)
+  const bulletFieldset = screen.getByText('Bullet points').closest('fieldset') as HTMLElement
+  expect(within(bulletFieldset).getAllByLabelText('Drag to reorder')).toHaveLength(2)
 })
 
 it('exposes accessible names for Company name and Job title via associated labels', () => {

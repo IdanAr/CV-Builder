@@ -15,11 +15,6 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
   const id = useId()
   const set = (f: keyof Item, v: string) => onUpdate({ ...item, [f]: v })
   const setHighlights = (highlights: string[]) => onUpdate({ ...item, highlights })
-  const addH = () => setHighlights([...(item.highlights ?? []), ''])
-  const updateH = (i: number, v: string) =>
-    setHighlights((item.highlights ?? []).map((h, idx) => (idx === i ? v : h)))
-  const removeH = (i: number) =>
-    setHighlights((item.highlights ?? []).filter((_, idx) => idx !== i))
 
   return (
     <div className="space-y-2">
@@ -48,23 +43,26 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
       />
       <fieldset className="space-y-1 border-0 p-0 m-0">
         <legend className="block text-xs font-medium text-indigo-600 p-0">Highlights</legend>
-        {(item.highlights ?? []).map((h, i) => (
-          <div key={i} className="flex gap-1 items-start">
-            <RichTextField
-              value={h}
-              onChange={(v) => updateH(i, v)}
-              placeholder="Achievement..."
-              ariaLabel={`Highlight ${i + 1}`}
-              className="flex-1"
-              height={80}
-            />
-            <button type="button" onClick={() => removeH(i)} aria-label="Remove highlight"
-              className="text-gray-400 hover:text-red-500 text-xs px-1 mt-6">✕</button>
-          </div>
-        ))}
-        <button type="button" onClick={addH} className="text-xs text-indigo-600 hover:text-indigo-800">
-          + Add highlight
-        </button>
+        <ListFieldManager<string>
+          items={item.highlights ?? []}
+          onChange={setHighlights}
+          createEmpty={() => ''}
+          addLabel="Add highlight"
+          renderItem={(h, i, onUpdateHighlight, onRemoveHighlight) => (
+            <div className="flex gap-1 items-start">
+              <RichTextField
+                value={h}
+                onChange={onUpdateHighlight}
+                placeholder="Achievement..."
+                ariaLabel={`Highlight ${i + 1}`}
+                className="flex-1"
+                height={80}
+              />
+              <button type="button" onClick={onRemoveHighlight} aria-label="Remove highlight"
+                className="text-gray-400 hover:text-red-500 text-xs px-1 mt-6">✕</button>
+            </div>
+          )}
+        />
       </fieldset>
     </div>
   )
