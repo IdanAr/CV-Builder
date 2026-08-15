@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useRef } from 'react'
+import React, { useCallback, useEffect, useId, useRef } from 'react'
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -81,6 +81,11 @@ export function ListFieldManager<T>({
   // recreated every time `items` changes — i.e. on every keystroke — which
   // would break the ListItem memoization below for every sibling item, not
   // just the one being edited.
+  // Namespaces this instance's drag-handle testids so nested instances
+  // (e.g. WorkForm: work entries -> roles -> highlights, each its own
+  // ListFieldManager) never collide on a bare positional index.
+  const instanceId = useId()
+
   const itemsRef = useRef(items)
   // Ref writes must happen outside render (React Compiler safety rule); the
   // callbacks below only ever run from user events, which are always after
@@ -153,7 +158,7 @@ export function ListFieldManager<T>({
                 >
                   <button
                     type="button"
-                    data-testid={`list-drag-handle-${i}`}
+                    data-testid={`list-drag-handle-${instanceId}-${i}`}
                     aria-label="Drag to reorder"
                     className="shrink-0 py-1 px-0.5 text-indigo-300 hover:text-indigo-500 cursor-grab select-none"
                     {...listeners}

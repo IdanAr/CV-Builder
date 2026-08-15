@@ -87,9 +87,9 @@ describe('ListFieldManager reordering', () => {
 
   it('renders a drag handle per item', () => {
     render(<ReorderHarness />)
-    expect(screen.getByTestId('list-drag-handle-0')).toBeTruthy()
-    expect(screen.getByTestId('list-drag-handle-1')).toBeTruthy()
-    expect(screen.getByTestId('list-drag-handle-2')).toBeTruthy()
+    expect(screen.getByTestId(/^list-drag-handle-.*-0$/)).toBeTruthy()
+    expect(screen.getByTestId(/^list-drag-handle-.*-1$/)).toBeTruthy()
+    expect(screen.getByTestId(/^list-drag-handle-.*-2$/)).toBeTruthy()
   })
 
   it('moves an item to a new position when the handler is invoked directly', () => {
@@ -104,8 +104,37 @@ describe('ListFieldManager reordering', () => {
 
   it('drag handles are keyboard-focusable with a descriptive label', () => {
     render(<ReorderHarness />)
-    const handle = screen.getByTestId('list-drag-handle-1')
+    const handle = screen.getByTestId(/^list-drag-handle-.*-1$/)
     expect(handle.getAttribute('aria-label')).toBe('Drag to reorder')
+  })
+})
+
+describe('ListFieldManager instance-unique drag-handle testids', () => {
+  // Mirrors real nesting (e.g. WorkForm: work entries -> roles -> highlights):
+  // two ListFieldManager instances mounted side by side, each with an item
+  // at the same position. Before the fix, both used a bare `-${i}` suffix,
+  // so `list-drag-handle-0` matched a node in *either* instance — a query
+  // scoped to one instance could silently resolve to the other's DOM node.
+  function TwoInstanceHarness() {
+    const [a, setA] = useState<Item[]>([{ id: 'a1', value: 'a1' }])
+    const [b, setB] = useState<Item[]>([{ id: 'b1', value: 'b1' }])
+    const renderItem = (item: Item, _: number, onUpdate: (v: Item) => void) => (
+      <ItemForm item={item} onUpdate={onUpdate} />
+    )
+    return (
+      <>
+        <ListFieldManager<Item> items={a} onChange={setA} createEmpty={() => ({ id: 'new', value: '' })} renderItem={renderItem} />
+        <ListFieldManager<Item> items={b} onChange={setB} createEmpty={() => ({ id: 'new', value: '' })} renderItem={renderItem} />
+      </>
+    )
+  }
+
+  it('gives each instance its own unique drag-handle testid, even for items at the same index', () => {
+    render(<TwoInstanceHarness />)
+    const handles = screen.getAllByTestId(/^list-drag-handle-/)
+    expect(handles).toHaveLength(2)
+    const testIds = handles.map((el) => el.getAttribute('data-testid'))
+    expect(new Set(testIds).size).toBe(2)
   })
 })
 
