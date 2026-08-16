@@ -58,6 +58,23 @@ describe('MinimalTemplate multi-URL contact row', () => {
   })
 })
 
+describe('MinimalTemplate projects rich text', () => {
+  it('renders bold markdown in project descriptions and highlights', () => {
+    const dataWithRichProjects: ResumeData = {
+      basics: { name: 'Jane Smith' },
+      projects: [{
+        name: 'CV Builder',
+        description: 'Built with **React** and TypeScript',
+        highlights: ['Shipped **v2** to production'],
+      }],
+    }
+    const { container } = render(<MinimalTemplate data={dataWithRichProjects} meta={{ ...meta, sectionOrder: ['projects'] }} />)
+    const strongs = Array.from(container.querySelectorAll('strong')).map(s => s.textContent)
+    expect(strongs).toContain('React')
+    expect(strongs).toContain('v2')
+  })
+})
+
 describe('MinimalTemplate nested work roles', () => {
   it('shows each role\'s own date range, with no company-level aggregate', () => {
     const dataWithRoles: ResumeData = {

@@ -97,6 +97,23 @@ describe('ClassicTemplate nested education roles', () => {
   })
 })
 
+describe('ClassicTemplate projects rich text', () => {
+  it('renders bold markdown in project descriptions and highlights', () => {
+    const dataWithRichProjects: ResumeData = {
+      basics: { name: 'Jane Smith' },
+      projects: [{
+        name: 'CV Builder',
+        description: 'Built with **React** and TypeScript',
+        highlights: ['Shipped **v2** to production'],
+      }],
+    }
+    const { container } = render(<ClassicTemplate data={dataWithRichProjects} meta={{ ...meta, sectionOrder: ['projects'] }} />)
+    const strongs = Array.from(container.querySelectorAll('strong')).map(s => s.textContent)
+    expect(strongs).toContain('React')
+    expect(strongs).toContain('v2')
+  })
+})
+
 describe('ClassicTemplate legacy basics.url fallback', () => {
   it('renders the legacy basics.url as a link when profiles is empty', () => {
     const legacyData: ResumeData = { basics: { name: 'Jane', url: 'https://janelegacy.dev' } }
