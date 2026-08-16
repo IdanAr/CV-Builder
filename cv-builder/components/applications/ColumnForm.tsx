@@ -53,6 +53,19 @@ export function ColumnForm({
   const validOptions = options.filter((o) => o.label.trim() !== '')
   const canSubmit = label.trim() !== '' && (!needsOptions || validOptions.length > 0)
 
+  // The board's Kanban lane order follows this array's order directly, so
+  // reordering here is the only way a user can control lane order without
+  // deleting and recreating options (and losing applications assigned to them).
+  function reorderOption(index: number, direction: 'up' | 'down') {
+    const swapWith = direction === 'up' ? index - 1 : index + 1
+    setOptions((opts) => {
+      if (swapWith < 0 || swapWith >= opts.length) return opts
+      const next = [...opts]
+      ;[next[index], next[swapWith]] = [next[swapWith], next[index]]
+      return next
+    })
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!canSubmit) return
@@ -121,6 +134,24 @@ export function ColumnForm({
                 }
                 className="min-w-0 flex-1 rounded-md border border-indigo-200 bg-white px-2 py-1 text-sm text-indigo-900 outline-none focus:border-indigo-400"
               />
+              <button
+                type="button"
+                aria-label={`Move option ${i + 1} up`}
+                onClick={() => reorderOption(i, 'up')}
+                disabled={i === 0}
+                className="shrink-0 rounded px-1 text-sm text-indigo-300 hover:text-indigo-600 disabled:opacity-40"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                aria-label={`Move option ${i + 1} down`}
+                onClick={() => reorderOption(i, 'down')}
+                disabled={i === options.length - 1}
+                className="shrink-0 rounded px-1 text-sm text-indigo-300 hover:text-indigo-600 disabled:opacity-40"
+              >
+                ↓
+              </button>
               <button
                 type="button"
                 aria-label={`Remove option ${i + 1}`}

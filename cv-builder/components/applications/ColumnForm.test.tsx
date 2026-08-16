@@ -75,4 +75,58 @@ describe('ColumnForm (edit mode)', () => {
     fireEvent.click(screen.getByLabelText('Remove option 2'))
     expect(screen.getByLabelText('Remove option 1')).toBeDisabled()
   })
+
+  it('moves an option up, swapping it with the previous one', () => {
+    const statusColumn = defaultBoardColumns().find((c) => c.id === 'status')!
+    render(<ColumnForm initial={statusColumn} onSubmit={vi.fn()} onCancel={vi.fn()} />)
+
+    // Move "Interviewing" (option 2) up, ahead of "Applied" (option 1).
+    fireEvent.click(screen.getByLabelText('Move option 2 up'))
+
+    const labels = screen
+      .getAllByLabelText(/^Label for option \d+$/)
+      .map((el) => (el as HTMLInputElement).value)
+    expect(labels).toEqual(['Interviewing', 'Applied', 'Offer', 'Rejected'])
+  })
+
+  it('moves an option down, swapping it with the next one', () => {
+    const statusColumn = defaultBoardColumns().find((c) => c.id === 'status')!
+    render(<ColumnForm initial={statusColumn} onSubmit={vi.fn()} onCancel={vi.fn()} />)
+
+    // Move "Applied" (option 1) down, behind "Interviewing" (option 2).
+    fireEvent.click(screen.getByLabelText('Move option 1 down'))
+
+    const labels = screen
+      .getAllByLabelText(/^Label for option \d+$/)
+      .map((el) => (el as HTMLInputElement).value)
+    expect(labels).toEqual(['Interviewing', 'Applied', 'Offer', 'Rejected'])
+  })
+
+  it('disables move-up on the first option and move-down on the last option', () => {
+    const statusColumn = defaultBoardColumns().find((c) => c.id === 'status')!
+    render(<ColumnForm initial={statusColumn} onSubmit={vi.fn()} onCancel={vi.fn()} />)
+
+    expect(screen.getByLabelText('Move option 1 up')).toBeDisabled()
+    expect(screen.getByLabelText('Move option 4 down')).toBeDisabled()
+    // Middle options are enabled in both directions.
+    expect(screen.getByLabelText('Move option 2 up')).not.toBeDisabled()
+    expect(screen.getByLabelText('Move option 2 down')).not.toBeDisabled()
+  })
+
+  it('preserves reordered option positions through submit', () => {
+    const statusColumn = defaultBoardColumns().find((c) => c.id === 'status')!
+    const onSubmit = vi.fn()
+    render(<ColumnForm initial={statusColumn} onSubmit={onSubmit} onCancel={vi.fn()} />)
+
+    fireEvent.click(screen.getByLabelText('Move option 2 up'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save column' }))
+
+    const result = onSubmit.mock.calls[0][0]
+    expect(result.options.map((o: { label: string }) => o.label)).toEqual([
+      'Interviewing',
+      'Applied',
+      'Offer',
+      'Rejected',
+    ])
+  })
 })
