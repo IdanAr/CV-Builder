@@ -92,4 +92,57 @@ describe('UploadCVButton', () => {
     await waitFor(() => expect(screen.getByText(/4 MB/i)).toBeTruthy())
     expect(fetch).not.toHaveBeenCalled()
   })
+
+  it('aborts the in-flight request and closes the modal when Cancel is clicked while reading', async () => {
+    let capturedSignal: AbortSignal | undefined
+    vi.mocked(fetch).mockImplementationOnce((_url, init) => {
+      capturedSignal = (init as RequestInit).signal as AbortSignal
+      return new Promise(() => {})
+    })
+    render(<UploadCVButton />)
+    triggerFileChange(makeFile('my-cv.pdf'))
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+
+    expect(capturedSignal?.aborted).toBe(true)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('ignores a parse response that resolves after cancel, instead of moving to "extracting"', async () => {
+    let resolveParse!: (res: Response) => void
+    vi.mocked(fetch).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveParse = resolve
+        })
+    )
+    render(<UploadCVButton />)
+    triggerFileChange(makeFile('my-cv.pdf'))
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    resolveParse({ ok: true, json: async () => ({ text: 'cv text' }) } as Response)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('starts a fresh, non-aborted request on the next upload after a cancel', async () => {
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise(() => {}))
+    render(<UploadCVButton />)
+    triggerFileChange(makeFile('first.pdf'))
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ text: 'cv text' }) } as Response)
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ resumeId: 'xyz789' }) } as Response)
+    triggerFileChange(makeFile('second.pdf'))
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dashboard/resumes/xyz789'))
+  })
 })

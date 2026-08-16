@@ -19,11 +19,21 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
   const [stage, setStage] = useState<Stage>('idle')
   const [filename, setFilename] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+  // Owns the lifecycle of the in-flight upload request(s) so Cancel can abort
+  // whichever fetch (parse or extract) is currently running, and so a
+  // response that arrives after cancel is ignored instead of resurrecting
+  // stale progress/success UI.
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   function reset() {
     setStage('idle')
     setErrorMsg('')
     setFilename('')
+  }
+
+  function handleCancel() {
+    abortControllerRef.current?.abort()
+    reset()
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -42,10 +52,17 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
     setStage('reading')
     setErrorMsg('')
 
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const parseRes = await fetch('/api/resumes/upload/parse', { method: 'POST', body: formData })
+      const parseRes = await fetch('/api/resumes/upload/parse', {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      })
       if (!parseRes.ok) {
         const json = await parseRes.json().catch(() => ({}))
         throw new Error((json as { error?: string }).error ?? 'Could not read the file.')
@@ -57,6 +74,7 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
+        signal: controller.signal,
       })
       if (!extractRes.ok) {
         const json = await extractRes.json().catch(() => ({}))
@@ -66,9 +84,14 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
       }
       const { resumeId } = (await extractRes.json()) as { resumeId: string }
 
+      // The user may have canceled while the extract response was in flight;
+      // don't resurrect success UI for a request they already dismissed.
+      if (controller.signal.aborted) return
+
       setStage('done')
       window.setTimeout(() => router.push(`/dashboard/resumes/${resumeId}`), DONE_DISPLAY_MS)
     } catch (err) {
+      if (controller.signal.aborted) return
       setErrorMsg(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
       setStage('error')
     }
@@ -92,6 +115,7 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
         errorMessage={errorMsg}
         onRetry={reset}
         onClose={reset}
+        onCancel={handleCancel}
       />
     </>
   )

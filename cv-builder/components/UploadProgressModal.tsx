@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Progress } from '@/components/ui/progress'
 
@@ -39,6 +39,10 @@ interface UploadProgressModalProps {
   errorMessage?: string
   onRetry: () => void
   onClose: () => void
+  /** Aborts the in-flight upload request. When provided, a Cancel affordance
+   * (button, Escape, backdrop-click) is available during "reading"/"extracting"
+   * instead of trapping the user until the request finishes or errors. */
+  onCancel?: () => void
 }
 
 export default function UploadProgressModal({
@@ -48,6 +52,7 @@ export default function UploadProgressModal({
   errorMessage,
   onRetry,
   onClose,
+  onCancel,
 }: UploadProgressModalProps) {
   const [percent, setPercent] = useState(0)
   const [label, setLabel] = useState('')
@@ -94,7 +99,19 @@ export default function UploadProgressModal({
     return clearTimers
   }, [open, stage, filename])
 
-  const dismissible = stage === 'error'
+  // Cancel is offered while an upload is actively running (not once it has
+  // finished or already failed — those states have their own dedicated
+  // affordances), and only when the caller wired up an abort path.
+  const canCancel = (stage === 'reading' || stage === 'extracting') && !!onCancel
+  const dismissible = stage === 'error' || canCancel
+
+  const handleDismiss = useCallback(() => {
+    if (stage === 'error') {
+      onClose()
+    } else if (canCancel) {
+      onCancel?.()
+    }
+  }, [stage, canCancel, onClose, onCancel])
 
   // Remember what had focus before the dialog opened, so it can be restored
   // on close; move focus into the dialog once there's an action to take.
@@ -113,11 +130,11 @@ export default function UploadProgressModal({
   useEffect(() => {
     if (!open || !dismissible) return
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') handleDismiss()
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open, dismissible, onClose])
+  }, [open, dismissible, handleDismiss])
 
   if (!open) return null
 
@@ -128,7 +145,7 @@ export default function UploadProgressModal({
       aria-label="Uploading CV"
       className="fixed inset-0 z-40 flex items-center justify-center bg-indigo-950/30 p-4 backdrop-blur-sm"
       onMouseDown={(e) => {
-        if (dismissible && e.target === e.currentTarget) onClose()
+        if (dismissible && e.target === e.currentTarget) handleDismiss()
       }}
     >
       <div className="w-full max-w-sm rounded-xl border border-indigo-100 bg-white p-6 shadow-xl">
@@ -157,7 +174,18 @@ export default function UploadProgressModal({
             <h2 className="mb-1 truncate text-sm font-semibold text-indigo-900">{filename}</h2>
             <p className="mb-4 text-sm text-indigo-600">{label}</p>
             <Progress value={percent} className="bg-indigo-100" indicatorClassName="bg-indigo-600" />
-            <p className="mt-2 text-right text-xs font-medium text-indigo-500">{Math.round(percent)}%</p>
+            <div className="mt-2 flex items-center justify-between">
+              <p className="text-xs font-medium text-indigo-500">{Math.round(percent)}%</p>
+              {canCancel && (
+                <button
+                  ref={closeButtonRef}
+                  onClick={onCancel}
+                  className="text-xs font-medium text-indigo-500 hover:text-indigo-700 hover:underline"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>
