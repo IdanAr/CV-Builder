@@ -55,6 +55,43 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+describe('AtsScorePanel text status label', () => {
+  it('shows a text status label alongside a low score, not color alone', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+
+    await waitFor(() => expect(screen.getByText(/needs work|poor match/i)).toBeInTheDocument())
+  })
+
+  it('shows "Good match" for a high score', async () => {
+    const highScore: AtsScoreResult = {
+      total: 85,
+      breakdown: { format: 25, keywordDensity: 35, keywordPlacement: 20, metrics: 5 },
+      matchedKeywords: ['react', 'typescript'],
+      missingKeywords: [],
+      excludedMatchedKeywords: [],
+      excludedMissingKeywords: [],
+      jdKeywords: ['react', 'typescript'],
+    }
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(highScore))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+
+    await waitFor(() => expect(screen.getByText(/good match/i)).toBeInTheDocument())
+  })
+})
+
 describe('AtsScorePanel applyFix for generate-kind summary fixes', () => {
   it('applying a generate fix sets basics.summary when no summary existed before', async () => {
     const fetchMock = vi

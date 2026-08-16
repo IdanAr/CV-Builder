@@ -19,6 +19,16 @@ const VECTOR_LABELS: { key: keyof AtsScoreResult['breakdown']; label: string; ma
   { key: 'metrics', label: 'Metric Presence', max: 15 },
 ]
 
+function getScoreStatusLabel(score: number): { colorClass: string; label: string } {
+  if (score >= 70) {
+    return { colorClass: 'text-green-600', label: 'Good match' }
+  } else if (score >= 40) {
+    return { colorClass: 'text-yellow-500', label: 'Needs work' }
+  } else {
+    return { colorClass: 'text-red-500', label: 'Poor match' }
+  }
+}
+
 function ScoreBar({ value, max }: { value: number; max: number }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0
   return (
@@ -233,11 +243,17 @@ export function AtsScorePanel() {
         <div className="space-y-4">
           <div className="rounded-xl border border-white/30 bg-white/60 backdrop-blur-xl p-6 text-center shadow-lg">
             <p className="text-sm text-indigo-400 mb-1">ATS Score</p>
-            <p className={`text-6xl font-bold ${
-              result.total >= 70 ? 'text-green-600' : result.total >= 40 ? 'text-yellow-500' : 'text-red-500'
-            }`}>
-              {result.total}
-            </p>
+            {(() => {
+              const { colorClass, label } = getScoreStatusLabel(result.total)
+              return (
+                <>
+                  <p className={`text-6xl font-bold ${colorClass}`}>
+                    {result.total}
+                  </p>
+                  <p className="text-sm text-indigo-500 mt-2">{label}</p>
+                </>
+              )
+            })()}
             <p className="text-sm text-indigo-300 mt-1">out of 100</p>
           </div>
 
