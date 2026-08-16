@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { ModernTemplate } from './ModernTemplate'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
@@ -36,6 +36,40 @@ describe('ModernTemplate new sections', () => {
     expect(text).toContain('Scaling Microservices')
     expect(text).toContain('Chess')
     expect(text).toContain('Open Source CLI')
+  })
+})
+
+describe('ModernTemplate single-column contact row', () => {
+  it('renders profile links in single-column layout', () => {
+    const dataWithProfiles: ResumeData = {
+      basics: {
+        name: 'Jane Smith',
+        email: 'jane@example.com',
+        profiles: [{ id: 'p1', network: 'LinkedIn', label: 'LinkedIn', url: 'https://linkedin.com/in/jane' }],
+      },
+    }
+    render(<ModernTemplate data={dataWithProfiles} meta={{ ...meta, layout: 'single-column' }} />)
+    expect(screen.getByRole('link', { name: /linkedin/i })).toHaveAttribute(
+      'href',
+      'https://linkedin.com/in/jane'
+    )
+  })
+
+  it('renders plain email/phone/location text with no profiles, without broken markup', () => {
+    const dataNoProfiles: ResumeData = {
+      basics: {
+        name: 'Jane Smith',
+        email: 'jane@example.com',
+        phone: '555-1234',
+        location: { city: 'Springfield', region: 'IL' },
+        profiles: [],
+      },
+    }
+    const { container } = render(<ModernTemplate data={dataNoProfiles} meta={{ ...meta, layout: 'single-column' }} />)
+    expect(screen.getByRole('link', { name: 'jane@example.com' })).toHaveAttribute('href', 'mailto:jane@example.com')
+    const text = container.textContent ?? ''
+    expect(text).toContain('555-1234')
+    expect(text).toContain('Springfield, IL')
   })
 })
 
