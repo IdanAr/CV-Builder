@@ -70,6 +70,10 @@ function ProgressCircle({
   return (
     <div
       data-slot="progress-circle"
+      role="progressbar"
+      aria-valuenow={value}
+      aria-valuemin={0}
+      aria-valuemax={100}
       className={cn('relative inline-flex items-center justify-center', className)}
       style={{ width: size, height: size }}
       {...props}
@@ -179,6 +183,10 @@ function ProgressRadial({
   return (
     <div
       data-slot="progress-radial"
+      role="progressbar"
+      aria-valuenow={value}
+      aria-valuemin={0}
+      aria-valuemax={100}
       className={cn('relative inline-flex items-center justify-center', className)}
       style={{ width: size, height: size }}
       {...props}
