@@ -13,19 +13,33 @@ import {
 
 function FilterEditor({
   column,
+  initialFilter,
   onApply,
 }: {
   column: BoardColumn
+  initialFilter?: ColumnFilter
   onApply: (filter: ColumnFilter) => void
 }) {
   const kind = filterTypeForColumn(column)
-  const [query, setQuery] = useState('')
-  const [optionIds, setOptionIds] = useState<string[]>([])
-  const [min, setMin] = useState('')
-  const [max, setMax] = useState('')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
-  const [checked, setChecked] = useState(true)
+  const [query, setQuery] = useState(
+    initialFilter?.kind === 'text' ? initialFilter.query : ''
+  )
+  const [optionIds, setOptionIds] = useState<string[]>(
+    initialFilter?.kind === 'options' ? initialFilter.optionIds : []
+  )
+  const [min, setMin] = useState(
+    initialFilter?.kind === 'range' && initialFilter.min !== undefined ? String(initialFilter.min) : ''
+  )
+  const [max, setMax] = useState(
+    initialFilter?.kind === 'range' && initialFilter.max !== undefined ? String(initialFilter.max) : ''
+  )
+  const [from, setFrom] = useState(
+    initialFilter?.kind === 'dateRange' ? initialFilter.from ?? '' : ''
+  )
+  const [to, setTo] = useState(initialFilter?.kind === 'dateRange' ? initialFilter.to ?? '' : '')
+  const [checked, setChecked] = useState(
+    initialFilter?.kind === 'checkbox' ? initialFilter.value : true
+  )
 
   function apply(e: React.FormEvent) {
     e.preventDefault()
@@ -220,6 +234,7 @@ export function FilterBar({
                   // Reset editor state when the column changes.
                   key={selected.id}
                   column={selected}
+                  initialFilter={filters.find((f) => f.columnId === selected.id)}
                   onApply={(filter) => {
                     // One filter per column: replace any existing one.
                     onChange([...filters.filter((f) => f.columnId !== filter.columnId), filter])
