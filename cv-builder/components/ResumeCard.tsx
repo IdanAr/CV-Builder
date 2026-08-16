@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { toast, useToastStore } from '@/lib/stores/toast.store'
 import { onToastPause, onToastResume } from '@/components/ui/Toaster'
 import { formatAbsoluteDate, formatRelativeTime } from '@/lib/format-relative-time'
+import { RESUME_STATUS_OPTIONS } from '@/lib/schemas/application.zod'
+import type { ApplicationStatus } from '@/lib/schemas/resume.zod'
 
 const UNDO_DELETE_DURATION = 6000
 
@@ -24,6 +26,7 @@ interface ResumeCardProps {
     formatScore: number
     createdAt: string
     updatedAt: string
+    applicationStatus?: ApplicationStatus
   }
 }
 
@@ -182,6 +185,10 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
 
   if (pendingDelete) return null
 
+  const statusOption =
+    RESUME_STATUS_OPTIONS.find((o) => o.id === (resume.applicationStatus ?? 'draft')) ??
+    RESUME_STATUS_OPTIONS[0]
+
   return (
     <div className="relative group rounded-xl border border-white/30 bg-white/65 backdrop-blur-xl p-4 shadow-lg hover:border-indigo-300 hover:shadow-xl transition-all">
       {/* The invisible link that covers the whole card */}
@@ -249,6 +256,17 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
 
       {/* Metadata row - pointer-events-none allows clicking through to the main card link */}
       <div className="mt-3 flex flex-wrap gap-6 border-t border-indigo-100 pt-3 relative z-10 pointer-events-none">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-indigo-400">Status</p>
+          <p className="mt-0.5">
+            <span
+              className="inline-flex max-w-full items-center truncate rounded-full px-2 py-0.5 text-xs font-medium text-white"
+              style={{ backgroundColor: statusOption.color }}
+            >
+              {statusOption.label}
+            </span>
+          </p>
+        </div>
         <div>
           <p className="text-xs uppercase tracking-wide text-indigo-400">Created</p>
           <p className="mt-0.5 text-sm text-indigo-900">{formatDate(resume.createdAt)}</p>

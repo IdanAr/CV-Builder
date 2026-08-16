@@ -63,6 +63,7 @@ export default async function DashboardPage() {
                   formatScore: resume.formatScore ?? 0,
                   createdAt: resume.createdAt.toISOString(),
                   updatedAt: resume.updatedAt.toISOString(),
+                  applicationStatus: resume.applicationStatus,
                 }}
               />
             ))}

@@ -131,6 +131,28 @@ describe('ResumeCard', () => {
     expect(screen.queryByText('ATS Score')).toBeNull()
   })
 
+  it('shows the application status badge', () => {
+    render(<ResumeCard resume={{ ...baseResume, applicationStatus: 'interviewing' }} />)
+    expect(screen.getByText(/interviewing/i)).toBeInTheDocument()
+  })
+
+  it('renders distinct, correctly colored badges for different statuses', () => {
+    const { unmount } = render(<ResumeCard resume={{ ...baseResume, applicationStatus: 'offer' }} />)
+    const offerBadge = screen.getByText(/^offer$/i)
+    expect(offerBadge.getAttribute('style')).toContain('background-color: rgb(34, 197, 94)') // #22c55e
+    unmount()
+
+    render(<ResumeCard resume={{ ...baseResume, applicationStatus: 'rejected' }} />)
+    const rejectedBadge = screen.getByText(/^rejected$/i)
+    expect(rejectedBadge.getAttribute('style')).toContain('background-color: rgb(239, 68, 68)') // #ef4444
+    expect(rejectedBadge.getAttribute('style')).not.toBe(offerBadge.getAttribute('style'))
+  })
+
+  it('defaults to the "draft" status badge when applicationStatus is not set', () => {
+    render(<ResumeCard resume={baseResume} />)
+    expect(screen.getByText(/^draft$/i)).toBeInTheDocument()
+  })
+
   it('shows an error toast when duplicate fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false } as Response))
     render(<ResumeCard resume={baseResume} />)
