@@ -160,4 +160,14 @@ describe('ApplicationsTable', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete application at Acme' }))
     expect(onDeleteRow).toHaveBeenCalledWith('a1')
   })
+
+  it('header row is sticky with opaque background', () => {
+    renderTable()
+    const columnHeaders = screen.getAllByRole('columnheader')
+    const headerRow = columnHeaders[0].closest('[role="row"]')
+    expect(headerRow).toHaveClass('sticky')
+    expect(headerRow).toHaveClass('top-0')
+    expect(headerRow).toHaveClass('z-10')
+    expect(headerRow).toHaveClass('bg-white')
+  })
 })

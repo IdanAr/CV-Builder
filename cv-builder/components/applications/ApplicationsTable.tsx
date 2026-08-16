@@ -226,7 +226,7 @@ export default function ApplicationsTable({
         {/* Header (columns are drag-reorderable) */}
         <DndContext collisionDetection={closestCenter} onDragEnd={handleColumnDragEnd}>
           <SortableContext items={ordered.map((c) => c.id)} strategy={horizontalListSortingStrategy}>
-            <div role="row" className="flex border-b border-indigo-100 bg-white/70">
+            <div role="row" className="sticky top-0 z-10 flex border-b border-indigo-100 bg-white">
               <div role="columnheader" style={{ width: GRIP_COLUMN_WIDTH }} className="shrink-0" />
               {ordered.map((column) => (
                 <SortableHeaderCell key={column.id} column={column}>
