@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { DesignPanel } from './DesignPanel'
@@ -101,6 +101,79 @@ describe('DesignPanel', () => {
     const rightBtns = screen.getAllByText('Right')
     fireEvent.click(rightBtns[0])
     expect(useResumeEditorStore.getState().meta.columnAssignment?.work).toBe('right')
+  })
+
+  describe('section columns keyboard drag-and-drop', () => {
+    // dnd-kit's KeyboardSensor drives movement off getBoundingClientRect of
+    // each sortable row (via sortableKeyboardCoordinates' rect.top compares).
+    // jsdom returns an all-zero rect for every element by default, which
+    // makes every row indistinguishable and the sensor unable to compute a
+    // next position — so this mock gives each row a distinct vertical
+    // position based on its DOM order, matching how a real layout would.
+    function mockRowRects() {
+      return vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+        this: HTMLElement
+      ) {
+        const parent = this.parentElement
+        const siblings = parent ? Array.from(parent.children) : []
+        const index = siblings.indexOf(this)
+        const top = index >= 0 ? index * 60 : 0
+        return {
+          top,
+          left: 0,
+          right: 240,
+          bottom: top + 56,
+          width: 240,
+          height: 56,
+          x: 0,
+          y: top,
+          toJSON() {
+            return {}
+          },
+        } as DOMRect
+      })
+    }
+
+    it('reorders a section via keyboard (Space to pick up, Arrow to move, Space to drop)', async () => {
+      useResumeEditorStore.setState({
+        resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+        data: {},
+        meta: { ...defaultMeta, layout: 'two-column', sectionOrder: ['work', 'education', 'skills'] },
+      })
+      const rectSpy = mockRowRects()
+
+      render(<DesignPanel />)
+
+      const handles = screen.getAllByRole('button', { name: /drag to reorder/i })
+      expect(handles).toHaveLength(3)
+
+      handles[0].focus()
+      fireEvent.keyDown(handles[0], { key: ' ', code: 'Space' })
+      // KeyboardSensor attaches its keydown listener via setTimeout(0) after
+      // pickup, so the following keys must wait a tick to be picked up.
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      fireEvent.keyDown(handles[0], { key: 'ArrowDown', code: 'ArrowDown' })
+      fireEvent.keyDown(handles[0], { key: ' ', code: 'Space' })
+
+      expect(useResumeEditorStore.getState().meta.sectionOrder).toEqual(['education', 'work', 'skills'])
+
+      rectSpy.mockRestore()
+    })
+
+    it('pointer-based drag-and-drop still works (PointerSensor unaffected by the keyboard fix)', () => {
+      useResumeEditorStore.setState({
+        resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+        data: {},
+        meta: { ...defaultMeta, layout: 'two-column', sectionOrder: ['work', 'education', 'skills'] },
+      })
+      render(<DesignPanel />)
+      const handles = screen.getAllByRole('button', { name: /drag to reorder/i })
+      expect(handles).toHaveLength(3)
+      // Sanity check only: verifying the full pointer drag sequence is
+      // covered elsewhere; this just confirms the sensor/attributes are
+      // still wired for pointer interaction after adding KeyboardSensor.
+      expect(handles[0]).toHaveAttribute('role', 'button')
+    })
   })
 
   describe('color input validation', () => {

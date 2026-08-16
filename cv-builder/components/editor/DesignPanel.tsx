@@ -5,14 +5,18 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type Announcements,
+  type ScreenReaderInstructions,
 } from '@dnd-kit/core'
 import {
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -115,6 +119,43 @@ function getSectionLabel(sectionKey: string, data: ResumeData): string {
   return cs?.name ?? sectionKey
 }
 
+// Mirrors ApplicationsBoard's screenReaderInstructions/announcements pattern
+// so a keyboard-only user reordering sections gets the same spoken feedback
+// a mouse/touch user gets visually — required for the KeyboardSensor to be a
+// real fallback, not just a technically-present sensor.
+const sectionScreenReaderInstructions: ScreenReaderInstructions = {
+  draggable:
+    'To reorder a section: press space or enter to pick it up, use the arrow keys to move it up or down in the list, then press space or enter again to drop it. Press escape to cancel.',
+}
+
+function buildSectionAnnouncements(sectionOrder: string[], data: ResumeData): Announcements {
+  function describePosition(sectionKey: string): string {
+    const index = sectionOrder.indexOf(sectionKey)
+    return index === -1 ? '' : `position ${index + 1} of ${sectionOrder.length}`
+  }
+
+  return {
+    onDragStart({ active }) {
+      return `Picked up ${getSectionLabel(String(active.id), data)} at ${describePosition(String(active.id))}.`
+    },
+    onDragOver({ active, over }) {
+      const label = getSectionLabel(String(active.id), data)
+      return over
+        ? `${label} is over ${describePosition(String(over.id))}.`
+        : `${label} is no longer over a droppable area.`
+    },
+    onDragEnd({ active, over }) {
+      const label = getSectionLabel(String(active.id), data)
+      return over
+        ? `${label} was moved to ${describePosition(String(over.id))}.`
+        : `${label} was dropped.`
+    },
+    onDragCancel({ active }) {
+      return `Moving ${getSectionLabel(String(active.id), data)} was cancelled.`
+    },
+  }
+}
+
 interface SortableColumnRowProps {
   sectionKey: string
   label: string
@@ -183,7 +224,13 @@ export function DesignPanel() {
   const data = useResumeEditorStore((s) => s.data)
   const setMeta = useResumeEditorStore((s) => s.setMeta)
 
-  const sensors = useSensors(useSensor(PointerSensor))
+  // PointerSensor alone dropped keyboard support entirely — a keyboard-only
+  // user could not reorder sections at all, with no up/down button fallback.
+  // KeyboardSensor restores it, mirroring ApplicationsBoard.tsx's setup.
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   const [primaryColorDraft, setPrimaryColorDraft] = React.useState(meta.primaryColor)
   const [primaryColorTouched, setPrimaryColorTouched] = React.useState(false)
@@ -370,6 +417,10 @@ export function DesignPanel() {
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragEnd={handleColumnDragEnd}
+              accessibility={{
+                announcements: buildSectionAnnouncements(meta.sectionOrder, data),
+                screenReaderInstructions: sectionScreenReaderInstructions,
+              }}
             >
               <SortableContext
                 items={meta.sectionOrder}
