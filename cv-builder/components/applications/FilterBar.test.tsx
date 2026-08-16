@@ -71,6 +71,18 @@ describe('FilterBar', () => {
     expect(screen.getByRole('checkbox', { name: /only (un)?checked rows/i })).not.toBeChecked()
   })
 
+  it('shows the existing filter value when reopening the editor for a dateRange-filtered column', () => {
+    const filters: ColumnFilter[] = [
+      { columnId: 'createdAt', kind: 'dateRange', from: '2026-01-01', to: '2026-02-15' },
+    ]
+    render(<FilterBar columns={columns} filters={filters} onChange={vi.fn()} />)
+
+    openEditorFor('Applied')
+
+    expect(screen.getByLabelText(/applied from/i)).toHaveValue('2026-01-01')
+    expect(screen.getByLabelText(/applied until/i)).toHaveValue('2026-02-15')
+  })
+
   it('leaves the editor blank/default for a column with no existing filter', () => {
     const filters: ColumnFilter[] = [{ columnId: 'status', kind: 'options', optionIds: ['applied'] }]
     render(<FilterBar columns={columns} filters={filters} onChange={vi.fn()} />)
