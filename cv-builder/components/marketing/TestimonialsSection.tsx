@@ -39,6 +39,7 @@ export function TestimonialsSection() {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
       <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">Success Stories</h2>
+      <p className="mt-2 text-center text-sm text-gray-600">Based on early beta feedback</p>
       <div className="mt-10">
         <Marquee
           ariaLabel="Success Stories"
