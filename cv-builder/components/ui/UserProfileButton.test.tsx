@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { UserProfileButton } from './UserProfileButton'
 import { signOut } from 'next-auth/react'
 
@@ -61,6 +62,28 @@ describe('UserProfileButton', () => {
     fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('moves focus into the menu on open and supports arrow-key navigation', async () => {
+    render(<UserProfileButton user={user} />)
+    await userEvent.click(screen.getByRole('button', { name: /open user menu/i }))
+    const items = screen.getAllByRole('menuitem')
+    expect(items[0]).toHaveFocus()
+    await userEvent.keyboard('{ArrowDown}')
+    expect(items[1]).toHaveFocus()
+    await userEvent.keyboard('{ArrowDown}')
+    expect(items[0]).toHaveFocus()
+    await userEvent.keyboard('{ArrowUp}')
+    expect(items[1]).toHaveFocus()
+  })
+
+  it('returns focus to the trigger button when Escape closes the menu', async () => {
+    render(<UserProfileButton user={user} />)
+    const trigger = screen.getByRole('button', { name: /open user menu/i })
+    await userEvent.click(trigger)
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
   })
 
   it('calls signOut with callbackUrl /signin', () => {

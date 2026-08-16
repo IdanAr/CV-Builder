@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -97,8 +97,28 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
         setDropdownOpen(false)
       }
     }
+    function getMenuItems(): HTMLElement[] {
+      return Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])
+    }
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setDropdownOpen(false)
+      if (e.key === 'Escape') {
+        setDropdownOpen(false)
+        triggerRef.current?.focus()
+        return
+      }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const items = getMenuItems()
+        if (items.length === 0) return
+        const currentIndex = items.indexOf(document.activeElement as HTMLElement)
+        let nextIndex: number
+        if (e.key === 'ArrowDown') {
+          nextIndex = currentIndex === -1 || currentIndex === items.length - 1 ? 0 : currentIndex + 1
+        } else {
+          nextIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1
+        }
+        items[nextIndex]?.focus()
+      }
     }
     document.addEventListener('mousedown', onMouseDown)
     document.addEventListener('keydown', onKeyDown)
@@ -107,6 +127,18 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [dropdownOpen])
+
+  // Stable callback ref (not a plain useEffect keyed on dropdownOpen/menuPosition):
+  // menuPosition is recomputed to a new object on every scroll/resize while the
+  // menu is open, so an effect depending on it would steal focus back to the
+  // first item on every scroll. A callback ref only fires when the underlying
+  // DOM node itself is created (menu opens) or torn down (menu closes).
+  const setMenuNode = useCallback((node: HTMLDivElement | null) => {
+    menuRef.current = node
+    if (node) {
+      node.querySelector<HTMLElement>('[role="menuitem"]')?.focus()
+    }
+  }, [])
 
   useEffect(() => {
     if (!termsOpen) return
@@ -158,7 +190,7 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
       {/* Dropdown */}
       {mounted && dropdownOpen && menuPosition && createPortal(
         <div
-          ref={menuRef}
+          ref={setMenuNode}
           role="menu"
           style={{ top: menuPosition.top, right: menuPosition.right }}
           className="fixed z-[100] w-56 overflow-hidden rounded-xl border border-white/40 bg-white/90 shadow-xl backdrop-blur-xl"
@@ -178,6 +210,7 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
           <div role="group" className="p-1.5">
             <button
               role="menuitem"
+              tabIndex={-1}
               onClick={() => {
                 setDropdownOpen(false)
                 setTermsOpen(true)
@@ -207,6 +240,7 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
           <div role="group" className="border-t border-indigo-50 p-1.5">
             <button
               role="menuitem"
+              tabIndex={-1}
               onClick={() => signOut({ callbackUrl: '/signin' })}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50/80"
             >
