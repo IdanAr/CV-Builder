@@ -39,7 +39,12 @@ export function HeroSection() {
           </div>
         </div>
         <div className="relative mx-auto">
-          <TemplateThumbnail templateId="modern" height={480} className="rotate-2" />
+          <TemplateThumbnail
+            templateId="modern"
+            height={480}
+            className="rotate-2 max-w-full"
+            data-testid="hero-thumbnail"
+          />
           <div
             className="absolute -bottom-4 -left-4 rounded-xl bg-white px-4 py-2 shadow-lg border border-green-100"
           >
