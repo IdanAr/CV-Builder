@@ -58,7 +58,7 @@ export function AccordionSection({
         {dragHandleProps ? (
           <button
             type="button"
-            className="w-5 shrink-0 py-3 text-center opacity-0 group-hover:opacity-100 transition-opacity cursor-grab text-indigo-300 hover:text-indigo-500 select-none"
+            className="w-5 shrink-0 py-3 text-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity cursor-grab text-indigo-300 hover:text-indigo-500 select-none"
             {...dragHandleProps.listeners}
             {...dragHandleProps.attributes}
             aria-label="Drag to reorder"

@@ -151,4 +151,31 @@ describe('AccordionSection', () => {
     // Badge must NOT be nested inside the title toggle button anymore
     expect(titleButton?.contains(badge)).toBe(false)
   })
+
+  it('drag handle becomes visible when focused via keyboard', () => {
+    const dragHandleProps = {
+      listeners: undefined,
+      attributes: {} as DraggableAttributes,
+      setNodeRef: () => {},
+      transform: null,
+      transition: undefined,
+      isDragging: false,
+    }
+    render(
+      <AccordionSection title="Work Experience" isOpen={false} onToggle={vi.fn()} dragHandleProps={dragHandleProps}>
+        {null}
+      </AccordionSection>
+    )
+    const dragHandle = screen.getByRole('button', { name: /drag to reorder/i })
+
+    // Initially, drag handle should have opacity-0
+    expect(dragHandle.className).toContain('opacity-0')
+
+    // Focus the drag handle
+    dragHandle.focus()
+    expect(document.activeElement).toBe(dragHandle)
+
+    // When focused, the ancestor group has focus-within, so opacity-100 class should apply
+    expect(dragHandle.className).toContain('group-focus-within:opacity-100')
+  })
 })
