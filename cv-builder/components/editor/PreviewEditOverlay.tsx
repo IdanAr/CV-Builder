@@ -556,13 +556,23 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
                 aria-expanded={addMenuOpen}
                 onClick={() => setAddMenuOpen((o) => !o)}
                 style={{
+                  // Mirrors EditTab.tsx's own "+ Add Section" emphasis
+                  // (border-2 border-dashed border-indigo-300, font-semibold,
+                  // shadow-[0_0_14px_-2px_rgba(99,102,241,0.45)]) so both entry
+                  // points for this action read as the same feature. Padding/
+                  // font-size stay smaller than EditTab's — this button lives
+                  // inside a hover/focus-revealed overlay on top of the scaled
+                  // live preview, not a static full-width accordion row.
                   padding: '4px 10px',
-                  borderRadius: 6,
-                  border: '1px dashed rgba(99,102,241,0.5)',
-                  background: 'rgba(99,102,241,0.08)',
-                  color: '#4338ca',
+                  borderRadius: 8,
+                  border: '2px dashed rgba(165,180,252,0.9)',
+                  background: 'rgba(238,242,255,0.6)',
+                  color: '#6366f1',
                   fontSize: 12,
+                  fontWeight: 600,
+                  boxShadow: '0 0 14px -2px rgba(99,102,241,0.45)',
                   cursor: 'pointer',
+                  transition: 'all 150ms ease',
                 }}
               >
                 + Add Section

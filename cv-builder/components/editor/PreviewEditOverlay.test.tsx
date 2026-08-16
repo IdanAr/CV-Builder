@@ -228,6 +228,23 @@ describe('PreviewEditOverlay add-section', () => {
     expect(useResumeEditorStore.getState().pendingFocus).toBe('education')
     expect(useResumeEditorStore.getState().pendingFocusEntryIndex).toBeNull()
   })
+
+  // EditTab.tsx's own "+ Add Section" button (the accordion's top-of-list
+  // control) carries a deliberate glow/bold emphasis treatment — border-2
+  // dashed indigo-300, font-semibold, and a soft indigo box-shadow glow —
+  // to make the entry point discoverable. This overlay control is the same
+  // feature's second entry point and should read as visually the same
+  // affordance, even though its placement (absolutely positioned after the
+  // last section, hover/focus-revealed) necessarily differs from EditTab's
+  // always-visible, top-of-accordion placement.
+  it('gives the toggle the same glow/bold emphasis EditTab uses for its Add Section control', () => {
+    render(<OneSectionHarness />)
+    const toggle = screen.getByTestId('pv-add-section-toggle')
+    expect(toggle.style.borderStyle).toBe('dashed')
+    expect(toggle.style.borderWidth).toBe('2px')
+    expect(toggle.style.fontWeight).toBe('600')
+    expect(toggle.style.boxShadow).toContain('rgba(99,102,241')
+  })
 })
 
 // Fix 1: PreviewTab feeds this component `data`/`sectionOrder` from *debounced*
