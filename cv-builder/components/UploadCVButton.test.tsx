@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 
 const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
@@ -124,11 +124,18 @@ describe('UploadCVButton', () => {
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    resolveParse({ ok: true, json: async () => ({ text: 'cv text' }) } as Response)
-    await Promise.resolve()
-    await Promise.resolve()
+    // Resolve the already-in-flight parse response *after* cancel, inside
+    // act() with a real macrotask flush so every microtask in the
+    // await-fetch -> await parseRes.json() -> setStage('extracting') chain
+    // has a chance to run (and any resulting state update is captured, not
+    // silently dropped past the assertions below).
+    await act(async () => {
+      resolveParse({ ok: true, json: async () => ({ text: 'cv text' }) } as Response)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByText('Extracting information…')).not.toBeInTheDocument()
     expect(mockPush).not.toHaveBeenCalled()
   })
 

@@ -69,6 +69,10 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
       }
       const { text } = (await parseRes.json()) as { text: string }
 
+      // The user may have canceled while the parse response was in flight;
+      // don't advance to "extracting" for a request they already dismissed.
+      if (controller.signal.aborted) return
+
       setStage('extracting')
       const extractRes = await fetch('/api/resumes/upload/extract', {
         method: 'POST',

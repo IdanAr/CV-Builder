@@ -179,7 +179,7 @@ export default function UploadProgressModal({
               {canCancel && (
                 <button
                   ref={closeButtonRef}
-                  onClick={onCancel}
+                  onClick={handleDismiss}
                   className="text-xs font-medium text-indigo-500 hover:text-indigo-700 hover:underline"
                 >
                   Cancel
