@@ -15,9 +15,9 @@ describe('HeroSection', () => {
     expect(primary).toHaveAttribute('href', '/signin')
   })
 
-  it('renders a secondary CTA linking to /signin', () => {
+  it('labels the secondary CTA to make the sign-in requirement explicit, linking to /signin', () => {
     render(<HeroSection />)
-    const secondary = screen.getByRole('link', { name: /upload existing cv/i })
+    const secondary = screen.getByRole('link', { name: /sign up to upload your cv/i })
     expect(secondary).toHaveAttribute('href', '/signin')
   })
 

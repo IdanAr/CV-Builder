@@ -35,7 +35,7 @@ export function TemplatesShowcaseSection() {
           href="/signin"
           className="inline-block rounded-lg border border-indigo-200 bg-white/70 px-6 py-3 text-base font-semibold text-indigo-700 backdrop-blur-xl transition hover:bg-indigo-50"
         >
-          Preview All Templates
+          Sign Up to Browse Templates
         </Link>
       </div>
     </section>

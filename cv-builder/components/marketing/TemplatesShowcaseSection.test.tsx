@@ -35,9 +35,10 @@ describe('TemplatesShowcaseSection', () => {
     }
   })
 
-  it('renders a CTA linking to /signin', () => {
+  it('labels the templates CTA to make the sign-in requirement explicit, linking to /signin', () => {
     render(<TemplatesShowcaseSection />)
-    expect(screen.getByRole('link', { name: /preview all templates/i })).toHaveAttribute('href', '/signin')
+    const cta = screen.getByRole('link', { name: /sign up to browse templates/i })
+    expect(cta).toHaveAttribute('href', '/signin')
   })
 
   it('gives every template a distinct, non-default color scheme', () => {
