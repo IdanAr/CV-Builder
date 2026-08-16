@@ -265,7 +265,14 @@ function SectionOverlayGroup({
   onAddEntry: (sectionKey: string) => void
 }) {
   const [hovered, setHovered] = useState(false)
-  const visible = hovered || dragActive
+  // Keyboard-focus equivalent of `hovered`: a keyboard user Tabbing to a
+  // handle or the add-entry button never fires mouseenter, so without this
+  // the controls stay at opacity 0 while focused — invisible but fully
+  // functional (WCAG 2.4.7 Focus Visible violation). React's onFocus/onBlur
+  // bubble (unlike native focus/blur), so handlers on this same wrapper
+  // mirror onMouseEnter/onMouseLeave for the whole group.
+  const [focused, setFocused] = useState(false)
+  const visible = hovered || dragActive || focused
 
   const lastEntryRect = entryRects.reduce<EntryRectEntry | null>(
     (last, r) => (!last || r.top > last.top ? r : last),
@@ -303,6 +310,17 @@ function SectionOverlayGroup({
       data-testid={`pv-section-group-${sectionKey}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onFocus={() => setFocused(true)}
+      onBlur={(e) => {
+        // Only clear focus-visibility when focus is truly leaving the group
+        // — e.g. Tabbing from the section handle to its own entry handle or
+        // add-entry button (all inside this same wrapper) must not flicker
+        // the group invisible for a frame between the blur and the next
+        // element's focus.
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setFocused(false)
+        }
+      }}
       style={{
         position: 'absolute',
         top: sectionRect.top,
@@ -418,6 +436,9 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
   const { sectionRects, entryRects } = useMeasuredRects(innerRef, wrapperRef, [sectionOrder, data, scale])
   const [activeLabel, setActiveLabel] = useState<string | null>(null)
   const [addSectionHovered, setAddSectionHovered] = useState(false)
+  // Keyboard-focus counterpart to `addSectionHovered` — see the matching
+  // `focused` state in SectionOverlayGroup for the full rationale.
+  const [addSectionFocused, setAddSectionFocused] = useState(false)
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const requestFocus = useResumeEditorStore((s) => s.requestFocus)
   const addCustomSection = useResumeEditorStore((s) => s.addCustomSection)
@@ -488,7 +509,7 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
     }
   }
 
-  const addSectionVisible = addSectionHovered || addMenuOpen
+  const addSectionVisible = addSectionHovered || addMenuOpen || addSectionFocused
 
   return (
     <DndContext collisionDetection={sameKindClosestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -519,6 +540,12 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
           <div
             onMouseEnter={() => setAddSectionHovered(true)}
             onMouseLeave={() => setAddSectionHovered(false)}
+            onFocus={() => setAddSectionFocused(true)}
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                setAddSectionFocused(false)
+              }
+            }}
             style={{ position: 'absolute', top, left: 0, right: 0, minHeight: 40 }}
           >
             <div style={{ ...controlsVisibilityStyle(addSectionVisible), position: 'relative' }}>
