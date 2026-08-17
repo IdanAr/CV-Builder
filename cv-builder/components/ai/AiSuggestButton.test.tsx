@@ -90,4 +90,51 @@ describe('AiSuggestButton', () => {
     // Width must be clamped against the viewport so it can never exceed it.
     expect(panel.className).toMatch(/w-\[min\(20rem,calc\(100vw-2rem\)\)\]/)
   })
+
+  it('caps the suggestion panel height and makes it internally scrollable', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse({ suggestion: 'A '.repeat(500), pendingApprovals: [] })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <AiSuggestButton
+        resumeId="r1"
+        currentValue="Some notes"
+        context={{ field: 'summary' }}
+        onAccept={() => {}}
+      />
+    )
+    fireEvent.click(screen.getByRole('button'))
+
+    const panel = await screen.findByText('Use this').then((btn) => btn.closest('[role="status"]') as HTMLElement)
+
+    // A long suggestion must never be cut off with no way to read the rest.
+    expect(panel.className).toMatch(/max-h-\[60vh\]/)
+    expect(panel.className).toMatch(/overflow-y-auto/)
+  })
+
+  it('renders the suggestion panel via a fixed-position portal so it cannot be clipped by a scrollable ancestor', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse({ suggestion: 'A suggestion', pendingApprovals: [] })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <div style={{ overflow: 'hidden', height: '10px' }}>
+        <AiSuggestButton
+          resumeId="r1"
+          currentValue="Some notes"
+          context={{ field: 'summary' }}
+          onAccept={() => {}}
+        />
+      </div>
+    )
+    fireEvent.click(screen.getByRole('button'))
+
+    const panel = await screen.findByText('Use this').then((btn) => btn.closest('[role="status"]') as HTMLElement)
+    // Portaled straight onto document.body, outside the clipping ancestor.
+    expect(panel.closest('div[style*="overflow: hidden"]')).toBeNull()
+    expect(panel.closest('body')).toBe(document.body)
+  })
 })

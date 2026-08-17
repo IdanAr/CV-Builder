@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import { Sparkles, Loader2 } from 'lucide-react'
 import type { SuggestionField, PipelineResult } from '@/lib/ai/pipeline'
+import { Popover } from '@/components/ui/Popover'
 
 interface AiSuggestButtonProps {
   resumeId: string
@@ -83,69 +84,82 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
     }
   }
 
+  const open = !!error || !!result
+
   return (
-    <div className="relative shrink-0">
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={loading || !currentValue.trim() || !resumeId}
-        title={loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'}
-        aria-label={loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'}
-        className="px-1.5 py-1 text-sm text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded transition-colors disabled:opacity-30"
-      >
-        {loading ? (
-          <Loader2 aria-hidden="true" data-testid="ai-suggest-loading-icon" className="h-4 w-4 animate-spin" strokeWidth={1.75} />
-        ) : (
-          <Sparkles aria-hidden="true" data-testid="ai-suggest-icon" className="h-4 w-4" strokeWidth={1.75} />
-        )}
-      </button>
-
-      {error && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="absolute top-full right-0 z-20 mt-1 w-56 rounded-lg border border-red-200 bg-red-50 p-2 shadow-sm"
-        >
-          <p className="text-xs text-red-600">{error}</p>
+    <div className="shrink-0">
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          if (!next) {
+            setError(null)
+            setResult(null)
+          }
+        }}
+        trigger={
           <button
-            onClick={() => setError(null)}
-            className="mt-1 text-xs text-red-400 hover:text-red-600"
+            type="button"
+            onClick={handleClick}
+            disabled={loading || !currentValue.trim() || !resumeId}
+            title={loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'}
+            aria-label={loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'}
+            className="px-1.5 py-1 text-sm text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded transition-colors disabled:opacity-30"
           >
-            Dismiss
+            {loading ? (
+              <Loader2 aria-hidden="true" data-testid="ai-suggest-loading-icon" className="h-4 w-4 animate-spin" strokeWidth={1.75} />
+            ) : (
+              <Sparkles aria-hidden="true" data-testid="ai-suggest-icon" className="h-4 w-4" strokeWidth={1.75} />
+            )}
           </button>
-        </div>
-      )}
-
-      {result && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="absolute top-full right-0 z-20 mt-1 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-indigo-200 bg-white/90 backdrop-blur-xl p-3 shadow-xl"
-        >
-          {result.pendingApprovals.length > 0 && (
-            <p className="mb-2 rounded border border-yellow-200 bg-yellow-50 px-2 py-1 text-xs text-yellow-700">
-              Highlighted items were not in your original notes — verify before accepting.
-            </p>
-          )}
-          <p className="mb-3 text-sm leading-relaxed text-gray-800">
-            {highlightApprovals(result.suggestion, result.pendingApprovals)}
-          </p>
-          <div className="flex gap-2">
+        }
+      >
+        {error && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="w-56 rounded-lg border border-red-200 bg-red-50 p-2 shadow-sm"
+          >
+            <p className="text-xs text-red-600">{error}</p>
             <button
-              onClick={handleAccept}
-              className="rounded-lg bg-indigo-600 px-3 py-1 text-xs text-white transition-colors hover:bg-indigo-700"
-            >
-              Use this
-            </button>
-            <button
-              onClick={() => setResult(null)}
-              className="rounded px-3 py-1 text-xs text-indigo-500 transition-colors hover:text-indigo-700"
+              onClick={() => setError(null)}
+              className="mt-1 text-xs text-red-400 hover:text-red-600"
             >
               Dismiss
             </button>
           </div>
-        </div>
-      )}
+        )}
+
+        {result && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex max-h-[60vh] w-[min(20rem,calc(100vw-2rem))] flex-col overflow-y-auto rounded-xl border border-indigo-200 bg-white/90 backdrop-blur-xl p-3 shadow-xl"
+          >
+            {result.pendingApprovals.length > 0 && (
+              <p className="mb-2 rounded border border-yellow-200 bg-yellow-50 px-2 py-1 text-xs text-yellow-700">
+                Highlighted items were not in your original notes — verify before accepting.
+              </p>
+            )}
+            <p className="mb-3 text-sm leading-relaxed text-gray-800">
+              {highlightApprovals(result.suggestion, result.pendingApprovals)}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleAccept}
+                className="rounded-lg bg-indigo-600 px-3 py-1 text-xs text-white transition-colors hover:bg-indigo-700"
+              >
+                Use this
+              </button>
+              <button
+                onClick={() => setResult(null)}
+                className="rounded px-3 py-1 text-xs text-indigo-500 transition-colors hover:text-indigo-700"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+      </Popover>
     </div>
   )
 }
