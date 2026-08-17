@@ -41,6 +41,31 @@ describe('ColumnForm (add mode)', () => {
     expect(result.options.map((o: { label: string }) => o.label)).toEqual(['LinkedIn', 'Referral'])
     expect(result.options.every((o: { color: string }) => o.color.startsWith('#'))).toBe(true)
   })
+
+  it('offers preset color swatches as named, clickable buttons', () => {
+    render(<ColumnForm onSubmit={vi.fn()} onCancel={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText(/column name/i), { target: { value: 'Source' } })
+    fireEvent.change(screen.getByLabelText(/^type$/i), { target: { value: 'select' } })
+
+    const swatches = screen.getAllByRole('button', { name: /set color to #/i })
+    expect(swatches.length).toBeGreaterThan(0)
+  })
+
+  it('sets the option color when a preset swatch is clicked', () => {
+    const onSubmit = vi.fn()
+    render(<ColumnForm onSubmit={onSubmit} onCancel={vi.fn()} />)
+
+    fireEvent.change(screen.getByLabelText(/column name/i), { target: { value: 'Source' } })
+    fireEvent.change(screen.getByLabelText(/^type$/i), { target: { value: 'select' } })
+    fireEvent.change(screen.getByLabelText('Label for option 1'), { target: { value: 'LinkedIn' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Set color to #ef4444' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add column' }))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    const result = onSubmit.mock.calls[0][0]
+    expect(result.options[0].color).toBe('#ef4444')
+  })
 })
 
 describe('ColumnForm (edit mode)', () => {

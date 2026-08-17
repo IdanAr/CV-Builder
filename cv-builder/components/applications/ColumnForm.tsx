@@ -111,56 +111,74 @@ export function ColumnForm({
         <fieldset className="flex flex-col gap-1.5">
           <legend className="mb-1 text-xs font-medium text-indigo-500">Options</legend>
           {options.map((option, i) => (
-            <div key={option.id} className="flex items-center gap-1.5">
-              <input
-                type="color"
-                aria-label={`Color for option ${i + 1}`}
-                value={option.color}
-                onChange={(e) =>
-                  setOptions((opts) =>
-                    opts.map((o) => (o.id === option.id ? { ...o, color: e.target.value } : o))
-                  )
-                }
-                className="h-7 w-8 shrink-0 cursor-pointer rounded border border-indigo-200 bg-white p-0.5"
-              />
-              <input
-                aria-label={`Label for option ${i + 1}`}
-                value={option.label}
-                placeholder="Option label"
-                onChange={(e) =>
-                  setOptions((opts) =>
-                    opts.map((o) => (o.id === option.id ? { ...o, label: e.target.value } : o))
-                  )
-                }
-                className="min-w-0 flex-1 rounded-md border border-indigo-200 bg-white px-2 py-1 text-sm text-indigo-900 outline-none focus:border-indigo-400"
-              />
-              <button
-                type="button"
-                aria-label={`Move option ${i + 1} up`}
-                onClick={() => reorderOption(i, 'up')}
-                disabled={i === 0}
-                className="shrink-0 rounded px-1 text-sm text-indigo-300 hover:text-indigo-600 disabled:opacity-40"
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                aria-label={`Move option ${i + 1} down`}
-                onClick={() => reorderOption(i, 'down')}
-                disabled={i === options.length - 1}
-                className="shrink-0 rounded px-1 text-sm text-indigo-300 hover:text-indigo-600 disabled:opacity-40"
-              >
-                ↓
-              </button>
-              <button
-                type="button"
-                aria-label={`Remove option ${i + 1}`}
-                onClick={() => setOptions((opts) => opts.filter((o) => o.id !== option.id))}
-                disabled={options.length === 1}
-                className="shrink-0 rounded px-1 text-sm text-indigo-300 hover:text-red-500 disabled:opacity-40"
-              >
-                ✕
-              </button>
+            <div key={option.id} className="flex flex-col gap-1">
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="color"
+                  aria-label={`Color for option ${i + 1}`}
+                  value={option.color}
+                  onChange={(e) =>
+                    setOptions((opts) =>
+                      opts.map((o) => (o.id === option.id ? { ...o, color: e.target.value } : o))
+                    )
+                  }
+                  className="h-8 w-8 shrink-0 cursor-pointer rounded border border-indigo-200 bg-white p-0.5"
+                />
+                <input
+                  aria-label={`Label for option ${i + 1}`}
+                  value={option.label}
+                  placeholder="Option label"
+                  onChange={(e) =>
+                    setOptions((opts) =>
+                      opts.map((o) => (o.id === option.id ? { ...o, label: e.target.value } : o))
+                    )
+                  }
+                  className="min-w-0 flex-1 rounded-md border border-indigo-200 bg-white px-2 py-1 text-sm text-indigo-900 outline-none focus:border-indigo-400"
+                />
+                <button
+                  type="button"
+                  aria-label={`Move option ${i + 1} up`}
+                  onClick={() => reorderOption(i, 'up')}
+                  disabled={i === 0}
+                  className="shrink-0 rounded px-1 text-sm text-indigo-300 hover:text-indigo-600 disabled:opacity-40"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Move option ${i + 1} down`}
+                  onClick={() => reorderOption(i, 'down')}
+                  disabled={i === options.length - 1}
+                  className="shrink-0 rounded px-1 text-sm text-indigo-300 hover:text-indigo-600 disabled:opacity-40"
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Remove option ${i + 1}`}
+                  onClick={() => setOptions((opts) => opts.filter((o) => o.id !== option.id))}
+                  disabled={options.length === 1}
+                  className="shrink-0 rounded px-1 text-sm text-indigo-300 hover:text-red-500 disabled:opacity-40"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="ml-1 flex flex-wrap gap-1">
+                {OPTION_COLOR_PRESETS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    aria-label={`Set color to ${color}`}
+                    onClick={() =>
+                      setOptions((opts) =>
+                        opts.map((o) => (o.id === option.id ? { ...o, color } : o))
+                      )
+                    }
+                    style={{ backgroundColor: color }}
+                    className="h-8 w-8 shrink-0 cursor-pointer rounded border border-indigo-200"
+                  />
+                ))}
+              </div>
             </div>
           ))}
           <button
