@@ -6,10 +6,15 @@ import Link from 'next/link'
 import { toast, useToastStore } from '@/lib/stores/toast.store'
 import { onToastPause, onToastResume } from '@/components/ui/Toaster'
 import { formatAbsoluteDate, formatRelativeTime } from '@/lib/format-relative-time'
-import { RESUME_STATUS_OPTIONS } from '@/lib/schemas/application.zod'
-import type { ApplicationStatus } from '@/lib/schemas/resume.zod'
+import type { ResumeApplicationBadge } from '@/lib/applications/resume-status'
 
 const UNDO_DELETE_DURATION = 6000
+
+// Continuity with the pre-Task-46 "draft" visual: zero linked applications
+// renders the same gray "Draft" pill it always has.
+const DRAFT_BADGE = { label: 'Draft', color: '#94a3b8' }
+// Neutral gray reused for the "N applications" count badge, matching draft's tone.
+const MULTIPLE_BADGE_COLOR = '#94a3b8'
 
 interface ResumeCardProps {
   resume: {
@@ -26,13 +31,13 @@ interface ResumeCardProps {
     formatScore: number
     createdAt: string
     updatedAt: string
-    applicationStatus?: ApplicationStatus
   }
+  applicationBadge: ResumeApplicationBadge
 }
 
 const formatDate = formatAbsoluteDate
 
-export default function ResumeCard({ resume }: ResumeCardProps) {
+export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps) {
   const router = useRouter()
   const [duplicating, setDuplicating] = useState(false)
   const [downloading, setDownloading] = useState(false)
@@ -186,8 +191,11 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
   if (pendingDelete) return null
 
   const statusOption =
-    RESUME_STATUS_OPTIONS.find((o) => o.id === (resume.applicationStatus ?? 'draft')) ??
-    RESUME_STATUS_OPTIONS[0]
+    applicationBadge.kind === 'single'
+      ? { label: applicationBadge.label, color: applicationBadge.color }
+      : applicationBadge.kind === 'multiple'
+      ? { label: `${applicationBadge.count} applications`, color: MULTIPLE_BADGE_COLOR }
+      : DRAFT_BADGE
 
   return (
     <div className="relative group rounded-xl border border-white/30 bg-white/65 backdrop-blur-xl p-4 shadow-lg hover:border-indigo-300 hover:shadow-xl transition-all">

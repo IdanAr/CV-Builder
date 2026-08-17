@@ -22,6 +22,16 @@ vi.mock('@/lib/api/resumes', () => ({
   listResumes: (userId: string) => listResumesMock(userId),
 }))
 
+const listApplicationsMock = vi.fn()
+vi.mock('@/lib/api/applications', () => ({
+  listApplications: (userId: string) => listApplicationsMock(userId),
+}))
+
+const getOrCreateBoardConfigMock = vi.fn()
+vi.mock('@/lib/api/board-config', () => ({
+  getOrCreateBoardConfig: (userId: string) => getOrCreateBoardConfigMock(userId),
+}))
+
 describe('Dashboard page', () => {
   afterEach(() => {
     vi.clearAllMocks()
@@ -40,6 +50,8 @@ describe('Dashboard page', () => {
   it('renders a Homepage link to / for signed-in visitors', async () => {
     authMock.mockResolvedValue({ user: { id: 'user-1', name: 'Jordan', email: 'jordan@example.com' } })
     listResumesMock.mockResolvedValue([])
+    listApplicationsMock.mockResolvedValue([])
+    getOrCreateBoardConfigMock.mockResolvedValue({ columns: [], sort: [] })
     const { default: DashboardPage } = await import('./page')
     const element = await DashboardPage()
     render(element)
