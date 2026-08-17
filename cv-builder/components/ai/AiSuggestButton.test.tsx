@@ -241,4 +241,74 @@ describe('AiSuggestButton', () => {
       expect(screen.queryByText('Rate limited')).not.toBeInTheDocument()
     })
   })
+
+  describe('cross-instance coordination between multiple AiSuggestButton instances', () => {
+    it('disables another instance\'s Suggest button while one instance has a pending, unresolved suggestion', async () => {
+      const fetchMock = vi.fn().mockResolvedValueOnce(
+        jsonResponse({ suggestion: 'Suggestion A', pendingApprovals: [] })
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      render(
+        <>
+          <AiSuggestButton resumeId="r1" currentValue="Notes A" context={{ field: 'summary' }} onAccept={() => {}} />
+          <AiSuggestButton resumeId="r1" currentValue="Notes B" context={{ field: 'summary' }} onAccept={() => {}} />
+        </>
+      )
+
+      const [buttonA, buttonB] = screen.getAllByRole('button')
+      fireEvent.click(buttonA)
+      await screen.findByText('Suggestion A')
+
+      // Two overlapping pending-suggestion panels (each `fixed`/`z-[100]`,
+      // right-aligned the same way) would visually stack on top of each
+      // other, and a single Escape keypress would clear both at once since
+      // each instance registers its own document-level listener. Only one
+      // instance may hold an unresolved pending suggestion at a time.
+      expect(buttonB).toBeDisabled()
+    })
+
+    it('re-enables other instances once the pending suggestion is resolved via Dismiss', async () => {
+      const fetchMock = vi.fn().mockResolvedValueOnce(
+        jsonResponse({ suggestion: 'Suggestion A', pendingApprovals: [] })
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      render(
+        <>
+          <AiSuggestButton resumeId="r1" currentValue="Notes A" context={{ field: 'summary' }} onAccept={() => {}} />
+          <AiSuggestButton resumeId="r1" currentValue="Notes B" context={{ field: 'summary' }} onAccept={() => {}} />
+        </>
+      )
+
+      const [buttonA, buttonB] = screen.getAllByRole('button')
+      fireEvent.click(buttonA)
+      await screen.findByText('Suggestion A')
+      expect(buttonB).toBeDisabled()
+
+      fireEvent.click(screen.getByText('Dismiss'))
+
+      expect(buttonB).not.toBeDisabled()
+    })
+
+    it('does not block the same instance from re-clicking its own Suggest button while its result is pending', async () => {
+      const fetchMock = vi.fn().mockResolvedValueOnce(
+        jsonResponse({ suggestion: 'Suggestion A', pendingApprovals: [] })
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      render(
+        <AiSuggestButton resumeId="r1" currentValue="Notes A" context={{ field: 'summary' }} onAccept={() => {}} />
+      )
+
+      const trigger = screen.getByRole('button', { name: /generate an ai-written suggestion/i })
+      fireEvent.click(trigger)
+      await screen.findByText('Suggestion A')
+
+      // Once the result panel renders, "Use this"/"Dismiss" are also
+      // role="button" — re-query by accessible name so this only asserts
+      // on the trigger, not incidentally passing/failing on the wrong button.
+      expect(screen.getByRole('button', { name: /generate an ai-written suggestion/i })).not.toBeDisabled()
+    })
+  })
 })
