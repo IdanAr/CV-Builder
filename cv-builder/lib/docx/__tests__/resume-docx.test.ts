@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { buildDocx } from '../resume-docx'
-import { Packer } from 'docx'
+import { Packer, convertInchesToTwip } from 'docx'
 import JSZip from 'jszip'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
 const defaultMeta: ResumeMeta = {
   templateId: 'classic', fontFamily: 'Calibri', headerFontFamily: 'Calibri',
   primaryColor: '#000000', accentColor: '#0066cc',
-  pageMargins: 1.0, lineSpacing: 1.15,
+  pageMargins: 1.0, sidebarRailWidth: 33, lineSpacing: 1.15,
   sectionOrder: ['work', 'education', 'skills'],
   layout: 'single-column',
   columnAssignment: {},
@@ -139,6 +139,82 @@ describe('buildDocx', () => {
     expect(skillsIdx).toBeGreaterThan(-1)
     expect(workIdx).toBeGreaterThan(-1)
     expect(skillsIdx).toBeLessThan(workIdx)
+  })
+})
+
+describe('buildDocx sidebar rail width', () => {
+  async function documentXml(doc: ReturnType<typeof buildDocx>): Promise<string> {
+    const buffer = await Packer.toBuffer(doc)
+    const zip = await JSZip.loadAsync(buffer)
+    return zip.file('word/document.xml')!.async('string')
+  }
+
+  // Mirrors the resume-docx.ts formula exactly: usable width is the A4 page
+  // width minus both margins, and the rail cell takes sidebarRailWidth% of it.
+  function expectedRailWidthTwips(pageMargins: number, sidebarRailWidth: number): number {
+    const marginTwips = convertInchesToTwip(pageMargins)
+    const pageWidthTwips = convertInchesToTwip(8.27)
+    const usableWidthTwips = pageWidthTwips - 2 * marginTwips
+    return Math.round(usableWidthTwips * (sidebarRailWidth / 100))
+  }
+
+  function cellWidths(xml: string): number[] {
+    return [...xml.matchAll(/<w:tcW w:type="dxa" w:w="(\d+)"/g)].map((m) => Number(m[1]))
+  }
+
+  it('scales the rail cell width to sidebarRailWidth at the 20% floor', async () => {
+    const meta: ResumeMeta = { ...defaultMeta, templateId: 'sidebar', sidebarRailWidth: 20 }
+    const xml = await documentXml(buildDocx(sampleData, meta))
+    const [railWidth] = cellWidths(xml)
+    expect(railWidth).toBe(expectedRailWidthTwips(meta.pageMargins, 20))
+  })
+
+  it('scales the rail cell width to sidebarRailWidth at the 40% ceiling', async () => {
+    const meta: ResumeMeta = { ...defaultMeta, templateId: 'sidebar', sidebarRailWidth: 40 }
+    const xml = await documentXml(buildDocx(sampleData, meta))
+    const [railWidth] = cellWidths(xml)
+    expect(railWidth).toBe(expectedRailWidthTwips(meta.pageMargins, 40))
+  })
+
+  it('the main column cell width is the remainder of the usable width', async () => {
+    const meta: ResumeMeta = { ...defaultMeta, templateId: 'sidebar', sidebarRailWidth: 25 }
+    const xml = await documentXml(buildDocx(sampleData, meta))
+    const [railWidth, mainWidth] = cellWidths(xml)
+    const marginTwips = convertInchesToTwip(meta.pageMargins)
+    const usableWidthTwips = convertInchesToTwip(8.27) - 2 * marginTwips
+    expect(railWidth + mainWidth).toBe(usableWidthTwips)
+  })
+
+  it('defaults the rail cell width to 33% when sidebarRailWidth is missing from meta (pre-existing résumé)', async () => {
+    const { sidebarRailWidth: _unused, ...metaWithoutRailWidth } = { ...defaultMeta, templateId: 'sidebar' }
+    void _unused
+    const xml = await documentXml(buildDocx(sampleData, metaWithoutRailWidth as ResumeMeta))
+    const [railWidth] = cellWidths(xml)
+    expect(railWidth).toBe(expectedRailWidthTwips(defaultMeta.pageMargins, 33))
+  })
+
+  it('keeps a long unbroken email/URL in the rail intact (not truncated) at the narrow 20% width — DOCX table cells wrap natively to column width in Word, so the source text must stay whole', async () => {
+    const dataWithLongContact: ResumeData = {
+      basics: {
+        name: 'Jane Smith',
+        email: 'jane.smith.principal.architect@a-very-long-corporate-domain-name.example.com',
+        profiles: [{ id: 'p1', url: 'https://a-very-long-portfolio-domain-name.example.com/jane-smith/portfolio' }],
+      },
+    }
+    const meta: ResumeMeta = { ...defaultMeta, templateId: 'sidebar', sidebarRailWidth: 20 }
+    const xml = await documentXml(buildDocx(dataWithLongContact, meta))
+    expect(xml).toContain('jane.smith.principal.architect@a-very-long-corporate-domain-name.example.com')
+    expect(xml).toContain('a-very-long-portfolio-domain-name.example.com/jane-smith/portfolio')
+  })
+
+  it('serializes without error at both range extremes (20% and 40%)', async () => {
+    for (const sidebarRailWidth of [20, 40]) {
+      const meta: ResumeMeta = { ...defaultMeta, templateId: 'sidebar', sidebarRailWidth }
+      const buffer = await Packer.toBuffer(buildDocx(sampleData, meta))
+      expect(buffer.byteLength).toBeGreaterThan(1000)
+      const zip = await JSZip.loadAsync(buffer)
+      expect(await zip.file('word/document.xml')!.async('string')).toContain('<w:tbl')
+    }
   })
 })
 

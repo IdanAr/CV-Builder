@@ -11,7 +11,7 @@ const defaultMeta: ResumeMeta = {
   headerFontFamily: 'Calibri',
   primaryColor: '#000000',
   accentColor: '#0066cc',
-  pageMargins: 1.0,
+  pageMargins: 1.0, sidebarRailWidth: 33,
   lineSpacing: 1.15,
   sectionOrder: ['work', 'education', 'skills'],
   layout: 'single-column',
@@ -372,6 +372,62 @@ describe('DesignPanel', () => {
       const rightBtn = screen.getByRole('button', { name: 'Right' })
       expect(leftBtn.className).toContain('bg-white')
       expect(rightBtn.className).not.toContain('bg-white')
+    })
+  })
+
+  describe('rail width slider (sidebar-only)', () => {
+    it('is hidden for non-sidebar templates', () => {
+      render(<DesignPanel />)
+      expect(screen.queryByText(/Rail width/)).toBeNull()
+    })
+
+    it('is shown for the sidebar template with the current value', () => {
+      useResumeEditorStore.setState({
+        resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+        data: {},
+        meta: { ...defaultMeta, templateId: 'sidebar', sidebarRailWidth: 28 },
+      })
+      render(<DesignPanel />)
+      expect(screen.getByText(/Rail width/)).toBeTruthy()
+      const slider = screen.getByRole('slider', { name: /Rail width/i })
+      expect(slider).toHaveProperty('value', '28')
+    })
+
+    it('defaults the displayed value to 33 when sidebarRailWidth is missing from meta', () => {
+      const { sidebarRailWidth: _unused, ...metaWithoutRailWidth } = { ...defaultMeta, templateId: 'sidebar', sidebarRailWidth: 33 }
+      void _unused
+      useResumeEditorStore.setState({
+        resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+        data: {},
+        meta: metaWithoutRailWidth as typeof defaultMeta,
+      })
+      render(<DesignPanel />)
+      const slider = screen.getByRole('slider', { name: /Rail width/i })
+      expect(slider).toHaveProperty('value', '33')
+    })
+
+    it('changing the slider calls setMeta with sidebarRailWidth', () => {
+      useResumeEditorStore.setState({
+        resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+        data: {},
+        meta: { ...defaultMeta, templateId: 'sidebar' },
+      })
+      render(<DesignPanel />)
+      const slider = screen.getByRole('slider', { name: /Rail width/i })
+      fireEvent.change(slider, { target: { value: '25' } })
+      expect(useResumeEditorStore.getState().meta.sidebarRailWidth).toBe(25)
+    })
+
+    it('constrains the slider to the 20-40 range', () => {
+      useResumeEditorStore.setState({
+        resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+        data: {},
+        meta: { ...defaultMeta, templateId: 'sidebar' },
+      })
+      render(<DesignPanel />)
+      const slider = screen.getByRole('slider', { name: /Rail width/i }) as HTMLInputElement
+      expect(slider.min).toBe('20')
+      expect(slider.max).toBe('40')
     })
   })
 })

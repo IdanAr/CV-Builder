@@ -10,7 +10,7 @@ const meta: ResumeMeta = {
   headerFontFamily: 'Calibri',
   primaryColor: '#1e3a5f',
   accentColor: '#0066cc',
-  pageMargins: 1.0,
+  pageMargins: 1.0, sidebarRailWidth: 33,
   lineSpacing: 1.15,
   sectionOrder: ['work', 'education', 'skills', 'languages'],
   layout: 'two-column',
@@ -44,6 +44,54 @@ describe('SidebarTemplate skills row wrapping', () => {
     // bug here: the name div has no minWidth/flexShrink and wraps by default.
     expect(nameCell.style.flexShrink).not.toBe('0')
     expect(nameCell.style.minWidth).toBe('')
+  })
+})
+
+describe('SidebarTemplate rail width', () => {
+  it('renders the rail at meta.sidebarRailWidth as a flex-basis percentage', () => {
+    const { container } = render(<SidebarTemplate data={data} meta={{ ...meta, sidebarRailWidth: 25 }} />)
+    const page = container.firstChild as HTMLElement
+    const rail = page.children[0] as HTMLElement
+    expect(rail.style.flex).toBe('0 0 25%')
+  })
+
+  it('renders the rail at 40% at the top of the allowed range', () => {
+    const { container } = render(<SidebarTemplate data={data} meta={{ ...meta, sidebarRailWidth: 40 }} />)
+    const page = container.firstChild as HTMLElement
+    const rail = page.children[0] as HTMLElement
+    expect(rail.style.flex).toBe('0 0 40%')
+  })
+
+  it('defaults to a 33% rail when meta.sidebarRailWidth is missing (pre-existing résumé)', () => {
+    const { sidebarRailWidth: _unused, ...metaWithoutRailWidth } = meta
+    void _unused
+    const { container } = render(<SidebarTemplate data={data} meta={metaWithoutRailWidth as ResumeMeta} />)
+    const page = container.firstChild as HTMLElement
+    const rail = page.children[0] as HTMLElement
+    expect(rail.style.flex).toBe('0 0 33%')
+  })
+
+  it('wraps a long unbroken email/URL in the rail contact block at the narrow 20% width, instead of clipping it', () => {
+    const longContactData: ResumeData = {
+      basics: {
+        name: 'Jane Smith',
+        email: 'jane.smith.principal.architect@a-very-long-corporate-domain-name.example.com',
+        profiles: [{ id: 'p1', url: 'https://a-very-long-portfolio-domain-name.example.com/jane-smith/portfolio' }],
+      },
+    }
+    const { container, getByText } = render(
+      <SidebarTemplate data={longContactData} meta={{ ...meta, sidebarRailWidth: 20 }} />
+    )
+    const page = container.firstChild as HTMLElement
+    const rail = page.children[0] as HTMLElement
+    expect(rail.style.flex).toBe('0 0 20%')
+    const contactBlock = getByText(longContactData.basics!.email!).parentElement as HTMLElement
+    // Wrapping (not clipping) is what keeps a long email/URL fully visible in
+    // a narrow rail: word-break must still be present, and nothing forces a
+    // fixed too-small width or hides overflow.
+    expect(contactBlock.style.wordBreak).toBe('break-word')
+    expect(contactBlock.style.overflow).not.toBe('hidden')
+    expect(contactBlock.style.whiteSpace).not.toBe('nowrap')
   })
 })
 

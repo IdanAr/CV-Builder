@@ -442,6 +442,26 @@ export function DesignPanel() {
         </div>
       )}
 
+      {/* Rail width — sidebar-only. meta.sidebarRailWidth may be missing on a
+          résumé saved before this field existed, so fall back to the schema
+          default (33) the same way meta.columnAssignment ?? {} is handled
+          everywhere else in this codebase. */}
+      {meta.templateId === 'sidebar' && (
+        <div>
+          <label className={labelClass}>
+            Rail width — <span className="font-mono">{meta.sidebarRailWidth ?? 33}%</span>
+          </label>
+          <input type="range" min={20} max={40} step={1}
+            aria-label="Rail width"
+            value={meta.sidebarRailWidth ?? 33}
+            onChange={(e) => setMeta({ sidebarRailWidth: parseFloat(e.target.value) })}
+            className="w-full accent-indigo-600" />
+          <div className="flex justify-between text-xs text-indigo-300 mt-0.5">
+            <span>20% (min)</span><span>40%</span>
+          </div>
+        </div>
+      )}
+
       {/* Fonts */}
       <div className="grid grid-cols-2 gap-3">
         <div>

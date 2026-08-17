@@ -10,7 +10,7 @@ vi.setConfig({ testTimeout: 20_000 })
 const meta: ResumeMeta = {
   templateId: 'sidebar', fontFamily: 'Calibri', headerFontFamily: 'Calibri',
   primaryColor: '#1e3a5f', accentColor: '#0066cc',
-  pageMargins: 0.5, lineSpacing: 1.15,
+  pageMargins: 0.5, sidebarRailWidth: 33, lineSpacing: 1.15,
   sectionOrder: ['work', 'education', 'skills', 'languages'],
   layout: 'two-column', columnAssignment: {}, excludedAtsKeywords: [],
 }

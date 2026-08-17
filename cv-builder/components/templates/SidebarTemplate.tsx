@@ -269,7 +269,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
     <div style={page}>
       {/* Left rail */}
       <div style={{
-        flex: '0 0 33%',
+        flex: `0 0 ${meta.sidebarRailWidth ?? 33}%`,
         background: meta.primaryColor,
         color: '#fff',
         padding: `${pad}px`,

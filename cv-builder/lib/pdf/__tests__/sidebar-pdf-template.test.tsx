@@ -2,12 +2,13 @@ import React from 'react'
 import { describe, it, expect } from 'vitest'
 import { SidebarPdfTemplate } from '../templates/SidebarPdfTemplate'
 import { ExecutivePdfTemplate } from '../templates/ExecutivePdfTemplate'
+import { renderToGlyphRuns } from './pdf-geometry'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
 const baseMeta: ResumeMeta = {
   templateId: 'sidebar', fontFamily: 'Calibri', headerFontFamily: 'Calibri',
   primaryColor: '#1e3a5f', accentColor: '#0066cc',
-  pageMargins: 1.0, lineSpacing: 1.15,
+  pageMargins: 1.0, sidebarRailWidth: 33, lineSpacing: 1.15,
   sectionOrder: ['work', 'education', 'skills', 'languages'],
   layout: 'two-column', columnAssignment: {}, excludedAtsKeywords: [],
 }
@@ -114,6 +115,61 @@ describe('SidebarPdfTemplate rail section-title separator', () => {
     const styles = collectStyles(rail)
     const found = styles.some((s) => s.borderBottomColor === '#ff00aa')
     expect(found).toBe(true)
+  })
+})
+
+describe('SidebarPdfTemplate rail width', () => {
+  it('renders the rail at meta.sidebarRailWidth as a width percentage', () => {
+    const { rail } = getPageColumns({ ...baseMeta, sidebarRailWidth: 25 })
+    expect((rail.props!.style as { width: string }).width).toBe('25%')
+  })
+
+  it('renders the rail at 40% at the top of the allowed range', () => {
+    const { rail } = getPageColumns({ ...baseMeta, sidebarRailWidth: 40 })
+    expect((rail.props!.style as { width: string }).width).toBe('40%')
+  })
+
+  it('defaults to a 33% rail when meta.sidebarRailWidth is missing (pre-existing résumé)', () => {
+    const { sidebarRailWidth: _unused, ...metaWithoutRailWidth } = baseMeta
+    void _unused
+    const { rail } = getPageColumns(metaWithoutRailWidth as ResumeMeta)
+    expect((rail.props!.style as { width: string }).width).toBe('33%')
+  })
+})
+
+describe('SidebarPdfTemplate rail contact text fit at 20% rail width', () => {
+  it('wraps a long unbroken email into multiple glyph runs instead of one run that overflows the rail', async () => {
+    const dataWithLongEmail: ResumeData = {
+      basics: {
+        name: 'Jane Smith',
+        email: 'jane.smith.principal.architect@a-very-long-corporate-domain-name.example.com',
+      },
+    }
+    const meta = { ...baseMeta, sidebarRailWidth: 20 }
+    const runs = await renderToGlyphRuns(SidebarPdfTemplate({ data: dataWithLongEmail, meta }))
+    const railWidthPt = 595.28 * 0.20 // A4 width * 20% rail
+    const emailRuns = runs.filter((r) => dataWithLongEmail.basics!.email!.includes(r.str) && r.str.length > 3)
+    expect(emailRuns.length).toBeGreaterThan(0)
+    for (const run of emailRuns) {
+      expect(run.x + run.width, `run "${run.str}" must not overflow the ${railWidthPt}pt rail`).toBeLessThanOrEqual(railWidthPt)
+    }
+  })
+
+  it('wraps a long unbroken profile URL into multiple glyph runs instead of one run that overflows the rail', async () => {
+    const dataWithLongUrl: ResumeData = {
+      basics: {
+        name: 'Jane Smith',
+        profiles: [{ id: 'p1', url: 'https://a-very-long-portfolio-domain-name.example.com/jane-smith/portfolio' }],
+      },
+    }
+    const meta = { ...baseMeta, sidebarRailWidth: 20 }
+    const runs = await renderToGlyphRuns(SidebarPdfTemplate({ data: dataWithLongUrl, meta }))
+    const railWidthPt = 595.28 * 0.20
+    const urlRuns = runs.filter((r) => dataWithLongUrl.basics!.profiles![0].url!.includes(r.str) && r.str.length > 3)
+    expect(urlRuns.length).toBeGreaterThan(0)
+    for (const run of urlRuns) {
+      expect(run.x + run.width, `run "${run.str}" must not overflow the ${railWidthPt}pt rail`).toBeLessThanOrEqual(railWidthPt)
+    }
   })
 })
 

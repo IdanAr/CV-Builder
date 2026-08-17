@@ -10,7 +10,7 @@ const meta: ResumeMeta = {
   headerFontFamily: 'Georgia',
   primaryColor: '#1a1a2e',
   accentColor: '#b8860b',
-  pageMargins: 1.0,
+  pageMargins: 1.0, sidebarRailWidth: 33,
   lineSpacing: 1.15,
   sectionOrder: ['work', 'education', 'skills'],
   layout: 'single-column',

@@ -12,6 +12,24 @@ import { SIDEBAR_TOKENS as T } from '@/lib/design/tokens'
 
 const PAGE_FONT_SIZE = 11
 
+// react-pdf's default hyphenation is `word => [word]` (@react-pdf/textkit):
+// a "word" (whitespace-delimited token) is one indivisible run unless a
+// custom callback supplies additional break points. Contact info in the rail
+// — emails, URLs — routinely has no whitespace at all, so at the narrow end
+// of the rail-width range (20%) a long one renders as a single glyph run
+// that overflows the column instead of wrapping. This mirrors the web rail's
+// `wordBreak: 'break-word'` by offering a break point every N characters,
+// which is a no-op for ordinary short words.
+const CONTACT_BREAK_CHUNK = 12
+const breakLongContactToken = (word: string): string[] => {
+  if (word.length <= CONTACT_BREAK_CHUNK) return [word]
+  const chunks: string[] = []
+  for (let i = 0; i < word.length; i += CONTACT_BREAK_CHUNK) {
+    chunks.push(word.slice(i, i + CONTACT_BREAK_CHUNK))
+  }
+  return chunks
+}
+
 export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; meta: ResumeMeta; title?: string }) {
   const { basics = {}, work = [], education = [], skills = [],
     certificates = [], awards = [], publications = [],
@@ -31,7 +49,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
     page: { fontFamily: bodyFont, fontSize: PAGE_FONT_SIZE, lineHeight: meta.lineSpacing, color: '#000000', flexDirection: 'row' },
 
     // Left rail
-    rail: { width: '33%', backgroundColor: meta.primaryColor, padding: margin, paddingTop: margin },
+    rail: { width: `${meta.sidebarRailWidth ?? 33}%`, backgroundColor: meta.primaryColor, padding: margin, paddingTop: margin },
     railName: { fontFamily: headFont, fontSize: T.nameSize, fontWeight: 'bold', color: '#ffffff', lineHeight: 1.1 },
     railLabel: { fontSize: T.labelSize, color: 'rgba(255,255,255,0.85)', marginTop: 2.25 },
     railContact: { marginTop: 9 },
@@ -538,15 +556,15 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
           <Text style={styles.railName}>{basics.name ?? ''}</Text>
           {basics.label ? <Text style={styles.railLabel}>{basics.label}</Text> : null}
           <View style={styles.railContact}>
-            {basics.email ? <Text style={styles.railContactLine}>{basics.email}</Text> : null}
-            {basics.phone ? <Text style={styles.railContactLine}>{basics.phone}</Text> : null}
+            {basics.email ? <Text style={styles.railContactLine} hyphenationCallback={breakLongContactToken}>{basics.email}</Text> : null}
+            {basics.phone ? <Text style={styles.railContactLine} hyphenationCallback={breakLongContactToken}>{basics.phone}</Text> : null}
             {resolveProfiles(basics).filter((p) => p.url).map((p) => (
               <Link key={p.id} src={ensureHttps(p.url!)} style={{ textDecoration: 'none' }}>
-                <Text style={styles.railContactLine}>{p.label || p.url}</Text>
+                <Text style={styles.railContactLine} hyphenationCallback={breakLongContactToken}>{p.label || p.url}</Text>
               </Link>
             ))}
             {[basics.location?.city, basics.location?.region].filter(Boolean).join(', ') ? (
-              <Text style={styles.railContactLine}>{[basics.location?.city, basics.location?.region].filter(Boolean).join(', ')}</Text>
+              <Text style={styles.railContactLine} hyphenationCallback={breakLongContactToken}>{[basics.location?.city, basics.location?.region].filter(Boolean).join(', ')}</Text>
             ) : null}
           </View>
           {railSections.map(renderRailSection)}

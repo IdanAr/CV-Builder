@@ -8,7 +8,7 @@ import type { ResumeMeta } from '@/lib/schemas/resume.zod'
 const defaultMeta: ResumeMeta = {
   templateId: 'classic', fontFamily: 'Calibri', headerFontFamily: 'Calibri',
   primaryColor: '#000000', accentColor: '#0066cc',
-  pageMargins: 1.0, lineSpacing: 1.15, sectionOrder: [], layout: 'single-column',
+  pageMargins: 1.0, sidebarRailWidth: 33, lineSpacing: 1.15, sectionOrder: [], layout: 'single-column',
   columnAssignment: {}, excludedAtsKeywords: [],
 }
 
