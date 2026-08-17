@@ -177,16 +177,26 @@ export function UrlCell(props: CellProps) {
       />
     )
   }
+  const fullUrl = url ? (url.startsWith('http') ? url : `https://${url}`) : ''
+  let displayUrl = url
+  if (fullUrl) {
+    try {
+      displayUrl = new URL(fullUrl).hostname
+    } catch {
+      displayUrl = url
+    }
+  }
   return (
     <span className="flex w-full items-center gap-1 px-1.5 py-0.5">
       {url ? (
         <a
-          href={url.startsWith('http') ? url : `https://${url}`}
+          href={fullUrl}
+          title={fullUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="min-w-0 flex-1 truncate text-sm text-indigo-600 underline decoration-indigo-300 hover:text-indigo-800"
         >
-          {url}
+          {displayUrl}
         </a>
       ) : (
         <span className="min-w-0 flex-1 truncate text-sm text-indigo-300">—</span>

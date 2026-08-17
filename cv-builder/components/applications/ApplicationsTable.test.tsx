@@ -13,7 +13,7 @@ const apps: ApplicationRow[] = [
     role: 'Engineer',
     status: 'applied',
     order: 1000,
-    customFields: {},
+    customFields: { 'col-link': 'https://linkedin.com/in/jordanavery/details/' },
     resumeTitle: 'Backend CV',
     createdAt: '2026-07-01T10:00:00.000Z',
     updatedAt: '2026-07-01T10:00:00.000Z',
@@ -39,6 +39,14 @@ const columns = [
     type: 'text' as const,
     isBuiltIn: false,
     order: 6000,
+  },
+  {
+    id: 'col-link',
+    key: 'col-link',
+    label: 'Link',
+    type: 'url' as const,
+    isBuiltIn: false,
+    order: 7000,
   },
 ]
 
@@ -72,6 +80,7 @@ describe('ApplicationsTable', () => {
       'Resume',
       'Applied',
       'Notes',
+      'Link',
       '', // actions column
     ])
   })
@@ -153,6 +162,28 @@ describe('ApplicationsTable', () => {
     expect(appId).toBe('a2')
     expect(column.key).toBe('resumeId')
     expect(value).toBe('r1')
+  })
+
+  it('renders the URL cell link text as the hostname, keeping the full URL in href and title', () => {
+    renderTable()
+
+    const link = screen.getByRole('link', { name: 'linkedin.com' })
+    expect(link).toHaveAttribute('href', 'https://linkedin.com/in/jordanavery/details/')
+    expect(link).toHaveAttribute('title', 'https://linkedin.com/in/jordanavery/details/')
+  })
+
+  it('falls back to the raw string for a URL cell value that is not a parseable URL', () => {
+    renderTable({
+      applications: [
+        {
+          ...apps[0],
+          customFields: { 'col-link': 'not a url' },
+        },
+        apps[1],
+      ],
+    })
+
+    expect(screen.getByRole('link', { name: 'not a url' })).toBeInTheDocument()
   })
 
   it('fires onDeleteRow', () => {
