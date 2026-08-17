@@ -316,7 +316,7 @@ export function AtsScorePanel() {
                 <p className="mb-2 text-xs text-red-600">{semanticError}</p>
               )}
 
-              <p className="mb-1 text-xs text-red-600">
+              <p className="mb-1 text-xs text-red-700">
                 Click a keyword you don&apos;t have to ignore it — the AI tools above will skip it too.
               </p>
               <p className="mb-2 text-xs text-indigo-600">
