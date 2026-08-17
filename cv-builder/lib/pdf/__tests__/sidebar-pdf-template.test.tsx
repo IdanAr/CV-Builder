@@ -135,6 +135,26 @@ describe('SidebarPdfTemplate rail width', () => {
     const { rail } = getPageColumns(metaWithoutRailWidth as ResumeMeta)
     expect((rail.props!.style as { width: string }).width).toBe('33%')
   })
+
+  // Element-tree style assertions above prove the width prop is wired; this
+  // renders an actual PDF (via pdfjs) at both range extremes to confirm the
+  // document still parses without error, and that the main column — which
+  // starts immediately after the rail — visibly shifts right as the rail
+  // widens from 20% to 40%. (Default columnAssignment puts "Work Experience"
+  // in the main column; see the SidebarPdfTemplate default in getColumnSide.)
+  it('actually renders and parses at both range extremes (20% and 40%), with the main column starting further right at the wider extreme', async () => {
+    const mainHeadingXByWidth: Record<number, number> = {}
+    for (const sidebarRailWidth of [20, 40]) {
+      const runs = await renderToGlyphRuns(
+        SidebarPdfTemplate({ data, meta: { ...baseMeta, sidebarRailWidth } })
+      )
+      expect(runs.length).toBeGreaterThan(0)
+      const mainHeading = runs.find((r) => r.str === 'WORK EXPERIENCE')
+      expect(mainHeading, `no WORK EXPERIENCE heading found at sidebarRailWidth=${sidebarRailWidth}`).toBeTruthy()
+      mainHeadingXByWidth[sidebarRailWidth] = mainHeading!.x
+    }
+    expect(mainHeadingXByWidth[40]).toBeGreaterThan(mainHeadingXByWidth[20])
+  })
 })
 
 describe('SidebarPdfTemplate rail contact text fit at 20% rail width', () => {
