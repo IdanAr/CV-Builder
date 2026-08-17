@@ -63,3 +63,13 @@ it('adds and updates a highlight', () => {
   fireEvent.click(screen.getByText('+ Add highlight'))
   expect(useResumeEditorStore.getState().data.volunteer?.[0].highlights).toHaveLength(1)
 })
+
+it('renders an AI Suggest button next to the summary field and next to each highlight', () => {
+  useResumeEditorStore.setState({
+    ...useResumeEditorStore.getState(),
+    data: { volunteer: [{ organization: 'Red Cross', position: 'Coordinator', url: '', startDate: '', endDate: '', summary: 'Led a food drive', highlights: ['Recruited 20 volunteers'] }] },
+  })
+  render(<VolunteerForm />)
+  const aiButtons = screen.getAllByRole('button', { name: /AI-written suggestion/i })
+  expect(aiButtons).toHaveLength(2)
+})

@@ -19,7 +19,7 @@ const baseSection: CustomSection = {
 }
 
 function mockStore(section: CustomSection) {
-  const state = { data: { customSections: [section] }, updateCustomSection }
+  const state = { resumeId: 'r1', data: { customSections: [section] }, updateCustomSection }
   vi.mocked(useResumeEditorStore).mockImplementation((sel) =>
     sel(state as unknown as ResumeEditorStore)
   )
@@ -88,6 +88,33 @@ describe('CustomSectionForm', () => {
     mockStore(sectionWithItem)
     render(<CustomSectionForm sectionId="sec1" />)
     expect(screen.getByDisplayValue('Existing summary')).toBeTruthy()
+  })
+
+  it('renders an AI Suggest button next to the flat summary field and next to each highlight', () => {
+    mockStore({
+      ...baseSection,
+      enabledFields: ['summary', 'highlights'] as CustomSectionFieldType[],
+      items: [{ id: 'i1', title: 'My Entry', summary: 'Existing summary', highlights: ['Did a thing'] }],
+    })
+    render(<CustomSectionForm sectionId="sec1" />)
+    const aiButtons = screen.getAllByRole('button', { name: /AI-written suggestion/i })
+    expect(aiButtons).toHaveLength(2)
+  })
+
+  it('renders an AI Suggest button next to a role\'s summary field and next to each role highlight', () => {
+    mockStore({
+      id: 'cs1',
+      name: 'Military Service',
+      enabledFields: ['summary', 'highlights', 'roles'] as CustomSectionFieldType[],
+      items: [{
+        id: 'i1',
+        title: 'IDF',
+        roles: [{ id: 'r1', title: 'Commander', summary: 'Led a unit', highlights: ['Trained 30 recruits'] }],
+      }],
+    })
+    render(<CustomSectionForm sectionId="cs1" />)
+    const aiButtons = screen.getAllByRole('button', { name: /AI-written suggestion/i })
+    expect(aiButtons).toHaveLength(2)
   })
 
   it('shows the Roles toggle in the field chips', () => {

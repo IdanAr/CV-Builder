@@ -2,6 +2,7 @@
 import { useId } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
+import { AiSuggestButton } from '@/components/ai/AiSuggestButton'
 import { MonthYearPicker } from './MonthYearPicker'
 import { RichTextField } from './RichTextField'
 import { inputClass } from './field-styles'
@@ -11,7 +12,7 @@ import type { ResumeData } from '@/lib/schemas/resume.zod'
 type Item = NonNullable<ResumeData['awards']>[number]
 const EMPTY_ITEMS: Item[] = []
 
-function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item) => void; onRemove: () => void }) {
+function ItemForm({ item, resumeId, onUpdate, onRemove }: { item: Item; resumeId: string; onUpdate: (v: Item) => void; onRemove: () => void }) {
   const id = useId()
   const set = (f: keyof Item, v: string) => onUpdate({ ...item, [f]: v })
 
@@ -30,23 +31,34 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
           className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
       </div>
       <MonthYearPicker value={item.date ?? ''} onChange={(v) => set('date', v)} placeholder="Date" />
-      <label htmlFor={`${id}-summary`} className="sr-only">Summary</label>
-      <RichTextField
-        id={`${id}-summary`}
-        value={item.summary ?? ''}
-        onChange={(v) => set('summary', v)}
-        placeholder="Summary..."
-      />
+      <div className="flex items-start gap-1">
+        <div className="flex-1">
+          <label htmlFor={`${id}-summary`} className="sr-only">Summary</label>
+          <RichTextField
+            id={`${id}-summary`}
+            value={item.summary ?? ''}
+            onChange={(v) => set('summary', v)}
+            placeholder="Summary..."
+          />
+        </div>
+        <AiSuggestButton
+          resumeId={resumeId}
+          currentValue={item.summary ?? ''}
+          context={{ jobTitle: item.title, company: item.awarder, field: 'summary' }}
+          onAccept={(v) => set('summary', v)}
+        />
+      </div>
     </div>
   )
 }
 
 export function AwardsForm() {
   const items = useResumeEditorStore((s) => s.data.awards ?? EMPTY_ITEMS)
+  const resumeId = useResumeEditorStore((s) => s.resumeId)
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
     <ListFieldManager<Item> sectionKey="awards" items={items} onChange={(v) => setSectionData('awards', v)}
       createEmpty={createEmpty} addLabel="Add award"
-      renderItem={(item, _, onUpdate, onRemove) => <ItemForm item={item} onUpdate={onUpdate} onRemove={onRemove} />} />
+      renderItem={(item, _, onUpdate, onRemove) => <ItemForm item={item} resumeId={resumeId} onUpdate={onUpdate} onRemove={onRemove} />} />
   )
 }

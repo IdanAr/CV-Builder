@@ -74,3 +74,12 @@ it('updates summary in store on input change', () => {
   fireEvent.change(screen.getByPlaceholderText('Summary...'), { target: { value: 'Top performer' } })
   expect(useResumeEditorStore.getState().data.awards?.[0].summary).toBe('Top performer')
 })
+
+it('renders an AI Suggest button next to the summary field', () => {
+  useResumeEditorStore.setState({
+    ...useResumeEditorStore.getState(),
+    data: { awards: [{ title: 'Employee of the Year', awarder: 'Acme', date: '', summary: 'Top performer' }] },
+  })
+  render(<AwardsForm />)
+  expect(screen.getByRole('button', { name: /AI-written suggestion/i })).toBeInTheDocument()
+})

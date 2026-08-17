@@ -2,6 +2,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Sparkles, Loader2 } from 'lucide-react'
 import type { SuggestionField, PipelineResult } from '@/lib/ai/pipeline'
 
 interface AiSuggestButtonProps {
@@ -88,11 +89,15 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
         type="button"
         onClick={handleClick}
         disabled={loading || !currentValue.trim() || !resumeId}
-        title={loading ? 'Generating…' : 'Generate AI suggestion'}
-        aria-label="Generate AI suggestion"
+        title={loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'}
+        aria-label={loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'}
         className="px-1.5 py-1 text-sm text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded transition-colors disabled:opacity-30"
       >
-        {loading ? '…' : '✨'}
+        {loading ? (
+          <Loader2 aria-hidden="true" data-testid="ai-suggest-loading-icon" className="h-4 w-4 animate-spin" strokeWidth={1.75} />
+        ) : (
+          <Sparkles aria-hidden="true" data-testid="ai-suggest-icon" className="h-4 w-4" strokeWidth={1.75} />
+        )}
       </button>
 
       {error && (

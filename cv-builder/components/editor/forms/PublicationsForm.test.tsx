@@ -95,3 +95,12 @@ it('updates summary in store on input change', () => {
   fireEvent.change(screen.getByPlaceholderText('Summary...'), { target: { value: 'A paper about things' } })
   expect(useResumeEditorStore.getState().data.publications?.[0].summary).toBe('A paper about things')
 })
+
+it('renders an AI Suggest button next to the summary field', () => {
+  useResumeEditorStore.setState({
+    ...useResumeEditorStore.getState(),
+    data: { publications: [{ name: 'My Paper', publisher: 'ACM', releaseDate: '', url: '', summary: 'A paper about things' }] },
+  })
+  render(<PublicationsForm />)
+  expect(screen.getByRole('button', { name: /AI-written suggestion/i })).toBeInTheDocument()
+})
