@@ -25,7 +25,7 @@ export function AppNavbar({
   homeHref = '/dashboard',
 }: AppNavbarProps) {
   return (
-    <nav className="w-full bg-white/55 backdrop-blur-xl border-b border-white/30 shadow-sm">
+    <nav aria-label="Primary" className="w-full bg-white/55 backdrop-blur-xl border-b border-white/30 shadow-sm">
       <div className={containerClassName}>
         {/* Added 'relative' and 'w-full' to this wrapper so the absolute logo positions correctly.
             Below md, height is allowed to grow (min-h + py) so a wrapped actions row has room. */}

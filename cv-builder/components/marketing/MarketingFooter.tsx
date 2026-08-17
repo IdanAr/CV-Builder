@@ -8,7 +8,7 @@ export function MarketingFooter() {
           CV Builder
         </span>
         <p className="text-sm text-gray-500">&copy; {new Date().getFullYear()} CV Builder. All rights reserved.</p>
-        <nav className="flex items-center gap-4">
+        <nav aria-label="Footer" className="flex items-center gap-4">
           <Link href="/privacy" className="text-sm font-medium text-indigo-700 hover:text-indigo-900">
             Privacy Policy
           </Link>
