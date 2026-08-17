@@ -36,6 +36,20 @@ describe('Toaster', () => {
     expect(screen.queryByText('Deleted "My CV"')).not.toBeInTheDocument()
   })
 
+  it('announces error toasts assertively while success toasts stay polite', () => {
+    render(<Toaster />)
+    act(() => { toast.success('Saved') })
+    act(() => { useToastStore.getState().show({ variant: 'error', message: 'Save failed' }) })
+
+    const alertEl = screen.getByRole('alert')
+    expect(alertEl).toHaveTextContent('Save failed')
+    expect(alertEl).toHaveAttribute('aria-live', 'assertive')
+
+    const statusEl = screen.getByRole('status')
+    expect(statusEl).toHaveTextContent('Saved')
+    expect(statusEl).toHaveAttribute('aria-live', 'polite')
+  })
+
   it('dismisses when the close button is clicked', () => {
     render(<Toaster />)
     act(() => { toast.error('Failed') })

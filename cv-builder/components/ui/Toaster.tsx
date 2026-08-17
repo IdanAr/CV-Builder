@@ -104,13 +104,20 @@ function ToastItem({ toast: t }: { toast: Toast }) {
 export function Toaster() {
   const toasts = useToastStore((s) => s.toasts)
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="pointer-events-none fixed bottom-4 right-4 z-[100] flex flex-col gap-2"
-    >
+    <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
       {toasts.map((t) => (
-        <ToastItem key={t.id} toast={t} />
+        // Error toasts get their own role="alert"/aria-live="assertive" region so
+        // screen readers interrupt for them; success/info toasts stay role="status"
+        // (aria-live="polite") so they don't. Each toast is wrapped individually
+        // (rather than in one shared region per priority) so visual stacking order
+        // stays exactly chronological, matching the flex-col list below.
+        <div
+          key={t.id}
+          role={t.variant === 'error' ? 'alert' : 'status'}
+          aria-live={t.variant === 'error' ? 'assertive' : 'polite'}
+        >
+          <ToastItem toast={t} />
+        </div>
       ))}
     </div>
   )
