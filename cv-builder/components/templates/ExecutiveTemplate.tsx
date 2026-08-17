@@ -125,7 +125,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
             <div style={{ fontSize: '10pt', lineHeight: 1.7 }}>
               {skills.map((s, i) => (
                 <div key={i} data-pv-entry={i} style={{ display: 'flex', gap: '16px', marginBottom: '2px' }}>
-                  <div style={{ minWidth: '130px', fontWeight: 600, flexShrink: 0 }}>
+                  <div style={{ minWidth: '130px', fontWeight: 600, whiteSpace: 'normal' }}>
                     {s.name}
                     {s.level && <span style={{ fontWeight: 400, color: '#666' }}> · {s.level}</span>}
                   </div>

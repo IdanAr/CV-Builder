@@ -25,6 +25,28 @@ const data: ResumeData = {
   languages: [{ language: 'English', fluency: 'Native' }],
 }
 
+describe('SidebarTemplate skills row wrapping', () => {
+  it('already wraps a long skill name (stacked layout, no flex-row name/keyword squeeze)', () => {
+    const longSkillData: ResumeData = {
+      basics: { name: 'Jane Smith' },
+      skills: [{
+        name: 'AWS Certified Solutions Architect – Professional',
+        level: 'Expert',
+        keywords: ['AWS', 'Cloud Architecture', 'Terraform'],
+      }],
+    }
+    const { container } = render(<SidebarTemplate data={longSkillData} meta={{ ...meta, sectionOrder: ['skills'] }} />)
+    const nameCell = container.querySelector('[data-pv-section="skills"] [data-pv-entry="0"]')?.firstElementChild as HTMLElement
+    expect(nameCell).toBeTruthy()
+    expect(nameCell.textContent).toContain('AWS Certified Solutions Architect')
+    // Unlike the other 4 templates, the name and keywords are stacked in separate
+    // block-level divs (not a flex row with flexShrink:0), so there is no crowding
+    // bug here: the name div has no minWidth/flexShrink and wraps by default.
+    expect(nameCell.style.flexShrink).not.toBe('0')
+    expect(nameCell.style.minWidth).toBe('')
+  })
+})
+
 describe('SidebarTemplate margin floor', () => {
   it('never pads rail or main column below 0.5in (48px) for any pageMargins in [0.5, 1.5]', () => {
     for (const pageMargins of [0.5, 0.6, 0.75, 1.0, 1.25, 1.5]) {

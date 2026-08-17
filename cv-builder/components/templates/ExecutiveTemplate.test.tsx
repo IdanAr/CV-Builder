@@ -38,6 +38,25 @@ const newSectionsMeta: ResumeMeta = {
   sectionOrder: ['certificates', 'awards', 'publications', 'interests', 'projects'],
 }
 
+describe('ExecutiveTemplate skills row wrapping', () => {
+  it('lets a long skill name wrap instead of squeezing the keywords column', () => {
+    const longSkillData: ResumeData = {
+      basics: { name: 'Jane Smith' },
+      skills: [{
+        name: 'AWS Certified Solutions Architect – Professional',
+        level: 'Expert',
+        keywords: ['AWS', 'Cloud Architecture', 'Terraform'],
+      }],
+    }
+    const { container } = render(<ExecutiveTemplate data={longSkillData} meta={{ ...meta, sectionOrder: ['skills'] }} />)
+    const nameCell = container.querySelector('[data-pv-section="skills"] [data-pv-entry="0"]')?.firstElementChild as HTMLElement
+    expect(nameCell).toBeTruthy()
+    expect(nameCell.textContent).toContain('AWS Certified Solutions Architect')
+    expect(nameCell.style.flexShrink).not.toBe('0')
+    expect(nameCell.style.whiteSpace).toBe('normal')
+  })
+})
+
 describe('ExecutiveTemplate new sections', () => {
   it('renders certificates, awards, publications, interests, and projects', () => {
     const { container } = render(<ExecutiveTemplate data={newSectionsData} meta={newSectionsMeta} />)
