@@ -134,6 +134,26 @@ describe('PreviewTab — zoom controls', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Fit' }))
     expect(localStorage.getItem(ZOOM_KEY)).toBe('fit')
   })
+
+  it('closes the zoom menu on outside click', () => {
+    render(<PreviewTab />)
+    fireEvent.click(screen.getByTestId('zoom-percentage'))
+    expect(screen.getByTestId('zoom-menu')).toBeInTheDocument()
+
+    fireEvent.mouseDown(document.body)
+    expect(screen.queryByTestId('zoom-menu')).toBeNull()
+  })
+
+  it('closes the zoom menu on Escape and returns focus to the trigger', () => {
+    render(<PreviewTab />)
+    const trigger = screen.getByTestId('zoom-percentage')
+    fireEvent.click(trigger)
+    expect(screen.getByTestId('zoom-menu')).toBeInTheDocument()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByTestId('zoom-menu')).toBeNull()
+    expect(document.activeElement).toBe(trigger)
+  })
 })
 
 describe('PreviewEditOverlay integration', () => {
