@@ -317,6 +317,32 @@ describe('AtsScorePanel semantic match', () => {
   })
 })
 
+describe('AtsScorePanel fix generation error', () => {
+  it('shows an error message when fix generation fails, using AA-safe contrast', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(scoreResult))
+      .mockResolvedValueOnce({ ok: false, json: async () => ({}) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
+
+    fireEvent.click(screen.getByText(/tailor with ai/i))
+
+    const errorMessage = await screen.findByText(/could not generate fixes/i)
+    expect(errorMessage).toBeInTheDocument()
+    // Same bg-red-50 container as the semanticError message — text-red-600
+    // fails AA there (~4.42:1); must be red-700 (~5.92:1).
+    expect(errorMessage.className).toContain('text-red-700')
+    expect(errorMessage.className).not.toContain('text-red-600')
+  })
+})
+
 describe('AtsScorePanel missing-keyword ignore hint', () => {
   it('shows a hint explaining that clicking a missing keyword ignores it everywhere', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))

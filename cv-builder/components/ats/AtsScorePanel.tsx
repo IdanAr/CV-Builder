@@ -366,7 +366,7 @@ export function AtsScorePanel() {
               </div>
 
               {fixError && (
-                <p className="mt-2 text-xs text-red-600">{fixError}</p>
+                <p className="mt-2 text-xs text-red-700">{fixError}</p>
               )}
             </div>
           )}
