@@ -38,4 +38,32 @@ describe('TemplateThumbnail', () => {
     render(<TemplateThumbnail templateId="classic" />)
     expect(screen.getByText('Work Experience')).toHaveStyle({ color: '#000000' })
   })
+
+  it('is hidden from assistive tech by default, since callers historically use it decoratively', () => {
+    render(<TemplateThumbnail templateId="classic" data-testid="thumb" />)
+    const el = screen.getByTestId('thumb')
+    expect(el).toHaveAttribute('aria-hidden', 'true')
+    expect(el).toHaveAttribute('inert')
+    expect(el).not.toHaveAttribute('aria-label')
+  })
+
+  it('stays hidden from assistive tech when decorative is explicitly true (HeroSection usage)', () => {
+    render(<TemplateThumbnail templateId="classic" decorative data-testid="thumb" />)
+    const el = screen.getByTestId('thumb')
+    expect(el).toHaveAttribute('aria-hidden', 'true')
+    expect(el).toHaveAttribute('inert')
+  })
+
+  it('exposes a descriptive per-template aria-label and drops aria-hidden/inert when decorative is false', () => {
+    render(<TemplateThumbnail decorative={false} templateId="classic" data-testid="thumb" />)
+    const el = screen.getByTestId('thumb')
+    expect(el).not.toHaveAttribute('aria-hidden')
+    expect(el).not.toHaveAttribute('inert')
+    expect(el).toHaveAttribute('aria-label', 'Classic template preview')
+  })
+
+  it('gives each template a distinct aria-label when used as primary content', () => {
+    render(<TemplateThumbnail decorative={false} templateId="sidebar" data-testid="thumb" />)
+    expect(screen.getByTestId('thumb')).toHaveAttribute('aria-label', 'Sidebar template preview')
+  })
 })

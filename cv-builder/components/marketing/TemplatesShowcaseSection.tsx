@@ -24,7 +24,7 @@ export function TemplatesShowcaseSection() {
           durationSeconds={45}
           items={TEMPLATES.map(({ id, label, colors }) => (
             <div key={id} className="text-center">
-              <TemplateThumbnail templateId={id} height={360} colors={colors} />
+              <TemplateThumbnail templateId={id} height={360} colors={colors} decorative={false} />
               <p className="mt-3 text-sm font-medium text-gray-700">{label}</p>
             </div>
           ))}
