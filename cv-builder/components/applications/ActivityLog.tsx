@@ -1,8 +1,9 @@
 'use client'
 
-// Per-row activity log: a 🕐 trigger opening a popover with the application's
-// timestamped change feed, newest first — one line per changed field.
+// Per-row activity log: a clock-icon trigger opening a popover with the
+// application's timestamped change feed, newest first — one line per changed field.
 import { useEffect, useRef, useState } from 'react'
+import { History } from 'lucide-react'
 import type { ActivityEntry } from '@/lib/applications/types'
 import { formatRelativeTime } from '@/lib/format-relative-time'
 
@@ -58,7 +59,7 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
         onClick={() => setOpen((o) => !o)}
         className="rounded px-1 py-0.5 text-xs text-indigo-400 hover:bg-indigo-50 hover:text-indigo-600"
       >
-        🕐
+        <History className="h-4 w-4" aria-hidden="true" />
       </button>
       {open && (
         <div className="absolute right-0 top-full z-30 mt-1 max-h-72 w-80 overflow-y-auto rounded-lg border border-indigo-100 bg-white p-2 shadow-xl">

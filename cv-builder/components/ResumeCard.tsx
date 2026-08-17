@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Download, ClipboardList, Copy, X } from 'lucide-react'
 import { toast, useToastStore } from '@/lib/stores/toast.store'
 import { onToastPause, onToastResume } from '@/components/ui/Toaster'
 import { formatAbsoluteDate, formatRelativeTime } from '@/lib/format-relative-time'
@@ -231,7 +232,12 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
             className="rounded-md border border-indigo-100 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50"
             title="Download as JSON"
           >
-            {downloading ? '…' : '↓ JSON'}
+            {downloading ? '…' : (
+              <span className="inline-flex items-center gap-1">
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                JSON
+              </span>
+            )}
           </button>
           <button
             onClick={handleTrack}
@@ -240,7 +246,12 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
             className="rounded-md border border-indigo-100 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50"
             title="Track application"
           >
-            {tracking ? '…' : '📋 Track'}
+            {tracking ? '…' : (
+              <span className="inline-flex items-center gap-1">
+                <ClipboardList className="h-3.5 w-3.5" aria-hidden="true" />
+                Track
+              </span>
+            )}
           </button>
           <button
             onClick={handleDuplicate}
@@ -249,7 +260,7 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
             className="rounded-md border border-indigo-100 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50"
             title="Duplicate"
           >
-            {duplicating ? '…' : '⧉'}
+            {duplicating ? '…' : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
           </button>
           <button
             onClick={handleDelete}
@@ -257,7 +268,7 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
             className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50"
             title="Delete"
           >
-            ✕
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
         </div>
       </div>

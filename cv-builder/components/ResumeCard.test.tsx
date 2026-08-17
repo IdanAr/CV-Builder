@@ -266,7 +266,7 @@ describe('ResumeCard', () => {
 
     fireEvent.click(btn)
     expect(btn).toBeDisabled()
-    expect(btn.textContent).not.toBe('↓ JSON')
+    expect(btn.textContent).toBe('…')
 
     // A second click while the first fetch is still in flight must not fire another fetch.
     fireEvent.click(btn)
@@ -277,7 +277,7 @@ describe('ResumeCard', () => {
     })
 
     expect(btn).not.toBeDisabled()
-    expect(btn.textContent).toBe('↓ JSON')
+    expect(btn.textContent?.trim()).toBe('JSON')
   })
 
   it('pauses the undo-delete countdown while the toast has focus', async () => {

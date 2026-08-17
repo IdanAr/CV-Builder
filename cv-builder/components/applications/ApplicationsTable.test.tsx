@@ -62,8 +62,9 @@ describe('ApplicationsTable', () => {
   it('renders one column header per configured column, in order', () => {
     renderTable()
     const headers = screen.getAllByRole('columnheader')
-    // Leading grip-spacer + one per column (each contains its drag grip) + actions.
-    expect(headers.map((h) => h.textContent?.replace('⠿', ''))).toEqual([
+    // Leading grip-spacer + one per column (each contains its drag grip,
+    // now an icon that contributes no text content) + actions.
+    expect(headers.map((h) => h.textContent)).toEqual([
       '',
       'Company',
       'Role',

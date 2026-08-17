@@ -16,10 +16,10 @@ describe('NewResumeButton', () => {
   it('shows an error toast and re-enables the button when create fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false } as Response))
     render(<NewResumeButton />)
-    fireEvent.click(screen.getByRole('button', { name: '+ New CV' }))
+    fireEvent.click(screen.getByRole('button', { name: 'New CV' }))
     await waitFor(() => {
       expect(useToastStore.getState().toasts.some(t => t.variant === 'error')).toBe(true)
     })
-    expect(screen.getByRole('button', { name: '+ New CV' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'New CV' })).toBeEnabled()
   })
 })

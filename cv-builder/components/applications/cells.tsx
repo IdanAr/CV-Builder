@@ -4,6 +4,7 @@
 // supertable. Every editable cell is click-to-edit: Enter/blur commits,
 // Escape cancels — no separate "edit mode".
 import { useEffect, useRef, useState } from 'react'
+import { Pencil } from 'lucide-react'
 import type { ColumnOption, CustomFieldValue } from '@/lib/schemas/application.zod'
 import type { ResumeOption } from '@/lib/applications/types'
 
@@ -196,7 +197,7 @@ export function UrlCell(props: CellProps) {
         onClick={() => setEditing(true)}
         className="shrink-0 rounded px-1 text-xs text-indigo-400 opacity-0 transition group-hover/cell:opacity-100 hover:bg-indigo-50 hover:text-indigo-700 focus:opacity-100"
       >
-        ✎
+        <Pencil className="h-3 w-3" aria-hidden="true" />
       </button>
     </span>
   )

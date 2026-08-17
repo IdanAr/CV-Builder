@@ -3,6 +3,7 @@
 // Column header content: click-to-sort with multi-level indicators.
 // Plain click cycles asc → desc → off; shift-click adds/cycles a secondary
 // sort level. A numbered badge shows each column's position in a multi-sort.
+import { Pencil, X } from 'lucide-react'
 import type { BoardColumn, SortEntry } from '@/lib/schemas/application.zod'
 
 const LEVEL_BADGES = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨']
@@ -54,7 +55,7 @@ export function ColumnHeader({
           onClick={() => onEdit(column)}
           className="shrink-0 rounded px-0.5 text-[11px] text-indigo-300 opacity-0 transition group-hover/header:opacity-100 hover:text-indigo-600 focus:opacity-100"
         >
-          ✎
+          <Pencil className="h-3 w-3" aria-hidden="true" />
         </button>
       )}
       {onDelete && !column.isBuiltIn && (
@@ -65,7 +66,7 @@ export function ColumnHeader({
           onClick={() => onDelete(column)}
           className="shrink-0 rounded px-0.5 text-[11px] text-indigo-300 opacity-0 transition group-hover/header:opacity-100 hover:text-red-500 focus:opacity-100"
         >
-          ✕
+          <X className="h-3 w-3" aria-hidden="true" />
         </button>
       )}
     </span>

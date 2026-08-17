@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Upload } from 'lucide-react'
 import UploadProgressModal, { type UploadStage } from './UploadProgressModal'
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB_LABEL } from '@/lib/upload/limits'
 
@@ -110,7 +111,10 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
     <>
       <input ref={inputRef} type="file" accept=".pdf,.docx" className="hidden" onChange={handleFileChange} />
       <button onClick={() => inputRef.current?.click()} className={triggerClassName}>
-        ⬆ Upload CV
+        <span className="inline-flex items-center gap-1.5">
+          <Upload className="h-4 w-4" aria-hidden="true" />
+          Upload CV
+        </span>
       </button>
       <UploadProgressModal
         open={stage !== 'idle'}
