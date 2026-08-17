@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 export interface PopoverProps {
@@ -31,6 +31,9 @@ export function Popover({ trigger, open, onOpenChange, children }: PopoverProps)
     function updatePosition() {
       const rect = containerRef.current?.getBoundingClientRect()
       if (!rect) return
+      // Default/fallback placement: below and right-aligned to the trigger.
+      // The layout effect below flips this to "above" post-measurement when
+      // there isn't room below.
       setMenuPosition({ top: rect.bottom + 8, right: window.innerWidth - rect.right })
     }
     updatePosition()
@@ -41,6 +44,32 @@ export function Popover({ trigger, open, onOpenChange, children }: PopoverProps)
       window.removeEventListener('scroll', updatePosition, true)
     }
   }, [open])
+
+  // Auto-flip: once the panel has actually mounted at its default
+  // below-the-trigger position, measure its real rendered height and, if it
+  // doesn't fit between the trigger and the bottom of the viewport but does
+  // fit above the trigger, reposition it there instead. Runs in a layout
+  // effect (synchronous, pre-paint) so the correction — when needed — lands
+  // in the same commit as the initial below-position render and isn't
+  // visibly flashed.
+  useLayoutEffect(() => {
+    if (!open || !menuPosition) return
+    const triggerRect = containerRef.current?.getBoundingClientRect()
+    const panelHeight = panelRef.current?.getBoundingClientRect().height
+    if (!triggerRect || !panelHeight) return
+
+    const fitsBelow = triggerRect.bottom + panelHeight + 8 <= window.innerHeight
+    if (fitsBelow) return
+
+    const fitsAbove = triggerRect.top > panelHeight + 8
+    if (!fitsAbove) return // neither side fits cleanly — keep the below fallback
+
+    const flippedTop = triggerRect.top - panelHeight - 8
+    setMenuPosition((prev) => {
+      if (!prev || Math.abs(prev.top - flippedTop) < 0.5) return prev
+      return { ...prev, top: flippedTop }
+    })
+  }, [open, menuPosition])
 
   useEffect(() => {
     if (!open) return
