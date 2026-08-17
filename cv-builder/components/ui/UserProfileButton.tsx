@@ -62,6 +62,7 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const termsCloseRef = useRef<HTMLButtonElement>(null)
+  const termsDialogRef = useRef<HTMLDivElement>(null)
 
   // Portals render the menu/modals into document.body so they always sit above
   // ancestors (e.g. the navbar's backdrop-blur) which create their own stacking
@@ -145,6 +146,26 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         setTermsOpen(false)
+        return
+      }
+      if (e.key === 'Tab') {
+        const dialog = termsDialogRef.current
+        if (!dialog) return
+        const focusable = Array.from(
+          dialog.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
+        )
+        if (focusable.length === 0) return
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
       }
     }
     document.addEventListener('keydown', onKeyDown)
@@ -273,6 +294,7 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
           onClick={() => setTermsOpen(false)}
         >
           <div
+            ref={termsDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="terms-dialog-title"

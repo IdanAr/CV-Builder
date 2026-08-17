@@ -124,4 +124,27 @@ describe('UserProfileButton', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('heading', { name: /terms & conditions/i })).not.toBeInTheDocument()
   })
+
+  it('wraps focus from the last focusable element to the first on Tab', async () => {
+    render(<UserProfileButton user={user} />)
+    await userEvent.click(screen.getByRole('button', { name: /open user menu/i }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /terms/i }))
+    const closeButton = screen.getByRole('button', { name: /close terms/i })
+    const mailLink = screen.getByRole('link', { name: /idan.rbel@gmail.com/i })
+    mailLink.focus()
+    expect(mailLink).toHaveFocus()
+    await userEvent.tab()
+    expect(closeButton).toHaveFocus()
+  })
+
+  it('wraps focus from the first focusable element to the last on Shift+Tab', async () => {
+    render(<UserProfileButton user={user} />)
+    await userEvent.click(screen.getByRole('button', { name: /open user menu/i }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /terms/i }))
+    const closeButton = screen.getByRole('button', { name: /close terms/i })
+    const mailLink = screen.getByRole('link', { name: /idan.rbel@gmail.com/i })
+    expect(closeButton).toHaveFocus()
+    await userEvent.tab({ shift: true })
+    expect(mailLink).toHaveFocus()
+  })
 })
