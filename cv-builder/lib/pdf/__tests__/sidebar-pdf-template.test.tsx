@@ -2,7 +2,7 @@ import React from 'react'
 import { describe, it, expect } from 'vitest'
 import { SidebarPdfTemplate } from '../templates/SidebarPdfTemplate'
 import { ExecutivePdfTemplate } from '../templates/ExecutivePdfTemplate'
-import { renderToGlyphRuns, renderToBufferAndRuns } from './pdf-geometry'
+import { renderToGlyphRuns, renderToBufferAndRuns, findBaselineCollisions } from './pdf-geometry'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { PDFParse } from 'pdf-parse'
 
@@ -232,6 +232,46 @@ describe('SidebarPdfTemplate rail contact text fit at 20% rail width', () => {
     const phoneRun = runs.find((r) => r.str === data.basics!.phone)
     expect(phoneRun, 'phone number should render as one intact glyph run').toBeTruthy()
   })
+})
+
+describe('SidebarPdfTemplate rail contact text fit across the full pageMargins x sidebarRailWidth matrix', () => {
+  // The prior fix (CONTACT_BREAK_CHUNK) was only verified at pageMargins: 1.0.
+  // The rail's horizontal padding scales with pageMargins while the rail's
+  // width is independently set by sidebarRailWidth — at high pageMargins
+  // combined with a narrow rail, the padding derived from pageMargins can
+  // consume more than the rail's own width, collapsing the contact-text
+  // content box toward zero regardless of how small a fixed chunk size is.
+  // Sweep the full range of both controls (their extremes plus one interior
+  // point each) and, at every combination, verify via a real render + text
+  // extraction that no glyph run collides with another (no overlapping runs
+  // stacked at the same position) and that the extracted text reassembles
+  // byte-for-byte to the original unbroken email (no injected hyphen or
+  // other corrupting character).
+  const email = 'jane.smith.principal.architect@a-very-long-corporate-domain-name.example.com'
+  const dataWithLongEmail: ResumeData = { basics: { name: 'Jane Smith', email } }
+
+  for (const pageMargins of [0.5, 1.0, 1.5]) {
+    for (const sidebarRailWidth of [20, 30, 40]) {
+      it(`does not corrupt or overlap contact text at pageMargins=${pageMargins}, sidebarRailWidth=${sidebarRailWidth}`, async () => {
+        const meta = { ...baseMeta, pageMargins, sidebarRailWidth }
+        const { buffer, runs } = await renderToBufferAndRuns(
+          SidebarPdfTemplate({ data: dataWithLongEmail, meta })
+        )
+
+        const collisions = findBaselineCollisions(runs)
+        expect(
+          collisions.length,
+          `found ${collisions.length} overlapping glyph run(s) at pageMargins=${pageMargins}, sidebarRailWidth=${sidebarRailWidth}: ${JSON.stringify(collisions.slice(0, 3))}`
+        ).toBe(0)
+
+        const stripped = await extractStrippedText(buffer)
+        expect(
+          stripped,
+          `extracted text corrupted at pageMargins=${pageMargins}, sidebarRailWidth=${sidebarRailWidth}`
+        ).toContain(email)
+      })
+    }
+  }
 })
 
 describe('ExecutivePdfTemplate name band', () => {
