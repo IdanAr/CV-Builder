@@ -42,7 +42,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
     color: '#fff',
     textTransform: 'uppercase',
     letterSpacing: '0.1em',
-    marginTop: '18px',
+    marginTop: px(T.sectionTitleMarginTop),
     marginBottom: '7px',
     paddingBottom: '3px',
     borderBottom: `1px solid ${meta.accentColor}`,
