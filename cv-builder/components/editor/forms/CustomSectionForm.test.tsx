@@ -182,4 +182,11 @@ describe('CustomSectionForm', () => {
     expect(updatedItem.roles).toHaveLength(2)
     expect(updatedItem.roles[0].subtitle).toBe('Team Commander')
   })
+
+  it('announces the enabled-fields group and each toggle\'s pressed state', () => {
+    render(<CustomSectionForm sectionId="sec1" />)
+    expect(screen.getByRole('group', { name: /enabled fields/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^text$/i })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /^subtitle$/i })).toHaveAttribute('aria-pressed', 'false')
+  })
 })

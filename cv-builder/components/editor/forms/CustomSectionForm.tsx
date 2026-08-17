@@ -346,7 +346,7 @@ export function CustomSectionForm({ sectionId }: { sectionId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Enabled fields">
         {CUSTOM_SECTION_FIELDS.map((field) => {
           const active = section.enabledFields.includes(field)
           return (
@@ -354,6 +354,7 @@ export function CustomSectionForm({ sectionId }: { sectionId: string }) {
               key={field}
               type="button"
               onClick={() => toggleField(field)}
+              aria-pressed={active}
               className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
                 active
                   ? 'bg-indigo-500 border-indigo-500 text-white'
