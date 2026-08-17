@@ -47,6 +47,7 @@ export function HeroSection() {
           />
           <div
             className="absolute -bottom-4 -left-4 rounded-xl bg-white px-4 py-2 shadow-lg border border-green-100"
+            aria-hidden="true"
           >
             <p className="text-xs font-medium text-gray-500">ATS Score</p>
             <p className="text-2xl font-bold text-green-600">95%</p>

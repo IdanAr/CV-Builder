@@ -43,4 +43,10 @@ describe('HeroSection', () => {
     const thumbnail = screen.getByTestId('hero-thumbnail')
     expect(thumbnail.className).toMatch(/\bmax-w-full\b/)
   })
+
+  it('marks the decorative ATS badge as aria-hidden since it is illustrative and not tied to the user\'s own resume', () => {
+    render(<HeroSection />)
+    const badge = screen.getByText(/ats score/i).closest('div')
+    expect(badge).toHaveAttribute('aria-hidden', 'true')
+  })
 })
