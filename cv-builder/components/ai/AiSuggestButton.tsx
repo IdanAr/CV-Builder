@@ -1,10 +1,42 @@
 // components/ai/AiSuggestButton.tsx
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState, useSyncExternalStore } from 'react'
 import { Sparkles, Loader2 } from 'lucide-react'
 import type { SuggestionField, PipelineResult } from '@/lib/ai/pipeline'
 import { Popover } from '@/components/ui/Popover'
+
+// A pending suggestion now survives an outside click (see the Popover
+// onOpenChange comment below), so without this, generating a second
+// suggestion in a different field while an earlier one is still pending
+// would leave two overlapping, `fixed`-positioned panels open at once, and
+// a single Escape would discard both. At most one instance may hold an
+// unresolved pending suggestion at a time; a tiny module-level pub-sub
+// (not a shared primitive — nothing else in the app needs this) tracks
+// which instance currently owns that slot so every other instance's
+// trigger can disable itself while it's held.
+let pendingOwnerId: string | null = null
+const pendingOwnerListeners = new Set<() => void>()
+
+function subscribePendingOwner(listener: () => void): () => void {
+  pendingOwnerListeners.add(listener)
+  return () => pendingOwnerListeners.delete(listener)
+}
+
+function getPendingOwnerId(): string | null {
+  return pendingOwnerId
+}
+
+function claimPendingOwner(id: string) {
+  pendingOwnerId = id
+  pendingOwnerListeners.forEach((listener) => listener())
+}
+
+function releasePendingOwner(id: string) {
+  if (pendingOwnerId !== id) return
+  pendingOwnerId = null
+  pendingOwnerListeners.forEach((listener) => listener())
+}
 
 interface AiSuggestButtonProps {
   resumeId: string
@@ -50,15 +82,29 @@ function highlightApprovals(text: string, approvals: string[]): React.ReactNode 
 }
 
 export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: AiSuggestButtonProps) {
+  const instanceId = useId()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<PipelineResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const pendingOwner = useSyncExternalStore(subscribePendingOwner, getPendingOwnerId, () => null)
+  const disabledByAnotherPending = pendingOwner !== null && pendingOwner !== instanceId
+
+  function clearResult() {
+    setResult(null)
+    releasePendingOwner(instanceId)
+  }
+
+  // Release the slot if this instance unmounts (e.g. its field/section is
+  // deleted) while still holding a pending suggestion — otherwise every
+  // other instance would stay disabled forever with no way to recover it.
+  useEffect(() => () => releasePendingOwner(instanceId), [instanceId])
 
   async function handleClick() {
     if (!resumeId || !currentValue.trim()) return
     setLoading(true)
     setError(null)
     setResult(null)
+    releasePendingOwner(instanceId)
     try {
       const res = await fetch(`/api/resumes/${resumeId}/ai-suggest`, {
         method: 'POST',
@@ -69,7 +115,9 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
         const json = await res.json().catch(() => ({}))
         throw new Error((json as { error?: string }).error ?? 'Failed to generate suggestion. Please try again.')
       }
-      setResult(await res.json())
+      const json = (await res.json()) as PipelineResult
+      setResult(json)
+      claimPendingOwner(instanceId)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate suggestion. Please try again.')
     } finally {
@@ -80,7 +128,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
   function handleAccept() {
     if (result) {
       onAccept(result.suggestion)
-      setResult(null)
+      clearResult()
     }
   }
 
@@ -97,11 +145,11 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
   useEffect(() => {
     if (!result) return
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setResult(null)
+      if (e.key === 'Escape') clearResult()
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [result])
+  }, [result]) // eslint-disable-line react-hooks/exhaustive-deps -- clearResult is stable per instanceId, which never changes
 
   return (
     <div className="shrink-0">
@@ -119,16 +167,20 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
           // the nearby textarea to compare the suggestion against the
           // original text) must not silently discard it. Deliberately do
           // NOT clear `result` here: only the explicit "Use this"/"Dismiss"
-          // buttons (which call setResult(null) directly) or the Escape
-          // handler above close it.
+          // buttons (which call clearResult, also releasing the pending-owner
+          // slot below) or the Escape handler above close it.
           setError(null)
         }}
         trigger={
           <button
             type="button"
             onClick={handleClick}
-            disabled={loading || !currentValue.trim() || !resumeId}
-            title={loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'}
+            disabled={loading || !currentValue.trim() || !resumeId || disabledByAnotherPending}
+            title={
+              disabledByAnotherPending
+                ? 'Resolve the other pending AI suggestion first'
+                : loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'
+            }
             aria-label={loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'}
             className="px-1.5 py-1 text-sm text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded transition-colors disabled:opacity-30"
           >
@@ -178,7 +230,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
                 Use this
               </button>
               <button
-                onClick={() => setResult(null)}
+                onClick={clearResult}
                 className="rounded px-3 py-1 text-xs text-indigo-500 transition-colors hover:text-indigo-700"
               >
                 Dismiss
