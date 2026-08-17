@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { useResumeEditorStore } from './resume-editor.store'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { useResumeEditorStore, flushSave } from './resume-editor.store'
 import type { ResumeMeta } from '@/lib/schemas/resume.zod'
 
 const defaultMeta: ResumeMeta = {
@@ -55,6 +55,46 @@ describe('setMeta — Minimal template is single-column only', () => {
   it('other templates can still switch to two-column', () => {
     useResumeEditorStore.getState().setMeta({ layout: 'two-column' })
     expect(useResumeEditorStore.getState().meta.layout).toBe('two-column')
+  })
+})
+
+describe('flushSave', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('PATCHes the current state immediately, without waiting for the debounce, when isDirty', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ resume: {} }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    useResumeEditorStore.setState({
+      meta: { ...defaultMeta, sidebarRailWidth: 20 },
+      isDirty: true,
+    })
+
+    await flushSave()
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/resumes/r1')
+    expect(init.method).toBe('PATCH')
+    const body = JSON.parse(init.body)
+    expect(body.meta.sidebarRailWidth).toBe(20)
+    expect(useResumeEditorStore.getState().isDirty).toBe(false)
+  })
+
+  it('does nothing when the store is already clean', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    useResumeEditorStore.setState({ isDirty: false })
+
+    await flushSave()
+
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })
 

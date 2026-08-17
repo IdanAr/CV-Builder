@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useMediaQuery } from '@/lib/hooks/use-media-query'
-import { useResumeEditorStore, initAutoSave } from '@/lib/stores/resume-editor.store'
+import { useResumeEditorStore, initAutoSave, flushSave } from '@/lib/stores/resume-editor.store'
 import { EditTab } from './EditTab'
 import { PreviewTab } from './PreviewTab'
 import { DesignPanel } from './DesignPanel'
@@ -168,6 +168,17 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
   }
 
   async function handleExport(format: 'pdf' | 'docx', mode: ExportMode = 'designed') {
+    try {
+      // The export routes always re-read the resume from the database rather
+      // than trusting the client, so any edit still waiting on the debounced
+      // autosave (e.g. a Design-panel change made just before exporting)
+      // would otherwise be silently missing from the exported file even
+      // though the live preview already reflects it.
+      await flushSave()
+    } catch {
+      toast.error(`Couldn't save your latest changes before exporting. Please try again.`)
+      return
+    }
     const { resumeId: rid, title: t, meta: m } = useResumeEditorStore.getState()
     try {
       const res = await fetch(`/api/resumes/${rid}/export/${format}`, {

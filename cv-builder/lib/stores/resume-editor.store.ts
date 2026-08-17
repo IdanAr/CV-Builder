@@ -221,6 +221,18 @@ let _retryCount = 0
 const MAX_RETRIES = 3
 const RETRY_DELAYS = [3000, 6000, 12000] // exponential backoff
 
+// Cancels any pending debounced save and PATCHes the current state right
+// now instead. Callers that need the server to reflect the latest edits
+// before doing something else with the persisted resume (e.g. exporting a
+// PDF/DOCX, which always re-reads from the database rather than trusting
+// the client) must await this first — otherwise they can race the 1s
+// autosave debounce and act on stale server state.
+export async function flushSave(): Promise<void> {
+  if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null }
+  if (!useResumeEditorStore.getState().isDirty) return
+  await performSave()
+}
+
 export function initAutoSave(): () => void {
   _retryCount = 0
   if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null }
