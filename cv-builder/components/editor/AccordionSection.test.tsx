@@ -109,6 +109,19 @@ describe('AccordionSection', () => {
     expect(onToggle).not.toHaveBeenCalled()
   })
 
+  it('clicking the header area outside the input toggles the accordion (custom section)', () => {
+    const onToggle = vi.fn()
+    render(
+      <AccordionSection title="Custom Section" isOpen={false} onToggle={onToggle} onRename={vi.fn()}>
+        {null}
+      </AccordionSection>
+    )
+    const input = screen.getByRole('textbox')
+    // Click the wrapper around the input (header area outside the input text itself)
+    fireEvent.click(input.parentElement as HTMLElement)
+    expect(onToggle).toHaveBeenCalledOnce()
+  })
+
   it('does not render delete button when onDelete is not provided', () => {
     render(
       <AccordionSection title="Section" isOpen={false} onToggle={vi.fn()}>

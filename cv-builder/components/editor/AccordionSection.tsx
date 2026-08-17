@@ -74,13 +74,15 @@ export function AccordionSection({
           </span>
         )}
         {onRename ? (
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => onRename(e.target.value)}
-            aria-label={`Rename ${title}`}
-            className="flex-1 font-medium text-sm text-indigo-900 bg-transparent border-none outline-none focus:ring-1 focus:ring-indigo-300 rounded px-2 py-3 min-w-0"
-          />
+          <div className="flex-1 min-w-0" onClick={onToggle}>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => onRename(e.target.value)}
+              aria-label={`Rename ${title}`}
+              className="w-full font-medium text-sm text-indigo-900 bg-transparent border-none outline-none focus:ring-1 focus:ring-indigo-300 rounded px-2 py-3 min-w-0"
+            />
+          </div>
         ) : (
           <button
             type="button"
