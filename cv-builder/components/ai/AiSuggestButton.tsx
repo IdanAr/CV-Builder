@@ -1,7 +1,7 @@
 // components/ai/AiSuggestButton.tsx
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Sparkles, Loader2 } from 'lucide-react'
 import type { SuggestionField, PipelineResult } from '@/lib/ai/pipeline'
 import { Popover } from '@/components/ui/Popover'
@@ -86,15 +86,42 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
 
   const open = !!error || !!result
 
+  // A pending suggestion requires an explicit user decision — Popover's own
+  // Escape handling still routes through `onOpenChange(false)` below, but
+  // that intentionally no-ops for `result` (see comment there), so wire a
+  // dedicated Escape dismissal here. Unlike a stray outside click, Escape is
+  // an unambiguous, deliberate "close this" gesture with no other purpose in
+  // this UI, and matches the Escape-always-closes-overlays convention users
+  // already expect from Popover — so it stays a valid way to dismiss a
+  // pending suggestion even though outside clicks no longer are.
+  useEffect(() => {
+    if (!result) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setResult(null)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [result])
+
   return (
     <div className="shrink-0">
       <Popover
         open={open}
         onOpenChange={(next) => {
-          if (!next) {
-            setError(null)
-            setResult(null)
-          }
+          if (next) return
+          // Popover fires this for any outside click (or Escape). The error
+          // panel is just a dismissible message, so it can keep closing on
+          // an outside click. A pending `result`, though, is a rate-limited,
+          // paid AI generation the user hasn't explicitly accepted or
+          // dismissed yet — and when `result.pendingApprovals` is non-empty,
+          // the hallucination guard requires the user to actually look at
+          // and act on it. A stray outside click (e.g. clicking back into
+          // the nearby textarea to compare the suggestion against the
+          // original text) must not silently discard it. Deliberately do
+          // NOT clear `result` here: only the explicit "Use this"/"Dismiss"
+          // buttons (which call setResult(null) directly) or the Escape
+          // handler above close it.
+          setError(null)
         }}
         trigger={
           <button

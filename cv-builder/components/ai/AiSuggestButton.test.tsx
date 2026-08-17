@@ -137,4 +137,108 @@ describe('AiSuggestButton', () => {
     expect(panel.closest('div[style*="overflow: hidden"]')).toBeNull()
     expect(panel.closest('body')).toBe(document.body)
   })
+
+  describe('outside-click handling for a pending suggestion', () => {
+    it('does not discard a pending suggestion on an outside click; only "Use this" or "Dismiss" do', async () => {
+      const fetchMock = vi.fn().mockResolvedValueOnce(
+        jsonResponse({ suggestion: 'A suggestion', pendingApprovals: [] })
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      render(
+        <AiSuggestButton
+          resumeId="r1"
+          currentValue="Some notes"
+          context={{ field: 'summary' }}
+          onAccept={() => {}}
+        />
+      )
+      fireEvent.click(screen.getByRole('button'))
+      await screen.findByText('Use this')
+
+      // A stray outside click — e.g. the user clicking back into a nearby
+      // textarea to compare the suggestion against their original text —
+      // must not silently discard the generated (rate-limited, paid)
+      // suggestion. Popover detects outside clicks on `mousedown`.
+      fireEvent.mouseDown(document.body)
+      fireEvent.click(document.body)
+
+      expect(screen.getByText('A suggestion')).toBeInTheDocument()
+      expect(screen.getByText('Use this')).toBeInTheDocument()
+
+      // The explicit Dismiss action must still close it.
+      fireEvent.click(screen.getByText('Dismiss'))
+      expect(screen.queryByText('A suggestion')).not.toBeInTheDocument()
+    })
+
+    it('still clears the pending suggestion when "Use this" is clicked, and calls onAccept', async () => {
+      const fetchMock = vi.fn().mockResolvedValueOnce(
+        jsonResponse({ suggestion: 'A suggestion', pendingApprovals: [] })
+      )
+      vi.stubGlobal('fetch', fetchMock)
+      const onAccept = vi.fn()
+
+      render(
+        <AiSuggestButton
+          resumeId="r1"
+          currentValue="Some notes"
+          context={{ field: 'summary' }}
+          onAccept={onAccept}
+        />
+      )
+      fireEvent.click(screen.getByRole('button'))
+      await screen.findByText('Use this')
+
+      fireEvent.click(screen.getByText('Use this'))
+
+      expect(onAccept).toHaveBeenCalledWith('A suggestion')
+      expect(screen.queryByText('A suggestion')).not.toBeInTheDocument()
+    })
+
+    it('still clears a pending suggestion on Escape (a deliberate, explicit dismiss gesture)', async () => {
+      const fetchMock = vi.fn().mockResolvedValueOnce(
+        jsonResponse({ suggestion: 'A suggestion', pendingApprovals: [] })
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      render(
+        <AiSuggestButton
+          resumeId="r1"
+          currentValue="Some notes"
+          context={{ field: 'summary' }}
+          onAccept={() => {}}
+        />
+      )
+      fireEvent.click(screen.getByRole('button'))
+      await screen.findByText('Use this')
+
+      fireEvent.keyDown(document, { key: 'Escape' })
+
+      expect(screen.queryByText('A suggestion')).not.toBeInTheDocument()
+    })
+
+    it('still clears an error on an outside click (errors remain dismissible that way)', async () => {
+      const fetchMock = vi.fn().mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: 'Rate limited' }),
+      })
+      vi.stubGlobal('fetch', fetchMock)
+
+      render(
+        <AiSuggestButton
+          resumeId="r1"
+          currentValue="Some notes"
+          context={{ field: 'summary' }}
+          onAccept={() => {}}
+        />
+      )
+      fireEvent.click(screen.getByRole('button'))
+      await screen.findByText('Rate limited')
+
+      fireEvent.mouseDown(document.body)
+      fireEvent.click(document.body)
+
+      expect(screen.queryByText('Rate limited')).not.toBeInTheDocument()
+    })
+  })
 })
