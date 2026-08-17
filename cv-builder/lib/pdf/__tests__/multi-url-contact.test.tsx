@@ -26,7 +26,7 @@ describe('multi-URL contact row (PDF, designed mode)', () => {
     const runs = await renderToGlyphRuns(
       selectPdfTemplate(dataWithProfiles, meta, 'designed', 'CV') as React.ReactElement
     )
-    const text = runs.map(r => r.str).join(' ')
+    const text = runs.map(r => r.str).join('')
     expect(text).toContain('Portfolio')
     expect(text).toContain('github.com/janesmith')
   })
@@ -44,7 +44,7 @@ describe('multi-URL contact row (PDF, Sidebar template)', () => {
     const runs = await renderToGlyphRuns(
       selectPdfTemplate(dataWithProfiles, { ...meta, templateId: 'sidebar' }, 'designed', 'CV') as React.ReactElement
     )
-    const text = runs.map(r => r.str).join(' ')
+    const text = runs.map(r => r.str).join('')
     expect(text).toContain('Portfolio')
     expect(text).toContain('github.com/janesmith')
   })
@@ -55,7 +55,7 @@ describe('multi-URL contact row (PDF, ats mode)', () => {
     const runs = await renderToGlyphRuns(
       selectPdfTemplate(dataWithProfiles, meta, 'ats', 'CV') as React.ReactElement
     )
-    const text = runs.map(r => r.str).join(' ')
+    const text = runs.map(r => r.str).join('')
     expect(text).toContain('Portfolio')
     expect(text).toContain('github.com/janesmith')
   })
@@ -64,7 +64,7 @@ describe('multi-URL contact row (PDF, ats mode)', () => {
     const runs = await renderToGlyphRuns(
       selectPdfTemplate(dataWithProfiles, meta, 'ats', 'CV') as React.ReactElement
     )
-    const text = runs.map(r => r.str).join(' ')
+    const text = runs.map(r => r.str).join('')
     expect(text).toContain('Portfolio')
     expect(text).toContain('janesmith.dev')
   })

@@ -2,8 +2,20 @@ import React from 'react'
 import { describe, it, expect } from 'vitest'
 import { SidebarPdfTemplate } from '../templates/SidebarPdfTemplate'
 import { ExecutivePdfTemplate } from '../templates/ExecutivePdfTemplate'
-import { renderToGlyphRuns } from './pdf-geometry'
+import { renderToGlyphRuns, renderToBufferAndRuns } from './pdf-geometry'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
+import { PDFParse } from 'pdf-parse'
+
+/** Extracted PDF text, stripped of pdf-parse's own line breaks/whitespace and
+ * its "-- N of M --" page-footer marker, so it can be compared directly
+ * against the original unbroken contact string. A byte-identical match here
+ * proves no character (hyphen, space, zero-width space, or otherwise) was
+ * inserted by whatever wrapping mechanism produced the line breaks. */
+async function extractStrippedText(buffer: Buffer): Promise<string> {
+  const parser = new PDFParse({ data: buffer })
+  const { text } = await parser.getText()
+  return text.replace(/-- \d+ of \d+ --/g, '').replace(/\s+/g, '')
+}
 
 const baseMeta: ResumeMeta = {
   templateId: 'sidebar', fontFamily: 'Calibri', headerFontFamily: 'Calibri',
@@ -158,38 +170,67 @@ describe('SidebarPdfTemplate rail width', () => {
 })
 
 describe('SidebarPdfTemplate rail contact text fit at 20% rail width', () => {
-  it('wraps a long unbroken email into multiple glyph runs instead of one run that overflows the rail', async () => {
+  it('wraps a long unbroken email into multiple glyph runs instead of one run that overflows the rail, without corrupting the extracted text', async () => {
+    const email = 'jane.smith.principal.architect@a-very-long-corporate-domain-name.example.com'
     const dataWithLongEmail: ResumeData = {
-      basics: {
-        name: 'Jane Smith',
-        email: 'jane.smith.principal.architect@a-very-long-corporate-domain-name.example.com',
-      },
+      basics: { name: 'Jane Smith', email },
     }
     const meta = { ...baseMeta, sidebarRailWidth: 20 }
-    const runs = await renderToGlyphRuns(SidebarPdfTemplate({ data: dataWithLongEmail, meta }))
+    const { buffer, runs } = await renderToBufferAndRuns(SidebarPdfTemplate({ data: dataWithLongEmail, meta }))
     const railWidthPt = 595.28 * 0.20 // A4 width * 20% rail
-    const emailRuns = runs.filter((r) => dataWithLongEmail.basics!.email!.includes(r.str) && r.str.length > 3)
-    expect(emailRuns.length).toBeGreaterThan(0)
-    for (const run of emailRuns) {
+
+    // Every glyph run belonging to the rail (left column) must fit inside the
+    // rail width. Unlike an `.includes()` substring filter, this does NOT
+    // silently drop runs that contain characters absent from the original
+    // string (e.g. an injected hyphen) — every rail run is checked.
+    const railRuns = runs.filter((r) => r.x < railWidthPt)
+    expect(railRuns.length).toBeGreaterThan(0)
+    for (const run of railRuns) {
       expect(run.x + run.width, `run "${run.str}" must not overflow the ${railWidthPt}pt rail`).toBeLessThanOrEqual(railWidthPt)
+    }
+
+    // The extracted/copyable text must reassemble to exactly the original
+    // email — no inserted hyphen, space, or zero-width character anywhere,
+    // whether or not a wrap actually occurred at a given point.
+    const stripped = await extractStrippedText(buffer)
+    expect(stripped).toContain(email)
+  })
+
+  it('wraps a long unbroken profile URL into multiple glyph runs instead of one run that overflows the rail, without corrupting the extracted text', async () => {
+    const url = 'https://a-very-long-portfolio-domain-name.example.com/jane-smith/portfolio'
+    const dataWithLongUrl: ResumeData = {
+      basics: { name: 'Jane Smith', profiles: [{ id: 'p1', url }] },
+    }
+    const meta = { ...baseMeta, sidebarRailWidth: 20 }
+    const { buffer, runs } = await renderToBufferAndRuns(SidebarPdfTemplate({ data: dataWithLongUrl, meta }))
+    const railWidthPt = 595.28 * 0.20
+
+    const railRuns = runs.filter((r) => r.x < railWidthPt)
+    expect(railRuns.length).toBeGreaterThan(0)
+    for (const run of railRuns) {
+      expect(run.x + run.width, `run "${run.str}" must not overflow the ${railWidthPt}pt rail`).toBeLessThanOrEqual(railWidthPt)
+    }
+
+    const stripped = await extractStrippedText(buffer)
+    expect(stripped).toContain(url)
+  })
+
+  it('does not alter the extracted text of a long email at wider rail widths (33%, 40%), where wrapping may not even be needed', async () => {
+    const email = 'jane.smith.principal.architect@a-very-long-corporate-domain-name.example.com'
+    const dataWithLongEmail: ResumeData = { basics: { name: 'Jane Smith', email } }
+    for (const sidebarRailWidth of [33, 40]) {
+      const { buffer } = await renderToBufferAndRuns(
+        SidebarPdfTemplate({ data: dataWithLongEmail, meta: { ...baseMeta, sidebarRailWidth } })
+      )
+      const stripped = await extractStrippedText(buffer)
+      expect(stripped, `sidebarRailWidth=${sidebarRailWidth}`).toContain(email)
     }
   })
 
-  it('wraps a long unbroken profile URL into multiple glyph runs instead of one run that overflows the rail', async () => {
-    const dataWithLongUrl: ResumeData = {
-      basics: {
-        name: 'Jane Smith',
-        profiles: [{ id: 'p1', url: 'https://a-very-long-portfolio-domain-name.example.com/jane-smith/portfolio' }],
-      },
-    }
-    const meta = { ...baseMeta, sidebarRailWidth: 20 }
-    const runs = await renderToGlyphRuns(SidebarPdfTemplate({ data: dataWithLongUrl, meta }))
-    const railWidthPt = 595.28 * 0.20
-    const urlRuns = runs.filter((r) => dataWithLongUrl.basics!.profiles![0].url!.includes(r.str) && r.str.length > 3)
-    expect(urlRuns.length).toBeGreaterThan(0)
-    for (const run of urlRuns) {
-      expect(run.x + run.width, `run "${run.str}" must not overflow the ${railWidthPt}pt rail`).toBeLessThanOrEqual(railWidthPt)
-    }
+  it('leaves ordinary short contact text (well under the chunk threshold) rendered as a single glyph run, unchanged from before', async () => {
+    const runs = await renderToGlyphRuns(SidebarPdfTemplate({ data, meta: baseMeta }))
+    const phoneRun = runs.find((r) => r.str === data.basics!.phone)
+    expect(phoneRun, 'phone number should render as one intact glyph run').toBeTruthy()
   })
 })
 
