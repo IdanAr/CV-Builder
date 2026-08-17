@@ -91,21 +91,24 @@ export function ColumnForm({
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-xs font-medium text-indigo-500">
-        Type
-        <select
-          value={type}
-          disabled={isEdit}
-          onChange={(e) => setType(e.target.value as ColumnType)}
-          className="rounded-md border border-indigo-200 bg-white px-2 py-1.5 text-sm text-indigo-900 outline-none focus:border-indigo-400 disabled:bg-indigo-50 disabled:text-indigo-400"
-        >
-          {(Object.keys(TYPE_LABELS) as ColumnType[]).map((t) => (
-            <option key={t} value={t}>
-              {TYPE_LABELS[t]}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-medium text-indigo-500">
+          Type
+          <select
+            value={type}
+            disabled={isEdit}
+            onChange={(e) => setType(e.target.value as ColumnType)}
+            className="mt-1 block w-full rounded-md border border-indigo-200 bg-white px-2 py-1.5 text-sm text-indigo-900 outline-none focus:border-indigo-400 disabled:bg-indigo-50 disabled:text-indigo-400"
+          >
+            {(Object.keys(TYPE_LABELS) as ColumnType[]).map((t) => (
+              <option key={t} value={t}>
+                {TYPE_LABELS[t]}
+              </option>
+            ))}
+          </select>
+        </label>
+        {isEdit && <p className="text-xs text-indigo-400">Type can&apos;t be changed after creation.</p>}
+      </div>
 
       {needsOptions && (
         <fieldset className="flex flex-col gap-1.5">

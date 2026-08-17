@@ -89,6 +89,19 @@ describe('ColumnForm (edit mode)', () => {
     )
   })
 
+  it('shows a help text explaining that type cannot be changed after creation', () => {
+    const statusColumn = defaultBoardColumns().find((c) => c.id === 'status')!
+    render(<ColumnForm initial={statusColumn} onSubmit={vi.fn()} onCancel={vi.fn()} />)
+
+    expect(screen.getByText("Type can't be changed after creation.")).toBeInTheDocument()
+  })
+
+  it('does not show help text when creating a new column', () => {
+    render(<ColumnForm onSubmit={vi.fn()} onCancel={vi.fn()} />)
+
+    expect(screen.queryByText("Type can't be changed after creation.")).not.toBeInTheDocument()
+  })
+
   it('can remove an option (but never the last one)', () => {
     const statusColumn = defaultBoardColumns().find((c) => c.id === 'status')!
     render(<ColumnForm initial={statusColumn} onSubmit={vi.fn()} onCancel={vi.fn()} />)
