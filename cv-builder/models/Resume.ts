@@ -27,6 +27,7 @@ const ResumeSchema = new Schema<IResume>(
       accentColor: { type: String, default: '#0066cc' },
       pageMargins: { type: Number, default: 1.0 },
       lineSpacing: { type: Number, default: 1.15 },
+      sidebarRailWidth: { type: Number, default: 33 },
       sectionOrder: {
         type: [String],
         default: ['work', 'education', 'skills', 'certificates', 'awards', 'publications', 'volunteer', 'languages', 'interests', 'projects'],

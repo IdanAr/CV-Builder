@@ -3,6 +3,7 @@
 import { useId } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
+import { AiSuggestButton } from '@/components/ai/AiSuggestButton'
 import { MonthYearPicker } from './MonthYearPicker'
 import { RichTextField } from './RichTextField'
 import { resolveCustomSectionRoles } from '@/lib/roles'
@@ -34,11 +35,12 @@ function createEmptyRole(): CustomSectionRole {
 interface ItemFormProps {
   item: CustomSectionItem
   enabledFields: CustomSectionFieldType[]
+  resumeId: string
   onUpdate: (v: CustomSectionItem) => void
   onRemove: () => void
 }
 
-function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
+function ItemForm({ item, enabledFields, resumeId, onUpdate, onRemove }: ItemFormProps) {
   const id = useId()
   const set = (f: keyof CustomSectionItem, v: string) => onUpdate({ ...item, [f]: v })
   const setArr = (f: 'highlights' | 'keywords', v: string[]) => onUpdate({ ...item, [f]: v })
@@ -81,15 +83,23 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
       {urlField}
 
       {enabledFields.includes('summary') && (
-        <>
-          <label htmlFor={`${id}-summary`} className="sr-only">Description</label>
-          <RichTextField
-            id={`${id}-summary`}
-            value={item.summary ?? ''}
-            onChange={(v) => set('summary', v)}
-            placeholder="Description..."
+        <div className="flex items-start gap-1">
+          <div className="flex-1">
+            <label htmlFor={`${id}-summary`} className="sr-only">Description</label>
+            <RichTextField
+              id={`${id}-summary`}
+              value={item.summary ?? ''}
+              onChange={(v) => set('summary', v)}
+              placeholder="Description..."
+            />
+          </div>
+          <AiSuggestButton
+            resumeId={resumeId}
+            currentValue={item.summary ?? ''}
+            context={{ jobTitle: item.title, field: 'summary' }}
+            onAccept={(v) => set('summary', v)}
           />
-        </>
+        </div>
       )}
 
       {enabledFields.includes('highlights') && (
@@ -109,6 +119,12 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
                   ariaLabel={`Bullet ${i + 1}`}
                   className="flex-1"
                   height={80}
+                />
+                <AiSuggestButton
+                  resumeId={resumeId}
+                  currentValue={h}
+                  context={{ jobTitle: item.title, field: 'highlight' }}
+                  onAccept={onUpdateHighlight}
                 />
                 <button type="button" onClick={onRemoveHighlight}
                   className="text-gray-400 hover:text-red-500 text-sm mt-6">✕</button>
@@ -181,7 +197,7 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
             createEmpty={createEmptyRole}
             addLabel="Add role"
             renderItem={(role, _, onUpdateRole, onRemoveRole) => (
-              <RoleForm role={role} enabledFields={enabledFields} onUpdate={onUpdateRole} onRemove={onRemoveRole} />
+              <RoleForm role={role} enabledFields={enabledFields} resumeId={resumeId} onUpdate={onUpdateRole} onRemove={onRemoveRole} />
             )}
           />
         </div>
@@ -193,10 +209,11 @@ function ItemForm({ item, enabledFields, onUpdate, onRemove }: ItemFormProps) {
 }
 
 function RoleForm({
-  role, enabledFields, onUpdate, onRemove,
+  role, enabledFields, resumeId, onUpdate, onRemove,
 }: {
   role: CustomSectionRole
   enabledFields: CustomSectionFieldType[]
+  resumeId: string
   onUpdate: (v: CustomSectionRole) => void
   onRemove: () => void
 }) {
@@ -223,7 +240,17 @@ function RoleForm({
         </div>
       )}
       {enabledFields.includes('summary') && (
-        <RichTextField value={role.summary ?? ''} onChange={(v) => set('summary', v)} placeholder="Description..." />
+        <div className="flex items-start gap-1">
+          <div className="flex-1">
+            <RichTextField value={role.summary ?? ''} onChange={(v) => set('summary', v)} placeholder="Description..." />
+          </div>
+          <AiSuggestButton
+            resumeId={resumeId}
+            currentValue={role.summary ?? ''}
+            context={{ jobTitle: role.title, field: 'summary' }}
+            onAccept={(v) => set('summary', v)}
+          />
+        </div>
       )}
       {enabledFields.includes('highlights') && (
         <fieldset className="space-y-1 border-0 p-0 m-0">
@@ -242,6 +269,12 @@ function RoleForm({
                   ariaLabel={`Bullet ${i + 1}`}
                   className="flex-1"
                   height={120}
+                />
+                <AiSuggestButton
+                  resumeId={resumeId}
+                  currentValue={h}
+                  context={{ jobTitle: role.title, field: 'highlight' }}
+                  onAccept={onUpdateHighlight}
                 />
                 <button type="button" onClick={onRemoveHighlight}
                   className="text-gray-400 hover:text-red-500 text-sm mt-6">✕</button>
@@ -293,6 +326,7 @@ export function CustomSectionForm({ sectionId }: { sectionId: string }) {
   const section = useResumeEditorStore(
     (s) => s.data.customSections?.find((cs) => cs.id === sectionId)
   ) as CustomSection | undefined
+  const resumeId = useResumeEditorStore((s) => s.resumeId)
   const updateCustomSection = useResumeEditorStore((s) => s.updateCustomSection)
 
   if (!section) return null
@@ -312,7 +346,7 @@ export function CustomSectionForm({ sectionId }: { sectionId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Enabled fields">
         {CUSTOM_SECTION_FIELDS.map((field) => {
           const active = section.enabledFields.includes(field)
           return (
@@ -320,6 +354,7 @@ export function CustomSectionForm({ sectionId }: { sectionId: string }) {
               key={field}
               type="button"
               onClick={() => toggleField(field)}
+              aria-pressed={active}
               className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
                 active
                   ? 'bg-indigo-500 border-indigo-500 text-white'
@@ -342,6 +377,7 @@ export function CustomSectionForm({ sectionId }: { sectionId: string }) {
           <ItemForm
             item={item}
             enabledFields={section.enabledFields}
+            resumeId={resumeId}
             onUpdate={onUpdate}
             onRemove={onRemove}
           />

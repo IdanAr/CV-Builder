@@ -7,7 +7,7 @@ import { renderToGlyphRuns } from './pdf-geometry'
 
 const meta = {
   templateId: 'classic', fontFamily: 'Calibri', headerFontFamily: 'Calibri',
-  primaryColor: '#1e3a5f', accentColor: '#0066cc', pageMargins: 0.5, lineSpacing: 1.15,
+  primaryColor: '#1e3a5f', accentColor: '#0066cc', pageMargins: 0.5, sidebarRailWidth: 33, lineSpacing: 1.15,
   sectionOrder: [], layout: 'single-column', columnAssignment: {}, excludedAtsKeywords: [],
 } as ResumeMeta
 
@@ -26,7 +26,7 @@ describe('multi-URL contact row (PDF, designed mode)', () => {
     const runs = await renderToGlyphRuns(
       selectPdfTemplate(dataWithProfiles, meta, 'designed', 'CV') as React.ReactElement
     )
-    const text = runs.map(r => r.str).join(' ')
+    const text = runs.map(r => r.str).join('')
     expect(text).toContain('Portfolio')
     expect(text).toContain('github.com/janesmith')
   })
@@ -44,7 +44,7 @@ describe('multi-URL contact row (PDF, Sidebar template)', () => {
     const runs = await renderToGlyphRuns(
       selectPdfTemplate(dataWithProfiles, { ...meta, templateId: 'sidebar' }, 'designed', 'CV') as React.ReactElement
     )
-    const text = runs.map(r => r.str).join(' ')
+    const text = runs.map(r => r.str).join('')
     expect(text).toContain('Portfolio')
     expect(text).toContain('github.com/janesmith')
   })
@@ -55,7 +55,7 @@ describe('multi-URL contact row (PDF, ats mode)', () => {
     const runs = await renderToGlyphRuns(
       selectPdfTemplate(dataWithProfiles, meta, 'ats', 'CV') as React.ReactElement
     )
-    const text = runs.map(r => r.str).join(' ')
+    const text = runs.map(r => r.str).join('')
     expect(text).toContain('Portfolio')
     expect(text).toContain('github.com/janesmith')
   })
@@ -64,7 +64,7 @@ describe('multi-URL contact row (PDF, ats mode)', () => {
     const runs = await renderToGlyphRuns(
       selectPdfTemplate(dataWithProfiles, meta, 'ats', 'CV') as React.ReactElement
     )
-    const text = runs.map(r => r.str).join(' ')
+    const text = runs.map(r => r.str).join('')
     expect(text).toContain('Portfolio')
     expect(text).toContain('janesmith.dev')
   })

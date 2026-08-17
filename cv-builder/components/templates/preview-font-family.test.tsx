@@ -44,7 +44,7 @@ function metaFor(fontFamily: string, templateId: string): ResumeMeta {
     headerFontFamily: fontFamily,
     primaryColor: '#000000',
     accentColor: '#0066cc',
-    pageMargins: 1.0,
+    pageMargins: 1.0, sidebarRailWidth: 33,
     lineSpacing: 1.15,
     sectionOrder: ['work', 'education', 'skills'],
     layout: 'single-column',

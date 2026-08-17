@@ -272,7 +272,7 @@ export default function ApplicationsBoard({
           ))}
           {unmatched.length > 0 && (
             <BoardColumnLane
-              option={{ id: '__unmatched', label: 'No status', color: '#94a3b8' }}
+              option={{ id: '__unmatched', label: 'No status', color: '#A5B4FC' }}
               cards={unmatched}
               customChipsFor={customChipsFor}
             />

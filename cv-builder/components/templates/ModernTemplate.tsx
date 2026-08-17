@@ -9,9 +9,26 @@ import { resolveProfiles } from '@/lib/basics-profiles'
 import { resolveWorkRoles, resolveEducationRoles } from '@/lib/roles'
 import { webFontFamily } from '@/lib/fonts/families'
 import { MODERN_TOKENS as T, px } from '@/lib/design/tokens'
+import type { ResumeData } from '@/lib/schemas/resume.zod'
+
+type Basics = NonNullable<ResumeData['basics']>
 
 function rt(text: string | undefined | null): React.ReactNode {
   return <RichText text={text} />
+}
+
+function buildContactLine(basics: Basics): React.ReactNode {
+  const eu = (u: string) => (/^https?:\/\//i.test(u) ? u : `https://${u}`)
+  const parts: React.ReactNode[] = []
+  if (basics.email) parts.push(<a key="em" href={`mailto:${basics.email}`} style={{ color: 'inherit', textDecoration: 'none' }}>{basics.email}</a>)
+  if (basics.phone) parts.push(basics.phone)
+  for (const profile of resolveProfiles(basics)) {
+    if (!profile.url) continue
+    parts.push(<a key={profile.id} href={eu(profile.url)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{profile.label || profile.url}</a>)
+  }
+  const loc = [basics.location?.city, basics.location?.region].filter(Boolean).join(', ')
+  if (loc) parts.push(loc)
+  return parts.flatMap((p, i) => (i < parts.length - 1 ? [p, ' · '] : [p]))
 }
 
 const ALL_SECTIONS = ['work', 'education', 'skills', 'certificates', 'awards', 'publications', 'volunteer', 'languages', 'interests', 'projects']
@@ -121,7 +138,7 @@ export function ModernTemplate({ data, meta }: TemplateProps) {
             <div style={{ fontSize: '10pt', lineHeight: 1.7 }}>
               {skills.map((s, i) => (
                 <div key={i} data-pv-entry={i} style={{ display: 'flex', gap: '16px', marginBottom: '2px' }}>
-                  <div style={{ minWidth: '130px', fontWeight: 600, flexShrink: 0 }}>
+                  <div style={{ minWidth: '130px', fontWeight: 600, whiteSpace: 'normal' }}>
                     {s.name}
                     {s.level && <span style={{ fontWeight: 400, color: '#666' }}> · {s.level}</span>}
                   </div>
@@ -263,10 +280,10 @@ export function ModernTemplate({ data, meta }: TemplateProps) {
                     {formatDateRange(p.startDate, p.endDate)}
                   </span>
                 </div>
-                {p.description && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{p.description}</div>}
+                {p.description && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(p.description)}</div>}
                 {(p.highlights ?? []).length > 0 && (
                   <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt', listStyleType: 'disc' }}>
-                    {(p.highlights ?? []).map((h, hi) => <li key={hi}>{h}</li>)}
+                    {(p.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
                 {(p.keywords ?? []).length > 0 && (
@@ -303,19 +320,7 @@ export function ModernTemplate({ data, meta }: TemplateProps) {
           <div style={{ fontFamily: webFontFamily(meta.headerFontFamily), fontSize: `${T.nameSize}pt`, fontWeight: 700 }}>{basics.name}</div>
           {basics.label && <div style={{ fontSize: `${T.labelSize}pt`, opacity: 0.85, marginTop: '2px' }}>{basics.label}</div>}
           <div style={{ fontSize: `${T.contactSize}pt`, opacity: 0.75, marginTop: '4px' }}>
-            {(() => {
-              const eu = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`
-              const parts: React.ReactNode[] = []
-              if (basics.email) parts.push(<a key="em" href={`mailto:${basics.email}`} style={{ color: 'inherit', textDecoration: 'none' }}>{basics.email}</a>)
-              if (basics.phone) parts.push(basics.phone)
-              for (const profile of resolveProfiles(basics)) {
-                if (!profile.url) continue
-                parts.push(<a key={profile.id} href={eu(profile.url)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{profile.label || profile.url}</a>)
-              }
-              const loc = [basics.location?.city, basics.location?.region].filter(Boolean).join(', ')
-              if (loc) parts.push(loc)
-              return parts.flatMap((p, i) => i < parts.length - 1 ? [p, ' · '] : [p])
-            })()}
+            {buildContactLine(basics)}
           </div>
         </div>
         <div style={{ padding: `${pad}px` }}>
@@ -341,7 +346,7 @@ export function ModernTemplate({ data, meta }: TemplateProps) {
         <div style={{ fontFamily: webFontFamily(meta.headerFontFamily), fontSize: `${T.nameSize}pt`, fontWeight: 700 }}>{basics.name}</div>
         {basics.label && <div style={{ fontSize: `${T.labelSize}pt`, opacity: 0.85, marginTop: '2px' }}>{basics.label}</div>}
         <div style={{ fontSize: `${T.contactSize}pt`, opacity: 0.75, marginTop: '4px' }}>
-          {[basics.email, basics.phone, [basics.location?.city, basics.location?.region].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
+          {buildContactLine(basics)}
         </div>
       </div>
       {body}

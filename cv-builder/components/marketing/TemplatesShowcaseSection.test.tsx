@@ -12,11 +12,18 @@ vi.mock('./TemplateThumbnail', () => ({
   TemplateThumbnail: ({
     templateId,
     colors,
+    decorative,
   }: {
     templateId: string
     colors?: { primaryColor: string; accentColor: string }
+    decorative?: boolean
   }) => (
-    <div data-testid={`thumb-${templateId}`} data-primary-color={colors?.primaryColor} data-accent-color={colors?.accentColor} />
+    <div
+      data-testid={`thumb-${templateId}`}
+      data-primary-color={colors?.primaryColor}
+      data-accent-color={colors?.accentColor}
+      data-decorative={String(decorative)}
+    />
   ),
 }))
 
@@ -35,9 +42,10 @@ describe('TemplatesShowcaseSection', () => {
     }
   })
 
-  it('renders a CTA linking to /signin', () => {
+  it('labels the templates CTA to make the sign-in requirement explicit, linking to /signin', () => {
     render(<TemplatesShowcaseSection />)
-    expect(screen.getByRole('link', { name: /preview all templates/i })).toHaveAttribute('href', '/signin')
+    const cta = screen.getByRole('link', { name: /sign up to browse templates/i })
+    expect(cta).toHaveAttribute('href', '/signin')
   })
 
   it('gives every template a distinct, non-default color scheme', () => {
@@ -51,5 +59,14 @@ describe('TemplatesShowcaseSection', () => {
       expect(pair).not.toBe('undefined-undefined')
     }
     expect(new Set(pairs).size).toBe(pairs.length) // every template gets a unique pair
+  })
+
+  it('marks each template thumbnail as non-decorative primary content, so screen readers announce it', () => {
+    render(<TemplatesShowcaseSection />)
+    const ids = ['classic', 'minimal', 'modern', 'executive', 'sidebar']
+    for (const id of ids) {
+      const [el] = screen.getAllByTestId(`thumb-${id}`) // real copy, first in DOM order
+      expect(el.dataset.decorative).toBe('false')
+    }
   })
 })

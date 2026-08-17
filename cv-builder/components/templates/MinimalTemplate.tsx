@@ -121,7 +121,7 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
             <div style={{ fontSize: '10pt', lineHeight: 1.7 }}>
               {skills.map((s, i) => (
                 <div key={i} data-pv-entry={i} style={{ display: 'flex', gap: '16px', marginBottom: '2px' }}>
-                  <div style={{ minWidth: '130px', fontWeight: 600, flexShrink: 0 }}>
+                  <div style={{ minWidth: '130px', fontWeight: 600, whiteSpace: 'normal' }}>
                     {s.name}
                     {s.level && <span style={{ fontWeight: 400, color: '#666' }}> · {s.level}</span>}
                   </div>
@@ -263,10 +263,10 @@ export function MinimalTemplate({ data, meta }: TemplateProps) {
                     {formatDateRange(p.startDate, p.endDate)}
                   </span>
                 </div>
-                {p.description && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{p.description}</div>}
+                {p.description && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(p.description)}</div>}
                 {(p.highlights ?? []).length > 0 && (
                   <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt', listStyleType: 'disc' }}>
-                    {(p.highlights ?? []).map((h, hi) => <li key={hi}>{h}</li>)}
+                    {(p.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
                 {(p.keywords ?? []).length > 0 && (

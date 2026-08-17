@@ -10,7 +10,7 @@ const meta: ResumeMeta = {
   headerFontFamily: 'Calibri',
   primaryColor: '#1e3a5f',
   accentColor: '#0066cc',
-  pageMargins: 1.0,
+  pageMargins: 1.0, sidebarRailWidth: 33,
   lineSpacing: 1.15,
   sectionOrder: ['work', 'education', 'skills', 'languages'],
   layout: 'two-column',
@@ -24,6 +24,76 @@ const data: ResumeData = {
   skills: [{ name: 'TypeScript', level: 'Expert', keywords: ['React'] }],
   languages: [{ language: 'English', fluency: 'Native' }],
 }
+
+describe('SidebarTemplate skills row wrapping', () => {
+  it('already wraps a long skill name (stacked layout, no flex-row name/keyword squeeze)', () => {
+    const longSkillData: ResumeData = {
+      basics: { name: 'Jane Smith' },
+      skills: [{
+        name: 'AWS Certified Solutions Architect – Professional',
+        level: 'Expert',
+        keywords: ['AWS', 'Cloud Architecture', 'Terraform'],
+      }],
+    }
+    const { container } = render(<SidebarTemplate data={longSkillData} meta={{ ...meta, sectionOrder: ['skills'] }} />)
+    const nameCell = container.querySelector('[data-pv-section="skills"] [data-pv-entry="0"]')?.firstElementChild as HTMLElement
+    expect(nameCell).toBeTruthy()
+    expect(nameCell.textContent).toContain('AWS Certified Solutions Architect')
+    // Unlike the other 4 templates, the name and keywords are stacked in separate
+    // block-level divs (not a flex row with flexShrink:0), so there is no crowding
+    // bug here: the name div has no minWidth/flexShrink and wraps by default.
+    expect(nameCell.style.flexShrink).not.toBe('0')
+    expect(nameCell.style.minWidth).toBe('')
+  })
+})
+
+describe('SidebarTemplate rail width', () => {
+  it('renders the rail at meta.sidebarRailWidth as a flex-basis percentage', () => {
+    const { container } = render(<SidebarTemplate data={data} meta={{ ...meta, sidebarRailWidth: 25 }} />)
+    const page = container.firstChild as HTMLElement
+    const rail = page.children[0] as HTMLElement
+    expect(rail.style.flex).toBe('0 0 25%')
+  })
+
+  it('renders the rail at 40% at the top of the allowed range', () => {
+    const { container } = render(<SidebarTemplate data={data} meta={{ ...meta, sidebarRailWidth: 40 }} />)
+    const page = container.firstChild as HTMLElement
+    const rail = page.children[0] as HTMLElement
+    expect(rail.style.flex).toBe('0 0 40%')
+  })
+
+  it('defaults to a 33% rail when meta.sidebarRailWidth is missing (pre-existing résumé)', () => {
+    const { sidebarRailWidth: _unused, ...metaWithoutRailWidth } = meta
+    void _unused
+    const { container } = render(<SidebarTemplate data={data} meta={metaWithoutRailWidth as ResumeMeta} />)
+    const page = container.firstChild as HTMLElement
+    const rail = page.children[0] as HTMLElement
+    expect(rail.style.flex).toBe('0 0 33%')
+  })
+
+  it('wraps a long unbroken email/URL in the rail contact block at the narrow 20% width, instead of clipping it', () => {
+    const longContactData: ResumeData = {
+      basics: {
+        name: 'Jane Smith',
+        email: 'jane.smith.principal.architect@a-very-long-corporate-domain-name.example.com',
+        profiles: [{ id: 'p1', url: 'https://a-very-long-portfolio-domain-name.example.com/jane-smith/portfolio' }],
+      },
+    }
+    const { container, getByText } = render(
+      <SidebarTemplate data={longContactData} meta={{ ...meta, sidebarRailWidth: 20 }} />
+    )
+    const page = container.firstChild as HTMLElement
+    const rail = page.children[0] as HTMLElement
+    expect(rail.style.flex).toBe('0 0 20%')
+    const contactBlock = getByText(longContactData.basics!.email!).parentElement as HTMLElement
+    // Wrapping (not clipping) is what keeps a long email/URL fully visible in
+    // a narrow rail: word-break must still be present, and nothing forces a
+    // fixed too-small width or hides overflow.
+    expect(contactBlock.style.wordBreak).toBe('break-word')
+    expect(contactBlock.style.overflow).not.toBe('hidden')
+    expect(contactBlock.style.whiteSpace).not.toBe('nowrap')
+  })
+})
 
 describe('SidebarTemplate margin floor', () => {
   it('never pads rail or main column below 0.5in (48px) for any pageMargins in [0.5, 1.5]', () => {
@@ -120,6 +190,23 @@ describe('SidebarTemplate rail contact links', () => {
     const { container } = render(<SidebarTemplate data={dataWithProfiles} meta={meta} />)
     const link = container.querySelector('a[href="https://janesmith.dev"]')
     expect(link?.textContent).toBe('Portfolio')
+  })
+})
+
+describe('SidebarTemplate projects rich text', () => {
+  it('renders bold markdown in project descriptions and highlights', () => {
+    const dataWithRichProjects: ResumeData = {
+      basics: { name: 'Jane Smith' },
+      projects: [{
+        name: 'CV Builder',
+        description: 'Built with **React** and TypeScript',
+        highlights: ['Shipped **v2** to production'],
+      }],
+    }
+    const { container } = render(<SidebarTemplate data={dataWithRichProjects} meta={{ ...meta, sectionOrder: ['projects'] }} />)
+    const strongs = Array.from(container.querySelectorAll('strong')).map(s => s.textContent)
+    expect(strongs).toContain('React')
+    expect(strongs).toContain('v2')
   })
 })
 

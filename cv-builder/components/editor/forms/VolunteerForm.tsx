@@ -2,6 +2,7 @@
 import { useId } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
+import { AiSuggestButton } from '@/components/ai/AiSuggestButton'
 import { MonthYearPicker } from './MonthYearPicker'
 import { RichTextField } from './RichTextField'
 import { inputClass } from './field-styles'
@@ -11,7 +12,7 @@ import type { ResumeData } from '@/lib/schemas/resume.zod'
 type Item = NonNullable<ResumeData['volunteer']>[number]
 const EMPTY_VOLUNTEER: Item[] = []
 
-function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item) => void; onRemove: () => void }) {
+function ItemForm({ item, resumeId, onUpdate, onRemove }: { item: Item; resumeId: string; onUpdate: (v: Item) => void; onRemove: () => void }) {
   const id = useId()
   const set = (f: keyof Item, v: string) => onUpdate({ ...item, [f]: v })
   const setHighlights = (highlights: string[]) => onUpdate({ ...item, highlights })
@@ -34,13 +35,23 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
         <MonthYearPicker value={item.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
         <MonthYearPicker value={item.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
       </div>
-      <label htmlFor={`${id}-summary`} className="sr-only">Summary</label>
-      <RichTextField
-        id={`${id}-summary`}
-        value={item.summary ?? ''}
-        onChange={(v) => set('summary', v)}
-        placeholder="Summary..."
-      />
+      <div className="flex items-start gap-1">
+        <div className="flex-1">
+          <label htmlFor={`${id}-summary`} className="sr-only">Summary</label>
+          <RichTextField
+            id={`${id}-summary`}
+            value={item.summary ?? ''}
+            onChange={(v) => set('summary', v)}
+            placeholder="Summary..."
+          />
+        </div>
+        <AiSuggestButton
+          resumeId={resumeId}
+          currentValue={item.summary ?? ''}
+          context={{ jobTitle: item.position, company: item.organization, field: 'summary' }}
+          onAccept={(v) => set('summary', v)}
+        />
+      </div>
       <fieldset className="space-y-1 border-0 p-0 m-0">
         <legend className="block text-xs font-medium text-indigo-600 p-0">Highlights</legend>
         <ListFieldManager<string>
@@ -58,6 +69,12 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
                 className="flex-1"
                 height={80}
               />
+              <AiSuggestButton
+                resumeId={resumeId}
+                currentValue={h}
+                context={{ jobTitle: item.position, company: item.organization, field: 'highlight' }}
+                onAccept={onUpdateHighlight}
+              />
               <button type="button" onClick={onRemoveHighlight} aria-label="Remove highlight"
                 className="text-gray-400 hover:text-red-500 text-xs px-1 mt-6">✕</button>
             </div>
@@ -70,10 +87,11 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
 
 export function VolunteerForm() {
   const items = useResumeEditorStore((s) => s.data.volunteer ?? EMPTY_VOLUNTEER)
+  const resumeId = useResumeEditorStore((s) => s.resumeId)
   const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   return (
     <ListFieldManager<Item> sectionKey="volunteer" items={items} onChange={(v) => setSectionData('volunteer', v)}
       createEmpty={createEmpty} addLabel="Add volunteer experience"
-      renderItem={(item, _, onUpdate, onRemove) => <ItemForm item={item} onUpdate={onUpdate} onRemove={onRemove} />} />
+      renderItem={(item, _, onUpdate, onRemove) => <ItemForm item={item} resumeId={resumeId} onUpdate={onUpdate} onRemove={onRemove} />} />
   )
 }

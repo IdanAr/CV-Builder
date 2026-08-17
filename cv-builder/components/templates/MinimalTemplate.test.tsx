@@ -10,7 +10,7 @@ const meta: ResumeMeta = {
   headerFontFamily: 'Calibri',
   primaryColor: '#000000',
   accentColor: '#0066cc',
-  pageMargins: 1.0,
+  pageMargins: 1.0, sidebarRailWidth: 33,
   lineSpacing: 1.15,
   sectionOrder: ['certificates', 'awards', 'publications', 'interests', 'projects'],
   layout: 'single-column',
@@ -39,6 +39,25 @@ describe('MinimalTemplate new sections', () => {
   })
 })
 
+describe('MinimalTemplate skills row wrapping', () => {
+  it('lets a long skill name wrap instead of squeezing the keywords column', () => {
+    const longSkillData: ResumeData = {
+      basics: { name: 'Jane Smith' },
+      skills: [{
+        name: 'AWS Certified Solutions Architect – Professional',
+        level: 'Expert',
+        keywords: ['AWS', 'Cloud Architecture', 'Terraform'],
+      }],
+    }
+    const { container } = render(<MinimalTemplate data={longSkillData} meta={{ ...meta, sectionOrder: ['skills'] }} />)
+    const nameCell = container.querySelector('[data-pv-section="skills"] [data-pv-entry="0"]')?.firstElementChild as HTMLElement
+    expect(nameCell).toBeTruthy()
+    expect(nameCell.textContent).toContain('AWS Certified Solutions Architect')
+    expect(nameCell.style.flexShrink).not.toBe('0')
+    expect(nameCell.style.whiteSpace).toBe('normal')
+  })
+})
+
 describe('MinimalTemplate multi-URL contact row', () => {
   it('renders each profile as a clickable link, using the label when present and the raw URL when not', () => {
     const dataWithProfiles: ResumeData = {
@@ -55,6 +74,23 @@ describe('MinimalTemplate multi-URL contact row', () => {
     expect(links).toHaveLength(2)
     expect(links.find(a => a.href === 'https://janesmith.dev/')?.textContent).toBe('Portfolio')
     expect(links.find(a => a.href === 'https://github.com/janesmith')?.textContent).toBe('https://github.com/janesmith')
+  })
+})
+
+describe('MinimalTemplate projects rich text', () => {
+  it('renders bold markdown in project descriptions and highlights', () => {
+    const dataWithRichProjects: ResumeData = {
+      basics: { name: 'Jane Smith' },
+      projects: [{
+        name: 'CV Builder',
+        description: 'Built with **React** and TypeScript',
+        highlights: ['Shipped **v2** to production'],
+      }],
+    }
+    const { container } = render(<MinimalTemplate data={dataWithRichProjects} meta={{ ...meta, sectionOrder: ['projects'] }} />)
+    const strongs = Array.from(container.querySelectorAll('strong')).map(s => s.textContent)
+    expect(strongs).toContain('React')
+    expect(strongs).toContain('v2')
   })
 })
 

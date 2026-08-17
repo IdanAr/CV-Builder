@@ -228,6 +228,23 @@ describe('PreviewEditOverlay add-section', () => {
     expect(useResumeEditorStore.getState().pendingFocus).toBe('education')
     expect(useResumeEditorStore.getState().pendingFocusEntryIndex).toBeNull()
   })
+
+  // EditTab.tsx's own "+ Add Section" button (the accordion's top-of-list
+  // control) carries a deliberate glow/bold emphasis treatment — border-2
+  // dashed indigo-300, font-semibold, and a soft indigo box-shadow glow —
+  // to make the entry point discoverable. This overlay control is the same
+  // feature's second entry point and should read as visually the same
+  // affordance, even though its placement (absolutely positioned after the
+  // last section, hover/focus-revealed) necessarily differs from EditTab's
+  // always-visible, top-of-accordion placement.
+  it('gives the toggle the same glow/bold emphasis EditTab uses for its Add Section control', () => {
+    render(<OneSectionHarness />)
+    const toggle = screen.getByTestId('pv-add-section-toggle')
+    expect(toggle.style.borderStyle).toBe('dashed')
+    expect(toggle.style.borderWidth).toBe('2px')
+    expect(toggle.style.fontWeight).toBe('600')
+    expect(toggle.style.boxShadow).toContain('rgba(99,102,241')
+  })
 })
 
 // Fix 1: PreviewTab feeds this component `data`/`sectionOrder` from *debounced*
@@ -497,6 +514,100 @@ describe('PreviewEditOverlay hover-to-reveal', () => {
     expect(sectionHandle.parentElement?.style.opacity).toBe('1')
 
     fireEvent.keyDown(sectionHandle, { code: 'Escape' })
+  })
+})
+
+// WCAG 2.4.7 Focus Visible: the hover-only reveal above leaves every control
+// invisible (opacity: 0, pointer-events: none) to a keyboard user who Tabs to
+// it without ever hovering. Keyboard focus must reveal the same controls
+// hover does.
+describe('PreviewEditOverlay focus-to-reveal (keyboard accessibility)', () => {
+  it('reveals the add-entry button and section handle when a control inside the group receives keyboard focus, without hovering', async () => {
+    mockRects((el) => (el.dataset.pvEntry !== undefined ? TALL_ENOUGH : 200))
+    render(<Harness />)
+    await act(async () => {})
+
+    const sectionHandle = screen.getByTestId('pv-handle-section|work')
+    const addButton = screen.getByTestId('pv-add-entry-work')
+
+    expect(sectionHandle.parentElement?.style.opacity).toBe('0')
+
+    // Tab lands on the add-entry button with no mouseenter ever firing.
+    act(() => {
+      addButton.focus()
+    })
+    fireEvent.focus(addButton)
+
+    expect(getComputedStyle(addButton).opacity).toBe('1')
+    expect(sectionHandle.parentElement?.style.opacity).toBe('1')
+    expect(sectionHandle.parentElement?.style.pointerEvents).toBe('auto')
+  })
+
+  it('hides the group again once focus truly leaves it (blur to outside the group)', async () => {
+    mockRects((el) => (el.dataset.pvEntry !== undefined ? TALL_ENOUGH : 200))
+    render(<Harness />)
+    await act(async () => {})
+
+    const addButton = screen.getByTestId('pv-add-entry-work')
+    const sectionHandle = screen.getByTestId('pv-handle-section|work')
+
+    act(() => {
+      addButton.focus()
+    })
+    fireEvent.focus(addButton)
+    expect(sectionHandle.parentElement?.style.opacity).toBe('1')
+
+    // Focus moves to something entirely outside the group (relatedTarget is
+    // not contained by the group's wrapper) — document.body stands in for
+    // "somewhere else on the page".
+    fireEvent.blur(addButton, { relatedTarget: document.body })
+    expect(sectionHandle.parentElement?.style.opacity).toBe('0')
+  })
+
+  it('does not flicker the group invisible when focus moves between two controls inside the same group', async () => {
+    mockRects((el) => (el.dataset.pvEntry !== undefined ? TALL_ENOUGH : 200))
+    render(<Harness />)
+    await act(async () => {})
+
+    const sectionHandle = screen.getByTestId('pv-handle-section|work')
+    const entryHandle = screen.getByTestId('pv-handle-entry|work|0')
+    const addButton = screen.getByTestId('pv-add-entry-work')
+
+    act(() => {
+      sectionHandle.focus()
+    })
+    fireEvent.focus(sectionHandle)
+    expect(addButton.parentElement?.style.opacity).toBe('1')
+
+    // Tab moves focus from the section handle to the entry handle, both
+    // inside the same group's wrapper: blur fires with relatedTarget set to
+    // the element about to receive focus, which the wrapper *does* contain.
+    fireEvent.blur(sectionHandle, { relatedTarget: entryHandle })
+    // The group must still read visible throughout this transition — no
+    // frame where it drops to invisible between the blur and the next focus.
+    expect(addButton.parentElement?.style.opacity).toBe('1')
+
+    act(() => {
+      entryHandle.focus()
+    })
+    fireEvent.focus(entryHandle)
+    expect(addButton.parentElement?.style.opacity).toBe('1')
+  })
+
+  it('reveals the add-section control on keyboard focus of its toggle button, without hovering', async () => {
+    mockRects(() => 50)
+    render(<Harness />)
+    await act(async () => {})
+
+    const toggle = screen.getByTestId('pv-add-section-toggle')
+    expect(toggle.parentElement?.style.opacity).toBe('0')
+
+    act(() => {
+      toggle.focus()
+    })
+    fireEvent.focus(toggle)
+
+    expect(toggle.parentElement?.style.opacity).toBe('1')
   })
 })
 

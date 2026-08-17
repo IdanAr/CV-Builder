@@ -8,7 +8,7 @@ import type { ResumeMeta } from '@/lib/schemas/resume.zod'
 const defaultMeta: ResumeMeta = {
   templateId: 'classic', fontFamily: 'Calibri', headerFontFamily: 'Calibri',
   primaryColor: '#000000', accentColor: '#0066cc',
-  pageMargins: 1.0, lineSpacing: 1.15, sectionOrder: [], layout: 'single-column',
+  pageMargins: 1.0, sidebarRailWidth: 33, lineSpacing: 1.15, sectionOrder: [], layout: 'single-column',
   columnAssignment: {}, excludedAtsKeywords: [],
 }
 
@@ -94,4 +94,13 @@ it('updates summary in store on input change', () => {
   render(<PublicationsForm />)
   fireEvent.change(screen.getByPlaceholderText('Summary...'), { target: { value: 'A paper about things' } })
   expect(useResumeEditorStore.getState().data.publications?.[0].summary).toBe('A paper about things')
+})
+
+it('renders an AI Suggest button next to the summary field', () => {
+  useResumeEditorStore.setState({
+    ...useResumeEditorStore.getState(),
+    data: { publications: [{ name: 'My Paper', publisher: 'ACM', releaseDate: '', url: '', summary: 'A paper about things' }] },
+  })
+  render(<PublicationsForm />)
+  expect(screen.getByRole('button', { name: /AI-written suggestion/i })).toBeInTheDocument()
 })

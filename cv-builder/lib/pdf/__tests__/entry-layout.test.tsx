@@ -9,7 +9,7 @@ vi.setConfig({ testTimeout: 30_000 })
 const meta = {
   templateId: 'minimal', fontFamily: 'Calibri', headerFontFamily: 'Calibri',
   primaryColor: '#1e3a5f', accentColor: '#0066cc',
-  pageMargins: 0.5, lineSpacing: 1.15,
+  pageMargins: 0.5, sidebarRailWidth: 33, lineSpacing: 1.15,
   sectionOrder: ['work'], layout: 'single-column',
   columnAssignment: {}, excludedAtsKeywords: [],
 } as ResumeMeta

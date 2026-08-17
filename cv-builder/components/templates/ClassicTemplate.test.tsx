@@ -10,7 +10,7 @@ const meta: ResumeMeta = {
   headerFontFamily: 'Calibri',
   primaryColor: '#000000',
   accentColor: '#0066cc',
-  pageMargins: 1.0,
+  pageMargins: 1.0, sidebarRailWidth: 33,
   lineSpacing: 1.15,
   sectionOrder: ['certificates', 'awards', 'publications', 'interests', 'projects'],
   layout: 'single-column',
@@ -97,11 +97,47 @@ describe('ClassicTemplate nested education roles', () => {
   })
 })
 
+describe('ClassicTemplate projects rich text', () => {
+  it('renders bold markdown in project descriptions and highlights', () => {
+    const dataWithRichProjects: ResumeData = {
+      basics: { name: 'Jane Smith' },
+      projects: [{
+        name: 'CV Builder',
+        description: 'Built with **React** and TypeScript',
+        highlights: ['Shipped **v2** to production'],
+      }],
+    }
+    const { container } = render(<ClassicTemplate data={dataWithRichProjects} meta={{ ...meta, sectionOrder: ['projects'] }} />)
+    const strongs = Array.from(container.querySelectorAll('strong')).map(s => s.textContent)
+    expect(strongs).toContain('React')
+    expect(strongs).toContain('v2')
+  })
+})
+
 describe('ClassicTemplate legacy basics.url fallback', () => {
   it('renders the legacy basics.url as a link when profiles is empty', () => {
     const legacyData: ResumeData = { basics: { name: 'Jane', url: 'https://janelegacy.dev' } }
     const { container } = render(<ClassicTemplate data={legacyData} meta={meta} />)
     const link = container.querySelector('a[href="https://janelegacy.dev"]')
     expect(link).toBeTruthy()
+  })
+})
+
+describe('ClassicTemplate skills row wrapping', () => {
+  it('lets a long skill name wrap instead of squeezing the keywords column', () => {
+    const longSkillData: ResumeData = {
+      basics: { name: 'Jane Smith' },
+      skills: [{
+        name: 'AWS Certified Solutions Architect – Professional',
+        level: 'Expert',
+        keywords: ['AWS', 'Cloud Architecture', 'Terraform'],
+      }],
+    }
+    const { container } = render(<ClassicTemplate data={longSkillData} meta={{ ...meta, sectionOrder: ['skills'] }} />)
+    const nameCell = container.querySelector('[data-pv-section="skills"] [data-pv-entry="0"]')?.firstElementChild as HTMLElement
+    expect(nameCell).toBeTruthy()
+    expect(nameCell.textContent).toContain('AWS Certified Solutions Architect')
+    expect(nameCell.style.flexShrink).not.toBe('0')
+    expect(nameCell.style.whiteSpace).toBe('normal')
   })
 })

@@ -847,7 +847,7 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta, mode: ExportMode =
     const leftSections  = sectionOrder.filter(s => getColumnSide(s, ca, SIDEBAR_COLUMN_DEFAULTS) === 'left')
     const rightSections = sectionOrder.filter(s => getColumnSide(s, ca, SIDEBAR_COLUMN_DEFAULTS) === 'right')
 
-    const railWidthTwips = Math.round(usableWidthTwips * 0.33)
+    const railWidthTwips = Math.round(usableWidthTwips * ((meta.sidebarRailWidth ?? 33) / 100))
     const mainWidthTwips = usableWidthTwips - railWidthTwips
     const railPad = 220
     const mainGap = 360

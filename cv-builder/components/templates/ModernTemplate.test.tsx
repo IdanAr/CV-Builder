@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { ModernTemplate } from './ModernTemplate'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
@@ -10,7 +10,7 @@ const meta: ResumeMeta = {
   headerFontFamily: 'Calibri',
   primaryColor: '#000000',
   accentColor: '#0066cc',
-  pageMargins: 1.0,
+  pageMargins: 1.0, sidebarRailWidth: 33,
   lineSpacing: 1.15,
   sectionOrder: ['certificates', 'awards', 'publications', 'interests', 'projects'],
   layout: 'single-column',
@@ -39,6 +39,59 @@ describe('ModernTemplate new sections', () => {
   })
 })
 
+describe('ModernTemplate skills row wrapping', () => {
+  it('lets a long skill name wrap instead of squeezing the keywords column', () => {
+    const longSkillData: ResumeData = {
+      basics: { name: 'Jane Smith' },
+      skills: [{
+        name: 'AWS Certified Solutions Architect – Professional',
+        level: 'Expert',
+        keywords: ['AWS', 'Cloud Architecture', 'Terraform'],
+      }],
+    }
+    const { container } = render(<ModernTemplate data={longSkillData} meta={{ ...meta, sectionOrder: ['skills'] }} />)
+    const nameCell = container.querySelector('[data-pv-section="skills"] [data-pv-entry="0"]')?.firstElementChild as HTMLElement
+    expect(nameCell).toBeTruthy()
+    expect(nameCell.textContent).toContain('AWS Certified Solutions Architect')
+    expect(nameCell.style.flexShrink).not.toBe('0')
+    expect(nameCell.style.whiteSpace).toBe('normal')
+  })
+})
+
+describe('ModernTemplate single-column contact row', () => {
+  it('renders profile links in single-column layout', () => {
+    const dataWithProfiles: ResumeData = {
+      basics: {
+        name: 'Jane Smith',
+        email: 'jane@example.com',
+        profiles: [{ id: 'p1', network: 'LinkedIn', label: 'LinkedIn', url: 'https://linkedin.com/in/jane' }],
+      },
+    }
+    render(<ModernTemplate data={dataWithProfiles} meta={{ ...meta, layout: 'single-column' }} />)
+    expect(screen.getByRole('link', { name: /linkedin/i })).toHaveAttribute(
+      'href',
+      'https://linkedin.com/in/jane'
+    )
+  })
+
+  it('renders plain email/phone/location text with no profiles, without broken markup', () => {
+    const dataNoProfiles: ResumeData = {
+      basics: {
+        name: 'Jane Smith',
+        email: 'jane@example.com',
+        phone: '555-1234',
+        location: { city: 'Springfield', region: 'IL' },
+        profiles: [],
+      },
+    }
+    const { container } = render(<ModernTemplate data={dataNoProfiles} meta={{ ...meta, layout: 'single-column' }} />)
+    expect(screen.getByRole('link', { name: 'jane@example.com' })).toHaveAttribute('href', 'mailto:jane@example.com')
+    const text = container.textContent ?? ''
+    expect(text).toContain('555-1234')
+    expect(text).toContain('Springfield, IL')
+  })
+})
+
 describe('ModernTemplate multi-URL contact row', () => {
   it('renders each profile as a clickable link, using the label when present and the raw URL when not', () => {
     const dataWithProfiles: ResumeData = {
@@ -55,6 +108,23 @@ describe('ModernTemplate multi-URL contact row', () => {
     expect(links).toHaveLength(2)
     expect(links.find(a => a.href === 'https://janesmith.dev/')?.textContent).toBe('Portfolio')
     expect(links.find(a => a.href === 'https://github.com/janesmith')?.textContent).toBe('https://github.com/janesmith')
+  })
+})
+
+describe('ModernTemplate projects rich text', () => {
+  it('renders bold markdown in project descriptions and highlights', () => {
+    const dataWithRichProjects: ResumeData = {
+      basics: { name: 'Jane Smith' },
+      projects: [{
+        name: 'CV Builder',
+        description: 'Built with **React** and TypeScript',
+        highlights: ['Shipped **v2** to production'],
+      }],
+    }
+    const { container } = render(<ModernTemplate data={dataWithRichProjects} meta={{ ...meta, sectionOrder: ['projects'] }} />)
+    const strongs = Array.from(container.querySelectorAll('strong')).map(s => s.textContent)
+    expect(strongs).toContain('React')
+    expect(strongs).toContain('v2')
   })
 })
 

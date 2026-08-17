@@ -1,5 +1,6 @@
 import React from 'react'
 import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/renderer'
+import type { Style } from '@react-pdf/types'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, renderPdfRichText, renderPdfRichTextRuns, ensureHttps, pdfDocumentProps } from './pdf-utils'
 import { resolveProfiles } from '@/lib/basics-profiles'
@@ -12,6 +13,132 @@ import { SIDEBAR_TOKENS as T } from '@/lib/design/tokens'
 
 const PAGE_FONT_SIZE = 11
 
+// react-pdf's default hyphenation is `word => [word]` (@react-pdf/textkit):
+// a "word" (whitespace-delimited token) is one indivisible run unless a
+// custom callback supplies additional break points. Contact info in the rail
+// — emails, URLs — routinely has no whitespace at all, so at the narrow end
+// of the rail-width range (20%) a long one renders as a single glyph run
+// that overflows the column instead of wrapping.
+//
+// `hyphenationCallback` is NOT the fix here. Two independent things in
+// @react-pdf/textkit insert a literal "-" glyph into the rendered/extracted
+// text, and neither is avoidable by supplying a callback:
+//   1. A normal hyphenation break (a "penalty" node) always calls
+//      `insertGlyph(..., HYPHEN, ...)` when chosen as a line break.
+//   2. More surprising: when a single unsplit token ("box") is too wide to
+//      fit ANY line at all, textkit's line-breaker falls back to
+//      `applyBestFit`, which forces a break there too — and it goes through
+//      the exact same hyphen-inserting render path. This happens even with
+//      an explicit no-op `hyphenationCallback={(w) => [w]}` (verified by
+//      direct render — a callback returning the word unsplit still gets
+//      hyphen-split by this fallback once the box doesn't fit).
+// Splitting a raw email/URL through hyphenationCallback therefore corrupts
+// it (e.g. "...corporate-domain--name..." — a real hyphen doubled with one
+// the library injected) wherever it actually wraps, or even where a single
+// oversized chunk doesn't fit on its own line.
+//
+// Instead, long tokens are pre-chunked into pieces small enough to always
+// fit within the narrowest realistic rail content width, and rendered as
+// sibling <Text> elements inside a flex row that wraps (`flexWrap: 'wrap'`).
+// Yoga — the layout engine react-pdf uses for View/Text positioning —
+// reflows the chunks onto new lines exactly like ordinary word-wrap. Because
+// every chunk is guaranteed to fit, textkit's line-breaker (in either of the
+// two paths above) never has a reason to touch a chunk's own content, so no
+// separator character is ever inserted: the extracted/copyable text
+// reassembles byte-for-byte to the original string whether or not a break
+// actually happens (verified via real render + pdf-parse text extraction at
+// narrow/medium/wide rail widths — see sidebar-pdf-template.test.tsx).
+//
+// A4 page width in points, matching the `size="A4"` given to <Page> below.
+const A4_WIDTH_PT = 595.28
+// Conservative (deliberately wide) estimate of a Latin proportional glyph's
+// advance width as a fraction of font size — used only to decide *whether* a
+// token risks overflowing the rail, not to lay anything out. Measured against
+// this template's actual rendered glyph widths (Calibri-mapped body font at
+// 10pt), real average advance came out closer to ~4.5pt/char; 0.65 (6.5pt at
+// 10pt) is padded well above that so this estimate only ever over-, never
+// under-, predicts a token's width — the failure mode to avoid is silently
+// judging an actually-too-wide token as "fits", which would reintroduce the
+// overflow. Erring the other way just means chunking a token slightly before
+// it's strictly necessary.
+const CONTACT_CHAR_WIDTH_RATIO = 0.65
+function estimateTextWidthPt(text: string, fontSizePt: number): number {
+  return text.length * fontSizePt * CONTACT_CHAR_WIDTH_RATIO
+}
+// Chunk size used once a token IS being split, derived from the *actual*
+// available content width at render time rather than a fixed constant.
+// A fixed constant (this used to be a hardcoded `2`) was only ever verified
+// safe at the one configuration it was tuned against (pageMargins: 1.0,
+// sidebarRailWidth: 20%, usable width ~18pt) — pageMargins and
+// sidebarRailWidth are independently user-controllable (DesignPanel
+// sliders), and at other combinations (e.g. pageMargins: 1.5 with a 20%
+// rail) the available width can be smaller still, small enough that even a
+// 2-character chunk overflows and reproduces the same `applyBestFit`
+// hyphen-insertion fallback described above. Sizing the chunk from the
+// width that's actually available keeps every chunk within budget at any
+// margin/rail-width combination, while still using the widest chunk the
+// space allows (so ordinary configurations aren't chunked more finely than
+// necessary). `RAIL_MIN_CONTENT_WIDTH_PT` below puts a floor under
+// `availableWidthPt` itself, so this can never be handed a width so small
+// that even a 1-character chunk wouldn't fit.
+function computeChunkLength(availableWidthPt: number, fontSizePt: number): number {
+  return Math.max(1, Math.floor(availableWidthPt / (fontSizePt * CONTACT_CHAR_WIDTH_RATIO)))
+}
+const railContactRow: Style = { flexDirection: 'row', flexWrap: 'wrap' }
+// Passed to every chunk <Text> as a defensive no-op: without it, react-pdf
+// falls back to its own default hyphenation engine (@react-pdf/layout wires
+// the real English-pattern hyphenator from the `hyphen` package as the
+// default — not a no-op), which could otherwise still attempt to hyphenate a
+// chunk that happens to resemble a hyphenatable English fragment. Chunks
+// this small make that vanishingly unlikely in practice, but there is no
+// cost to foreclosing the path entirely.
+const noHyphenate = (word: string): string[] => [word]
+
+/** Splits `text` on whitespace (keeping the whitespace runs themselves as
+ * pieces, so real spaces between words are preserved verbatim) and further
+ * splits any non-whitespace token estimated too wide for `availableWidthPt`
+ * into fixed-size pieces; tokens that already fit stay whole. No characters
+ * are added or removed — `pieces.join('')` is always exactly `text`. */
+function chunkContactText(text: string, availableWidthPt: number, fontSizePt: number): string[] {
+  const chunkLength = computeChunkLength(availableWidthPt, fontSizePt)
+  const tokens = text.split(/(\s+)/).filter((t) => t.length > 0)
+  const pieces: string[] = []
+  for (const token of tokens) {
+    if (token.trim() === '' || estimateTextWidthPt(token, fontSizePt) <= availableWidthPt) {
+      pieces.push(token)
+      continue
+    }
+    for (let i = 0; i < token.length; i += chunkLength) {
+      pieces.push(token.slice(i, i + chunkLength))
+    }
+  }
+  return pieces
+}
+
+/** Renders rail contact text (email/phone/profile URL/location) so an
+ * unbroken token too wide for the rail can wrap without corrupting the text.
+ * Whether any chunking happens at all is decided against the rail's actual
+ * available width (`availableWidthPt`, from the document's own
+ * `sidebarRailWidth`/`pageMargins`) — a token that comfortably fits, like an
+ * ordinary email at the default 33% rail, renders exactly as before, as a
+ * single <Text>. Only a token estimated too wide for the *specific*
+ * document's rail triggers the chunked flex-row rendering. */
+function RailContactText({ text, style, availableWidthPt }: { text: string; style: Style; availableWidthPt: number }) {
+  const fontSizePt = typeof style.fontSize === 'number' ? style.fontSize : 10
+  const hasLongToken = text
+    .split(/\s+/)
+    .some((t) => t.length > 0 && estimateTextWidthPt(t, fontSizePt) > availableWidthPt)
+  if (!hasLongToken) return <Text style={style}>{text}</Text>
+  const pieces = chunkContactText(text, availableWidthPt, fontSizePt)
+  return (
+    <View style={railContactRow}>
+      {pieces.map((piece, i) => (
+        <Text key={i} style={style} hyphenationCallback={noHyphenate}>{piece}</Text>
+      ))}
+    </View>
+  )
+}
+
 export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; meta: ResumeMeta; title?: string }) {
   const { basics = {}, work = [], education = [], skills = [],
     certificates = [], awards = [], publications = [],
@@ -20,6 +147,25 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
   const bodyFont = mapToPdfFont(meta.fontFamily)
   const headFont = mapToPdfFont(meta.headerFontFamily)
   const margin = inToPt(Math.max(meta.pageMargins * 0.7, 0.5))
+  const railWidthPt = A4_WIDTH_PT * (meta.sidebarRailWidth ?? 33) / 100
+  // The rail's padding is normally just `margin` (like the main column's),
+  // but `margin` scales with pageMargins while railWidthPt is independently
+  // set by sidebarRailWidth (20-40%, both DesignPanel sliders). At a large
+  // enough pageMargins combined with a narrow enough rail, `margin * 2` can
+  // exceed railWidthPt outright, driving the rail's usable content width to
+  // zero or negative — collapsing the box that contact-text chunking (above)
+  // depends on having *some* positive width to fit into, no matter how small
+  // the chunk. RAIL_MIN_CONTENT_WIDTH_PT floors the content width instead:
+  // once the rail is narrow enough that full `margin` padding would eat into
+  // this floor, the rail's own padding (not the page-wide `margin`, which
+  // still applies to the main column) shrinks just enough to preserve it.
+  // 18pt matches the narrowest width this template was originally verified
+  // against (pageMargins: 1.0, sidebarRailWidth: 20%) — the floor never
+  // makes any previously-working configuration worse, it only kicks in for
+  // combinations narrower than that.
+  const RAIL_MIN_CONTENT_WIDTH_PT = 18
+  const railPadding = Math.max(0, Math.min(margin, (railWidthPt - RAIL_MIN_CONTENT_WIDTH_PT) / 2))
+  const railContactWidthPt = Math.max(0, railWidthPt - railPadding * 2)
   const sectionOrder = resolveSectionOrder(meta)
 
   const ca = meta.columnAssignment ?? {}
@@ -31,7 +177,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
     page: { fontFamily: bodyFont, fontSize: PAGE_FONT_SIZE, lineHeight: meta.lineSpacing, color: '#000000', flexDirection: 'row' },
 
     // Left rail
-    rail: { width: '33%', backgroundColor: meta.primaryColor, padding: margin, paddingTop: margin },
+    rail: { width: `${meta.sidebarRailWidth ?? 33}%`, backgroundColor: meta.primaryColor, padding: railPadding, paddingTop: railPadding },
     railName: { fontFamily: headFont, fontSize: T.nameSize, fontWeight: 'bold', color: '#ffffff', lineHeight: 1.1 },
     railLabel: { fontSize: T.labelSize, color: 'rgba(255,255,255,0.85)', marginTop: 2.25 },
     railContact: { marginTop: 9 },
@@ -538,15 +684,19 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
           <Text style={styles.railName}>{basics.name ?? ''}</Text>
           {basics.label ? <Text style={styles.railLabel}>{basics.label}</Text> : null}
           <View style={styles.railContact}>
-            {basics.email ? <Text style={styles.railContactLine}>{basics.email}</Text> : null}
-            {basics.phone ? <Text style={styles.railContactLine}>{basics.phone}</Text> : null}
+            {basics.email ? <RailContactText style={styles.railContactLine} text={basics.email} availableWidthPt={railContactWidthPt} /> : null}
+            {basics.phone ? <RailContactText style={styles.railContactLine} text={basics.phone} availableWidthPt={railContactWidthPt} /> : null}
             {resolveProfiles(basics).filter((p) => p.url).map((p) => (
               <Link key={p.id} src={ensureHttps(p.url!)} style={{ textDecoration: 'none' }}>
-                <Text style={styles.railContactLine}>{p.label || p.url}</Text>
+                <RailContactText style={styles.railContactLine} text={p.label || p.url!} availableWidthPt={railContactWidthPt} />
               </Link>
             ))}
             {[basics.location?.city, basics.location?.region].filter(Boolean).join(', ') ? (
-              <Text style={styles.railContactLine}>{[basics.location?.city, basics.location?.region].filter(Boolean).join(', ')}</Text>
+              <RailContactText
+                style={styles.railContactLine}
+                availableWidthPt={railContactWidthPt}
+                text={[basics.location?.city, basics.location?.region].filter(Boolean).join(', ')}
+              />
             ) : null}
           </View>
           {railSections.map(renderRailSection)}

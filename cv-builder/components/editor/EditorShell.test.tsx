@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, within, act } from '@testing-library/react'
+import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react'
 import { EditorShell } from './EditorShell'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import type { ResumeMeta } from '@/lib/schemas/resume.zod'
@@ -13,7 +13,11 @@ vi.mock('./PreviewTab', () => ({
 }))
 vi.mock('./DesignPanel', () => ({ DesignPanel: () => <div>DesignPanelContent</div> }))
 vi.mock('@/components/ats/AtsScorePanel', () => ({ AtsScorePanel: () => <div>AtsScorePanelContent</div> }))
-vi.mock('./ExportMenu', () => ({ ExportMenu: () => <button>Export</button> }))
+vi.mock('./ExportMenu', () => ({
+  ExportMenu: ({ onExport }: { onExport: (format: 'pdf' | 'docx', mode: 'designed' | 'ats') => void }) => (
+    <button onClick={() => onExport('pdf', 'designed')}>Export</button>
+  ),
+}))
 vi.mock('@/components/ui/UserProfileButton', () => ({ UserProfileButton: () => <div>Profile</div> }))
 
 const defaultMeta: ResumeMeta = {
@@ -22,7 +26,7 @@ const defaultMeta: ResumeMeta = {
   headerFontFamily: 'Calibri',
   primaryColor: '#000000',
   accentColor: '#0066cc',
-  pageMargins: 1.0,
+  pageMargins: 1.0, sidebarRailWidth: 33,
   lineSpacing: 1.15,
   sectionOrder: ['work', 'education', 'skills'],
   layout: 'single-column',
@@ -221,6 +225,61 @@ describe('EditorShell — mobile layout (below breakpoint)', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
     fireEvent.click(screen.getByRole('tab', { name: 'Design' }))
     expect(screen.getByText('DesignPanelContent')).toBeInTheDocument()
+  })
+})
+
+describe('EditorShell export flushes pending changes first', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('PATCHes the current (dirty) state before requesting the export, so the server has the latest edits', async () => {
+    const calls: string[] = []
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'PATCH') {
+        calls.push('patch')
+        return { ok: true, json: async () => ({ resume: {} }) }
+      }
+      calls.push('export')
+      return { ok: true, blob: async () => new Blob(['x'], { type: 'application/pdf' }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:mock'), revokeObjectURL: vi.fn() })
+
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    act(() => {
+      useResumeEditorStore.setState({
+        meta: { ...defaultMeta, sidebarRailWidth: 20 },
+        isDirty: true,
+      })
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }))
+
+    await waitFor(() => expect(calls).toEqual(['patch', 'export']))
+    const patchCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit)?.method === 'PATCH')
+    const patchBody = JSON.parse((patchCall![1] as RequestInit).body as string)
+    expect(patchBody.meta.sidebarRailWidth).toBe(20)
+    expect(useResumeEditorStore.getState().isDirty).toBe(false)
+  })
+
+  it('skips the PATCH and exports directly when there is nothing unsaved', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ({
+      ok: true,
+      blob: async () => new Blob(['x']),
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:mock'), revokeObjectURL: vi.fn() })
+
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    act(() => {
+      useResumeEditorStore.setState({ isDirty: false })
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(fetchMock.mock.calls[0][1]?.method).toBe('POST')
   })
 })
 

@@ -249,6 +249,100 @@ describe('UploadProgressModal', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
+  it('allows canceling while a stage is in progress, not just on error', () => {
+    const onCancel = vi.fn()
+    render(
+      <UploadProgressModal
+        open
+        filename="cv.pdf"
+        stage="extracting"
+        onRetry={() => {}}
+        onClose={() => {}}
+        onCancel={onCancel}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+    expect(onCancel).toHaveBeenCalled()
+  })
+
+  it('does not render a Cancel button while reading if no onCancel is provided', () => {
+    render(
+      <UploadProgressModal
+        open
+        filename="cv.pdf"
+        stage="reading"
+        onRetry={() => {}}
+        onClose={() => {}}
+      />
+    )
+    expect(screen.queryByRole('button', { name: /cancel/i })).not.toBeInTheDocument()
+  })
+
+  it('calls onCancel (not onClose) on Escape while reading, when onCancel is wired up', () => {
+    const onClose = vi.fn()
+    const onCancel = vi.fn()
+    render(
+      <UploadProgressModal
+        open
+        filename="cv.pdf"
+        stage="reading"
+        onRetry={() => {}}
+        onClose={onClose}
+        onCancel={onCancel}
+      />
+    )
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onCancel).toHaveBeenCalledTimes(1)
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('calls onCancel (not onClose) when the backdrop is clicked while extracting, when onCancel is wired up', () => {
+    const onClose = vi.fn()
+    const onCancel = vi.fn()
+    render(
+      <UploadProgressModal
+        open
+        filename="cv.pdf"
+        stage="extracting"
+        onRetry={() => {}}
+        onClose={onClose}
+        onCancel={onCancel}
+      />
+    )
+    fireEvent.mouseDown(screen.getByRole('dialog'))
+    expect(onCancel).toHaveBeenCalledTimes(1)
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('does not offer Cancel once the upload has reached "done"', () => {
+    render(
+      <UploadProgressModal
+        open
+        filename="cv.pdf"
+        stage="done"
+        onRetry={() => {}}
+        onClose={() => {}}
+        onCancel={() => {}}
+      />
+    )
+    expect(screen.queryByRole('button', { name: /cancel/i })).not.toBeInTheDocument()
+  })
+
+  it('moves focus to the Cancel button while reading, when onCancel is wired up', () => {
+    const onCancel = vi.fn()
+    render(
+      <UploadProgressModal
+        open
+        filename="cv.pdf"
+        stage="reading"
+        onRetry={() => {}}
+        onClose={() => {}}
+        onCancel={onCancel}
+      />
+    )
+    expect(screen.getByRole('button', { name: /cancel/i })).toHaveFocus()
+  })
+
   it('restores focus to whatever was focused before the dialog opened, once it closes', () => {
     const trigger = document.createElement('button')
     trigger.textContent = 'Upload CV'

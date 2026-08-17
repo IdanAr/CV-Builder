@@ -17,6 +17,14 @@ const TEMPLATES: Record<MarketingTemplateId, React.ComponentType<{ data: ResumeD
   sidebar: SidebarTemplate,
 }
 
+const TEMPLATE_LABELS: Record<MarketingTemplateId, string> = {
+  classic: 'Classic',
+  minimal: 'Minimal',
+  modern: 'Modern',
+  executive: 'Executive',
+  sidebar: 'Sidebar',
+}
+
 interface TemplateThumbnailProps {
   templateId: MarketingTemplateId
   /** Visible height of the clipped preview, in px. Defaults to a portrait card. */
@@ -25,6 +33,14 @@ interface TemplateThumbnailProps {
   'data-testid'?: string
   /** Overrides the sample meta's default (schema-default black/blue) colors. */
   colors?: { primaryColor: string; accentColor: string }
+  /**
+   * Whether this thumbnail is purely illustrative (e.g. a background visual next to
+   * real headline text) vs. the primary content the user came to see (e.g. a
+   * templates gallery). Decorative thumbnails are hidden from assistive tech via
+   * `aria-hidden`/`inert`; non-decorative ones get a descriptive `aria-label`
+   * instead. Defaults to `true` to preserve existing decorative call sites.
+   */
+  decorative?: boolean
 }
 
 /**
@@ -39,6 +55,7 @@ export function TemplateThumbnail({
   className = '',
   'data-testid': testId,
   colors,
+  decorative = true,
 }: TemplateThumbnailProps) {
   const Template = TEMPLATES[templateId]
   const meta = { ...sampleResumeMeta(templateId), ...colors }
@@ -53,8 +70,9 @@ export function TemplateThumbnail({
       data-testid={testId}
       className={`relative overflow-hidden rounded-lg bg-white shadow-lg ${className}`}
       style={{ height, width }}
-      aria-hidden="true"
-      inert
+      {...(decorative
+        ? { 'aria-hidden': 'true' as const, inert: true }
+        : { 'aria-label': `${TEMPLATE_LABELS[templateId]} template preview` })}
     >
       <div
         style={{

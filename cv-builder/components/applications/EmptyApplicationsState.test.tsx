@@ -8,15 +8,14 @@ describe('EmptyApplicationsState', () => {
     const onCreate = vi.fn()
     render(<EmptyApplicationsState onCreate={onCreate} />)
 
-    fireEvent.click(screen.getByRole('button', { name: '+ New Application' }))
+    fireEvent.click(screen.getByRole('button', { name: 'New Application' }))
     expect(onCreate).toHaveBeenCalled()
   })
 
-  it('points at the resume-based entry path, quoting the CV card button label verbatim', () => {
+  it('points at the resume-based entry path, referencing the CV card Track action', () => {
     render(<EmptyApplicationsState onCreate={vi.fn()} />)
     expect(screen.getByRole('link', { name: /My CVs/i })).toHaveAttribute('href', '/dashboard')
-    // Matches ResumeCard's actual visible button text ("📋 Track"), not a
-    // paraphrase — see components/ResumeCard.tsx.
-    expect(screen.getByText(/📋 Track/)).toBeInTheDocument()
+    // References ResumeCard's Track button generically (no emoji) — see components/ResumeCard.tsx.
+    expect(screen.getByText(/Track.*on any CV card/)).toBeInTheDocument()
   })
 })

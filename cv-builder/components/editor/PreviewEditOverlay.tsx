@@ -265,7 +265,14 @@ function SectionOverlayGroup({
   onAddEntry: (sectionKey: string) => void
 }) {
   const [hovered, setHovered] = useState(false)
-  const visible = hovered || dragActive
+  // Keyboard-focus equivalent of `hovered`: a keyboard user Tabbing to a
+  // handle or the add-entry button never fires mouseenter, so without this
+  // the controls stay at opacity 0 while focused — invisible but fully
+  // functional (WCAG 2.4.7 Focus Visible violation). React's onFocus/onBlur
+  // bubble (unlike native focus/blur), so handlers on this same wrapper
+  // mirror onMouseEnter/onMouseLeave for the whole group.
+  const [focused, setFocused] = useState(false)
+  const visible = hovered || dragActive || focused
 
   const lastEntryRect = entryRects.reduce<EntryRectEntry | null>(
     (last, r) => (!last || r.top > last.top ? r : last),
@@ -303,6 +310,17 @@ function SectionOverlayGroup({
       data-testid={`pv-section-group-${sectionKey}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onFocus={() => setFocused(true)}
+      onBlur={(e) => {
+        // Only clear focus-visibility when focus is truly leaving the group
+        // — e.g. Tabbing from the section handle to its own entry handle or
+        // add-entry button (all inside this same wrapper) must not flicker
+        // the group invisible for a frame between the blur and the next
+        // element's focus.
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setFocused(false)
+        }
+      }}
       style={{
         position: 'absolute',
         top: sectionRect.top,
@@ -418,6 +436,9 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
   const { sectionRects, entryRects } = useMeasuredRects(innerRef, wrapperRef, [sectionOrder, data, scale])
   const [activeLabel, setActiveLabel] = useState<string | null>(null)
   const [addSectionHovered, setAddSectionHovered] = useState(false)
+  // Keyboard-focus counterpart to `addSectionHovered` — see the matching
+  // `focused` state in SectionOverlayGroup for the full rationale.
+  const [addSectionFocused, setAddSectionFocused] = useState(false)
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const requestFocus = useResumeEditorStore((s) => s.requestFocus)
   const addCustomSection = useResumeEditorStore((s) => s.addCustomSection)
@@ -488,7 +509,7 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
     }
   }
 
-  const addSectionVisible = addSectionHovered || addMenuOpen
+  const addSectionVisible = addSectionHovered || addMenuOpen || addSectionFocused
 
   return (
     <DndContext collisionDetection={sameKindClosestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -519,6 +540,12 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
           <div
             onMouseEnter={() => setAddSectionHovered(true)}
             onMouseLeave={() => setAddSectionHovered(false)}
+            onFocus={() => setAddSectionFocused(true)}
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                setAddSectionFocused(false)
+              }
+            }}
             style={{ position: 'absolute', top, left: 0, right: 0, minHeight: 40 }}
           >
             <div style={{ ...controlsVisibilityStyle(addSectionVisible), position: 'relative' }}>
@@ -529,13 +556,23 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
                 aria-expanded={addMenuOpen}
                 onClick={() => setAddMenuOpen((o) => !o)}
                 style={{
+                  // Mirrors EditTab.tsx's own "+ Add Section" emphasis
+                  // (border-2 border-dashed border-indigo-300, font-semibold,
+                  // shadow-[0_0_14px_-2px_rgba(99,102,241,0.45)]) so both entry
+                  // points for this action read as the same feature. Padding/
+                  // font-size stay smaller than EditTab's — this button lives
+                  // inside a hover/focus-revealed overlay on top of the scaled
+                  // live preview, not a static full-width accordion row.
                   padding: '4px 10px',
-                  borderRadius: 6,
-                  border: '1px dashed rgba(99,102,241,0.5)',
-                  background: 'rgba(99,102,241,0.08)',
-                  color: '#4338ca',
+                  borderRadius: 8,
+                  border: '2px dashed rgba(165,180,252,0.9)',
+                  background: 'rgba(238,242,255,0.6)',
+                  color: '#6366f1',
                   fontSize: 12,
+                  fontWeight: 600,
+                  boxShadow: '0 0 14px -2px rgba(99,102,241,0.45)',
                   cursor: 'pointer',
+                  transition: 'all 150ms ease',
                 }}
               >
                 + Add Section

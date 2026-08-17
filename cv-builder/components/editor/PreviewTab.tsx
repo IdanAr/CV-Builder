@@ -6,6 +6,7 @@ import { useDebounce } from '@/lib/hooks/use-debounce'
 import { usePdfPagination } from '@/lib/hooks/use-pdf-pagination'
 import { resolveAnchorTops, type ResolvedBreak } from '@/lib/preview-anchor'
 import { PreviewEditOverlay } from './PreviewEditOverlay'
+import { Popover } from '@/components/ui/Popover'
 import { ClassicTemplate } from '@/components/templates/ClassicTemplate'
 import { ModernTemplate } from '@/components/templates/ModernTemplate'
 import { MinimalTemplate } from '@/components/templates/MinimalTemplate'
@@ -214,58 +215,61 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
             data-testid="zoom-out"
             onClick={handleZoomOut}
             disabled={scale <= MIN_ZOOM}
-            className="flex items-center justify-center min-h-[28px] min-w-[28px] text-sm rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center justify-center min-h-[40px] min-w-[40px] text-sm rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             −
           </button>
-          <div className="relative">
-            <button
-              type="button"
-              aria-haspopup="listbox"
-              aria-expanded={zoomMenuOpen}
-              data-testid="zoom-percentage"
-              onClick={() => setZoomMenuOpen((v) => !v)}
-              className="flex items-center justify-center min-h-[28px] px-2 text-xs rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors tabular-nums"
-            >
-              {zoomOverride === null ? 'Fit' : `${Math.round(zoomOverride * 100)}%`}
-            </button>
-            {zoomMenuOpen && (
-              <div
-                role="listbox"
-                data-testid="zoom-menu"
-                className="absolute right-0 bottom-full mb-1 z-30 bg-white border border-indigo-200 rounded shadow-md py-1 min-w-[80px]"
+          <Popover
+            open={zoomMenuOpen}
+            onOpenChange={setZoomMenuOpen}
+            trigger={
+              <button
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={zoomMenuOpen}
+                data-testid="zoom-percentage"
+                onClick={() => setZoomMenuOpen((v) => !v)}
+                className="flex items-center justify-center min-h-[28px] px-2 text-xs rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors tabular-nums"
               >
-                {ZOOM_PRESETS.map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    role="option"
-                    aria-selected={zoomOverride === p}
-                    onClick={() => handlePresetSelect(p)}
-                    className="block w-full text-left px-3 py-1 text-xs text-indigo-600 hover:bg-indigo-50"
-                  >
-                    {Math.round(p * 100)}%
-                  </button>
-                ))}
+                {zoomOverride === null ? 'Fit' : `${Math.round(zoomOverride * 100)}%`}
+              </button>
+            }
+          >
+            <div
+              role="listbox"
+              data-testid="zoom-menu"
+              className="bg-white border border-indigo-200 rounded shadow-md py-1 min-w-[80px]"
+            >
+              {ZOOM_PRESETS.map((p) => (
                 <button
+                  key={p}
                   type="button"
                   role="option"
-                  aria-selected={zoomOverride === null}
-                  onClick={() => handlePresetSelect(null)}
-                  className="block w-full text-left px-3 py-1 text-xs text-indigo-600 hover:bg-indigo-50 border-t border-indigo-100"
+                  aria-selected={zoomOverride === p}
+                  onClick={() => handlePresetSelect(p)}
+                  className="block w-full text-left px-3 py-1 text-xs text-indigo-600 hover:bg-indigo-50"
                 >
-                  Fit
+                  {Math.round(p * 100)}%
                 </button>
-              </div>
-            )}
-          </div>
+              ))}
+              <button
+                type="button"
+                role="option"
+                aria-selected={zoomOverride === null}
+                onClick={() => handlePresetSelect(null)}
+                className="block w-full text-left px-3 py-1 text-xs text-indigo-600 hover:bg-indigo-50 border-t border-indigo-100"
+              >
+                Fit
+              </button>
+            </div>
+          </Popover>
           <button
             type="button"
             aria-label="Zoom in"
             data-testid="zoom-in"
             onClick={handleZoomIn}
             disabled={scale >= MAX_ZOOM}
-            className="flex items-center justify-center min-h-[28px] min-w-[28px] text-sm rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center justify-center min-h-[40px] min-w-[40px] text-sm rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             +
           </button>

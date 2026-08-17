@@ -8,7 +8,7 @@ import type { ResumeMeta } from '@/lib/schemas/resume.zod'
 const defaultMeta: ResumeMeta = {
   templateId: 'classic', fontFamily: 'Calibri', headerFontFamily: 'Calibri',
   primaryColor: '#000000', accentColor: '#0066cc',
-  pageMargins: 1.0, lineSpacing: 1.15, sectionOrder: [], layout: 'single-column',
+  pageMargins: 1.0, sidebarRailWidth: 33, lineSpacing: 1.15, sectionOrder: [], layout: 'single-column',
   columnAssignment: {}, excludedAtsKeywords: [],
 }
 
@@ -107,6 +107,16 @@ it('adds and removes a highlight', () => {
   expect(useResumeEditorStore.getState().data.projects?.[0].highlights?.[0]).toBe('Shipped v1')
   fireEvent.click(screen.getByLabelText('Remove highlight'))
   expect(useResumeEditorStore.getState().data.projects?.[0].highlights).toHaveLength(0)
+})
+
+it('renders an AI Suggest button next to the description field and next to each highlight', () => {
+  useResumeEditorStore.setState({
+    ...useResumeEditorStore.getState(),
+    data: { projects: [{ name: 'CV Builder', description: 'An AI CV builder', highlights: ['Shipped v1'], keywords: [], startDate: '', endDate: '', url: '' }] },
+  })
+  render(<ProjectsForm />)
+  const aiButtons = screen.getAllByRole('button', { name: /AI-written suggestion/i })
+  expect(aiButtons).toHaveLength(2)
 })
 
 it('adds and removes a keyword chip', () => {

@@ -42,6 +42,10 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
     color: '#fff',
     textTransform: 'uppercase',
     letterSpacing: '0.1em',
+    // Deliberately distinct from the main column's T.sectionTitleMarginTop
+    // (12pt/16px) — see the "differently-sized section title" comment on
+    // that token in lib/design/tokens.ts: the rail's own title uses 13.5pt
+    // (18px), with no slot in the shared token shape for a second size.
     marginTop: '18px',
     marginBottom: '7px',
     paddingBottom: '3px',
@@ -246,10 +250,10 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
                     {formatDateRange(p.startDate, p.endDate)}
                   </span>
                 </div>
-                {p.description && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{p.description}</div>}
+                {p.description && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(p.description)}</div>}
                 {(p.highlights ?? []).length > 0 && (
                   <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt', listStyleType: 'disc' }}>
-                    {(p.highlights ?? []).map((h, hi) => <li key={hi}>{h}</li>)}
+                    {(p.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
                 {(p.keywords ?? []).length > 0 && (
@@ -269,7 +273,7 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
     <div style={page}>
       {/* Left rail */}
       <div style={{
-        flex: '0 0 33%',
+        flex: `0 0 ${meta.sidebarRailWidth ?? 33}%`,
         background: meta.primaryColor,
         color: '#fff',
         padding: `${pad}px`,

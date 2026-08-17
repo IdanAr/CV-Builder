@@ -17,7 +17,7 @@ function makeMeta(overrides: Partial<ResumeMeta> = {}): ResumeMeta {
   return {
     templateId: 'classic', fontFamily: 'Calibri', headerFontFamily: 'Calibri',
     primaryColor: '#1e3a5f', accentColor: '#0066cc',
-    pageMargins: 0.75, lineSpacing: 1.1,
+    pageMargins: 0.75, sidebarRailWidth: 33, lineSpacing: 1.1,
     sectionOrder: ['work', 'education', 'skills', 'languages', 'custom:extra1'],
     layout: 'single-column', columnAssignment: {}, excludedAtsKeywords: [],
     ...overrides,

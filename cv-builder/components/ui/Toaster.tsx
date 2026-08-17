@@ -104,14 +104,29 @@ function ToastItem({ toast: t }: { toast: Toast }) {
 export function Toaster() {
   const toasts = useToastStore((s) => s.toasts)
   return (
+    // Single persistent polite region, mounted for the Toaster's whole lifetime
+    // (not created fresh per toast) — success/info toasts are appended/removed
+    // as its children directly, exactly as before. Error toasts additionally get
+    // an individually-mounted role="alert"/aria-live="assertive" wrapper nested
+    // inside this region: nested live regions are explicitly supported by the
+    // ARIA spec (the closest ancestor live region governs its own subtree), so
+    // this raises error toasts to assertive without disturbing the outer
+    // region's reliability for success/info, and needs no layout changes —
+    // toasts stay flat children of the flex-col list in chronological order.
     <div
       role="status"
       aria-live="polite"
       className="pointer-events-none fixed bottom-4 right-4 z-[100] flex flex-col gap-2"
     >
-      {toasts.map((t) => (
-        <ToastItem key={t.id} toast={t} />
-      ))}
+      {toasts.map((t) =>
+        t.variant === 'error' ? (
+          <div key={t.id} role="alert" aria-live="assertive">
+            <ToastItem toast={t} />
+          </div>
+        ) : (
+          <ToastItem key={t.id} toast={t} />
+        )
+      )}
     </div>
   )
 }

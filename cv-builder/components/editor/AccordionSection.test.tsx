@@ -109,6 +109,38 @@ describe('AccordionSection', () => {
     expect(onToggle).not.toHaveBeenCalled()
   })
 
+  it('clicking the header area outside the input toggles the accordion (custom section)', () => {
+    const onToggle = vi.fn()
+    render(
+      <AccordionSection title="Custom Section" isOpen={false} onToggle={onToggle} onRename={vi.fn()}>
+        {null}
+      </AccordionSection>
+    )
+    const input = screen.getByRole('textbox')
+    // The wrapper carries its own padding (not covered by the input), so a
+    // click landing on the wrapper itself but not on the input is a real,
+    // physically reachable scenario in the rendered DOM, not just a
+    // programmatic click on a container that the input fully occupies.
+    fireEvent.click(input.parentElement as HTMLElement)
+    expect(onToggle).toHaveBeenCalledOnce()
+  })
+
+  it('clicking directly on the rename input does not toggle the accordion, only focuses it for editing', () => {
+    const onToggle = vi.fn()
+    render(
+      <AccordionSection title="Custom Section" isOpen={false} onToggle={onToggle} onRename={vi.fn()}>
+        {null}
+      </AccordionSection>
+    )
+    const input = screen.getByRole('textbox')
+    // A user clicking into the field to rename it must not also collapse or
+    // expand the section as a side effect — the input fills essentially all
+    // of the wrapper's clickable area, so a click "on the wrapper" in
+    // practice usually means a click on the input.
+    fireEvent.click(input)
+    expect(onToggle).not.toHaveBeenCalled()
+  })
+
   it('does not render delete button when onDelete is not provided', () => {
     render(
       <AccordionSection title="Section" isOpen={false} onToggle={vi.fn()}>
@@ -150,5 +182,32 @@ describe('AccordionSection', () => {
     const titleButton = screen.getByText('Work Experience').closest('button')
     // Badge must NOT be nested inside the title toggle button anymore
     expect(titleButton?.contains(badge)).toBe(false)
+  })
+
+  it('drag handle becomes visible when focused via keyboard', () => {
+    const dragHandleProps = {
+      listeners: undefined,
+      attributes: {} as DraggableAttributes,
+      setNodeRef: () => {},
+      transform: null,
+      transition: undefined,
+      isDragging: false,
+    }
+    render(
+      <AccordionSection title="Work Experience" isOpen={false} onToggle={vi.fn()} dragHandleProps={dragHandleProps}>
+        {null}
+      </AccordionSection>
+    )
+    const dragHandle = screen.getByRole('button', { name: /drag to reorder/i })
+
+    // Initially, drag handle should have opacity-0
+    expect(dragHandle.className).toContain('opacity-0')
+
+    // Focus the drag handle
+    dragHandle.focus()
+    expect(document.activeElement).toBe(dragHandle)
+
+    // When focused, the ancestor group has focus-within, so opacity-100 class should apply
+    expect(dragHandle.className).toContain('group-focus-within:opacity-100')
   })
 })

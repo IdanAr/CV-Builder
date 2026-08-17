@@ -24,7 +24,7 @@ export function TemplatesShowcaseSection() {
           durationSeconds={45}
           items={TEMPLATES.map(({ id, label, colors }) => (
             <div key={id} className="text-center">
-              <TemplateThumbnail templateId={id} height={360} colors={colors} />
+              <TemplateThumbnail templateId={id} height={360} colors={colors} decorative={false} />
               <p className="mt-3 text-sm font-medium text-gray-700">{label}</p>
             </div>
           ))}
@@ -35,7 +35,7 @@ export function TemplatesShowcaseSection() {
           href="/signin"
           className="inline-block rounded-lg border border-indigo-200 bg-white/70 px-6 py-3 text-base font-semibold text-indigo-700 backdrop-blur-xl transition hover:bg-indigo-50"
         >
-          Preview All Templates
+          Sign Up to Browse Templates
         </Link>
       </div>
     </section>

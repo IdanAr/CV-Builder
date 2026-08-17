@@ -14,6 +14,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { GripVertical, X } from 'lucide-react'
 import type { BoardColumn, CustomFieldValue } from '@/lib/schemas/application.zod'
 import type { ApplicationRow, ResumeOption } from '@/lib/applications/types'
 import { getCellValue, isColumnEditable } from '@/lib/applications/cells'
@@ -118,7 +119,7 @@ function SortableHeaderCell({
         {...listeners}
         className="shrink-0 cursor-grab touch-none rounded px-0.5 text-indigo-300 hover:text-indigo-500 active:cursor-grabbing"
       >
-        ⠿
+        <GripVertical className="h-4 w-4" aria-hidden="true" />
       </button>
       <div className="min-w-0 flex-1">{children}</div>
     </div>
@@ -168,7 +169,7 @@ function SortableRow({
               : 'cursor-grab text-indigo-300 opacity-0 transition group-hover/row:opacity-100 hover:text-indigo-500 focus:opacity-100 active:cursor-grabbing'
           }`}
         >
-          ⠿
+          <GripVertical className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
       {children}
@@ -226,7 +227,7 @@ export default function ApplicationsTable({
         {/* Header (columns are drag-reorderable) */}
         <DndContext collisionDetection={closestCenter} onDragEnd={handleColumnDragEnd}>
           <SortableContext items={ordered.map((c) => c.id)} strategy={horizontalListSortingStrategy}>
-            <div role="row" className="flex border-b border-indigo-100 bg-white/70">
+            <div role="row" className="sticky top-0 z-10 flex border-b border-indigo-100 bg-white">
               <div role="columnheader" style={{ width: GRIP_COLUMN_WIDTH }} className="shrink-0" />
               {ordered.map((column) => (
                 <SortableHeaderCell key={column.id} column={column}>
@@ -283,7 +284,7 @@ export default function ApplicationsTable({
                     className="rounded px-1.5 py-0.5 text-xs text-red-400 opacity-0 transition group-hover/row:opacity-100 hover:bg-red-50 hover:text-red-600 focus:opacity-100"
                     title="Delete"
                   >
-                    ✕
+                    <X className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
                 </div>
               </SortableRow>

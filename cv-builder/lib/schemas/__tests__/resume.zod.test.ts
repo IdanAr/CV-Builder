@@ -73,6 +73,26 @@ describe('ResumeMetaSchema', () => {
     const result = ResumeMetaSchema.safeParse({ layout: 'three-column' })
     expect(result.success).toBe(false)
   })
+
+  it('defaults sidebarRailWidth to 33 when omitted', () => {
+    const result = ResumeMetaSchema.parse({})
+    expect(result.sidebarRailWidth).toBe(33)
+  })
+
+  it('accepts sidebarRailWidth at the 20-40 range extremes', () => {
+    expect(ResumeMetaSchema.safeParse({ sidebarRailWidth: 20 }).success).toBe(true)
+    expect(ResumeMetaSchema.safeParse({ sidebarRailWidth: 40 }).success).toBe(true)
+  })
+
+  it('rejects sidebarRailWidth below 20', () => {
+    const result = ResumeMetaSchema.safeParse({ sidebarRailWidth: 19 })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects sidebarRailWidth above 40', () => {
+    const result = ResumeMetaSchema.safeParse({ sidebarRailWidth: 41 })
+    expect(result.success).toBe(false)
+  })
 })
 
 describe('CreateResumeSchema', () => {
@@ -238,6 +258,21 @@ describe('ResumeMetaPatchSchema — excludedAtsKeywords', () => {
     if (result.success) {
       expect(result.data.meta?.excludedAtsKeywords).toEqual(['strong'])
     }
+  })
+})
+
+describe('ResumeMetaPatchSchema — sidebarRailWidth', () => {
+  it('accepts a partial patch containing only sidebarRailWidth', () => {
+    const result = PatchResumeSchema.safeParse({ meta: { sidebarRailWidth: 25 } })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.meta?.sidebarRailWidth).toBe(25)
+    }
+  })
+
+  it('rejects a sidebarRailWidth patch value outside 20-40', () => {
+    expect(PatchResumeSchema.safeParse({ meta: { sidebarRailWidth: 10 } }).success).toBe(false)
+    expect(PatchResumeSchema.safeParse({ meta: { sidebarRailWidth: 50 } }).success).toBe(false)
   })
 })
 

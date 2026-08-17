@@ -27,4 +27,9 @@ describe('TestimonialsSection', () => {
       expect(rating.querySelectorAll('svg')).toHaveLength(5)
     }
   })
+
+  it('renders a beta feedback disclaimer below the section heading', () => {
+    render(<TestimonialsSection />)
+    expect(screen.getByText(/based on early beta feedback/i)).toBeInTheDocument()
+  })
 })

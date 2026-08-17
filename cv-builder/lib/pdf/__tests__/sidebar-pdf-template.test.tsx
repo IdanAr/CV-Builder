@@ -2,12 +2,25 @@ import React from 'react'
 import { describe, it, expect } from 'vitest'
 import { SidebarPdfTemplate } from '../templates/SidebarPdfTemplate'
 import { ExecutivePdfTemplate } from '../templates/ExecutivePdfTemplate'
+import { renderToGlyphRuns, renderToBufferAndRuns, findBaselineCollisions } from './pdf-geometry'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
+import { PDFParse } from 'pdf-parse'
+
+/** Extracted PDF text, stripped of pdf-parse's own line breaks/whitespace and
+ * its "-- N of M --" page-footer marker, so it can be compared directly
+ * against the original unbroken contact string. A byte-identical match here
+ * proves no character (hyphen, space, zero-width space, or otherwise) was
+ * inserted by whatever wrapping mechanism produced the line breaks. */
+async function extractStrippedText(buffer: Buffer): Promise<string> {
+  const parser = new PDFParse({ data: buffer })
+  const { text } = await parser.getText()
+  return text.replace(/-- \d+ of \d+ --/g, '').replace(/\s+/g, '')
+}
 
 const baseMeta: ResumeMeta = {
   templateId: 'sidebar', fontFamily: 'Calibri', headerFontFamily: 'Calibri',
   primaryColor: '#1e3a5f', accentColor: '#0066cc',
-  pageMargins: 1.0, lineSpacing: 1.15,
+  pageMargins: 1.0, sidebarRailWidth: 33, lineSpacing: 1.15,
   sectionOrder: ['work', 'education', 'skills', 'languages'],
   layout: 'two-column', columnAssignment: {}, excludedAtsKeywords: [],
 }
@@ -115,6 +128,150 @@ describe('SidebarPdfTemplate rail section-title separator', () => {
     const found = styles.some((s) => s.borderBottomColor === '#ff00aa')
     expect(found).toBe(true)
   })
+})
+
+describe('SidebarPdfTemplate rail width', () => {
+  it('renders the rail at meta.sidebarRailWidth as a width percentage', () => {
+    const { rail } = getPageColumns({ ...baseMeta, sidebarRailWidth: 25 })
+    expect((rail.props!.style as { width: string }).width).toBe('25%')
+  })
+
+  it('renders the rail at 40% at the top of the allowed range', () => {
+    const { rail } = getPageColumns({ ...baseMeta, sidebarRailWidth: 40 })
+    expect((rail.props!.style as { width: string }).width).toBe('40%')
+  })
+
+  it('defaults to a 33% rail when meta.sidebarRailWidth is missing (pre-existing résumé)', () => {
+    const { sidebarRailWidth: _unused, ...metaWithoutRailWidth } = baseMeta
+    void _unused
+    const { rail } = getPageColumns(metaWithoutRailWidth as ResumeMeta)
+    expect((rail.props!.style as { width: string }).width).toBe('33%')
+  })
+
+  // Element-tree style assertions above prove the width prop is wired; this
+  // renders an actual PDF (via pdfjs) at both range extremes to confirm the
+  // document still parses without error, and that the main column — which
+  // starts immediately after the rail — visibly shifts right as the rail
+  // widens from 20% to 40%. (Default columnAssignment puts "Work Experience"
+  // in the main column; see the SidebarPdfTemplate default in getColumnSide.)
+  it('actually renders and parses at both range extremes (20% and 40%), with the main column starting further right at the wider extreme', async () => {
+    const mainHeadingXByWidth: Record<number, number> = {}
+    for (const sidebarRailWidth of [20, 40]) {
+      const runs = await renderToGlyphRuns(
+        SidebarPdfTemplate({ data, meta: { ...baseMeta, sidebarRailWidth } })
+      )
+      expect(runs.length).toBeGreaterThan(0)
+      const mainHeading = runs.find((r) => r.str === 'WORK EXPERIENCE')
+      expect(mainHeading, `no WORK EXPERIENCE heading found at sidebarRailWidth=${sidebarRailWidth}`).toBeTruthy()
+      mainHeadingXByWidth[sidebarRailWidth] = mainHeading!.x
+    }
+    expect(mainHeadingXByWidth[40]).toBeGreaterThan(mainHeadingXByWidth[20])
+  })
+})
+
+describe('SidebarPdfTemplate rail contact text fit at 20% rail width', () => {
+  it('wraps a long unbroken email into multiple glyph runs instead of one run that overflows the rail, without corrupting the extracted text', async () => {
+    const email = 'jane.smith.principal.architect@a-very-long-corporate-domain-name.example.com'
+    const dataWithLongEmail: ResumeData = {
+      basics: { name: 'Jane Smith', email },
+    }
+    const meta = { ...baseMeta, sidebarRailWidth: 20 }
+    const { buffer, runs } = await renderToBufferAndRuns(SidebarPdfTemplate({ data: dataWithLongEmail, meta }))
+    const railWidthPt = 595.28 * 0.20 // A4 width * 20% rail
+
+    // Every glyph run belonging to the rail (left column) must fit inside the
+    // rail width. Unlike an `.includes()` substring filter, this does NOT
+    // silently drop runs that contain characters absent from the original
+    // string (e.g. an injected hyphen) — every rail run is checked.
+    const railRuns = runs.filter((r) => r.x < railWidthPt)
+    expect(railRuns.length).toBeGreaterThan(0)
+    for (const run of railRuns) {
+      expect(run.x + run.width, `run "${run.str}" must not overflow the ${railWidthPt}pt rail`).toBeLessThanOrEqual(railWidthPt)
+    }
+
+    // The extracted/copyable text must reassemble to exactly the original
+    // email — no inserted hyphen, space, or zero-width character anywhere,
+    // whether or not a wrap actually occurred at a given point.
+    const stripped = await extractStrippedText(buffer)
+    expect(stripped).toContain(email)
+  })
+
+  it('wraps a long unbroken profile URL into multiple glyph runs instead of one run that overflows the rail, without corrupting the extracted text', async () => {
+    const url = 'https://a-very-long-portfolio-domain-name.example.com/jane-smith/portfolio'
+    const dataWithLongUrl: ResumeData = {
+      basics: { name: 'Jane Smith', profiles: [{ id: 'p1', url }] },
+    }
+    const meta = { ...baseMeta, sidebarRailWidth: 20 }
+    const { buffer, runs } = await renderToBufferAndRuns(SidebarPdfTemplate({ data: dataWithLongUrl, meta }))
+    const railWidthPt = 595.28 * 0.20
+
+    const railRuns = runs.filter((r) => r.x < railWidthPt)
+    expect(railRuns.length).toBeGreaterThan(0)
+    for (const run of railRuns) {
+      expect(run.x + run.width, `run "${run.str}" must not overflow the ${railWidthPt}pt rail`).toBeLessThanOrEqual(railWidthPt)
+    }
+
+    const stripped = await extractStrippedText(buffer)
+    expect(stripped).toContain(url)
+  })
+
+  it('does not alter the extracted text of a long email at wider rail widths (33%, 40%), where wrapping may not even be needed', async () => {
+    const email = 'jane.smith.principal.architect@a-very-long-corporate-domain-name.example.com'
+    const dataWithLongEmail: ResumeData = { basics: { name: 'Jane Smith', email } }
+    for (const sidebarRailWidth of [33, 40]) {
+      const { buffer } = await renderToBufferAndRuns(
+        SidebarPdfTemplate({ data: dataWithLongEmail, meta: { ...baseMeta, sidebarRailWidth } })
+      )
+      const stripped = await extractStrippedText(buffer)
+      expect(stripped, `sidebarRailWidth=${sidebarRailWidth}`).toContain(email)
+    }
+  })
+
+  it('leaves ordinary short contact text (well under the chunk threshold) rendered as a single glyph run, unchanged from before', async () => {
+    const runs = await renderToGlyphRuns(SidebarPdfTemplate({ data, meta: baseMeta }))
+    const phoneRun = runs.find((r) => r.str === data.basics!.phone)
+    expect(phoneRun, 'phone number should render as one intact glyph run').toBeTruthy()
+  })
+})
+
+describe('SidebarPdfTemplate rail contact text fit across the full pageMargins x sidebarRailWidth matrix', () => {
+  // The prior fix (CONTACT_BREAK_CHUNK) was only verified at pageMargins: 1.0.
+  // The rail's horizontal padding scales with pageMargins while the rail's
+  // width is independently set by sidebarRailWidth — at high pageMargins
+  // combined with a narrow rail, the padding derived from pageMargins can
+  // consume more than the rail's own width, collapsing the contact-text
+  // content box toward zero regardless of how small a fixed chunk size is.
+  // Sweep the full range of both controls (their extremes plus one interior
+  // point each) and, at every combination, verify via a real render + text
+  // extraction that no glyph run collides with another (no overlapping runs
+  // stacked at the same position) and that the extracted text reassembles
+  // byte-for-byte to the original unbroken email (no injected hyphen or
+  // other corrupting character).
+  const email = 'jane.smith.principal.architect@a-very-long-corporate-domain-name.example.com'
+  const dataWithLongEmail: ResumeData = { basics: { name: 'Jane Smith', email } }
+
+  for (const pageMargins of [0.5, 1.0, 1.5]) {
+    for (const sidebarRailWidth of [20, 30, 40]) {
+      it(`does not corrupt or overlap contact text at pageMargins=${pageMargins}, sidebarRailWidth=${sidebarRailWidth}`, async () => {
+        const meta = { ...baseMeta, pageMargins, sidebarRailWidth }
+        const { buffer, runs } = await renderToBufferAndRuns(
+          SidebarPdfTemplate({ data: dataWithLongEmail, meta })
+        )
+
+        const collisions = findBaselineCollisions(runs)
+        expect(
+          collisions.length,
+          `found ${collisions.length} overlapping glyph run(s) at pageMargins=${pageMargins}, sidebarRailWidth=${sidebarRailWidth}: ${JSON.stringify(collisions.slice(0, 3))}`
+        ).toBe(0)
+
+        const stripped = await extractStrippedText(buffer)
+        expect(
+          stripped,
+          `extracted text corrupted at pageMargins=${pageMargins}, sidebarRailWidth=${sidebarRailWidth}`
+        ).toContain(email)
+      })
+    }
+  }
 })
 
 describe('ExecutivePdfTemplate name band', () => {

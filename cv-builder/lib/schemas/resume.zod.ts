@@ -204,6 +204,7 @@ export const ResumeMetaSchema = z.object({
   accentColor: z.string().default('#0066cc'),
   pageMargins: z.number().min(0.5).max(1.5).default(1.0),
   lineSpacing: z.number().min(1.0).max(1.15).default(1.15),
+  sidebarRailWidth: z.number().min(20).max(40).default(33),
   sectionOrder: z
     .array(z.string())
     .default([
@@ -240,6 +241,7 @@ const ResumeMetaPatchSchema = z.object({
   accentColor: z.string().optional(),
   pageMargins: z.number().min(0.5).max(1.5).optional(),
   lineSpacing: z.number().min(1.0).max(1.15).optional(),
+  sidebarRailWidth: z.number().min(20).max(40).optional(),
   sectionOrder: z.array(z.string()).optional(),
   layout: z.enum(['single-column', 'two-column']).optional(),
   columnAssignment: z.record(z.string(), z.enum(['left', 'right'])).optional(),

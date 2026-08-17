@@ -3,7 +3,8 @@
 // Type-specific, inline-editable cell renderers for the applications
 // supertable. Every editable cell is click-to-edit: Enter/blur commits,
 // Escape cancels — no separate "edit mode".
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Pencil } from 'lucide-react'
 import type { ColumnOption, CustomFieldValue } from '@/lib/schemas/application.zod'
 import type { ResumeOption } from '@/lib/applications/types'
 
@@ -176,16 +177,26 @@ export function UrlCell(props: CellProps) {
       />
     )
   }
+  const fullUrl = url ? (url.startsWith('http') ? url : `https://${url}`) : ''
+  let displayUrl = url
+  if (fullUrl) {
+    try {
+      displayUrl = new URL(fullUrl).hostname
+    } catch {
+      displayUrl = url
+    }
+  }
   return (
     <span className="flex w-full items-center gap-1 px-1.5 py-0.5">
       {url ? (
         <a
-          href={url.startsWith('http') ? url : `https://${url}`}
+          href={fullUrl}
+          title={fullUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="min-w-0 flex-1 truncate text-sm text-indigo-600 underline decoration-indigo-300 hover:text-indigo-800"
         >
-          {url}
+          {displayUrl}
         </a>
       ) : (
         <span className="min-w-0 flex-1 truncate text-sm text-indigo-300">—</span>
@@ -196,7 +207,7 @@ export function UrlCell(props: CellProps) {
         onClick={() => setEditing(true)}
         className="shrink-0 rounded px-1 text-xs text-indigo-400 opacity-0 transition group-hover/cell:opacity-100 hover:bg-indigo-50 hover:text-indigo-700 focus:opacity-100"
       >
-        ✎
+        <Pencil className="h-3 w-3" aria-hidden="true" />
       </button>
     </span>
   )
@@ -219,7 +230,9 @@ export function CheckboxCell(props: CellProps) {
 /** Colored chip + dropdown; used for both 'select' and 'status' columns. */
 export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
   const [open, setOpen] = useState(false)
+  const [openUpward, setOpenUpward] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const selected = props.options.find((o) => o.id === props.value)
 
   useEffect(() => {
@@ -229,6 +242,21 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
     }
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
+  }, [open])
+
+  // Flip the popover to open upward when there isn't enough room below the
+  // trigger but there is above — measured once at open-time against the
+  // panel's actual rendered height (it starts positioned below by default,
+  // so this can only run after that first paint's DOM is committed, which is
+  // exactly when a layout effect fires).
+  useLayoutEffect(() => {
+    if (!open) return
+    const triggerRect = ref.current?.getBoundingClientRect()
+    const panelHeight = panelRef.current?.getBoundingClientRect().height
+    if (!triggerRect || !panelHeight) return
+    const fitsBelow = triggerRect.bottom + panelHeight + 8 <= window.innerHeight
+    const fitsAbove = triggerRect.top > panelHeight + 8
+    setOpenUpward(fitsBelow ? false : fitsAbove)
   }, [open])
 
   return (
@@ -252,7 +280,12 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
         )}
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-20 mt-1 min-w-[10rem] rounded-lg border border-indigo-100 bg-white p-1 shadow-lg">
+        <div
+          ref={panelRef}
+          className={`absolute left-0 z-20 min-w-[10rem] rounded-lg border border-indigo-100 bg-white p-1 shadow-lg ${
+            openUpward ? 'bottom-full mb-1' : 'top-full mt-1'
+          }`}
+        >
           {props.options.map((option) => (
             <button
               key={option.id}

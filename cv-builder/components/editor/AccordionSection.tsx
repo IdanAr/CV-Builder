@@ -58,7 +58,7 @@ export function AccordionSection({
         {dragHandleProps ? (
           <button
             type="button"
-            className="w-5 shrink-0 py-3 text-center opacity-0 group-hover:opacity-100 transition-opacity cursor-grab text-indigo-300 hover:text-indigo-500 select-none"
+            className="w-5 shrink-0 py-3 text-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity cursor-grab text-indigo-300 hover:text-indigo-500 select-none"
             {...dragHandleProps.listeners}
             {...dragHandleProps.attributes}
             aria-label="Drag to reorder"
@@ -74,13 +74,32 @@ export function AccordionSection({
           </span>
         )}
         {onRename ? (
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => onRename(e.target.value)}
-            aria-label={`Rename ${title}`}
-            className="flex-1 font-medium text-sm text-indigo-900 bg-transparent border-none outline-none focus:ring-1 focus:ring-indigo-300 rounded px-2 py-3 min-w-0"
-          />
+          // The wrapper carries its own vertical padding (py-2) that the
+          // input's own padding (py-1) doesn't cover, so a strip of the
+          // wrapper above/below the input is real clickable space — not
+          // occupied by the input — for toggling the section, matching the
+          // full-width toggle built-in sections get from their <button>.
+          // Combined height (py-2 + py-1 = 12px top/bottom) matches the
+          // original single py-3 the input used to carry alone, so the
+          // header's overall height is unchanged.
+          //
+          // The input's own onClick/onMouseDown stop propagation so a click
+          // landing ON the input — the common case, since the input fills
+          // most of the wrapper — only focuses it for editing and never
+          // reaches the wrapper's onToggle. Without this, clicking into the
+          // field to rename a section would also collapse/expand it as an
+          // unwanted side effect.
+          <div className="flex-1 min-w-0 py-2" onClick={onToggle}>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => onRename(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              aria-label={`Rename ${title}`}
+              className="w-full font-medium text-sm text-indigo-900 bg-transparent border-none outline-none focus:ring-1 focus:ring-indigo-300 rounded px-2 py-1 min-w-0"
+            />
+          </div>
         ) : (
           <button
             type="button"

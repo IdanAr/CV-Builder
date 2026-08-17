@@ -13,7 +13,7 @@ export function MarketingNavActions({ isSignedIn = false }: MarketingNavActionsP
       <div className="flex items-center gap-3 flex-1">
         <Link
           href="/dashboard"
-          className="ml-auto rounded-md bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+          className="ml-auto rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:opacity-90"
         >
           Dashboard
         </Link>
@@ -31,7 +31,7 @@ export function MarketingNavActions({ isSignedIn = false }: MarketingNavActionsP
       </Link>
       <Link
         href="/signin"
-        className="ml-auto rounded-md bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 sm:ml-0"
+        className="ml-auto rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:opacity-90 sm:ml-0"
       >
         Get Started
       </Link>

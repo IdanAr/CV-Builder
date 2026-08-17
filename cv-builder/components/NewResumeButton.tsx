@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Plus } from 'lucide-react'
 import { toast } from '@/lib/stores/toast.store'
 
 interface NewResumeButtonProps {
@@ -36,8 +37,15 @@ export default function NewResumeButton({ variant = 'navbar' }: NewResumeButtonP
       : 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50'
 
   return (
-    <button onClick={handleCreate} disabled={loading} className={className}>
-      {loading ? 'Creating…' : '+ New CV'}
+    <button onClick={handleCreate} disabled={loading} className={className} aria-label={loading ? 'Creating…' : 'New CV'}>
+      {loading ? (
+        'Creating…'
+      ) : (
+        <span className="inline-flex items-center gap-1.5">
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          New CV
+        </span>
+      )}
     </button>
   )
 }

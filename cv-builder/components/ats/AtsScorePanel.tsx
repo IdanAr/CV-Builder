@@ -19,6 +19,16 @@ const VECTOR_LABELS: { key: keyof AtsScoreResult['breakdown']; label: string; ma
   { key: 'metrics', label: 'Metric Presence', max: 15 },
 ]
 
+function getScoreStatusLabel(score: number): { colorClass: string; label: string } {
+  if (score >= 70) {
+    return { colorClass: 'text-green-600', label: 'Good match' }
+  } else if (score >= 40) {
+    return { colorClass: 'text-yellow-500', label: 'Needs work' }
+  } else {
+    return { colorClass: 'text-red-500', label: 'Poor match' }
+  }
+}
+
 function ScoreBar({ value, max }: { value: number; max: number }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0
   return (
@@ -232,13 +242,19 @@ export function AtsScorePanel() {
       {result && (
         <div className="space-y-4">
           <div className="rounded-xl border border-white/30 bg-white/60 backdrop-blur-xl p-6 text-center shadow-lg">
-            <p className="text-sm text-indigo-400 mb-1">ATS Score</p>
-            <p className={`text-6xl font-bold ${
-              result.total >= 70 ? 'text-green-600' : result.total >= 40 ? 'text-yellow-500' : 'text-red-500'
-            }`}>
-              {result.total}
-            </p>
-            <p className="text-sm text-indigo-300 mt-1">out of 100</p>
+            <p className="text-sm text-indigo-600 mb-1">ATS Score</p>
+            {(() => {
+              const { colorClass, label } = getScoreStatusLabel(result.total)
+              return (
+                <>
+                  <p className={`text-6xl font-bold ${colorClass}`}>
+                    {result.total}
+                  </p>
+                  <p className="text-sm text-indigo-500 mt-2">{label}</p>
+                </>
+              )
+            })()}
+            <p className="text-sm text-indigo-600 mt-1">out of 100</p>
           </div>
 
           <div className="rounded-xl border border-white/30 bg-white/60 backdrop-blur-xl p-4 shadow-lg space-y-3">
@@ -297,13 +313,13 @@ export function AtsScorePanel() {
               </div>
 
               {semanticError && (
-                <p className="mb-2 text-xs text-red-600">{semanticError}</p>
+                <p className="mb-2 text-xs text-red-700">{semanticError}</p>
               )}
 
-              <p className="mb-1 text-xs text-red-400">
+              <p className="mb-1 text-xs text-red-700">
                 Click a keyword you don&apos;t have to ignore it — the AI tools above will skip it too.
               </p>
-              <p className="mb-2 text-xs text-indigo-300">
+              <p className="mb-2 text-xs text-indigo-600">
                 <span className="text-red-500">●</span> must-have / unclear&nbsp;&nbsp;
                 <span className="text-yellow-600">●</span> nice-to-have
               </p>
@@ -343,14 +359,14 @@ export function AtsScorePanel() {
                   )
                 })}
                 {result.missingKeywords.length + result.excludedMissingKeywords.length > 40 && (
-                  <span className="text-xs text-red-500 self-center">
+                  <span className="text-xs text-red-700 self-center">
                     +{result.missingKeywords.length + result.excludedMissingKeywords.length - 40} more
                   </span>
                 )}
               </div>
 
               {fixError && (
-                <p className="mt-2 text-xs text-red-600">{fixError}</p>
+                <p className="mt-2 text-xs text-red-700">{fixError}</p>
               )}
             </div>
           )}

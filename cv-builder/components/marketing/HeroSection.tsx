@@ -34,14 +34,20 @@ export function HeroSection() {
               className="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-white/70 px-6 py-3 text-base font-semibold text-indigo-700 backdrop-blur-xl transition hover:bg-indigo-50"
             >
               <Upload className="h-4 w-4" aria-hidden="true" />
-              Upload Existing CV
+              Sign Up to Upload Your CV
             </Link>
           </div>
         </div>
         <div className="relative mx-auto">
-          <TemplateThumbnail templateId="modern" height={480} className="rotate-2" />
+          <TemplateThumbnail
+            templateId="modern"
+            height={480}
+            className="rotate-2 max-w-full"
+            data-testid="hero-thumbnail"
+          />
           <div
             className="absolute -bottom-4 -left-4 rounded-xl bg-white px-4 py-2 shadow-lg border border-green-100"
+            aria-hidden="true"
           >
             <p className="text-xs font-medium text-gray-500">ATS Score</p>
             <p className="text-2xl font-bold text-green-600">95%</p>

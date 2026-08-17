@@ -25,7 +25,6 @@ describe('Home page', () => {
     const element = await Home()
     render(element)
     expect(screen.getByRole('heading', { level: 1, name: /create a job-winning cv in minutes/i })).toBeInTheDocument()
-    expect(screen.getByText(/helping thousands land jobs at top companies/i)).toBeInTheDocument() // SocialProofSection
     expect(screen.getByRole('heading', { name: /write with ai/i })).toBeInTheDocument() // FeaturesSection
     expect(screen.getByRole('heading', { name: /templates designed by recruiters/i })).toBeInTheDocument() // TemplatesShowcaseSection
     expect(screen.getByRole('heading', { name: /how it works/i })).toBeInTheDocument() // HowItWorksSection

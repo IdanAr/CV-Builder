@@ -10,7 +10,7 @@ import type { ResumeMeta } from '@/lib/schemas/resume.zod'
 const defaultMeta: ResumeMeta = {
   templateId: 'classic', fontFamily: 'Calibri', headerFontFamily: 'Calibri',
   primaryColor: '#000000', accentColor: '#0066cc',
-  pageMargins: 1.0, lineSpacing: 1.15, sectionOrder: [], layout: 'single-column',
+  pageMargins: 1.0, sidebarRailWidth: 33, lineSpacing: 1.15, sectionOrder: [], layout: 'single-column',
   columnAssignment: {}, excludedAtsKeywords: [],
 }
 
@@ -53,6 +53,43 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+})
+
+describe('AtsScorePanel text status label', () => {
+  it('shows a text status label alongside a low score, not color alone', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+
+    await waitFor(() => expect(screen.getByText(/needs work|poor match/i)).toBeInTheDocument())
+  })
+
+  it('shows "Good match" for a high score', async () => {
+    const highScore: AtsScoreResult = {
+      total: 85,
+      breakdown: { format: 25, keywordDensity: 35, keywordPlacement: 20, metrics: 5 },
+      matchedKeywords: ['react', 'typescript'],
+      missingKeywords: [],
+      excludedMatchedKeywords: [],
+      excludedMissingKeywords: [],
+      jdKeywords: ['react', 'typescript'],
+    }
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(highScore))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+
+    await waitFor(() => expect(screen.getByText(/good match/i)).toBeInTheDocument())
+  })
 })
 
 describe('AtsScorePanel applyFix for generate-kind summary fixes', () => {
@@ -271,7 +308,67 @@ describe('AtsScorePanel semantic match', () => {
 
     fireEvent.click(screen.getByText(/semantic match/i))
 
-    await waitFor(() => expect(screen.getByText(/semantic match failed/i)).toBeInTheDocument())
+    const errorMessage = await screen.findByText(/semantic match failed/i)
+    expect(errorMessage).toBeInTheDocument()
+    // Sits inside the bg-red-50 missing-keywords container, where text-red-600
+    // falls just under AA contrast (~4.42:1) — must be red-700 (~5.92:1).
+    expect(errorMessage.className).toContain('text-red-700')
+    expect(errorMessage.className).not.toContain('text-red-600')
+  })
+})
+
+describe('AtsScorePanel fix generation error', () => {
+  it('shows an error message when fix generation fails, using AA-safe contrast', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(scoreResult))
+      .mockResolvedValueOnce({ ok: false, json: async () => ({}) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
+
+    fireEvent.click(screen.getByText(/tailor with ai/i))
+
+    const errorMessage = await screen.findByText(/could not generate fixes/i)
+    expect(errorMessage).toBeInTheDocument()
+    // Same bg-red-50 container as the semanticError message — text-red-600
+    // fails AA there (~4.42:1); must be red-700 (~5.92:1).
+    expect(errorMessage.className).toContain('text-red-700')
+    expect(errorMessage.className).not.toContain('text-red-600')
+  })
+})
+
+describe('AtsScorePanel missing-keyword overflow label', () => {
+  it('shows a "+N more" label with AA-safe contrast when there are more than 40 missing keywords', async () => {
+    const manyMissing: AtsScoreResult = {
+      total: 20,
+      breakdown: { format: 5, keywordDensity: 5, keywordPlacement: 5, metrics: 5 },
+      matchedKeywords: [],
+      // 45 missing keywords -> overflow label reads "+5 more" (45 - 40 shown)
+      missingKeywords: Array.from({ length: 45 }, (_, i) => `skill-${i}`),
+      excludedMatchedKeywords: [],
+      excludedMissingKeywords: [],
+      jdKeywords: [],
+    }
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(manyMissing))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a candidate with many skills.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+
+    const overflowLabel = await screen.findByText('+5 more')
+    // Sits in the same bg-red-50 container as the other fixed instances —
+    // text-red-500 fails AA there (~3.44:1 against #fef2f2); must be red-700 (~5.92:1).
+    expect(overflowLabel.className).toContain('text-red-700')
+    expect(overflowLabel.className).not.toContain('text-red-500')
   })
 })
 

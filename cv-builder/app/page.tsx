@@ -3,7 +3,6 @@ import { auth } from '@/lib/auth'
 import { AppNavbar } from '@/components/ui/AppNavbar'
 import { PlasmaBackground } from '@/components/ui/PlasmaBackground'
 import { HeroSection } from '@/components/marketing/HeroSection'
-import { SocialProofSection } from '@/components/marketing/SocialProofSection'
 import { FeaturesSection } from '@/components/marketing/FeaturesSection'
 import { TemplatesShowcaseSection } from '@/components/marketing/TemplatesShowcaseSection'
 import { HowItWorksSection } from '@/components/marketing/HowItWorksSection'
@@ -31,7 +30,6 @@ export default async function Home() {
       />
       <main>
         <HeroSection />
-        <SocialProofSection />
         <FeaturesSection />
         <TemplatesShowcaseSection />
         <HowItWorksSection />
