@@ -42,7 +42,11 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
     color: '#fff',
     textTransform: 'uppercase',
     letterSpacing: '0.1em',
-    marginTop: px(T.sectionTitleMarginTop),
+    // Deliberately distinct from the main column's T.sectionTitleMarginTop
+    // (12pt/16px) — see the "differently-sized section title" comment on
+    // that token in lib/design/tokens.ts: the rail's own title uses 13.5pt
+    // (18px), with no slot in the shared token shape for a second size.
+    marginTop: '18px',
     marginBottom: '7px',
     paddingBottom: '3px',
     borderBottom: `1px solid ${meta.accentColor}`,
