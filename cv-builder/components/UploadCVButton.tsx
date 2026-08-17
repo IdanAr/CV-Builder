@@ -110,12 +110,23 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
   return (
     <>
       <input ref={inputRef} type="file" accept=".pdf,.docx" className="hidden" onChange={handleFileChange} />
-      <button onClick={() => inputRef.current?.click()} className={triggerClassName}>
-        <span className="inline-flex items-center gap-1.5">
-          <Upload className="h-4 w-4" aria-hidden="true" />
-          Upload CV
+      <span className={variant === 'hero' ? 'block w-full' : 'inline-flex flex-col items-start'}>
+        <button onClick={() => inputRef.current?.click()} className={triggerClassName}>
+          <span className="inline-flex items-center gap-1.5">
+            <Upload className="h-4 w-4" aria-hidden="true" />
+            Upload CV
+          </span>
+        </button>
+        <span
+          className={
+            variant === 'hero'
+              ? 'mt-1.5 block text-center text-xs text-indigo-400'
+              : 'mt-1 block text-xs text-slate-500'
+          }
+        >
+          PDF or DOCX, up to {MAX_UPLOAD_MB_LABEL}
         </span>
-      </button>
+      </span>
       <UploadProgressModal
         open={stage !== 'idle'}
         filename={filename}

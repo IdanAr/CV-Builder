@@ -29,6 +29,14 @@ describe('UploadCVButton', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('states the accepted file types and size limit upfront, before any interaction', () => {
+    render(<UploadCVButton />)
+    expect(screen.getByText(/PDF or DOCX/i)).toBeTruthy()
+    expect(screen.getByText(/4 MB/i)).toBeTruthy()
+    // Upfront, not just after a rejection: no fetch/interaction has happened yet.
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it('opens the modal on stage "reading" while the parse request is in flight', async () => {
     vi.mocked(fetch).mockImplementationOnce(() => new Promise(() => {}))
     render(<UploadCVButton />)
@@ -89,7 +97,7 @@ describe('UploadCVButton', () => {
   it('rejects an oversized file client-side before any fetch, showing the error in the modal', async () => {
     render(<UploadCVButton />)
     triggerFileChange(makeFile('big.pdf', 'application/pdf', 4 * 1024 * 1024 + 1))
-    await waitFor(() => expect(screen.getByText(/4 MB/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/File must be 4 MB or smaller/i)).toBeTruthy())
     expect(fetch).not.toHaveBeenCalled()
   })
 
