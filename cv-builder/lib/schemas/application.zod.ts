@@ -57,18 +57,6 @@ export const DEFAULT_STATUS_OPTIONS: ColumnOption[] = [
   { id: 'rejected', label: 'Rejected', color: '#ef4444' },
 ]
 
-/**
- * Label/color for a résumé's `applicationStatus` badge (ResumeCard, dashboard
- * grid). Reuses the same palette as the applications board's default status
- * column (`DEFAULT_STATUS_OPTIONS`) for the states they share, plus a
- * 'draft' entry — résumés start in 'draft' before ever being tracked as an
- * application, a state the applications board has no equivalent for.
- */
-export const RESUME_STATUS_OPTIONS: ColumnOption[] = [
-  { id: 'draft', label: 'Draft', color: '#94a3b8' },
-  ...DEFAULT_STATUS_OPTIONS,
-]
-
 /** Built-in columns can be reordered/hidden but never deleted. */
 export const BUILT_IN_COLUMN_IDS = ['company', 'role', 'status', 'resumeId', 'createdAt'] as const
 
