@@ -117,9 +117,28 @@ describe('AccordionSection', () => {
       </AccordionSection>
     )
     const input = screen.getByRole('textbox')
-    // Click the wrapper around the input (header area outside the input text itself)
+    // The wrapper carries its own padding (not covered by the input), so a
+    // click landing on the wrapper itself but not on the input is a real,
+    // physically reachable scenario in the rendered DOM, not just a
+    // programmatic click on a container that the input fully occupies.
     fireEvent.click(input.parentElement as HTMLElement)
     expect(onToggle).toHaveBeenCalledOnce()
+  })
+
+  it('clicking directly on the rename input does not toggle the accordion, only focuses it for editing', () => {
+    const onToggle = vi.fn()
+    render(
+      <AccordionSection title="Custom Section" isOpen={false} onToggle={onToggle} onRename={vi.fn()}>
+        {null}
+      </AccordionSection>
+    )
+    const input = screen.getByRole('textbox')
+    // A user clicking into the field to rename it must not also collapse or
+    // expand the section as a side effect — the input fills essentially all
+    // of the wrapper's clickable area, so a click "on the wrapper" in
+    // practice usually means a click on the input.
+    fireEvent.click(input)
+    expect(onToggle).not.toHaveBeenCalled()
   })
 
   it('does not render delete button when onDelete is not provided', () => {
