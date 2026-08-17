@@ -242,7 +242,7 @@ export function AtsScorePanel() {
       {result && (
         <div className="space-y-4">
           <div className="rounded-xl border border-white/30 bg-white/60 backdrop-blur-xl p-6 text-center shadow-lg">
-            <p className="text-sm text-indigo-400 mb-1">ATS Score</p>
+            <p className="text-sm text-indigo-600 mb-1">ATS Score</p>
             {(() => {
               const { colorClass, label } = getScoreStatusLabel(result.total)
               return (
@@ -254,7 +254,7 @@ export function AtsScorePanel() {
                 </>
               )
             })()}
-            <p className="text-sm text-indigo-300 mt-1">out of 100</p>
+            <p className="text-sm text-indigo-600 mt-1">out of 100</p>
           </div>
 
           <div className="rounded-xl border border-white/30 bg-white/60 backdrop-blur-xl p-4 shadow-lg space-y-3">
@@ -316,10 +316,10 @@ export function AtsScorePanel() {
                 <p className="mb-2 text-xs text-red-600">{semanticError}</p>
               )}
 
-              <p className="mb-1 text-xs text-red-400">
+              <p className="mb-1 text-xs text-red-600">
                 Click a keyword you don&apos;t have to ignore it — the AI tools above will skip it too.
               </p>
-              <p className="mb-2 text-xs text-indigo-300">
+              <p className="mb-2 text-xs text-indigo-600">
                 <span className="text-red-500">●</span> must-have / unclear&nbsp;&nbsp;
                 <span className="text-yellow-600">●</span> nice-to-have
               </p>
