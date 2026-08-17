@@ -359,7 +359,7 @@ export function AtsScorePanel() {
                   )
                 })}
                 {result.missingKeywords.length + result.excludedMissingKeywords.length > 40 && (
-                  <span className="text-xs text-red-500 self-center">
+                  <span className="text-xs text-red-700 self-center">
                     +{result.missingKeywords.length + result.excludedMissingKeywords.length - 40} more
                   </span>
                 )}

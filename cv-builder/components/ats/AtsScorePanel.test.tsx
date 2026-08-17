@@ -343,6 +343,35 @@ describe('AtsScorePanel fix generation error', () => {
   })
 })
 
+describe('AtsScorePanel missing-keyword overflow label', () => {
+  it('shows a "+N more" label with AA-safe contrast when there are more than 40 missing keywords', async () => {
+    const manyMissing: AtsScoreResult = {
+      total: 20,
+      breakdown: { format: 5, keywordDensity: 5, keywordPlacement: 5, metrics: 5 },
+      matchedKeywords: [],
+      // 45 missing keywords -> overflow label reads "+5 more" (45 - 40 shown)
+      missingKeywords: Array.from({ length: 45 }, (_, i) => `skill-${i}`),
+      excludedMatchedKeywords: [],
+      excludedMissingKeywords: [],
+      jdKeywords: [],
+    }
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(manyMissing))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a candidate with many skills.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+
+    const overflowLabel = await screen.findByText('+5 more')
+    // Sits in the same bg-red-50 container as the other fixed instances —
+    // text-red-500 fails AA there (~3.44:1 against #fef2f2); must be red-700 (~5.92:1).
+    expect(overflowLabel.className).toContain('text-red-700')
+    expect(overflowLabel.className).not.toContain('text-red-500')
+  })
+})
+
 describe('AtsScorePanel missing-keyword ignore hint', () => {
   it('shows a hint explaining that clicking a missing keyword ignores it everywhere', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
