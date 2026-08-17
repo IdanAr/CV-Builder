@@ -215,7 +215,7 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
             data-testid="zoom-out"
             onClick={handleZoomOut}
             disabled={scale <= MIN_ZOOM}
-            className="flex items-center justify-center min-h-[28px] min-w-[28px] text-sm rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center justify-center min-h-[40px] min-w-[40px] text-sm rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             −
           </button>
@@ -269,7 +269,7 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
             data-testid="zoom-in"
             onClick={handleZoomIn}
             disabled={scale >= MAX_ZOOM}
-            className="flex items-center justify-center min-h-[28px] min-w-[28px] text-sm rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center justify-center min-h-[40px] min-w-[40px] text-sm rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             +
           </button>
