@@ -50,6 +50,30 @@ describe('Toaster', () => {
     expect(statusEl).toHaveAttribute('aria-live', 'polite')
   })
 
+  it('keeps a single persistent aria-live="polite" region mounted even with no toasts', () => {
+    // Regression guard: success/info toasts must be appended into one
+    // already-mounted region (the WAI-ARIA APG-recommended pattern), not
+    // rendered as a freshly-mounted region per toast. If the region were
+    // only created once a toast exists, it wouldn't be present here.
+    render(<Toaster />)
+    const region = screen.getByRole('status')
+    expect(region).toBeInTheDocument()
+    expect(region).toBeEmptyDOMElement()
+  })
+
+  it('reuses the same persistent polite region node across toast additions/removals, not remounting it per toast', () => {
+    render(<Toaster />)
+    const regionBeforeAnyToast = screen.getByRole('status')
+
+    act(() => { toast.success('Saved') })
+    const regionWithToast = screen.getByRole('status')
+    expect(regionWithToast).toBe(regionBeforeAnyToast)
+
+    act(() => { vi.advanceTimersByTime(5100) }) // auto-dismiss
+    const regionAfterDismiss = screen.getByRole('status')
+    expect(regionAfterDismiss).toBe(regionBeforeAnyToast)
+  })
+
   it('dismisses when the close button is clicked', () => {
     render(<Toaster />)
     act(() => { toast.error('Failed') })
