@@ -28,8 +28,39 @@ describe('ResumeCard', () => {
     useToastStore.setState({ toasts: [] })
   })
 
+  // Delete now lives behind a "More actions" overflow menu (Popover), separated
+  // from Open/Duplicate/Track/Download to reduce accidental-click risk.
+  function openOverflowMenu() {
+    fireEvent.click(screen.getByLabelText(`More actions for "${baseResume.title}"`))
+  }
+
+  it('keeps Delete out of the directly-visible action row, collapsed inside an overflow menu', () => {
+    render(<ResumeCard resume={baseResume} applicationBadge={{ kind: 'none' }} />)
+    // Delete must not be rendered/clickable until the overflow menu is explicitly opened.
+    expect(screen.queryByTitle('Delete')).not.toBeInTheDocument()
+    // The other actions remain directly visible.
+    expect(screen.getByText('Open')).toBeInTheDocument()
+    expect(screen.getByTitle('Duplicate')).toBeInTheDocument()
+    expect(screen.getByTitle('Track application')).toBeInTheDocument()
+    expect(screen.getByTitle('Download as JSON')).toBeInTheDocument()
+    expect(screen.getByLabelText(`More actions for "${baseResume.title}"`)).toBeInTheDocument()
+  })
+
+  it('reveals Delete only after opening the overflow menu, and clicking it still starts the undo-delete flow', () => {
+    render(<ResumeCard resume={baseResume} applicationBadge={{ kind: 'none' }} />)
+    openOverflowMenu()
+    const deleteBtn = screen.getByTitle('Delete')
+    expect(deleteBtn).toBeInTheDocument()
+    fireEvent.click(deleteBtn)
+    expect(screen.queryByText(baseResume.title)).not.toBeInTheDocument()
+    const t = useToastStore.getState().toasts[0]
+    expect(t.message).toBe(`Deleted "${baseResume.title}"`)
+    expect(t.actionLabel).toBe('Undo')
+  })
+
   it('hides the card and shows an undo toast on delete', () => {
     render(<ResumeCard resume={baseResume} applicationBadge={{ kind: 'none' }} />)
+    openOverflowMenu()
     fireEvent.click(screen.getByTitle('Delete'))
     expect(screen.queryByText(baseResume.title)).not.toBeInTheDocument()
     const t = useToastStore.getState().toasts[0]
@@ -41,6 +72,7 @@ describe('ResumeCard', () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     render(<ResumeCard resume={baseResume} applicationBadge={{ kind: 'none' }} />)
+    openOverflowMenu()
     fireEvent.click(screen.getByTitle('Delete'))
     act(() => { useToastStore.getState().toasts[0].onAction!() })
     expect(screen.getByText(baseResume.title)).toBeInTheDocument()
@@ -52,6 +84,7 @@ describe('ResumeCard', () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true } as Response)
     vi.stubGlobal('fetch', fetchMock)
     render(<ResumeCard resume={baseResume} applicationBadge={{ kind: 'none' }} />)
+    openOverflowMenu()
     fireEvent.click(screen.getByTitle('Delete'))
     await act(async () => { vi.advanceTimersByTime(6100) })
     expect(fetchMock).toHaveBeenCalledWith(`/api/resumes/${baseResume._id}`, { method: 'DELETE' })
@@ -62,6 +95,7 @@ describe('ResumeCard', () => {
     vi.useFakeTimers()
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false } as Response))
     render(<ResumeCard resume={baseResume} applicationBadge={{ kind: 'none' }} />)
+    openOverflowMenu()
     fireEvent.click(screen.getByTitle('Delete'))
     await act(async () => { vi.advanceTimersByTime(6100) })
     await act(async () => { await vi.runAllTimersAsync() })
@@ -217,6 +251,7 @@ describe('ResumeCard', () => {
         <Toaster />
       </>
     )
+    openOverflowMenu()
     fireEvent.click(screen.getByTitle('Delete'))
 
     // Let 4s of the 6s undo window elapse (2s remaining).
@@ -290,6 +325,7 @@ describe('ResumeCard', () => {
         <Toaster />
       </>
     )
+    openOverflowMenu()
     fireEvent.click(screen.getByTitle('Delete'))
 
     await act(async () => { vi.advanceTimersByTime(4000) })

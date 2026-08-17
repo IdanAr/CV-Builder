@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Download, ClipboardList, Copy, X } from 'lucide-react'
+import { Download, ClipboardList, Copy, X, MoreVertical } from 'lucide-react'
 import { toast, useToastStore } from '@/lib/stores/toast.store'
 import { onToastPause, onToastResume } from '@/components/ui/Toaster'
+import { Popover } from '@/components/ui/Popover'
 import { formatAbsoluteDate, formatRelativeTime } from '@/lib/format-relative-time'
 import type { ResumeApplicationBadge } from '@/lib/applications/resume-status'
 
@@ -44,6 +45,7 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
   const [downloading, setDownloading] = useState(false)
   const [tracking, setTracking] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const deleteTimerRef = useRef<number | null>(null)
   const undoToastIdRef = useRef<number | null>(null)
   // Tracks the undo window's remaining time so a hover/focus pause on the
@@ -215,8 +217,8 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
         {/* Added 'relative z-10' to lift these buttons above the invisible link.
             'flex-wrap' lets buttons wrap onto a second line on narrow viewports
             instead of compressing against the truncated title/role text. */}
-        <div className="relative z-10 flex flex-wrap shrink-0 gap-2">
-          
+        <div className="relative z-10 flex flex-wrap shrink-0 items-center gap-3">
+
           <Link
             href={`/dashboard/resumes/${resume._id}`}
             aria-label={`Open ${resume.title}`}
@@ -262,14 +264,43 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
           >
             {duplicating ? '…' : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
           </button>
-          <button
-            onClick={handleDelete}
-            aria-label={`Delete ${resume.title}`}
-            className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50"
-            title="Delete"
+          <Popover
+            open={menuOpen}
+            onOpenChange={setMenuOpen}
+            trigger={
+              <button
+                type="button"
+                onClick={() => setMenuOpen((o) => !o)}
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+                aria-label={`More actions for "${resume.title}"`}
+                className="rounded-md border border-indigo-100 bg-white px-2 py-1.5 text-indigo-700 transition hover:bg-indigo-50"
+                title="More actions"
+              >
+                <MoreVertical className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            }
           >
-            <X className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
+            <div
+              role="menu"
+              className="w-36 overflow-hidden rounded-xl border border-white/40 bg-white/90 shadow-xl backdrop-blur-xl"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false)
+                  handleDelete()
+                }}
+                aria-label={`Delete ${resume.title}`}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                title="Delete"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+                Delete
+              </button>
+            </div>
+          </Popover>
         </div>
       </div>
 
