@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Upload } from 'lucide-react'
 import UploadProgressModal, { type UploadStage } from './UploadProgressModal'
@@ -17,9 +17,25 @@ interface UploadCVButtonProps {
 export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonProps) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
   const [stage, setStage] = useState<Stage>('idle')
   const [filename, setFilename] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
+  const requirementsId = useId()
+
+  function showTooltipAtCursor(e: React.MouseEvent) {
+    setTooltipPos({ x: e.clientX, y: e.clientY })
+  }
+
+  function showTooltipAtButton() {
+    const rect = buttonRef.current?.getBoundingClientRect()
+    if (rect) setTooltipPos({ x: rect.left + rect.width / 2, y: rect.bottom })
+  }
+
+  function hideTooltip() {
+    setTooltipPos(null)
+  }
   // Owns the lifecycle of the in-flight upload request(s) so Cancel can abort
   // whichever fetch (parse or extract) is currently running, and so a
   // response that arrives after cancel is ignored instead of resurrecting
@@ -107,26 +123,55 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
       ? 'w-full rounded-lg border border-indigo-300 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50 disabled:opacity-50'
       : 'rounded-lg border border-indigo-300 bg-white/80 px-4 py-2 text-sm font-medium text-indigo-700 shadow-sm transition hover:bg-indigo-50'
 
+  const requirementsText = `PDF or DOCX, up to ${MAX_UPLOAD_MB_LABEL}`
+
   return (
     <>
       <input ref={inputRef} type="file" accept=".pdf,.docx" className="hidden" onChange={handleFileChange} />
-      <span className={variant === 'hero' ? 'block w-full' : 'inline-flex flex-col items-start'}>
-        <button onClick={() => inputRef.current?.click()} className={triggerClassName}>
-          <span className="inline-flex items-center gap-1.5">
-            <Upload className="h-4 w-4" aria-hidden="true" />
-            Upload CV
-          </span>
-        </button>
-        <span
-          className={
-            variant === 'hero'
-              ? 'mt-1.5 block text-center text-xs text-indigo-400'
-              : 'mt-1 block text-xs text-slate-500'
-          }
-        >
-          PDF or DOCX, up to {MAX_UPLOAD_MB_LABEL}
+      {variant === 'hero' ? (
+        <span className="block w-full">
+          <button onClick={() => inputRef.current?.click()} className={triggerClassName}>
+            <span className="inline-flex items-center gap-1.5">
+              <Upload className="h-4 w-4" aria-hidden="true" />
+              Upload CV
+            </span>
+          </button>
+          <span className="mt-1.5 block text-center text-xs text-indigo-400">{requirementsText}</span>
         </span>
-      </span>
+      ) : (
+        <>
+          <button
+            ref={buttonRef}
+            onClick={() => inputRef.current?.click()}
+            className={triggerClassName}
+            aria-describedby={requirementsId}
+            onMouseEnter={showTooltipAtCursor}
+            onMouseMove={showTooltipAtCursor}
+            onMouseLeave={hideTooltip}
+            onFocus={showTooltipAtButton}
+            onBlur={hideTooltip}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Upload className="h-4 w-4" aria-hidden="true" />
+              Upload CV
+            </span>
+          </button>
+          {/* Always in the DOM so screen readers announce it via aria-describedby
+              regardless of hover/focus; visually it only appears in the tooltip
+              below, since an always-visible caption here breaks the navbar row's
+              vertical alignment with sibling buttons that have no caption. */}
+          <span id={requirementsId} className="sr-only">{requirementsText}</span>
+          {tooltipPos && (
+            <span
+              role="tooltip"
+              style={{ left: tooltipPos.x, top: tooltipPos.y }}
+              className="pointer-events-none fixed z-50 -translate-x-1/2 translate-y-3 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-xs text-white shadow-lg"
+            >
+              {requirementsText}
+            </span>
+          )}
+        </>
+      )}
       <UploadProgressModal
         open={stage !== 'idle'}
         filename={filename}

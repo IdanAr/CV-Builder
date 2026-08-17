@@ -29,12 +29,62 @@ describe('UploadCVButton', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('states the accepted file types and size limit upfront, before any interaction', () => {
+  it('makes the accepted file types and size limit available upfront via an accessible description, before any interaction', () => {
     render(<UploadCVButton />)
-    expect(screen.getByText(/PDF or DOCX/i)).toBeTruthy()
-    expect(screen.getByText(/4 MB/i)).toBeTruthy()
+    const button = screen.getByRole('button', { name: /upload cv/i })
+    const describedBy = button.getAttribute('aria-describedby')
+    expect(describedBy).toBeTruthy()
+    expect(document.getElementById(describedBy!)?.textContent).toMatch(/PDF or DOCX.*4 MB/i)
     // Upfront, not just after a rejection: no fetch/interaction has happened yet.
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('does not show the requirements caption in the button\'s own flex flow, so it stays aligned with sibling buttons', () => {
+    render(<UploadCVButton />)
+    // No hover/focus yet: the tooltip must not be rendered, and the always-in-DOM
+    // accessible description must not be visually shown inline (only screen-reader-only).
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    const button = screen.getByRole('button', { name: /upload cv/i })
+    const describedBy = document.getElementById(button.getAttribute('aria-describedby')!)
+    expect(describedBy?.className).toMatch(/sr-only/)
+  })
+
+  it('shows a tooltip with the requirements text on hover, and hides it on mouse leave', () => {
+    render(<UploadCVButton />)
+    const button = screen.getByRole('button', { name: /upload cv/i })
+
+    fireEvent.mouseEnter(button, { clientX: 100, clientY: 200 })
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/PDF or DOCX.*4 MB/i)
+
+    fireEvent.mouseLeave(button)
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('moves the tooltip to follow the cursor while hovering', () => {
+    render(<UploadCVButton />)
+    const button = screen.getByRole('button', { name: /upload cv/i })
+
+    fireEvent.mouseEnter(button, { clientX: 50, clientY: 60 })
+    expect(screen.getByRole('tooltip')).toHaveStyle({ left: '50px', top: '60px' })
+
+    fireEvent.mouseMove(button, { clientX: 150, clientY: 260 })
+    expect(screen.getByRole('tooltip')).toHaveStyle({ left: '150px', top: '260px' })
+  })
+
+  it('shows the tooltip on keyboard focus too, not just mouse hover', () => {
+    render(<UploadCVButton />)
+    const button = screen.getByRole('button', { name: /upload cv/i })
+
+    fireEvent.focus(button)
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/PDF or DOCX.*4 MB/i)
+
+    fireEvent.blur(button)
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('still shows the requirements caption inline for the hero variant (standalone block, no alignment constraint)', () => {
+    render(<UploadCVButton variant="hero" />)
+    expect(screen.getByText(/PDF or DOCX.*4 MB/i)).toBeVisible()
   })
 
   it('opens the modal on stage "reading" while the parse request is in flight', async () => {
