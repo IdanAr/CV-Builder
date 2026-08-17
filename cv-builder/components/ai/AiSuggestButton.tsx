@@ -120,7 +120,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
         <div
           role="status"
           aria-live="polite"
-          className="absolute top-full right-0 z-20 mt-1 w-80 rounded-xl border border-indigo-200 bg-white/90 backdrop-blur-xl p-3 shadow-xl"
+          className="absolute top-full right-0 z-20 mt-1 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-indigo-200 bg-white/90 backdrop-blur-xl p-3 shadow-xl"
         >
           {result.pendingApprovals.length > 0 && (
             <p className="mb-2 rounded border border-yellow-200 bg-yellow-50 px-2 py-1 text-xs text-yellow-700">

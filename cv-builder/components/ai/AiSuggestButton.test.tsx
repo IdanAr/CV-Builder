@@ -65,4 +65,29 @@ describe('AiSuggestButton', () => {
     resolveFetch(jsonResponse({ suggestion: 'A suggestion', pendingApprovals: [] }))
     await waitFor(() => expect(screen.getByTestId('ai-suggest-icon')).toBeInTheDocument())
   })
+
+  it('clamps the suggestion popover width to the viewport instead of a fixed w-80', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse({ suggestion: 'A suggestion', pendingApprovals: [] })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <AiSuggestButton
+        resumeId="r1"
+        currentValue="Some notes"
+        context={{ field: 'summary' }}
+        onAccept={() => {}}
+      />
+    )
+    fireEvent.click(screen.getByRole('button'))
+
+    const panel = await screen.findByText('Use this').then((btn) => btn.closest('[role="status"]') as HTMLElement)
+
+    // Must not rely on a bare fixed width (w-80 = 320px) with no upper bound
+    // relative to the viewport — that clips in narrow sidebar columns.
+    expect(panel.className).not.toMatch(/(^|\s)w-80(\s|$)/)
+    // Width must be clamped against the viewport so it can never exceed it.
+    expect(panel.className).toMatch(/w-\[min\(20rem,calc\(100vw-2rem\)\)\]/)
+  })
 })
