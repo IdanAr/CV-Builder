@@ -171,4 +171,72 @@ describe('ApplicationsTable', () => {
     expect(headerRow).toHaveClass('z-10')
     expect(headerRow).toHaveClass('bg-white')
   })
+
+  describe('SelectCell viewport-aware flip', () => {
+    // jsdom returns an all-zero rect for every element by default. The
+    // component measures two different divs — its trigger wrapper (exact
+    // class match `relative px-1 py-0.5`, unique to SelectCell's container)
+    // and the popover panel (`shadow-lg`, unique to this dropdown) — so this
+    // mock distinguishes them by className to simulate the trigger sitting
+    // near the bottom of a short viewport with a panel too tall to fit below it.
+    function mockRects({
+      triggerTop,
+      triggerBottom,
+      panelHeight,
+    }: {
+      triggerTop: number
+      triggerBottom: number
+      panelHeight: number
+    }) {
+      return vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+        this: HTMLElement
+      ) {
+        if (this.className === 'relative px-1 py-0.5') {
+          return {
+            top: triggerTop, bottom: triggerBottom, left: 0, right: 100, width: 100,
+            height: triggerBottom - triggerTop, x: 0, y: triggerTop, toJSON: () => ({}),
+          } as DOMRect
+        }
+        if (this.className.includes('shadow-lg')) {
+          return {
+            top: 0, bottom: panelHeight, left: 0, right: 100, width: 100,
+            height: panelHeight, x: 0, y: 0, toJSON: () => ({}),
+          } as DOMRect
+        }
+        return { top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) } as DOMRect
+      })
+    }
+
+    it('opens downward (top-full) by default when there is enough room below', () => {
+      vi.stubGlobal('innerHeight', 800)
+      const rectSpy = mockRects({ triggerTop: 100, triggerBottom: 120, panelHeight: 150 })
+
+      renderTable()
+      fireEvent.click(screen.getByRole('button', { name: 'Change Status for Acme' }))
+
+      const panel = screen.getByText('Clear').closest('div.absolute') as HTMLElement
+      expect(panel).toHaveClass('top-full')
+      expect(panel).not.toHaveClass('bottom-full')
+
+      rectSpy.mockRestore()
+      vi.unstubAllGlobals()
+    })
+
+    it('flips upward (bottom-full) when opening below would overflow the viewport', () => {
+      // Short viewport + trigger low on the page: below (600 + 8 + 150 = 758)
+      // exceeds innerHeight, but above (600 - 150 - 8 = 442 > 0) fits.
+      vi.stubGlobal('innerHeight', 650)
+      const rectSpy = mockRects({ triggerTop: 580, triggerBottom: 600, panelHeight: 150 })
+
+      renderTable()
+      fireEvent.click(screen.getByRole('button', { name: 'Change Status for Acme' }))
+
+      const panel = screen.getByText('Clear').closest('div.absolute') as HTMLElement
+      expect(panel).toHaveClass('bottom-full')
+      expect(panel).not.toHaveClass('top-full')
+
+      rectSpy.mockRestore()
+      vi.unstubAllGlobals()
+    })
+  })
 })
