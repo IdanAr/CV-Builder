@@ -313,7 +313,7 @@ export function AtsScorePanel() {
               </div>
 
               {semanticError && (
-                <p className="mb-2 text-xs text-red-600">{semanticError}</p>
+                <p className="mb-2 text-xs text-red-700">{semanticError}</p>
               )}
 
               <p className="mb-1 text-xs text-red-700">

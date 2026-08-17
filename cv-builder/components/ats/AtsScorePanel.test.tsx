@@ -308,7 +308,12 @@ describe('AtsScorePanel semantic match', () => {
 
     fireEvent.click(screen.getByText(/semantic match/i))
 
-    await waitFor(() => expect(screen.getByText(/semantic match failed/i)).toBeInTheDocument())
+    const errorMessage = await screen.findByText(/semantic match failed/i)
+    expect(errorMessage).toBeInTheDocument()
+    // Sits inside the bg-red-50 missing-keywords container, where text-red-600
+    // falls just under AA contrast (~4.42:1) — must be red-700 (~5.92:1).
+    expect(errorMessage.className).toContain('text-red-700')
+    expect(errorMessage.className).not.toContain('text-red-600')
   })
 })
 
