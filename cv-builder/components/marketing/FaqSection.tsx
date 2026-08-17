@@ -36,7 +36,7 @@ export function FaqSection() {
         {FAQS.map(({ question, answer }, i) => {
           const isOpen = openIndex === i
           return (
-            <div key={question} className="rounded-xl border border-indigo-100 bg-white/70 backdrop-blur-xl">
+            <div key={question} className="rounded-2xl border border-indigo-100 bg-white/70 backdrop-blur-xl">
               <button
                 type="button"
                 aria-expanded={isOpen}
