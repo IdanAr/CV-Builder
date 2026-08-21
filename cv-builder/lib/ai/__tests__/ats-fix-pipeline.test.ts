@@ -45,6 +45,53 @@ describe('runAtsFixPipeline', () => {
     expect(fixes).toEqual([])
   })
 
+  describe('roles[]-only work entries (post role-unification, no legacy fields)', () => {
+    // Since the roles[] unification (lib/roles.ts resolveWorkRoles), editing
+    // a work entry through the current editor UI clears the legacy top-level
+    // position/startDate/endDate/summary/highlights fields entirely and
+    // moves everything into item.roles[] (see WorkForm.tsx setRoles). Any
+    // work entry touched by the current editor therefore has
+    // item.highlights === undefined even though it has real, editable
+    // highlight text living in item.roles[0].highlights.
+    const rolesOnlyData: ResumeData = {
+      basics: {
+        name: 'Jane Smith',
+        summary: 'Experienced developer building web applications.',
+      },
+      work: [{
+        name: 'Acme Corp',
+        // Legacy fields cleared, as WorkForm.tsx does on every edit.
+        highlights: undefined,
+        roles: [{
+          id: 'role-1',
+          position: 'Frontend Engineer',
+          startDate: '2020-01',
+          highlights: [
+            'Built a dashboard used by 200 users',
+            'Improved page load speed by 30%',
+          ],
+        }],
+      }],
+    }
+
+    it('still finds and proposes fixes for highlights that live in roles[] instead of the legacy field', async () => {
+      // basics.summary occupies sectionIndex 0 (same convention used by the
+      // other tests in this file), so the first work highlight is 1.
+      mockClaudeResponse([
+        {
+          sectionIndex: 1,
+          original: 'Built a dashboard used by 200 users',
+          suggested: 'Built a React dashboard used by 200 users',
+          targetKeywords: ['react'],
+        },
+      ])
+
+      const fixes = await runAtsFixPipeline(rolesOnlyData, ['react'])
+      expect(fixes).toHaveLength(1)
+      expect(fixes[0].section).toBe('work')
+    })
+  })
+
   it('returns fixes parsed from Claude response', async () => {
     mockClaudeResponse([
       {

@@ -49,11 +49,28 @@ Return ONLY a JSON array containing the subset of the keywords above that are al
   try {
     raw = JSON.parse(responseText)
   } catch {
-    return []
+    // Claude frequently wraps array output in a ```json ... ``` fence or a
+    // sentence of prose despite being told to return only the array — when
+    // the whole response isn't valid JSON on its own, fall back to
+    // extracting just the array substring instead of giving up entirely.
+    const jsonMatch = responseText.match(/\[[\s\S]*\]/)
+    if (!jsonMatch) {
+      console.error('runSemanticKeywordAnalysis: no JSON array found in Claude response', responseText.slice(0, 500))
+      return []
+    }
+    try {
+      raw = JSON.parse(jsonMatch[0])
+    } catch {
+      console.error('runSemanticKeywordAnalysis: extracted array substring failed to parse', jsonMatch[0].slice(0, 500))
+      return []
+    }
   }
 
   const parsed = ConfirmedMatchesSchema.safeParse(raw)
-  if (!parsed.success) return []
+  if (!parsed.success) {
+    console.error('runSemanticKeywordAnalysis: parsed JSON did not match expected shape', JSON.stringify(raw).slice(0, 500))
+    return []
+  }
 
   // Never trust Claude to only echo back what it was given - filter to the
   // exact input keywords (case-insensitive) so a hallucinated addition can't

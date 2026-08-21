@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { getAnthropic } from './models'
 import { detectHallucinations } from './hallucination-guard'
 import { flattenAllText } from '@/lib/ats/scorer'
+import { resolveWorkRoles, LEGACY_ROLE_ID } from '@/lib/roles'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 export interface AtsFix {
@@ -10,6 +11,8 @@ export interface AtsFix {
   /** 'edit' rewrites existing text; 'generate' drafts new content (e.g. a missing summary). Absence means 'edit'. */
   kind?: 'edit' | 'generate'
   workIndex?: number
+  /** Index into work[workIndex].roles[] — absent means the highlight lives on the entry's legacy top-level `highlights` field instead. */
+  roleIndex?: number
   highlightIndex?: number
   original: string
   suggested: string
@@ -29,6 +32,8 @@ const RawFixSchema = z.object({
 interface EditableSection {
   section: 'work' | 'summary'
   workIndex?: number
+  /** Index into work[workIndex].roles[] — absent when the highlight lives on the entry's legacy top-level `highlights` field. */
+  roleIndex?: number
   highlightIndex?: number
   text: string
   label: string
@@ -47,16 +52,27 @@ function buildEditableSections(data: ResumeData): EditableSection[] {
 
   for (let wi = 0; wi < (data.work ?? []).length; wi++) {
     const job = data.work![wi]
-    for (let hi = 0; hi < (job.highlights ?? []).length; hi++) {
-      const text = job.highlights![hi]
-      if (text?.trim()) {
-        sections.push({
-          section: 'work',
-          workIndex: wi,
-          highlightIndex: hi,
-          text,
-          label: `${job.position ?? 'Role'} at ${job.name ?? 'Company'} - bullet ${hi + 1}`,
-        })
+    // Highlights may live on the entry's own legacy fields (pre-roles[]
+    // resumes) or in roles[] (every entry edited through the current
+    // editor UI, which clears the legacy fields entirely on save) —
+    // resolveWorkRoles() is the single source of truth every other render
+    // surface already goes through, so this must too rather than reading
+    // job.highlights directly.
+    for (const role of resolveWorkRoles(job)) {
+      const isLegacy = role.id === LEGACY_ROLE_ID
+      const roleIndex = isLegacy ? undefined : (job.roles ?? []).findIndex((r) => r.id === role.id)
+      for (let hi = 0; hi < (role.highlights ?? []).length; hi++) {
+        const text = role.highlights![hi]
+        if (text?.trim()) {
+          sections.push({
+            section: 'work',
+            workIndex: wi,
+            roleIndex: roleIndex === undefined || roleIndex < 0 ? undefined : roleIndex,
+            highlightIndex: hi,
+            text,
+            label: `${role.position ?? 'Role'} at ${job.name ?? 'Company'} - bullet ${hi + 1}`,
+          })
+        }
       }
     }
   }
@@ -161,6 +177,8 @@ Return ONLY the JSON array, no other text.`
 
     const id = section.section === 'summary'
       ? 'fix-summary'
+      : section.roleIndex !== undefined
+      ? `fix-work-${section.workIndex}-r${section.roleIndex}-${section.highlightIndex}`
       : `fix-work-${section.workIndex}-${section.highlightIndex}`
 
     fixes.push({
@@ -168,6 +186,7 @@ Return ONLY the JSON array, no other text.`
       section: section.section,
       kind: 'edit',
       workIndex: section.workIndex,
+      roleIndex: section.roleIndex,
       highlightIndex: section.highlightIndex,
       original: item.original,
       suggested: item.suggested,
