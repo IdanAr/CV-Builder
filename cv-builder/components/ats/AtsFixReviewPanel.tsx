@@ -12,6 +12,8 @@ interface AtsFixReviewPanelProps {
   onApplyAll: () => void
   /** Used to label each fix with the section/record it targets (e.g. "Work Experience Section - Frontend Engineer at Acme Corp"). Omit to skip labeling. */
   data?: ResumeData
+  /** Fix ids currently showing the transient "✓ Applied" confirmation instead of the full edit card. */
+  appliedIds?: Set<string>
 }
 
 interface FixGroup {
@@ -59,6 +61,8 @@ function getRecordLabel(fix: AtsFix, data: ResumeData | undefined): string {
   return 'Work Experience Section'
 }
 
+const EMPTY_APPLIED_IDS: Set<string> = new Set()
+
 export function AtsFixReviewPanel({
   fixes,
   dismissedIds,
@@ -66,7 +70,9 @@ export function AtsFixReviewPanel({
   onDismiss,
   onApplyAll,
   data,
+  appliedIds,
 }: AtsFixReviewPanelProps) {
+  const resolvedAppliedIds = appliedIds ?? EMPTY_APPLIED_IDS
   const visible = fixes.filter((f) => !dismissedIds.has(f.id))
   const verifiedCount = visible.filter((f) => f.pendingApprovals.length === 0).length
   const groups = groupFixesByRecord(visible, data)
@@ -105,6 +111,15 @@ export function AtsFixReviewPanel({
             {group.label}
           </p>
           {group.fixes.map((fix) => (
+            resolvedAppliedIds.has(fix.id) ? (
+              <div
+                key={fix.id}
+                className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 flex items-center justify-between"
+              >
+                <span className="text-sm text-green-800">{fix.targetKeywords.join(', ') || 'Fix'}</span>
+                <span className="text-xs font-semibold text-green-700">✓ Applied</span>
+              </div>
+            ) : (
             <div
               key={fix.id}
               className="rounded-xl border border-indigo-100 bg-white/80 backdrop-blur-sm p-4 shadow-sm space-y-2"
@@ -196,6 +211,7 @@ export function AtsFixReviewPanel({
                 </button>
               </div>
             </div>
+            )
           ))}
         </div>
       ))}
