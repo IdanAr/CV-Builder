@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
-import { AtsScorePanel } from './AtsScorePanel'
+import { AtsScorePanel, sortByPriority } from './AtsScorePanel'
 import type { AtsFix } from '@/lib/ai/ats-fix-pipeline'
 import type { AtsScoreResult } from '@/lib/ats/scorer'
 import type { ResumeMeta } from '@/lib/schemas/resume.zod'
@@ -652,5 +652,28 @@ describe('AtsScorePanel missing-keyword priority coloring', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     const firstCallBody = JSON.parse(fetchMock.mock.calls[0][1].body)
     expect(firstCallBody.keywordPriorities).toEqual({})
+  })
+})
+
+describe('sortByPriority', () => {
+  it('orders must and ambiguous keywords before nice-to-have', () => {
+    const result = sortByPriority(
+      ['figma', 'kubernetes', 'notion', 'graphql'],
+      { kubernetes: 'must', graphql: 'ambiguous', figma: 'nice-to-have', notion: 'nice-to-have' }
+    )
+    expect(result).toEqual(['kubernetes', 'graphql', 'figma', 'notion'])
+  })
+
+  it('treats an absent priority as ambiguous, sorting it before nice-to-have', () => {
+    const result = sortByPriority(['react', 'figma'], { figma: 'nice-to-have' })
+    expect(result).toEqual(['react', 'figma'])
+  })
+
+  it('preserves relative order within the same priority tier (stable sort)', () => {
+    const result = sortByPriority(
+      ['zeta', 'alpha', 'beta'],
+      { zeta: 'must', alpha: 'must', beta: 'must' }
+    )
+    expect(result).toEqual(['zeta', 'alpha', 'beta'])
   })
 })

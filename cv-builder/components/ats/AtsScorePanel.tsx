@@ -30,6 +30,22 @@ function getScoreStatusLabel(score: number): { colorClass: string; label: string
   }
 }
 
+/**
+ * Orders `must`/`ambiguous` keywords before `nice-to-have` ones so the most
+ * important gaps are visually first, without changing which keywords are
+ * shown. Stable: keywords within the same tier keep their original order.
+ */
+export function sortByPriority(keywords: string[], priorities: Record<string, KeywordPriority>): string[] {
+  const rank = (kw: string): number => (priorities[kw] === 'nice-to-have' ? 1 : 0)
+  return keywords
+    .map((kw, index) => ({ kw, index }))
+    .sort((a, b) => {
+      const diff = rank(a.kw) - rank(b.kw)
+      return diff !== 0 ? diff : a.index - b.index
+    })
+    .map((entry) => entry.kw)
+}
+
 function ScoreBar({ value, max }: { value: number; max: number }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0
   return (
