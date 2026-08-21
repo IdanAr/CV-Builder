@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import type { AtsScoreResult } from '@/lib/ats/scorer'
 import type { AtsFix } from '@/lib/ai/ats-fix-pipeline'
 import type { KeywordPriority } from '@/lib/ai/jd-extraction-pipeline'
 import { AtsFixReviewPanel } from './AtsFixReviewPanel'
 import { Popover } from '@/components/ui/Popover'
+import { StepsBar, type WizardStep } from './StepsBar'
 
 // /ats-score merges keywordPriorities onto AtsScoreResult rather than
 // widening that interface (see the route) — this is the richer shape the
@@ -20,13 +21,13 @@ const VECTOR_LABELS: { key: keyof AtsScoreResult['breakdown']; label: string; ma
   { key: 'metrics', label: 'Metric Presence', max: 15 },
 ]
 
-function getScoreStatusLabel(score: number): { colorClass: string; label: string } {
+function getScoreStatusLabel(score: number): { colorClass: string; pillClass: string; label: string } {
   if (score >= 70) {
-    return { colorClass: 'text-green-600', label: 'Good match' }
+    return { colorClass: 'text-green-600', pillClass: 'bg-green-100 text-green-700', label: 'Good match' }
   } else if (score >= 40) {
-    return { colorClass: 'text-yellow-500', label: 'Needs work' }
+    return { colorClass: 'text-yellow-500', pillClass: 'bg-yellow-100 text-yellow-800', label: 'Needs work' }
   } else {
-    return { colorClass: 'text-red-500', label: 'Poor match' }
+    return { colorClass: 'text-red-500', pillClass: 'bg-red-100 text-red-700', label: 'Poor match' }
   }
 }
 
@@ -81,10 +82,12 @@ export function AtsScorePanel() {
   const [fixStatus, setFixStatus] = useState<FixStatus>('idle')
   const [fixError, setFixError] = useState<string | null>(null)
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
+  const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set())
 
   const [semanticMatches, setSemanticMatches] = useState<string[]>([])
   const [semanticStatus, setSemanticStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [semanticError, setSemanticError] = useState<string | null>(null)
+  const [hasTriedSemanticThisAnalysis, setHasTriedSemanticThisAnalysis] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
 
   // The JD keyword list an /ats-score response actually used (AI-extracted
@@ -101,6 +104,24 @@ export function AtsScorePanel() {
   // must-have, per the product decision to err toward not hiding a
   // possibly-important requirement).
   const [keywordPriorities, setKeywordPriorities] = useState<Record<string, KeywordPriority>>({})
+
+  // Wizard navigation. `currentStep` is which step is visible; `maxUnlockedStep`
+  // only ever increases and gates which StepsBar segments are clickable —
+  // going Back never re-locks a step, only a fresh Analyze can produce a
+  // smaller result set, and even then already-unlocked steps stay reachable.
+  const [currentStep, setCurrentStep] = useState<WizardStep>(1)
+  const [maxUnlockedStep, setMaxUnlockedStep] = useState<WizardStep>(1)
+
+  // Pending applied->dismissed timeouts, keyed by fix id, so they can be
+  // cleared on unmount instead of firing setState after unmount.
+  const appliedTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  useEffect(() => {
+    const timeouts = appliedTimeoutsRef.current
+    return () => {
+      timeouts.forEach((t) => clearTimeout(t))
+      timeouts.clear()
+    }
+  }, [])
 
   async function handleAnalyze(
     excludedOverride?: string[],
@@ -119,6 +140,7 @@ export function AtsScorePanel() {
     if (semanticOverride === undefined) {
       setSemanticStatus('idle')
       setSemanticError(null)
+      setHasTriedSemanticThisAnalysis(false)
     }
     const cachedJdKeywords = jdKeywordsOverride ?? []
     const cachedKeywordPriorities = keywordPrioritiesOverride ?? {}
@@ -142,6 +164,10 @@ export function AtsScorePanel() {
       setResult(json)
       setJdKeywords(json.jdKeywords)
       setKeywordPriorities(json.keywordPriorities ?? {})
+      setMaxUnlockedStep((prev) => {
+        const reached: WizardStep = json.missingKeywords.length === 0 ? 3 : 2
+        return reached > prev ? reached : prev
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Analysis failed. Please try again.')
     } finally {
@@ -177,6 +203,7 @@ export function AtsScorePanel() {
       const fetchedFixes: AtsFix[] = await res.json()
       setFixes(fetchedFixes)
       setFixStatus('ready')
+      setMaxUnlockedStep((prev) => (prev < 3 ? 3 : prev))
     } catch (err) {
       setFixError(err instanceof Error ? err.message : 'Could not generate fixes. Please try again.')
       setFixStatus('error')
@@ -187,6 +214,7 @@ export function AtsScorePanel() {
     if (!resumeId || !result || result.missingKeywords.length === 0) return
     setSemanticStatus('loading')
     setSemanticError(null)
+    setHasTriedSemanticThisAnalysis(true)
     try {
       const res = await fetch(`/api/resumes/${resumeId}/ats-semantic-match`, {
         method: 'POST',
@@ -233,7 +261,17 @@ export function AtsScorePanel() {
       })
       setSectionData('work', work)
     }
-    setDismissedIds((prev) => new Set(prev).add(fix.id))
+    setAppliedIds((prev) => new Set(prev).add(fix.id))
+    const timeoutId = setTimeout(() => {
+      setDismissedIds((prev) => new Set(prev).add(fix.id))
+      setAppliedIds((prev) => {
+        const next = new Set(prev)
+        next.delete(fix.id)
+        return next
+      })
+      appliedTimeoutsRef.current.delete(fix.id)
+    }, 1200)
+    appliedTimeoutsRef.current.set(fix.id, timeoutId)
   }, [data, setData, setSectionData])
 
   const dismissFix = useCallback((id: string) => {
@@ -251,56 +289,83 @@ export function AtsScorePanel() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-indigo-700 mb-1">
-          Paste job description
-        </label>
-        <textarea
-          value={jobDescription}
-          onChange={(e) => setJobDescription(e.target.value)}
-          placeholder="Paste the full job description here to see how well your CV matches…"
-          className="w-full h-[312px] rounded-lg border border-indigo-200 bg-white/70 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <button
-          onClick={() => handleAnalyze()}
-          disabled={loading || !jobDescription.trim()}
-          className="mt-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-        >
-          {loading ? 'Analyzing…' : 'Analyze'}
-        </button>
-        {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
-      </div>
+      <StepsBar current={currentStep} maxUnlocked={maxUnlockedStep} onStepClick={setCurrentStep} />
 
-      {result && (
+      {currentStep === 1 && (
         <div className="space-y-4">
-          <div className="rounded-xl border border-white/30 bg-white/60 backdrop-blur-xl p-6 text-center shadow-lg">
-            <p className="text-sm text-indigo-600 mb-1">ATS Score</p>
-            {(() => {
-              const { colorClass, label } = getScoreStatusLabel(result.total)
-              return (
-                <>
-                  <p className={`text-6xl font-bold ${colorClass}`}>
-                    {result.total}
-                  </p>
-                  <p className="text-sm text-indigo-500 mt-2">{label}</p>
-                </>
-              )
-            })()}
-            <p className="text-sm text-indigo-600 mt-1">out of 100</p>
+          <div>
+            <label className="block text-sm font-medium text-indigo-700 mb-1">
+              Paste job description
+            </label>
+            <textarea
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+              placeholder="Paste the full job description here to see how well your CV matches…"
+              className="w-full h-[312px] rounded-lg border border-indigo-200 bg-white/70 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              onClick={() => handleAnalyze()}
+              disabled={loading || !jobDescription.trim()}
+              className="mt-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            >
+              {loading ? 'Analyzing…' : 'Analyze'}
+            </button>
+            {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
           </div>
 
-          <div className="rounded-xl border border-white/30 bg-white/60 backdrop-blur-xl p-4 shadow-lg space-y-3">
-            <p className="text-sm font-semibold text-indigo-900">Score Breakdown</p>
-            {VECTOR_LABELS.map(({ key, label, max }) => (
-              <div key={key}>
-                <div className="flex justify-between text-xs text-indigo-600 mb-1">
-                  <span>{label}</span>
-                  <span className="font-medium">{result.breakdown[key]} / {max}</span>
-                </div>
-                <ScoreBar value={result.breakdown[key]} max={max} />
+          {result && (
+            <>
+              <div className="rounded-xl border border-white/30 bg-white/60 backdrop-blur-xl p-6 text-center shadow-lg">
+                <p className="text-sm text-indigo-600 mb-1">ATS Score</p>
+                {(() => {
+                  const { colorClass, pillClass, label } = getScoreStatusLabel(result.total)
+                  return (
+                    <div className="flex items-baseline justify-center gap-3">
+                      <p className={`text-6xl font-bold ${colorClass}`}>
+                        {result.total}
+                        <span className="text-2xl font-medium text-indigo-300">/100</span>
+                      </p>
+                      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${pillClass}`}>
+                        {label}
+                      </span>
+                    </div>
+                  )
+                })()}
               </div>
-            ))}
-          </div>
+
+              <div className="rounded-xl border border-white/30 bg-white/60 backdrop-blur-xl p-4 shadow-lg space-y-3">
+                <p className="text-sm font-semibold text-indigo-900">Score Breakdown</p>
+                {VECTOR_LABELS.map(({ key, label, max }) => (
+                  <div key={key}>
+                    <div className="flex justify-between text-xs text-indigo-600 mb-1">
+                      <span>{label}</span>
+                      <span className="font-medium">{result.breakdown[key]} / {max}</span>
+                    </div>
+                    <ScoreBar value={result.breakdown[key]} max={max} />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setCurrentStep(2)}
+                  disabled={maxUnlockedStep < 2}
+                  className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                >
+                  Next: Close the Gap →
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {currentStep === 2 && result && (
+        <div className="space-y-4">
+          <p className="text-xs font-medium text-indigo-500">
+            ✅ {result.matchedKeywords.length + result.excludedMatchedKeywords.length} matched
+            &nbsp;·&nbsp; ⚠️ {result.missingKeywords.length} missing
+          </p>
 
           {(result.missingKeywords.length > 0 || result.excludedMissingKeywords.length > 0) && (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm">
@@ -379,6 +444,14 @@ export function AtsScorePanel() {
                 </div>
               </div>
 
+              {!hasTriedSemanticThisAnalysis && semanticStatus !== 'ready' && (
+                <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                  <p className="text-xs text-amber-800">
+                    💡 Try Semantic Match first — it can clear keywords you already cover before spending an AI rewrite on them.
+                  </p>
+                </div>
+              )}
+
               {semanticError && (
                 <p className="mb-2 text-xs text-red-700">{semanticError}</p>
               )}
@@ -393,7 +466,7 @@ export function AtsScorePanel() {
 
               <div className="flex flex-wrap gap-1">
                 {[
-                  ...result.missingKeywords.map((kw) => ({ kw, excluded: false })),
+                  ...sortByPriority(result.missingKeywords, keywordPriorities).map((kw) => ({ kw, excluded: false })),
                   ...result.excludedMissingKeywords.map((kw) => ({ kw, excluded: true })),
                 ].slice(0, 40).map(({ kw, excluded }) => {
                   const priority = keywordPriorities[kw] ?? 'ambiguous'
@@ -438,25 +511,6 @@ export function AtsScorePanel() {
             </div>
           )}
 
-          {fixStatus === 'ready' && fixes.length > 0 && (
-            <AtsFixReviewPanel
-              fixes={fixes}
-              dismissedIds={dismissedIds}
-              onApply={applyFix}
-              onDismiss={dismissFix}
-              onApplyAll={applyAll}
-              data={data}
-            />
-          )}
-
-          {fixStatus === 'ready' && fixes.length === 0 && (
-            <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-center">
-              <p className="text-sm text-indigo-600">
-                No specific fixes found — try re-analyzing after updating your highlights.
-              </p>
-            </div>
-          )}
-
           {(result.matchedKeywords.length > 0 || result.excludedMatchedKeywords.length > 0) && (
             <div className="rounded-xl border border-green-200 bg-green-50 p-4 shadow-sm">
               <p className="text-sm font-semibold text-green-700 mb-2">
@@ -492,6 +546,95 @@ export function AtsScorePanel() {
               </div>
             </div>
           )}
+
+          <div className="flex justify-between">
+            <button
+              onClick={() => setCurrentStep(1)}
+              className="px-4 py-2 bg-indigo-100 text-indigo-700 text-sm rounded-lg hover:bg-indigo-200 transition-colors"
+            >
+              ← Back
+            </button>
+            <button
+              onClick={() => setCurrentStep(3)}
+              disabled={maxUnlockedStep < 3}
+              className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            >
+              Next: Review &amp; Apply →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {currentStep === 3 && (
+        <div className="space-y-4">
+          {result && result.missingKeywords.length === 0 && result.excludedMissingKeywords.length === 0 ? (
+            <div className="rounded-xl border border-green-200 bg-green-50 p-6 text-center">
+              <p className="text-sm text-green-700 font-medium">Nothing to fix — great match!</p>
+            </div>
+          ) : fixStatus === 'idle' ? (
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-6 text-center">
+              <p className="text-sm text-indigo-600">
+                Head back to Close the Gap and run Tailor with AI to see suggestions here.
+              </p>
+            </div>
+          ) : fixStatus === 'loading' ? (
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-6 text-center">
+              <p className="text-sm text-indigo-600">
+                <span className="animate-spin inline-block mr-1">⟳</span>
+                Generating fixes…
+              </p>
+            </div>
+          ) : fixStatus === 'error' ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-center space-y-2">
+              <p className="text-sm text-red-700">{fixError}</p>
+              <button
+                onClick={handleFixAll}
+                className="px-4 py-2 bg-indigo-100 text-indigo-700 text-sm rounded-lg hover:bg-indigo-200 transition-colors"
+              >
+                ↻ Try again
+              </button>
+            </div>
+          ) : (
+            <>
+              {fixes.length > 0 ? (
+                <AtsFixReviewPanel
+                  fixes={fixes}
+                  dismissedIds={dismissedIds}
+                  appliedIds={appliedIds}
+                  onApply={applyFix}
+                  onDismiss={dismissFix}
+                  onApplyAll={applyAll}
+                  data={data}
+                />
+              ) : (
+                <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-center">
+                  <p className="text-sm text-indigo-600">
+                    No specific fixes found — try re-analyzing after updating your highlights.
+                  </p>
+                </div>
+              )}
+              {(fixes.length === 0 || fixes.every((f) => dismissedIds.has(f.id))) && (
+                <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-center mt-4">
+                  <p className="text-sm text-indigo-600 mb-2">Want another pass?</p>
+                  <button
+                    onClick={handleFixAll}
+                    className="px-4 py-2 bg-indigo-100 text-indigo-700 text-sm rounded-lg hover:bg-indigo-200 transition-colors"
+                  >
+                    ↻ Regenerate fixes
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          <div className="flex justify-start">
+            <button
+              onClick={() => setCurrentStep(2)}
+              className="px-4 py-2 bg-indigo-100 text-indigo-700 text-sm rounded-lg hover:bg-indigo-200 transition-colors"
+            >
+              ← Back to Close the Gap
+            </button>
+          </div>
         </div>
       )}
     </div>
