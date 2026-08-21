@@ -92,6 +92,46 @@ describe('AtsScorePanel text status label', () => {
   })
 })
 
+describe('AtsScorePanel help popover for Semantic Match / Tailor with AI', () => {
+  it('is closed by default and opens to show both explanations when the "?" button is clicked', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
+
+    expect(screen.queryByText(/it doesn.t rewrite anything/i)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /what do semantic match and tailor with ai do/i }))
+
+    expect(screen.getByText(/it doesn.t rewrite anything/i)).toBeInTheDocument()
+    expect(screen.getByText(/you review and approve each suggested change/i)).toBeInTheDocument()
+  })
+
+  it('renders the primary action buttons at the theme color and a 44px-tall touch target', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
+
+    const semanticButton = screen.getByText(/semantic match/i).closest('button')
+    const tailorButton = screen.getByText(/tailor with ai/i).closest('button')
+    expect(semanticButton?.className).toContain('bg-indigo-600')
+    expect(semanticButton?.className).toContain('min-h-[44px]')
+    expect(tailorButton?.className).toContain('bg-indigo-600')
+    expect(tailorButton?.className).toContain('min-h-[44px]')
+  })
+})
+
 describe('AtsScorePanel applyFix for generate-kind summary fixes', () => {
   it('applying a generate fix sets basics.summary when no summary existed before', async () => {
     const fetchMock = vi
@@ -172,6 +212,54 @@ describe('AtsScorePanel Apply All Verified', () => {
     expect(data.basics?.summary).toBeUndefined()
     // The flagged fix is still awaiting individual review, not silently dropped.
     expect(screen.getByText(/not in your original text/i)).toBeInTheDocument()
+  })
+})
+
+describe('AtsScorePanel applyFix for roles[]-only work entries', () => {
+  it('writes the suggested text into work[].roles[] when the fix targets a role, not the legacy field', async () => {
+    // Mirrors a work entry edited through the current editor UI, where
+    // WorkForm.tsx clears the legacy top-level fields and moves everything
+    // into roles[] on save.
+    useResumeEditorStore.setState({
+      data: {
+        basics: { name: 'Jane Doe' },
+        work: [{ name: 'Acme Corp', highlights: undefined, roles: [{ id: 'role-1', highlights: ['Built a system.'] }] }],
+      },
+    })
+    const roleFix: AtsFix = {
+      id: 'fix-work-0-r0-0',
+      section: 'work',
+      kind: 'edit',
+      workIndex: 0,
+      roleIndex: 0,
+      highlightIndex: 0,
+      original: 'Built a system.',
+      suggested: 'Built a scalable system.',
+      targetKeywords: ['react'],
+      pendingApprovals: [],
+    }
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(scoreResult))
+      .mockResolvedValueOnce(jsonResponse([roleFix]))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
+      target: { value: 'Looking for a React + TypeScript engineer.' },
+    })
+    fireEvent.click(screen.getByText('Analyze'))
+    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
+
+    fireEvent.click(screen.getByText(/tailor with ai/i))
+    await waitFor(() => expect(screen.getByText('Apply')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByText('Apply'))
+
+    const { data } = useResumeEditorStore.getState()
+    expect(data.work?.[0].roles?.[0].highlights?.[0]).toBe('Built a scalable system.')
+    // Must not resurrect the legacy field the current editor already cleared.
+    expect(data.work?.[0].highlights).toBeUndefined()
   })
 })
 

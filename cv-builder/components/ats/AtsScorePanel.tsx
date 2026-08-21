@@ -6,6 +6,7 @@ import type { AtsScoreResult } from '@/lib/ats/scorer'
 import type { AtsFix } from '@/lib/ai/ats-fix-pipeline'
 import type { KeywordPriority } from '@/lib/ai/jd-extraction-pipeline'
 import { AtsFixReviewPanel } from './AtsFixReviewPanel'
+import { Popover } from '@/components/ui/Popover'
 
 // /ats-score merges keywordPriorities onto AtsScoreResult rather than
 // widening that interface (see the route) — this is the richer shape the
@@ -68,6 +69,7 @@ export function AtsScorePanel() {
   const [semanticMatches, setSemanticMatches] = useState<string[]>([])
   const [semanticStatus, setSemanticStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [semanticError, setSemanticError] = useState<string | null>(null)
+  const [helpOpen, setHelpOpen] = useState(false)
 
   // The JD keyword list an /ats-score response actually used (AI-extracted
   // or regex-fallback) — re-sent on subsequent re-scores of the SAME job
@@ -194,6 +196,20 @@ export function AtsScorePanel() {
     } else if (fix.section === 'work' && fix.workIndex !== undefined && fix.highlightIndex !== undefined) {
       const work = (data.work ?? []).map((job, wi) => {
         if (wi !== fix.workIndex) return job
+        // Highlights live in roles[] once a work entry has been edited
+        // through the current editor UI (which clears the legacy
+        // top-level fields entirely on save) — fix.roleIndex tells us
+        // which side of that split to write back into.
+        if (fix.roleIndex !== undefined) {
+          const roles = (job.roles ?? []).map((role, ri) => {
+            if (ri !== fix.roleIndex) return role
+            const highlights = (role.highlights ?? []).map((h, hi) =>
+              hi === fix.highlightIndex ? fix.suggested : h
+            )
+            return { ...role, highlights }
+          })
+          return { ...job, roles }
+        }
         const highlights = (job.highlights ?? []).map((h, hi) =>
           hi === fix.highlightIndex ? fix.suggested : h
         )
@@ -227,7 +243,7 @@ export function AtsScorePanel() {
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
           placeholder="Paste the full job description here to see how well your CV matches…"
-          className="w-full h-[480px] rounded-lg border border-indigo-200 bg-white/70 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full h-[312px] rounded-lg border border-indigo-200 bg-white/70 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <button
           onClick={() => handleAnalyze()}
@@ -276,12 +292,12 @@ export function AtsScorePanel() {
                 <p className="text-sm font-semibold text-red-700">
                   Missing Keywords ({result.missingKeywords.length})
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {semanticStatus !== 'ready' && (
                     <button
                       onClick={handleSemanticMatch}
                       disabled={semanticStatus === 'loading'}
-                      className="flex items-center gap-1.5 px-3 py-1 text-xs bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                      className="flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                     >
                       {semanticStatus === 'loading' ? (
                         <>
@@ -297,7 +313,7 @@ export function AtsScorePanel() {
                     <button
                       onClick={handleFixAll}
                       disabled={fixStatus === 'loading'}
-                      className="flex items-center gap-1.5 px-3 py-1 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                      className="flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                     >
                       {fixStatus === 'loading' ? (
                         <>
@@ -309,6 +325,41 @@ export function AtsScorePanel() {
                       )}
                     </button>
                   )}
+                  <Popover
+                    open={helpOpen}
+                    onOpenChange={setHelpOpen}
+                    trigger={
+                      <button
+                        type="button"
+                        onClick={() => setHelpOpen((o) => !o)}
+                        aria-expanded={helpOpen}
+                        aria-haspopup="dialog"
+                        aria-label="What do Semantic Match and Tailor with AI do?"
+                        className="flex items-center justify-center h-11 w-11 shrink-0 rounded-full bg-indigo-100 text-indigo-700 text-sm font-semibold hover:bg-indigo-200 transition-colors"
+                      >
+                        ?
+                      </button>
+                    }
+                  >
+                    <div
+                      role="dialog"
+                      aria-label="About Semantic Match and Tailor with AI"
+                      className="w-72 rounded-xl border border-white/40 bg-white/95 p-4 shadow-xl backdrop-blur-xl space-y-3 text-left"
+                    >
+                      <div>
+                        <p className="text-xs font-semibold text-teal-700 mb-0.5">🔎 Semantic Match</p>
+                        <p className="text-xs text-gray-600 leading-relaxed">
+                          AI checks whether your resume already covers a missing keyword through a synonym or related term (e.g. &quot;k8s&quot; counts for &quot;Kubernetes&quot;) — it doesn&apos;t rewrite anything.
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-indigo-700 mb-0.5">✨ Tailor with AI</p>
+                        <p className="text-xs text-gray-600 leading-relaxed">
+                          AI rewrites your summary and bullet points to naturally work in the missing keywords — you review and approve each suggested change before it&apos;s applied.
+                        </p>
+                      </div>
+                    </div>
+                  </Popover>
                 </div>
               </div>
 
@@ -320,8 +371,8 @@ export function AtsScorePanel() {
                 Click a keyword you don&apos;t have to ignore it — the AI tools above will skip it too.
               </p>
               <p className="mb-2 text-xs text-indigo-600">
-                <span className="text-red-500">●</span> must-have / unclear&nbsp;&nbsp;
-                <span className="text-yellow-600">●</span> nice-to-have
+                <span className="text-red-700">●</span> must-have / unclear&nbsp;&nbsp;
+                <span className="text-yellow-800">●</span> nice-to-have
               </p>
 
               <div className="flex flex-wrap gap-1">
@@ -378,6 +429,7 @@ export function AtsScorePanel() {
               onApply={applyFix}
               onDismiss={dismissFix}
               onApplyAll={applyAll}
+              data={data}
             />
           )}
 

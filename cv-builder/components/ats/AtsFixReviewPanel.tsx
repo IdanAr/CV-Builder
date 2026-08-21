@@ -2,6 +2,7 @@
 
 import type { AtsFix } from '@/lib/ai/ats-fix-pipeline'
 import { diffWords } from '@/lib/text-diff'
+import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 interface AtsFixReviewPanelProps {
   fixes: AtsFix[]
@@ -9,6 +10,53 @@ interface AtsFixReviewPanelProps {
   onApply: (fix: AtsFix) => void
   onDismiss: (id: string) => void
   onApplyAll: () => void
+  /** Used to label each fix with the section/record it targets (e.g. "Work Experience Section - Frontend Engineer at Acme Corp"). Omit to skip labeling. */
+  data?: ResumeData
+}
+
+interface FixGroup {
+  key: string
+  label: string
+  fixes: AtsFix[]
+}
+
+/**
+ * Groups fixes by the section/record they target so multiple edits to the
+ * same job (e.g. two rewritten bullets) render under one heading instead of
+ * repeating it per fix. Order follows first appearance in `fixes`.
+ */
+function groupFixesByRecord(fixes: AtsFix[], data: ResumeData | undefined): FixGroup[] {
+  const groups: FixGroup[] = []
+  const indexByKey = new Map<string, number>()
+
+  for (const fix of fixes) {
+    const key = fix.section === 'summary'
+      ? 'summary'
+      : `work-${fix.workIndex}-${fix.roleIndex ?? 'legacy'}`
+
+    let idx = indexByKey.get(key)
+    if (idx === undefined) {
+      idx = groups.length
+      indexByKey.set(key, idx)
+      groups.push({ key, label: getRecordLabel(fix, data), fixes: [] })
+    }
+    groups[idx].fixes.push(fix)
+  }
+
+  return groups
+}
+
+function getRecordLabel(fix: AtsFix, data: ResumeData | undefined): string {
+  if (fix.section === 'summary') return 'Summary Section'
+
+  const job = fix.workIndex !== undefined ? data?.work?.[fix.workIndex] : undefined
+  const position = fix.roleIndex !== undefined ? job?.roles?.[fix.roleIndex]?.position : job?.position
+  const company = job?.name
+
+  if (position && company) return `Work Experience Section - ${position} at ${company}`
+  if (position) return `Work Experience Section - ${position}`
+  if (company) return `Work Experience Section - ${company}`
+  return 'Work Experience Section'
 }
 
 export function AtsFixReviewPanel({
@@ -17,9 +65,11 @@ export function AtsFixReviewPanel({
   onApply,
   onDismiss,
   onApplyAll,
+  data,
 }: AtsFixReviewPanelProps) {
   const visible = fixes.filter((f) => !dismissedIds.has(f.id))
   const verifiedCount = visible.filter((f) => f.pendingApprovals.length === 0).length
+  const groups = groupFixesByRecord(visible, data)
 
   if (visible.length === 0) {
     return (
@@ -49,97 +99,104 @@ export function AtsFixReviewPanel({
         </button>
       </div>
 
-      {visible.map((fix) => (
-        <div
-          key={fix.id}
-          className="rounded-xl border border-indigo-100 bg-white/80 backdrop-blur-sm p-4 shadow-sm space-y-2"
-        >
-          {fix.targetKeywords.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-1">
-              {fix.targetKeywords.map((kw) => (
-                <span
-                  key={kw}
-                  className="inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700"
-                >
-                  {kw}
-                </span>
-              ))}
-            </div>
-          )}
+      {groups.map((group) => (
+        <div key={group.key} className="space-y-2">
+          <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
+            {group.label}
+          </p>
+          {group.fixes.map((fix) => (
+            <div
+              key={fix.id}
+              className="rounded-xl border border-indigo-100 bg-white/80 backdrop-blur-sm p-4 shadow-sm space-y-2"
+            >
+              {fix.targetKeywords.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-1">
+                  {fix.targetKeywords.map((kw) => (
+                    <span
+                      key={kw}
+                      className="inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700"
+                    >
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+              )}
 
-          {fix.kind === 'generate' ? (
-            <div className="text-sm">
-              <div className="rounded bg-green-50 border border-green-100 px-3 py-2">
-                <p className="text-xs text-green-600 font-medium mb-0.5">New professional summary</p>
-                <p className="text-green-900 leading-relaxed">{fix.suggested}</p>
-              </div>
-            </div>
-          ) : (
-            (() => {
-              const { before, after } = diffWords(fix.original, fix.suggested)
-              return (
-                <div className="space-y-1 text-sm">
-                  <div className="rounded bg-red-50 border border-red-100 px-3 py-2">
-                    <p className="text-xs text-red-500 font-medium mb-0.5">Before</p>
-                    <p className="text-gray-700 leading-relaxed">
-                      {before.map((seg, i) =>
-                        seg.changed ? (
-                          <span key={i} className="line-through text-red-700 bg-red-100 rounded-sm">{seg.text}</span>
-                        ) : (
-                          <span key={i}>{seg.text}</span>
-                        )
-                      )}
-                    </p>
-                  </div>
+              {fix.kind === 'generate' ? (
+                <div className="text-sm">
                   <div className="rounded bg-green-50 border border-green-100 px-3 py-2">
-                    <p className="text-xs text-green-600 font-medium mb-0.5">After</p>
-                    <p className="text-gray-700 leading-relaxed">
-                      {after.map((seg, i) =>
-                        seg.changed ? (
-                          <span key={i} className="font-semibold text-green-800 bg-green-100 rounded-sm">{seg.text}</span>
-                        ) : (
-                          <span key={i}>{seg.text}</span>
-                        )
-                      )}
-                    </p>
+                    <p className="text-xs text-green-600 font-medium mb-0.5">New professional summary</p>
+                    <p className="text-green-900 leading-relaxed">{fix.suggested}</p>
                   </div>
                 </div>
-              )
-            })()
-          )}
+              ) : (
+                (() => {
+                  const { before, after } = diffWords(fix.original, fix.suggested)
+                  return (
+                    <div className="space-y-1 text-sm">
+                      <div className="rounded bg-red-50 border border-red-100 px-3 py-2">
+                        <p className="text-xs text-red-500 font-medium mb-0.5">Before</p>
+                        <p className="text-gray-700 leading-relaxed">
+                          {before.map((seg, i) =>
+                            seg.changed ? (
+                              <span key={i} className="line-through text-red-700 bg-red-100 rounded-sm">{seg.text}</span>
+                            ) : (
+                              <span key={i}>{seg.text}</span>
+                            )
+                          )}
+                        </p>
+                      </div>
+                      <div className="rounded bg-green-50 border border-green-100 px-3 py-2">
+                        <p className="text-xs text-green-600 font-medium mb-0.5">After</p>
+                        <p className="text-gray-700 leading-relaxed">
+                          {after.map((seg, i) =>
+                            seg.changed ? (
+                              <span key={i} className="font-semibold text-green-800 bg-green-100 rounded-sm">{seg.text}</span>
+                            ) : (
+                              <span key={i}>{seg.text}</span>
+                            )
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })()
+              )}
 
-          {fix.pendingApprovals.length > 0 && (
-            <div className="rounded bg-amber-50 border border-amber-200 px-3 py-2">
-              <p className="text-xs text-amber-700 font-medium mb-1">
-                Contains figures not in your original text — verify before applying:
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {fix.pendingApprovals.map((claim) => (
-                  <span
-                    key={claim}
-                    className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
-                  >
-                    {claim}
-                  </span>
-                ))}
+              {fix.pendingApprovals.length > 0 && (
+                <div className="rounded bg-amber-50 border border-amber-200 px-3 py-2">
+                  <p className="text-xs text-amber-700 font-medium mb-1">
+                    Contains figures not in your original text — verify before applying:
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {fix.pendingApprovals.map((claim) => (
+                      <span
+                        key={claim}
+                        className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                      >
+                        {claim}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => onApply(fix)}
+                  className="px-3 py-1 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Apply
+                </button>
+                <button
+                  onClick={() => onDismiss(fix.id)}
+                  className="px-3 py-1 text-xs text-indigo-400 hover:text-indigo-600 transition-colors"
+                >
+                  Dismiss
+                </button>
               </div>
             </div>
-          )}
-
-          <div className="flex gap-2 pt-1">
-            <button
-              onClick={() => onApply(fix)}
-              className="px-3 py-1 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              Apply
-            </button>
-            <button
-              onClick={() => onDismiss(fix.id)}
-              className="px-3 py-1 text-xs text-indigo-400 hover:text-indigo-600 transition-colors"
-            >
-              Dismiss
-            </button>
-          </div>
+          ))}
         </div>
       ))}
     </div>
