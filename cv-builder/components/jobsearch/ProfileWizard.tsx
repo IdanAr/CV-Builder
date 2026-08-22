@@ -54,6 +54,7 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
   const [maxUnlocked, setMaxUnlocked] = useState(1)
   const [state, setState] = useState<WizardState>(initialState)
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   function goNext() {
     const next = Math.min(step + 1, STEP_LABELS.length)
@@ -72,6 +73,7 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
 
   async function handleSubmit() {
     setSubmitting(true)
+    setError(null)
     try {
       const res = await fetch('/api/jobsearch/profiles', {
         method: 'POST',
@@ -79,7 +81,13 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
         body: JSON.stringify(state),
       })
       const body = await res.json()
-      if (res.ok) onCreated(body.profile)
+      if (res.ok) {
+        onCreated(body.profile)
+      } else {
+        setError('Failed to create profile. Please try again.')
+      }
+    } catch {
+      setError('An error occurred. Please check your connection and try again.')
     } finally {
       setSubmitting(false)
     }
@@ -88,6 +96,7 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
   return (
     <div className="flex flex-col gap-4">
       <ProfileWizardSteps current={step} maxUnlocked={maxUnlocked} labels={STEP_LABELS} onStepClick={setStep} />
+      {error && <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
       {step === 1 && (
         <div className="flex flex-col gap-3">
@@ -124,6 +133,7 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
             City
             <input
               className="mt-1 w-full rounded border px-3 py-2 text-sm"
+              value={state.locations[0]?.city ?? ''}
               onChange={(e) =>
                 setState((s) => ({ ...s, locations: [{ city: e.target.value }] }))
               }

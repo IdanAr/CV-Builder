@@ -49,4 +49,41 @@ describe('ProfileWizard', () => {
     )
     expect(onCreated).toHaveBeenCalledWith({ _id: 'p1', name: 'Frontend, Remote EU' })
   })
+
+  it('preserves city input when navigating away and back to step 2', async () => {
+    render(<ProfileWizard onCreated={() => {}} />)
+    // Navigate to step 2
+    await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    // Type a city
+    const cityInput = screen.getByLabelText(/city/i) as HTMLInputElement
+    await userEvent.type(cityInput, 'Berlin')
+    expect(cityInput.value).toBe('Berlin')
+    // Navigate to step 4
+    await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    // Click back to step 2 via tab
+    await userEvent.click(screen.getByRole('tab', { name: /location/i }))
+    // Verify city is still there
+    const cityInputAfter = screen.getByLabelText(/city/i) as HTMLInputElement
+    expect(cityInputAfter.value).toBe('Berlin')
+  })
+
+  it('displays an error message when profile creation fails', async () => {
+    const onCreated = vi.fn()
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({}),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ProfileWizard onCreated={onCreated} />)
+    for (let i = 0; i < 4; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    }
+    await userEvent.type(screen.getByLabelText(/profile name/i), 'Frontend, Remote EU')
+    await userEvent.click(screen.getByRole('button', { name: /create profile/i }))
+
+    expect(screen.getByText(/failed to create profile/i)).toBeInTheDocument()
+    expect(onCreated).not.toHaveBeenCalled()
+  })
 })
