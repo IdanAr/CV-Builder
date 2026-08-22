@@ -61,4 +61,35 @@ describe('ProfileList', () => {
       )
     )
   })
+
+  it('shows an error message when the initial GET fails', async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new Error('Network error'))
+
+    render(<ProfileList />)
+
+    expect(await screen.findByText(/an error occurred/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
+  })
+
+  it('shows an error message when PATCH fails and does not reload', async () => {
+    const mockFetch = vi.fn()
+    // First mock: initial GET on mount succeeds
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ profiles: [{ _id: 'p1', name: 'Frontend', isActive: true }] }),
+    })
+    // Second mock: PATCH fails
+    mockFetch.mockResolvedValueOnce({ ok: false, json: async () => ({}) })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ProfileList />)
+    await screen.findByText('Frontend')
+    await userEvent.click(screen.getByRole('checkbox', { name: /active/i }))
+
+    // Should show error message
+    expect(await screen.findByText(/failed to update profile/i)).toBeInTheDocument()
+
+    // Should only have 2 calls (initial GET and PATCH), not 3 (no reload GET)
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+  })
 })

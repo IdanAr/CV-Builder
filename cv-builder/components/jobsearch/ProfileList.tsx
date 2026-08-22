@@ -9,32 +9,75 @@ interface ProfileSummary {
   isActive: boolean
 }
 
+async function loadProfilesData() {
+  const res = await fetch('/api/jobsearch/profiles')
+  const body = await res.json()
+  return { ok: res.ok, profiles: body.profiles }
+}
+
 export function ProfileList() {
   const [profiles, setProfiles] = useState<ProfileSummary[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [showWizard, setShowWizard] = useState(false)
 
   async function load() {
-    const res = await fetch('/api/jobsearch/profiles')
-    const body = await res.json()
-    setProfiles(body.profiles)
+    setError(null)
+    try {
+      const { ok, profiles: data } = await loadProfilesData()
+      if (ok) {
+        setProfiles(data)
+      } else {
+        setError('Failed to load profiles. Please try again.')
+      }
+    } catch {
+      setError('An error occurred. Please check your connection and try again.')
+    }
   }
 
   useEffect(() => {
-    async function loadProfiles() {
-      const res = await fetch('/api/jobsearch/profiles')
-      const body = await res.json()
-      setProfiles(body.profiles)
+    async function loadOnMount() {
+      setError(null)
+      try {
+        const { ok, profiles: data } = await loadProfilesData()
+        if (ok) {
+          setProfiles(data)
+        } else {
+          setError('Failed to load profiles. Please try again.')
+        }
+      } catch {
+        setError('An error occurred. Please check your connection and try again.')
+      }
     }
-    loadProfiles()
+    loadOnMount()
   }, [])
 
   async function toggleActive(profile: ProfileSummary) {
-    await fetch(`/api/jobsearch/profiles/${profile._id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isActive: !profile.isActive }),
-    })
-    load()
+    setError(null)
+    try {
+      const res = await fetch(`/api/jobsearch/profiles/${profile._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !profile.isActive }),
+      })
+      if (res.ok) {
+        await load()
+      } else {
+        setError('Failed to update profile. Please try again.')
+      }
+    } catch {
+      setError('An error occurred. Please check your connection and try again.')
+    }
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-8">
+        <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        <button type="button" className="rounded bg-indigo-600 px-4 py-2 text-sm text-white" onClick={() => load()}>
+          Try again
+        </button>
+      </div>
+    )
   }
 
   if (profiles === null) return null
