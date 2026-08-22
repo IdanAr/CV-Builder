@@ -172,4 +172,138 @@ describe('AtsFixReviewPanel', () => {
       expect(screen.getByText('30%')).toBeInTheDocument()
     })
   })
+
+  describe('section/record labeling and aggregation', () => {
+    const data = {
+      basics: { name: 'Jane Smith' },
+      work: [{
+        name: 'Acme Corp',
+        position: 'Frontend Engineer',
+      }],
+    }
+
+    it('labels a summary fix with "Summary Section"', () => {
+      render(
+        <AtsFixReviewPanel
+          fixes={[makeFix()]}
+          dismissedIds={new Set()}
+          data={data}
+          {...noop}
+        />
+      )
+      expect(screen.getByText('Summary Section')).toBeInTheDocument()
+    })
+
+    it('labels a work fix with the section and the specific role/company record', () => {
+      render(
+        <AtsFixReviewPanel
+          fixes={[makeFix({
+            id: 'fix-work-0-0',
+            section: 'work',
+            workIndex: 0,
+            highlightIndex: 0,
+            original: 'Built a system.',
+            suggested: 'Built a scalable system.',
+          })]}
+          dismissedIds={new Set()}
+          data={data}
+          {...noop}
+        />
+      )
+      expect(screen.getByText('Work Experience Section - Frontend Engineer at Acme Corp')).toBeInTheDocument()
+    })
+
+    it('aggregates multiple fixes for the same work record under a single heading', () => {
+      render(
+        <AtsFixReviewPanel
+          fixes={[
+            makeFix({
+              id: 'fix-work-0-0', section: 'work', workIndex: 0, highlightIndex: 0,
+              original: 'Built a system.', suggested: 'Built a scalable system.',
+            }),
+            makeFix({
+              id: 'fix-work-0-1', section: 'work', workIndex: 0, highlightIndex: 1,
+              original: 'Wrote some docs.', suggested: 'Wrote thorough docs.',
+            }),
+          ]}
+          dismissedIds={new Set()}
+          data={data}
+          {...noop}
+        />
+      )
+      expect(screen.getAllByText('Work Experience Section - Frontend Engineer at Acme Corp')).toHaveLength(1)
+      expect(screen.getByText('2 suggested fixes')).toBeInTheDocument()
+    })
+
+    it('falls back gracefully when data is not provided', () => {
+      render(
+        <AtsFixReviewPanel
+          fixes={[makeFix({
+            id: 'fix-work-0-0', section: 'work', workIndex: 0, highlightIndex: 0,
+          })]}
+          dismissedIds={new Set()}
+          {...noop}
+        />
+      )
+      expect(screen.getByText('Work Experience Section')).toBeInTheDocument()
+    })
+  })
+
+  describe('applied-confirmation card', () => {
+    it('renders a compact "✓ Applied" card for a fix whose id is in appliedIds, instead of the full edit card', () => {
+      render(
+        <AtsFixReviewPanel
+          fixes={[makeFix({ id: 'fix-a' })]}
+          dismissedIds={new Set()}
+          appliedIds={new Set(['fix-a'])}
+          {...noop}
+        />
+      )
+      expect(screen.getByText(/applied/i)).toBeInTheDocument()
+      expect(screen.queryByText('Before')).not.toBeInTheDocument()
+      expect(screen.queryByText('Apply')).not.toBeInTheDocument()
+      expect(screen.queryByText('Dismiss')).not.toBeInTheDocument()
+    })
+
+    it('still renders the full edit card for a fix not in appliedIds', () => {
+      render(
+        <AtsFixReviewPanel
+          fixes={[makeFix({ id: 'fix-a' })]}
+          dismissedIds={new Set()}
+          appliedIds={new Set()}
+          {...noop}
+        />
+      )
+      expect(screen.getByText('Before')).toBeInTheDocument()
+      expect(screen.getByText('Apply')).toBeInTheDocument()
+    })
+
+    it('groups an applied fix under its normal section/record heading, not a separate one', () => {
+      const data = { basics: { name: 'Jane Smith' }, work: [{ name: 'Acme Corp', position: 'Frontend Engineer' }] }
+      render(
+        <AtsFixReviewPanel
+          fixes={[
+            makeFix({ id: 'fix-a', section: 'work', workIndex: 0, highlightIndex: 0 }),
+            makeFix({ id: 'fix-b', section: 'work', workIndex: 0, highlightIndex: 1 }),
+          ]}
+          dismissedIds={new Set()}
+          appliedIds={new Set(['fix-a'])}
+          data={data}
+          {...noop}
+        />
+      )
+      expect(screen.getAllByText('Work Experience Section - Frontend Engineer at Acme Corp')).toHaveLength(1)
+    })
+
+    it('defaults to no applied fixes when appliedIds is omitted', () => {
+      render(
+        <AtsFixReviewPanel
+          fixes={[makeFix({ id: 'fix-a' })]}
+          dismissedIds={new Set()}
+          {...noop}
+        />
+      )
+      expect(screen.getByText('Before')).toBeInTheDocument()
+    })
+  })
 })

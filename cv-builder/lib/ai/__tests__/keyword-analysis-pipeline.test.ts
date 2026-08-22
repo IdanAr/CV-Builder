@@ -64,6 +64,29 @@ describe('runSemanticKeywordAnalysis', () => {
     expect(result).toEqual([])
   })
 
+  it('parses a markdown-fenced JSON array instead of silently returning empty', async () => {
+    // Claude frequently wraps array output in a ```json ... ``` fence despite
+    // being told to return only the array — the exact same failure mode
+    // already found and fixed in jd-extraction-pipeline.ts and
+    // ats-fix-pipeline.ts, but never applied here.
+    mockCreate.mockResolvedValueOnce({
+      content: [{ type: 'text', text: '```json\n["kubernetes", "leadership"]\n```' }],
+    })
+    const result = await runSemanticKeywordAnalysis(
+      'Ran production workloads on k8s. Led a team of 5 engineers.',
+      ['kubernetes', 'leadership']
+    )
+    expect(result).toEqual(['kubernetes', 'leadership'])
+  })
+
+  it('parses a JSON array followed by trailing prose', async () => {
+    mockCreate.mockResolvedValueOnce({
+      content: [{ type: 'text', text: '["kubernetes"]\n\nThese are the confirmed matches.' }],
+    })
+    const result = await runSemanticKeywordAnalysis('Ran production workloads on k8s.', ['kubernetes'])
+    expect(result).toEqual(['kubernetes'])
+  })
+
   it('returns empty array when Claude returns a non-array', async () => {
     mockClaudeResponse({ matched: ['kubernetes'] })
     const result = await runSemanticKeywordAnalysis('resume text', ['kubernetes'])

@@ -3,7 +3,7 @@ import type { ResumeData, WorkRole, EducationRole, CustomSectionItem, CustomSect
 type WorkItem = NonNullable<ResumeData['work']>[number]
 type EducationItem = NonNullable<ResumeData['education']>[number]
 
-const LEGACY_ROLE_ID = 'legacy-role'
+export const LEGACY_ROLE_ID = 'legacy-role'
 
 /**
  * Resolves the list of roles to render/edit for a Work entry, falling back
