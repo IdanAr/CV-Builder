@@ -11,5 +11,6 @@ export const config = {
     '/api/resumes/:path*',
     '/api/applications/:path*',
     '/api/preview/:path*',
+    '/api/jobsearch/:path*',
   ],
 }

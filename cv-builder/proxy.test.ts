@@ -13,14 +13,25 @@ vi.mock('next-auth/providers/github', () => ({ default: vi.fn() }))
 vi.mock('next-auth/providers/google', () => ({ default: vi.fn() }))
 
 describe('proxy matcher', () => {
-  it('covers /dashboard, /api/resumes, /api/applications, and /api/preview', async () => {
+  it('covers /dashboard, /api/resumes, /api/applications, /api/preview, and /api/jobsearch', async () => {
     const { config } = await import('./proxy')
     expect(config.matcher).toEqual([
       '/dashboard/:path*',
       '/api/resumes/:path*',
       '/api/applications/:path*',
       '/api/preview/:path*',
+      '/api/jobsearch/:path*',
     ])
+  })
+
+  it('protects /api/jobsearch routes', async () => {
+    const { config } = await import('./proxy')
+    expect(config.matcher).toContain('/api/jobsearch/:path*')
+  })
+
+  it('covers /dashboard/jobsearch via the existing /dashboard/:path* wildcard', async () => {
+    const { config } = await import('./proxy')
+    expect(config.matcher).toContain('/dashboard/:path*')
   })
 
   it('does not include the OAuth handshake route', async () => {
