@@ -91,5 +91,20 @@ describe('ProfileList', () => {
 
     // Should only have 2 calls (initial GET and PATCH), not 3 (no reload GET)
     expect(mockFetch).toHaveBeenCalledTimes(2)
+
+    // The already-loaded list must stay visible underneath the error banner —
+    // a failed PATCH must not blank out previously-fetched data.
+    expect(screen.getByText('Frontend')).toBeInTheDocument()
+  })
+
+  it('shows a "Try again" full-screen error only when the very first load fails', async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new Error('Network error'))
+
+    render(<ProfileList />)
+
+    expect(await screen.findByText(/an error occurred/i)).toBeInTheDocument()
+    // No list content and no "Create profile" affordance should render behind
+    // the full-screen error, because nothing has loaded yet.
+    expect(screen.queryByRole('button', { name: /create.*profile/i })).not.toBeInTheDocument()
   })
 })
