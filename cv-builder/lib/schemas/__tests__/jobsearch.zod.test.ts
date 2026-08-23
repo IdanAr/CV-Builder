@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   JobSearchProfileSchema,
+  PatchJobSearchProfileSchema,
   DEFAULT_RECENCY_DAYS,
   DEFAULT_MIN_ATS_SCORE,
 } from '../jobsearch.zod'
@@ -45,5 +46,22 @@ describe('JobSearchProfileSchema', () => {
       isActive: false,
     })
     expect(result.success).toBe(true)
+  })
+})
+
+describe('PatchJobSearchProfileSchema', () => {
+  it('does not backfill defaults for absent fields', () => {
+    const result = PatchJobSearchProfileSchema.parse({ isActive: false })
+    expect(Object.keys(result)).toEqual(['isActive'])
+  })
+
+  it('rejects minAtsScore outside 0-100 when provided', () => {
+    const result = PatchJobSearchProfileSchema.safeParse({ minAtsScore: 150 })
+    expect(result.success).toBe(false)
+  })
+
+  it('accepts an empty patch', () => {
+    const result = PatchJobSearchProfileSchema.parse({})
+    expect(result).toEqual({})
   })
 })

@@ -61,7 +61,7 @@ describe('PATCH /api/jobsearch/profiles/[id]', () => {
       params: Promise.resolve({ id: 'p1' }),
     } as never)) as Response
     expect(res.status).toBe(200)
-    expect(updateJobSearchProfile).toHaveBeenCalledWith('u1', 'p1', expect.objectContaining({ minAtsScore: 80 }))
+    expect(updateJobSearchProfile).toHaveBeenCalledWith('u1', 'p1', { minAtsScore: 80 })
   })
 
   it('rejects an invalid body with 400', async () => {

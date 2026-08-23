@@ -34,5 +34,25 @@ export type JobSearchProfileInput = z.infer<typeof JobSearchProfileSchema>
 export const CreateJobSearchProfileSchema = JobSearchProfileSchema
 export type CreateJobSearchProfileInput = z.infer<typeof CreateJobSearchProfileSchema>
 
-export const PatchJobSearchProfileSchema = JobSearchProfileSchema.partial()
+// NOT derived via JobSearchProfileSchema.partial(): in this repo's Zod version
+// (4.4.3), .partial() on a schema whose fields carry .default(...) does NOT
+// stop those defaults from firing when a key is absent from the input — so a
+// partial() based schema would backfill every missing field (arrays -> [],
+// recencyDays -> 14, etc.) and updateJobSearchProfile's `{ $set: input }`
+// would silently wipe untouched fields on every PATCH. Instead this is its
+// own explicit, hand-written all-optional object with no .default(...) calls
+// at all, matching PatchApplicationSchema's pattern in application.zod.ts.
+export const PatchJobSearchProfileSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(100).optional(),
+  resumeId: z.string().optional(),
+  roles: z.array(z.string().trim().min(1)).optional(),
+  workModes: z.array(WorkModeEnum).optional(),
+  locations: z.array(JobLocationSchema).optional(),
+  seniority: z.array(z.string().trim().min(1)).optional(),
+  categories: z.array(z.string().trim().min(1)).optional(),
+  industries: z.array(z.string().trim().min(1)).optional(),
+  recencyDays: z.number().int().min(1).max(90).optional(),
+  minAtsScore: z.number().int().min(0).max(100).optional(),
+  isActive: z.boolean().optional(),
+})
 export type PatchJobSearchProfileInput = z.infer<typeof PatchJobSearchProfileSchema>
