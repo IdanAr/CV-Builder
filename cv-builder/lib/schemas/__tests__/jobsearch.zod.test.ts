@@ -5,6 +5,7 @@ import {
   DEFAULT_RECENCY_DAYS,
   DEFAULT_MIN_ATS_SCORE,
   SENIORITY_LEVELS,
+  ScrapedJobSchema,
 } from '../jobsearch.zod'
 
 describe('JobSearchProfileSchema', () => {
@@ -77,5 +78,69 @@ describe('PatchJobSearchProfileSchema', () => {
   it('accepts an empty patch', () => {
     const result = PatchJobSearchProfileSchema.parse({})
     expect(result).toEqual({})
+  })
+})
+
+describe('ScrapedJobSchema', () => {
+  it('defaults matchedRules, resolvedActions, and status', () => {
+    const result = ScrapedJobSchema.parse({
+      profileId: 'p1',
+      source: 'freehire',
+      sourceId: 'abc123',
+      title: 'Backend Engineer',
+      company: 'Acme',
+      url: 'https://freehire.me/jobs/abc123',
+      description: 'Build things.',
+    })
+    expect(result.matchedRules).toEqual([])
+    expect(result.resolvedActions).toEqual([])
+    expect(result.status).toBe('new')
+  })
+
+  it('rejects an invalid source', () => {
+    const result = ScrapedJobSchema.safeParse({
+      profileId: 'p1',
+      source: 'linkedin',
+      sourceId: 'abc123',
+      title: 'Backend Engineer',
+      company: 'Acme',
+      url: 'https://example.com',
+      description: 'Build things.',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects an invalid status', () => {
+    const result = ScrapedJobSchema.safeParse({
+      profileId: 'p1',
+      source: 'freehire',
+      sourceId: 'abc123',
+      title: 'Backend Engineer',
+      company: 'Acme',
+      url: 'https://example.com',
+      description: 'Build things.',
+      status: 'archived',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('accepts a fully populated scraped job', () => {
+    const result = ScrapedJobSchema.safeParse({
+      profileId: 'p1',
+      source: 'freehire',
+      sourceId: 'abc123',
+      title: 'Backend Engineer',
+      company: 'Acme',
+      location: 'Berlin',
+      url: 'https://freehire.me/jobs/abc123',
+      description: 'Build things.',
+      postedAt: new Date('2026-08-01'),
+      workMode: 'remote',
+      atsScore: 82,
+      matchedRules: ['r1'],
+      resolvedActions: ['notify'],
+      status: 'notified',
+    })
+    expect(result.success).toBe(true)
   })
 })

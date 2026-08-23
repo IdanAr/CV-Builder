@@ -61,3 +61,48 @@ export const PatchJobSearchProfileSchema = z.object({
   isActive: z.boolean().optional(),
 })
 export type PatchJobSearchProfileInput = z.infer<typeof PatchJobSearchProfileSchema>
+
+export const SCRAPE_SOURCES = ['freehire'] as const
+export const ScrapeSourceEnum = z.enum(SCRAPE_SOURCES)
+export type ScrapeSource = z.infer<typeof ScrapeSourceEnum>
+
+export const SCRAPED_JOB_STATUSES = [
+  'new',
+  'notified',
+  'queued',
+  'needs_review',
+  'submitted',
+  'dismissed',
+  'expired',
+] as const
+export const ScrapedJobStatusEnum = z.enum(SCRAPED_JOB_STATUSES)
+export type ScrapedJobStatus = z.infer<typeof ScrapedJobStatusEnum>
+
+export const RESOLVED_ACTIONS = ['notify', 'draft_and_queue'] as const
+export const ResolvedActionEnum = z.enum(RESOLVED_ACTIONS)
+export type ResolvedAction = z.infer<typeof ResolvedActionEnum>
+
+// Internally constructed by lib/jobsearch/scan.ts, never accepted directly
+// from a user-facing API route — there is no public write endpoint for
+// ScrapedJob in this phase (only GET /api/jobsearch/scraped-jobs). Defined
+// as a Zod schema anyway for type inference and test coverage, matching
+// this repo's "extend the schema first" convention.
+export const ScrapedJobSchema = z.object({
+  profileId: z.string(),
+  source: ScrapeSourceEnum,
+  sourceId: z.string().min(1),
+  title: z.string(),
+  company: z.string(),
+  location: z.string().optional(),
+  url: z.string(),
+  description: z.string(),
+  postedAt: z.date().optional(),
+  workMode: WorkModeEnum.optional(),
+  atsScore: z.number().int().min(0).max(100).optional(),
+  matchedRules: z.array(z.string()).default([]),
+  resolvedActions: z.array(ResolvedActionEnum).default([]),
+  draftResumeId: z.string().optional(),
+  postTailorScore: z.number().int().min(0).max(100).optional(),
+  status: ScrapedJobStatusEnum.default('new'),
+})
+export type CreateScrapedJobInput = z.infer<typeof ScrapedJobSchema>
