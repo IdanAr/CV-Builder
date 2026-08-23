@@ -22,7 +22,7 @@ beforeEach(() => vi.clearAllMocks())
 describe('GET /api/jobsearch/profiles', () => {
   it("returns the requesting user's profiles", async () => {
     mockList.mockResolvedValue([{ _id: 'p1', name: 'Frontend' }])
-    const res = (await (GET as any)(new Request('http://test/api/jobsearch/profiles'))) as Response
+    const res = (await GET(new Request('http://test/api/jobsearch/profiles') as never, undefined as never)) as Response
     const body = await res.json()
     expect(mockList).toHaveBeenCalledWith('u1')
     expect(body.profiles).toEqual([{ _id: 'p1', name: 'Frontend' }])
@@ -36,7 +36,7 @@ describe('POST /api/jobsearch/profiles', () => {
       method: 'POST',
       body: JSON.stringify({ name: 'Frontend' }),
     })
-    const res = (await (POST as any)(req)) as Response
+    const res = (await POST(req as never, undefined as never)) as Response
     expect(res.status).toBe(201)
     expect(mockCreate).toHaveBeenCalledWith('u1', expect.objectContaining({ name: 'Frontend' }))
   })
@@ -46,7 +46,7 @@ describe('POST /api/jobsearch/profiles', () => {
       method: 'POST',
       body: JSON.stringify({ name: '' }),
     })
-    const res = (await (POST as any)(req)) as Response
+    const res = (await POST(req as never, undefined as never)) as Response
     expect(res.status).toBe(400)
     expect(mockCreate).not.toHaveBeenCalled()
   })
