@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ProfileWizard } from './ProfileWizard'
 
@@ -28,11 +28,29 @@ describe('ProfileWizard', () => {
     expect(screen.getByRole('button', { name: /create profile/i })).toBeEnabled()
   })
 
-  it('submits the profile and calls onCreated with the response', async () => {
-    const onCreated = vi.fn()
+  it('shows a confirmation offering a default notify rule after profile creation', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ profile: { _id: 'p1', name: 'Frontend, Remote EU' } }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ProfileWizard onCreated={() => {}} />)
+    for (let i = 0; i < 4; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    }
+    await userEvent.type(screen.getByLabelText(/profile name/i), 'Frontend, Remote EU')
+    await userEvent.click(screen.getByRole('button', { name: /create profile/i }))
+
+    expect(mockFetch).toHaveBeenCalledWith('/api/jobsearch/profiles', expect.objectContaining({ method: 'POST' }))
+    expect(await screen.findByText(/profile created/i)).toBeInTheDocument()
+  })
+
+  it('calls onCreated immediately when the user skips the default rule offer', async () => {
+    const onCreated = vi.fn()
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ profile: { _id: 'p1', name: 'Test' } }),
     })
     vi.stubGlobal('fetch', mockFetch)
 
@@ -40,14 +58,38 @@ describe('ProfileWizard', () => {
     for (let i = 0; i < 4; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
-    await userEvent.type(screen.getByLabelText(/profile name/i), 'Frontend, Remote EU')
+    await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
     await userEvent.click(screen.getByRole('button', { name: /create profile/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /skip/i }))
 
-    expect(mockFetch).toHaveBeenCalledWith(
-      '/api/jobsearch/profiles',
-      expect.objectContaining({ method: 'POST' })
+    expect(onCreated).toHaveBeenCalledWith({ _id: 'p1', name: 'Test' })
+  })
+
+  it('creates a default notify rule at the profile\'s threshold and then calls onCreated when the user accepts', async () => {
+    const onCreated = vi.fn()
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ profile: { _id: 'p1', name: 'Test' } }) })
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ rule: { _id: 'r1' } }) })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ProfileWizard onCreated={onCreated} />)
+    for (let i = 0; i < 4; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    }
+    await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
+    await userEvent.click(screen.getByRole('button', { name: /create profile/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /yes, notify me/i }))
+
+    await waitFor(() => expect(onCreated).toHaveBeenCalledWith({ _id: 'p1', name: 'Test' }))
+    expect(mockFetch).toHaveBeenNthCalledWith(2, '/api/jobsearch/rules', expect.objectContaining({ method: 'POST' }))
+    const body = JSON.parse(mockFetch.mock.calls[1][1].body)
+    expect(body).toEqual(
+      expect.objectContaining({
+        profileId: 'p1',
+        action: 'notify',
+        conditions: [{ field: 'atsScore', op: 'gte', value: 75 }],
+      })
     )
-    expect(onCreated).toHaveBeenCalledWith({ _id: 'p1', name: 'Frontend, Remote EU' })
   })
 
   it('preserves city input when navigating away and back to step 2', async () => {

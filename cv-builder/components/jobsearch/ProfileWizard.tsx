@@ -96,6 +96,8 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
   const [draftText, setDraftText] = useState<DraftText>(initialDraftText)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [createdProfile, setCreatedProfile] = useState<{ _id: string; name: string } | null>(null)
+  const [creatingRule, setCreatingRule] = useState(false)
 
   function goNext() {
     const next = Math.min(step + 1, STEP_LABELS.length)
@@ -145,7 +147,7 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
       })
       const body = await res.json()
       if (res.ok) {
-        onCreated(body.profile)
+        setCreatedProfile(body.profile)
       } else {
         setError(`Failed to create profile.${formatValidationDetails(body.details)}`)
       }
@@ -154,6 +156,59 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  async function handleCreateDefaultRule() {
+    if (!createdProfile) return
+    setCreatingRule(true)
+    try {
+      await fetch('/api/jobsearch/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profileId: createdProfile._id,
+          name: 'Notify on match',
+          isActive: true,
+          order: 0,
+          conditions: [{ field: 'atsScore', op: 'gte', value: state.minAtsScore }],
+          action: 'notify',
+        }),
+      })
+    } catch {
+      // Best-effort: the profile itself was already created successfully.
+      // The default rule is a convenience, not a requirement — the user can
+      // always add rules later via RuleBuilder — so a flaky POST here isn't
+      // surfaced as an error that would strand the user on this screen.
+    } finally {
+      setCreatingRule(false)
+      onCreated(createdProfile)
+    }
+  }
+
+  if (createdProfile) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="rounded border bg-gray-50 px-4 py-3 text-sm">
+          <p className="font-medium">Profile created!</p>
+          <p className="mt-1 text-gray-600">
+            Want us to notify you whenever a match scores ≥ {state.minAtsScore}% against this profile?
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={creatingRule}
+            className="rounded bg-indigo-600 px-4 py-2 text-sm text-white disabled:opacity-40"
+            onClick={handleCreateDefaultRule}
+          >
+            Yes, notify me
+          </button>
+          <button type="button" className="rounded border px-4 py-2 text-sm" onClick={() => onCreated(createdProfile)}>
+            Skip
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
