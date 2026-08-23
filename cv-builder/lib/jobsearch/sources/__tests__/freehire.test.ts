@@ -12,17 +12,20 @@ afterEach(() => {
 
 describe('searchFreehireJobs', () => {
   it('normalizes a well-formed response into JobPosting objects', async () => {
+    // Shape verified against the live API (https://freehire.me/api/v1/agent/jobs/search):
+    // results live under `data`, not `results`; each posting's id is
+    // `public_slug`, not `id`; the date field is `posted_at`, not `date`.
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       json: async () => ({
-        meta: { count: 1, page: 1, total: 1 },
-        results: [
+        meta: { limit: 1, offset: 0, total: 1 },
+        data: [
           {
-            id: 'golang-zensar-2bxu6dxm',
+            public_slug: 'golang-zensar-2bxu6dxm',
             title: 'Backend Engineer',
             company: 'Zensar',
             location: 'Berlin, Germany',
-            date: '2026-08-01',
+            posted_at: '2026-08-01',
             url: 'https://freehire.me/jobs/golang-zensar-2bxu6dxm',
             description: 'Build backend systems.',
             work_mode: 'remote',
@@ -49,13 +52,13 @@ describe('searchFreehireJobs', () => {
     ])
   })
 
-  it('drops results missing a usable id rather than throwing', async () => {
+  it('drops results missing a usable public_slug rather than throwing', async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       json: async () => ({
-        results: [
-          { id: 'valid-1', title: 'A', company: 'X', url: 'https://x', description: 'd' },
-          { title: 'No id', company: 'X', url: 'https://x', description: 'd' },
+        data: [
+          { public_slug: 'valid-1', title: 'A', company: 'X', url: 'https://x', description: 'd' },
+          { title: 'No slug', company: 'X', url: 'https://x', description: 'd' },
         ],
       }),
     } as Response)
@@ -86,19 +89,26 @@ describe('searchFreehireJobs', () => {
     expect(result.errorMessage).toBe('fetch failed')
   })
 
-  it('joins array facets with commas and honors FREEHIRE_API_URL', async () => {
+  it('maps facets to freehire\'s real param names, joins arrays with commas, translates page to offset, and honors FREEHIRE_API_URL', async () => {
+    // Every param name below was verified against the live API: sending the
+    // old assumed names (region/country/city/skill/remote/jobage/page) made
+    // the API echo them back under `meta.ignored_params` (with a
+    // `did_you_mean` hint for the plural facets) instead of filtering.
     process.env.FREEHIRE_API_URL = 'http://localhost:8080'
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ results: [] }) })
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [] }) })
     vi.stubGlobal('fetch', mockFetch)
 
     await searchFreehireJobs({
       query: 'go',
       region: ['eu', 'us'],
       country: ['DE'],
+      city: ['Berlin'],
+      skill: ['go', 'kubernetes'],
       seniority: ['senior', 'staff'],
+      category: ['backend'],
       remote: 'remote',
       jobage: 7,
-      page: 2,
+      page: 3,
       limit: 10,
     })
 
@@ -106,27 +116,44 @@ describe('searchFreehireJobs', () => {
     expect(calledUrl.origin).toBe('http://localhost:8080')
     expect(calledUrl.pathname).toBe('/api/v1/agent/jobs/search')
     expect(calledUrl.searchParams.get('q')).toBe('go')
-    expect(calledUrl.searchParams.get('region')).toBe('eu,us')
-    expect(calledUrl.searchParams.get('country')).toBe('DE')
+    expect(calledUrl.searchParams.get('regions')).toBe('eu,us')
+    expect(calledUrl.searchParams.get('countries')).toBe('DE')
+    expect(calledUrl.searchParams.get('cities')).toBe('Berlin')
+    expect(calledUrl.searchParams.get('skills')).toBe('go,kubernetes')
     expect(calledUrl.searchParams.get('seniority')).toBe('senior,staff')
-    expect(calledUrl.searchParams.get('remote')).toBe('remote')
-    expect(calledUrl.searchParams.get('jobage')).toBe('7')
-    expect(calledUrl.searchParams.get('page')).toBe('2')
+    expect(calledUrl.searchParams.get('category')).toBe('backend')
+    expect(calledUrl.searchParams.get('work_mode')).toBe('remote')
+    expect(calledUrl.searchParams.get('posted_within_days')).toBe('7')
+    // page 3, limit 10 -> offset 20 (0-indexed, two full pages before it)
+    expect(calledUrl.searchParams.get('offset')).toBe('20')
     expect(calledUrl.searchParams.get('limit')).toBe('10')
+    expect(calledUrl.searchParams.has('page')).toBe(false)
+    expect(calledUrl.searchParams.has('jobage')).toBe(false)
+    expect(calledUrl.searchParams.has('remote')).toBe(false)
+  })
+
+  it('defaults to offset 0 when no page is given', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [] }) })
+    vi.stubGlobal('fetch', mockFetch)
+
+    await searchFreehireJobs({ limit: 25 })
+
+    const calledUrl = new URL(mockFetch.mock.calls[0][0])
+    expect(calledUrl.searchParams.get('offset')).toBe('0')
   })
 
   it('drops an unparseable date string to undefined instead of an Invalid Date', async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       json: async () => ({
-        results: [
+        data: [
           {
-            id: 'valid-1',
+            public_slug: 'valid-1',
             title: 'A',
             company: 'X',
             url: 'https://x',
             description: 'd',
-            date: 'not-a-real-date',
+            posted_at: 'not-a-real-date',
           },
         ],
       }),
@@ -142,8 +169,8 @@ describe('searchFreehireJobs', () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       json: async () => ({
-        results: [
-          { id: 'valid-1', title: 'A', company: 'X', url: 'javascript:alert(1)', description: 'd' },
+        data: [
+          { public_slug: 'valid-1', title: 'A', company: 'X', url: 'javascript:alert(1)', description: 'd' },
         ],
       }),
     } as Response)

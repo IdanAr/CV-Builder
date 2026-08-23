@@ -1,9 +1,16 @@
 // Typed client for freehire.me's public job-search API (see design spec §5).
-// freehire's exact response shape is best-effort documented (its own CLI
-// skill only guarantees "at least id, title, company, location, date, url,
-// description" per result) — every field here is defensively type-checked,
-// and any fetch/parse problem degrades the result rather than throwing, so
-// one source outage degrades a scan instead of crashing it.
+// Field/param names below were verified directly against the live API
+// (https://freehire.me/api/v1/agent/jobs/search) — its own documentation
+// was inaccurate: results live under `data` (not `results`), each posting's
+// id is `public_slug` (not `id`), the date field is `posted_at` (not
+// `date`), the plural facets are `regions`/`countries`/`cities`/`skills`
+// (not the singular forms), the work-mode facet is `work_mode` (not
+// `remote`), the recency facet is `posted_within_days` (not `jobage`), and
+// pagination is `offset`-based (not `page` — the API silently ignores an
+// unrecognized `page` param via its `meta.ignored_params` field). Every
+// field read from the response is still defensively type-checked, and any
+// fetch/parse problem degrades the result rather than throwing, so one
+// source outage degrades a scan instead of crashing it.
 import type { JobPosting, SourceSearchResult } from './types'
 
 const DEFAULT_BASE_URL = 'https://freehire.me'
@@ -53,16 +60,16 @@ function safeUrl(value: unknown): string {
 function normalizePosting(raw: unknown): JobPosting | null {
   if (typeof raw !== 'object' || raw === null) return null
   const r = raw as Record<string, unknown>
-  if (typeof r.id !== 'string' || r.id.length === 0) return null
+  if (typeof r.public_slug !== 'string' || r.public_slug.length === 0) return null
   return {
     source: 'freehire',
-    sourceId: r.id,
+    sourceId: r.public_slug,
     title: typeof r.title === 'string' ? r.title : '',
     company: typeof r.company === 'string' ? r.company : '',
     location: typeof r.location === 'string' ? r.location : undefined,
     url: safeUrl(r.url),
     description: typeof r.description === 'string' ? r.description : '',
-    postedAt: parsePostedAt(r.date),
+    postedAt: parsePostedAt(r.posted_at),
     workMode: isWorkMode(r.work_mode) ? r.work_mode : undefined,
   }
 }
@@ -71,17 +78,20 @@ export async function searchFreehireJobs(params: FreehireSearchParams): Promise<
   try {
     const baseUrl = process.env.FREEHIRE_API_URL ?? DEFAULT_BASE_URL
     const url = new URL('/api/v1/agent/jobs/search', baseUrl)
+    const limit = params.limit ?? 25
     if (params.query) url.searchParams.set('q', params.query)
-    if (params.region?.length) url.searchParams.set('region', params.region.join(','))
-    if (params.country?.length) url.searchParams.set('country', params.country.join(','))
-    if (params.city?.length) url.searchParams.set('city', params.city.join(','))
+    if (params.region?.length) url.searchParams.set('regions', params.region.join(','))
+    if (params.country?.length) url.searchParams.set('countries', params.country.join(','))
+    if (params.city?.length) url.searchParams.set('cities', params.city.join(','))
     if (params.seniority?.length) url.searchParams.set('seniority', params.seniority.join(','))
     if (params.category?.length) url.searchParams.set('category', params.category.join(','))
-    if (params.skill?.length) url.searchParams.set('skill', params.skill.join(','))
-    if (params.remote) url.searchParams.set('remote', params.remote)
-    if (params.jobage !== undefined) url.searchParams.set('jobage', String(params.jobage))
-    url.searchParams.set('page', String(params.page ?? 1))
-    url.searchParams.set('limit', String(params.limit ?? 25))
+    if (params.skill?.length) url.searchParams.set('skills', params.skill.join(','))
+    if (params.remote) url.searchParams.set('work_mode', params.remote)
+    if (params.jobage !== undefined) url.searchParams.set('posted_within_days', String(params.jobage))
+    // The public interface stays page-based (1-indexed) for callers'
+    // convenience; freehire's actual API is offset-based.
+    url.searchParams.set('offset', String(((params.page ?? 1) - 1) * limit))
+    url.searchParams.set('limit', String(limit))
 
     const res = await fetch(url.toString())
     if (!res.ok) {
@@ -89,8 +99,8 @@ export async function searchFreehireJobs(params: FreehireSearchParams): Promise<
     }
     const body: unknown = await res.json()
     const rawResults =
-      typeof body === 'object' && body !== null && Array.isArray((body as Record<string, unknown>).results)
-        ? ((body as Record<string, unknown>).results as unknown[])
+      typeof body === 'object' && body !== null && Array.isArray((body as Record<string, unknown>).data)
+        ? ((body as Record<string, unknown>).data as unknown[])
         : []
     const postings = rawResults
       .map(normalizePosting)
