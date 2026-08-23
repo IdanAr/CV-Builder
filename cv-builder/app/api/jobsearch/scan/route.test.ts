@@ -1,8 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { mockRunScan } = vi.hoisted(() => ({ mockRunScan: vi.fn() }))
+const { mockRunScan, mockCheckRateLimit } = vi.hoisted(() => ({
+  mockRunScan: vi.fn(),
+  mockCheckRateLimit: vi.fn(),
+}))
 
 vi.mock('@/lib/jobsearch/scan', () => ({ runScanForProfile: mockRunScan }))
+
+vi.mock('@/lib/rate-limit', () => ({
+  checkRateLimit: mockCheckRateLimit,
+  SCAN_RATE_LIMIT: { limit: 5, windowMs: 60_000 },
+}))
 
 vi.mock('@/lib/auth', () => ({
   auth: (handler: (req: unknown) => unknown) => (req: unknown) =>
@@ -11,7 +19,10 @@ vi.mock('@/lib/auth', () => ({
 
 import { POST } from './route'
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  mockCheckRateLimit.mockReturnValue({ allowed: true, retryAfterSeconds: 0 })
+})
 
 describe('POST /api/jobsearch/scan', () => {
   it('runs a scan for the given profileId and returns the result', async () => {
@@ -37,6 +48,20 @@ describe('POST /api/jobsearch/scan', () => {
     const res = (await POST(req as never, undefined as never)) as Response
 
     expect(res.status).toBe(400)
+    expect(mockRunScan).not.toHaveBeenCalled()
+  })
+
+  it('returns 429 without running a scan when rate-limited', async () => {
+    mockCheckRateLimit.mockReturnValue({ allowed: false, retryAfterSeconds: 42 })
+    const req = new Request('http://test/api/jobsearch/scan', {
+      method: 'POST',
+      body: JSON.stringify({ profileId: 'p1' }),
+    })
+
+    const res = (await POST(req as never, undefined as never)) as Response
+
+    expect(res.status).toBe(429)
+    expect(res.headers.get('Retry-After')).toBe('42')
     expect(mockRunScan).not.toHaveBeenCalled()
   })
 })
