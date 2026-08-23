@@ -6,6 +6,11 @@ export const WORK_MODES = ['remote', 'hybrid', 'onsite'] as const
 export const WorkModeEnum = z.enum(WORK_MODES)
 export type WorkMode = z.infer<typeof WorkModeEnum>
 
+// freehire.me's documented --seniority facet values (see design spec §5).
+export const SENIORITY_LEVELS = ['junior', 'middle', 'senior', 'staff', 'principal', 'lead'] as const
+export const SeniorityEnum = z.enum(SENIORITY_LEVELS)
+export type Seniority = z.infer<typeof SeniorityEnum>
+
 export const JobLocationSchema = z.object({
   country: z.string().trim().max(100).optional(),
   region: z.string().trim().max(100).optional(),
@@ -22,7 +27,7 @@ export const JobSearchProfileSchema = z.object({
   roles: z.array(z.string().trim().min(1)).default([]),
   workModes: z.array(WorkModeEnum).default([]),
   locations: z.array(JobLocationSchema).default([]),
-  seniority: z.array(z.string().trim().min(1)).default([]),
+  seniority: z.array(SeniorityEnum).default([]),
   categories: z.array(z.string().trim().min(1)).default([]),
   industries: z.array(z.string().trim().min(1)).default([]),
   recencyDays: z.number().int().min(1).max(90).default(DEFAULT_RECENCY_DAYS),
@@ -48,7 +53,7 @@ export const PatchJobSearchProfileSchema = z.object({
   roles: z.array(z.string().trim().min(1)).optional(),
   workModes: z.array(WorkModeEnum).optional(),
   locations: z.array(JobLocationSchema).optional(),
-  seniority: z.array(z.string().trim().min(1)).optional(),
+  seniority: z.array(SeniorityEnum).optional(),
   categories: z.array(z.string().trim().min(1)).optional(),
   industries: z.array(z.string().trim().min(1)).optional(),
   recencyDays: z.number().int().min(1).max(90).optional(),

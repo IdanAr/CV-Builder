@@ -86,4 +86,80 @@ describe('ProfileWizard', () => {
     expect(screen.getByText(/failed to create profile/i)).toBeInTheDocument()
     expect(onCreated).not.toHaveBeenCalled()
   })
+
+  it('allows typing multi-word roles without stripping spaces mid-typing', async () => {
+    render(<ProfileWizard onCreated={() => {}} />)
+    const rolesInput = screen.getByLabelText(/target roles/i) as HTMLInputElement
+    await userEvent.type(rolesInput, 'Data Analyst')
+    expect(rolesInput.value).toBe('Data Analyst')
+  })
+
+  it('allows typing categories with commas and spaces without stripping them', async () => {
+    render(<ProfileWizard onCreated={() => {}} />)
+    await userEvent.click(screen.getByRole('button', { name: /next/i })) // -> step 2
+    await userEvent.click(screen.getByRole('button', { name: /next/i })) // -> step 3
+    const categoriesInput = screen.getByLabelText(/^categories/i) as HTMLInputElement
+    await userEvent.type(categoriesInput, 'Backend Engineering, Site Reliability')
+    expect(categoriesInput.value).toBe('Backend Engineering, Site Reliability')
+  })
+
+  it('parses multi-word, comma-separated roles into tags on submit', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ profile: { _id: 'p1', name: 'Test' } }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ProfileWizard onCreated={() => {}} />)
+    await userEvent.type(screen.getByLabelText(/target roles/i), 'Data Analyst, Product Manager')
+    for (let i = 0; i < 4; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    }
+    await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
+    await userEvent.click(screen.getByRole('button', { name: /create profile/i }))
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.roles).toEqual(['Data Analyst', 'Product Manager'])
+  })
+
+  it('offers seniority as checkboxes and includes toggled levels in the submitted payload', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ profile: { _id: 'p1', name: 'Test' } }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ProfileWizard onCreated={() => {}} />)
+    await userEvent.click(screen.getByRole('checkbox', { name: /^senior$/i }))
+    await userEvent.click(screen.getByRole('checkbox', { name: /^staff$/i }))
+    for (let i = 0; i < 4; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    }
+    await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
+    await userEvent.click(screen.getByRole('button', { name: /create profile/i }))
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.seniority).toEqual(['senior', 'staff'])
+  })
+
+  it('shows a summary of set preferences on the review step', async () => {
+    render(<ProfileWizard onCreated={() => {}} />)
+    await userEvent.type(screen.getByLabelText(/target roles/i), 'Data Analyst')
+    await userEvent.click(screen.getByRole('checkbox', { name: /^senior$/i }))
+    for (let i = 0; i < 4; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    }
+    expect(screen.getByText('Data Analyst')).toBeInTheDocument()
+    expect(screen.getByText('senior')).toBeInTheDocument()
+  })
+
+  it('shows a Back button that returns to the previous step', async () => {
+    render(<ProfileWizard onCreated={() => {}} />)
+    expect(screen.queryByRole('button', { name: /back/i })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('Sources')
+    await userEvent.click(screen.getByRole('button', { name: /back/i }))
+    expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('Location')
+  })
 })

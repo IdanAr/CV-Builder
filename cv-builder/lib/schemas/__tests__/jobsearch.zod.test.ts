@@ -4,6 +4,7 @@ import {
   PatchJobSearchProfileSchema,
   DEFAULT_RECENCY_DAYS,
   DEFAULT_MIN_ATS_SCORE,
+  SENIORITY_LEVELS,
 } from '../jobsearch.zod'
 
 describe('JobSearchProfileSchema', () => {
@@ -29,6 +30,19 @@ describe('JobSearchProfileSchema', () => {
   it('rejects an invalid work mode', () => {
     const result = JobSearchProfileSchema.safeParse({ name: 'Test', workModes: ['flexible'] })
     expect(result.success).toBe(false)
+  })
+
+  it('rejects an invalid seniority level', () => {
+    const result = JobSearchProfileSchema.safeParse({ name: 'Test', seniority: ['intern'] })
+    expect(result.success).toBe(false)
+  })
+
+  it('accepts every documented seniority level', () => {
+    const result = JobSearchProfileSchema.safeParse({
+      name: 'Test',
+      seniority: [...SENIORITY_LEVELS],
+    })
+    expect(result.success).toBe(true)
   })
 
   it('accepts a fully populated profile', () => {
