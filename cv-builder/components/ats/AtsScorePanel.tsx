@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import type { AtsScoreResult } from '@/lib/ats/scorer'
 import type { AtsFix } from '@/lib/ai/ats-fix-pipeline'
+import { applyAtsFixToResumeData } from '@/lib/ai/apply-ats-fix'
 import type { KeywordPriority } from '@/lib/ai/jd-extraction-pipeline'
 import { AtsFixReviewPanel } from './AtsFixReviewPanel'
 import { Popover } from '@/components/ui/Popover'
@@ -68,7 +69,6 @@ const EMPTY_EXCLUDED_KEYWORDS: string[] = []
 export function AtsScorePanel() {
   const resumeId = useResumeEditorStore((s) => s.resumeId)
   const data = useResumeEditorStore((s) => s.data)
-  const setSectionData = useResumeEditorStore((s) => s.setSectionData)
   const setData = useResumeEditorStore((s) => s.setData)
   const excludedKeywords = useResumeEditorStore((s) => s.meta.excludedAtsKeywords ?? EMPTY_EXCLUDED_KEYWORDS)
   const setMeta = useResumeEditorStore((s) => s.setMeta)
@@ -235,32 +235,7 @@ export function AtsScorePanel() {
   }
 
   const applyFix = useCallback((fix: AtsFix) => {
-    if (fix.section === 'summary') {
-      setData({ basics: { ...data.basics, summary: fix.suggested } })
-    } else if (fix.section === 'work' && fix.workIndex !== undefined && fix.highlightIndex !== undefined) {
-      const work = (data.work ?? []).map((job, wi) => {
-        if (wi !== fix.workIndex) return job
-        // Highlights live in roles[] once a work entry has been edited
-        // through the current editor UI (which clears the legacy
-        // top-level fields entirely on save) — fix.roleIndex tells us
-        // which side of that split to write back into.
-        if (fix.roleIndex !== undefined) {
-          const roles = (job.roles ?? []).map((role, ri) => {
-            if (ri !== fix.roleIndex) return role
-            const highlights = (role.highlights ?? []).map((h, hi) =>
-              hi === fix.highlightIndex ? fix.suggested : h
-            )
-            return { ...role, highlights }
-          })
-          return { ...job, roles }
-        }
-        const highlights = (job.highlights ?? []).map((h, hi) =>
-          hi === fix.highlightIndex ? fix.suggested : h
-        )
-        return { ...job, highlights }
-      })
-      setSectionData('work', work)
-    }
+    setData(applyAtsFixToResumeData(data, fix))
     setAppliedIds((prev) => new Set(prev).add(fix.id))
     const timeoutId = setTimeout(() => {
       setDismissedIds((prev) => new Set(prev).add(fix.id))
@@ -272,7 +247,7 @@ export function AtsScorePanel() {
       appliedTimeoutsRef.current.delete(fix.id)
     }, 1200)
     appliedTimeoutsRef.current.set(fix.id, timeoutId)
-  }, [data, setData, setSectionData])
+  }, [data, setData])
 
   const dismissFix = useCallback((id: string) => {
     setDismissedIds((prev) => new Set(prev).add(id))
