@@ -141,6 +141,8 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
         atsScore,
         matchedRules: evaluation.matchedRules,
         resolvedActions: evaluation.resolvedActions,
+        pendingApprovals: [],
+        tailoredKeywords: [],
         status: 'new',
       })
     }

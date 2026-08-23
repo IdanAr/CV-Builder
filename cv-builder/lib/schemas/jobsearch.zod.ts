@@ -103,6 +103,19 @@ export const ScrapedJobSchema = z.object({
   resolvedActions: z.array(ResolvedActionEnum).default([]),
   draftResumeId: z.string().optional(),
   postTailorScore: z.number().int().min(0).max(100).optional(),
+  // Numeric claims / skill terms hallucination-guard flagged in the tailored
+  // draft or cover letter — non-empty blocks status from reaching 'queued'
+  // (design spec §7 step 3) and is surfaced to the user for resolution.
+  pendingApprovals: z.array(z.string()).default([]),
+  // Union of AtsFix.targetKeywords across every fix actually applied while
+  // tailoring — powers the "which JD keywords moved the score" panel
+  // (design spec §7, reusing AtsFixReviewPanel's missing-keyword UI).
+  tailoredKeywords: z.array(z.string()).default([]),
+  // Set exactly once, when the apply pipeline successfully persists a draft
+  // — the anchor for the rolling-24h daily draft caps (design spec §7).
+  // Absent means "not drafted yet" (either never matched draft_and_queue,
+  // or matched but is sitting in the backlog waiting for cap headroom).
+  draftedAt: z.date().optional(),
   status: ScrapedJobStatusEnum.default('new'),
 })
 export type CreateScrapedJobInput = z.infer<typeof ScrapedJobSchema>

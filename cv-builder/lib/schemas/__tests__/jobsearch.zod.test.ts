@@ -147,6 +147,40 @@ describe('ScrapedJobSchema', () => {
     })
     expect(result.success).toBe(true)
   })
+
+  it('defaults pendingApprovals and tailoredKeywords to empty arrays', () => {
+    const result = ScrapedJobSchema.parse({
+      profileId: 'p1',
+      source: 'freehire',
+      sourceId: 'abc123',
+      title: 'Backend Engineer',
+      company: 'Acme',
+      url: 'https://freehire.me/jobs/abc123',
+      description: 'Build things.',
+    })
+    expect(result.pendingApprovals).toEqual([])
+    expect(result.tailoredKeywords).toEqual([])
+    expect(result.draftedAt).toBeUndefined()
+  })
+
+  it('accepts a fully drafted scraped job with draftedAt and tailoring fields set', () => {
+    const result = ScrapedJobSchema.safeParse({
+      profileId: 'p1',
+      source: 'freehire',
+      sourceId: 'abc123',
+      title: 'Backend Engineer',
+      company: 'Acme',
+      url: 'https://freehire.me/jobs/abc123',
+      description: 'Build things.',
+      draftResumeId: 'r1',
+      postTailorScore: 88,
+      pendingApprovals: ['40%'],
+      tailoredKeywords: ['Node', 'GraphQL'],
+      draftedAt: new Date('2026-08-24'),
+      status: 'needs_review',
+    })
+    expect(result.success).toBe(true)
+  })
 })
 
 describe('RuleConditionSchema', () => {
