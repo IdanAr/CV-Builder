@@ -64,6 +64,28 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
     }
   }
 
+  // Only fully replace the view with an error screen when the very first
+  // load failed and there's nothing to show yet. Once jobs have loaded
+  // successfully, a later failed reload/scan shows an inline banner above
+  // the still-intact list instead — mirrors ProfileList.tsx's convention.
+  if (error && jobs === null) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-8">
+        <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        <button
+          type="button"
+          className="rounded bg-indigo-600 px-4 py-2 text-sm text-white"
+          onClick={() => {
+            setError(null)
+            load()
+          }}
+        >
+          Try again
+        </button>
+      </div>
+    )
+  }
+
   if (jobs === null) return null
 
   return (
@@ -86,9 +108,13 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
           {jobs.map((job) => (
             <li key={job._id} className="rounded border px-4 py-2">
               <div className="flex items-center justify-between">
-                <a href={job.url} target="_blank" rel="noreferrer" className="font-medium text-indigo-700 hover:underline">
-                  {job.title}
-                </a>
+                {job.url ? (
+                  <a href={job.url} target="_blank" rel="noreferrer" className="font-medium text-indigo-700 hover:underline">
+                    {job.title}
+                  </a>
+                ) : (
+                  <span className="font-medium">{job.title}</span>
+                )}
                 {job.atsScore !== undefined && <span className="text-sm text-gray-500">{job.atsScore}% fit</span>}
               </div>
               <div className="text-sm text-gray-600">

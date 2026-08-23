@@ -63,6 +63,48 @@ describe('ScrapedJobsList', () => {
     expect(await screen.findByText('New Job')).toBeInTheDocument()
   })
 
+  it('renders the title as plain text (not a link) when url is empty', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        scrapedJobs: [
+          { _id: 'j1', title: 'Suspicious Job', company: 'Acme', url: '', status: 'new' },
+        ],
+      }),
+    } as Response)
+
+    render(<ScrapedJobsList profileId="p1" />)
+
+    expect(await screen.findByText('Suspicious Job')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Suspicious Job' })).not.toBeInTheDocument()
+  })
+
+  it('shows a full error view with a retry button when the initial load fails, not a blank page', async () => {
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce({ ok: false, json: async () => ({}) })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        scrapedJobs: [{ _id: 'j1', title: 'Recovered Job', company: 'Acme', url: 'https://x/a1', status: 'new' }],
+      }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ScrapedJobsList profileId="p1" />)
+
+    expect(await screen.findByText(/failed to load scraped jobs/i)).toBeInTheDocument()
+    const retryButton = screen.getByRole('button', { name: /try again/i })
+    expect(retryButton).toBeInTheDocument()
+    // Nothing else should render behind the full-screen error — nothing has
+    // loaded yet, so no "Scan now" button and no list.
+    expect(screen.queryByRole('button', { name: /scan now/i })).not.toBeInTheDocument()
+
+    await userEvent.click(retryButton)
+
+    expect(await screen.findByText('Recovered Job')).toBeInTheDocument()
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+  })
+
   it('shows an error banner without clearing the list when a scan fails', async () => {
     const mockFetch = vi.fn()
     mockFetch.mockResolvedValueOnce({
