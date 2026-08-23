@@ -115,6 +115,45 @@ describe('searchFreehireJobs', () => {
     expect(calledUrl.searchParams.get('limit')).toBe('10')
   })
 
+  it('drops an unparseable date string to undefined instead of an Invalid Date', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        results: [
+          {
+            id: 'valid-1',
+            title: 'A',
+            company: 'X',
+            url: 'https://x',
+            description: 'd',
+            date: 'not-a-real-date',
+          },
+        ],
+      }),
+    } as Response)
+
+    const result = await searchFreehireJobs({})
+
+    expect(result.postings).toHaveLength(1)
+    expect(result.postings[0].postedAt).toBeUndefined()
+  })
+
+  it('drops a non-http(s) url (e.g. javascript:) to an empty string instead of passing it through', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        results: [
+          { id: 'valid-1', title: 'A', company: 'X', url: 'javascript:alert(1)', description: 'd' },
+        ],
+      }),
+    } as Response)
+
+    const result = await searchFreehireJobs({})
+
+    expect(result.postings).toHaveLength(1)
+    expect(result.postings[0].url).toBe('')
+  })
+
   it('degrades on a malformed FREEHIRE_API_URL instead of throwing', async () => {
     process.env.FREEHIRE_API_URL = 'not a valid url'
 

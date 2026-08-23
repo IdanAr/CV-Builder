@@ -27,6 +27,29 @@ function isWorkMode(value: unknown): value is 'remote' | 'hybrid' | 'onsite' {
   return typeof value === 'string' && WORK_MODES.has(value)
 }
 
+// freehire's `date` field is best-effort/untrusted — an unparseable string
+// must become `undefined`, never an `Invalid Date` object (which would
+// later blow up Mongoose's Date cast on insert).
+function parsePostedAt(value: unknown): Date | undefined {
+  if (typeof value !== 'string') return undefined
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.valueOf()) ? undefined : parsed
+}
+
+// freehire's `url` field is rendered verbatim as an <a href> in the UI
+// (components/jobsearch/ScrapedJobsList.tsx). Only accept it if it parses
+// as an absolute http(s) URL — anything else (a `javascript:` URL, a bare
+// string, etc.) becomes an empty string rather than a stored XSS vector.
+function safeUrl(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? value : ''
+  } catch {
+    return ''
+  }
+}
+
 function normalizePosting(raw: unknown): JobPosting | null {
   if (typeof raw !== 'object' || raw === null) return null
   const r = raw as Record<string, unknown>
@@ -37,9 +60,9 @@ function normalizePosting(raw: unknown): JobPosting | null {
     title: typeof r.title === 'string' ? r.title : '',
     company: typeof r.company === 'string' ? r.company : '',
     location: typeof r.location === 'string' ? r.location : undefined,
-    url: typeof r.url === 'string' ? r.url : '',
+    url: safeUrl(r.url),
     description: typeof r.description === 'string' ? r.description : '',
-    postedAt: typeof r.date === 'string' ? new Date(r.date) : undefined,
+    postedAt: parsePostedAt(r.date),
     workMode: isWorkMode(r.work_mode) ? r.work_mode : undefined,
   }
 }
