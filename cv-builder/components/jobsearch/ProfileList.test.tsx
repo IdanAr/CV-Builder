@@ -107,4 +107,16 @@ describe('ProfileList', () => {
     // the full-screen error, because nothing has loaded yet.
     expect(screen.queryByRole('button', { name: /create.*profile/i })).not.toBeInTheDocument()
   })
+
+  it('links each profile to its scraped-jobs page', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({ profiles: [{ _id: 'p1', name: 'Frontend, Remote EU', isActive: true }] }),
+    } as Response)
+
+    render(<ProfileList />)
+
+    const link = await screen.findByRole('link', { name: 'Frontend, Remote EU' })
+    expect(link).toHaveAttribute('href', '/dashboard/jobsearch/p1')
+  })
 })

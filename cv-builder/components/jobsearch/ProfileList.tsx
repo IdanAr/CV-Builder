@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { ProfileWizard } from './ProfileWizard'
 
 interface ProfileSummary {
@@ -117,7 +118,9 @@ export function ProfileList() {
         <ul className="flex flex-col gap-2">
           {profiles.map((profile) => (
             <li key={profile._id} className="flex items-center justify-between rounded border px-4 py-2">
-              <span>{profile.name}</span>
+              <Link href={`/dashboard/jobsearch/${profile._id}`} className="font-medium text-indigo-700 hover:underline">
+                {profile.name}
+              </Link>
               <label className="flex items-center gap-1.5 text-sm">
                 <input
                   type="checkbox"

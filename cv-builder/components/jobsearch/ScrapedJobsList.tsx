@@ -36,6 +36,8 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
   }, [profileId])
 
   useEffect(() => {
+    // Initial fetch-on-mount, same pattern/suppression as ProfileList.tsx's load effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load()
   }, [load])
 
