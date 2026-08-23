@@ -25,7 +25,7 @@ const JobSearchRuleSchema = new Schema<IJobSearchRule>(
     // as Mixed here rather than re-modeled as a Mongoose discriminator,
     // mirroring how Application.customFields already stores polymorphic
     // per-column data in this codebase.
-    conditions: { type: [Schema.Types.Mixed], default: [] },
+    conditions: { type: Schema.Types.Mixed, default: [] },
     action: { type: String, required: true },
   },
   { timestamps: true, minimize: false }
