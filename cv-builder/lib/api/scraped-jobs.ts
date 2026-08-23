@@ -89,9 +89,9 @@ export interface DraftedFields {
   status: ScrapedJobStatus
 }
 
-export async function markScrapedJobDrafted(id: string, fields: DraftedFields): Promise<void> {
+export async function markScrapedJobDrafted(userId: string, id: string, fields: DraftedFields): Promise<void> {
   await dbConnect()
-  await ScrapedJob.updateOne({ _id: id }, { $set: { ...fields, draftedAt: new Date() } })
+  await ScrapedJob.updateOne({ _id: id, userId }, { $set: { ...fields, draftedAt: new Date() } })
 }
 
 export type ConvertResult =

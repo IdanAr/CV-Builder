@@ -217,7 +217,7 @@ describe('markScrapedJobDrafted', () => {
   it('sets the drafted fields plus a fresh draftedAt', async () => {
     mockUpdateOne.mockResolvedValue({})
 
-    await markScrapedJobDrafted('j1', {
+    await markScrapedJobDrafted('u1', 'j1', {
       draftResumeId: 'r1',
       postTailorScore: 88,
       pendingApprovals: [],
@@ -226,7 +226,7 @@ describe('markScrapedJobDrafted', () => {
     })
 
     expect(mockUpdateOne).toHaveBeenCalledWith(
-      { _id: 'j1' },
+      { _id: 'j1', userId: 'u1' },
       {
         $set: expect.objectContaining({
           draftResumeId: 'r1',
