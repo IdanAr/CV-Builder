@@ -5,8 +5,10 @@ import dbConnect from '@/lib/db'
 import { searchFreehireJobs } from './sources/freehire'
 import { getJobSearchProfile } from '@/lib/api/jobsearch-profiles'
 import { findExistingSourceIds, createScrapedJobs } from '@/lib/api/scraped-jobs'
+import { listRulesForProfile } from '@/lib/api/jobsearch-rules'
 import { scoreResume } from '@/lib/ats/scorer'
 import { matchesKeyword } from '@/lib/ats/keywords'
+import { evaluateRules } from './rules'
 import Resume from '@/models/Resume'
 import type { CreateScrapedJobInput } from '@/lib/schemas/jobsearch.zod'
 import type { JobPosting } from './sources/types'
@@ -106,26 +108,42 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
     })
 
     const resumeData = newPostings.length > 0 ? await resolveResumeData(userId, profile.resumeId) : null
+    const rules = newPostings.length > 0 ? await listRulesForProfile(userId, profileId) : []
 
-    const toCreate: CreateScrapedJobInput[] = newPostings.map((posting) => ({
-      // createScrapedJobs also receives profileId as its own argument and
-      // spreads it onto each job (see lib/api/scraped-jobs.ts) — it's set here
-      // too only because CreateScrapedJobInput's Zod schema requires it.
-      profileId,
-      source: 'freehire',
-      sourceId: posting.sourceId,
-      title: posting.title,
-      company: posting.company,
-      location: posting.location,
-      url: posting.url,
-      description: posting.description,
-      postedAt: posting.postedAt,
-      workMode: posting.workMode,
-      atsScore: resumeData ? scoreResume(resumeData, posting.description).total : undefined,
-      matchedRules: [],
-      resolvedActions: [],
-      status: 'new',
-    }))
+    // A for-loop rather than .map(), because a posting matched by an
+    // 'ignore' rule must be suppressed outright (design spec §4 step 2) —
+    // never turned into a ScrapedJob at all, not even with an 'ignore'
+    // status. It will simply be re-fetched and re-evaluated on the next
+    // scan, which is the spec's intended behavior for suppressed postings.
+    const toCreate: CreateScrapedJobInput[] = []
+    for (const posting of newPostings) {
+      const atsScore = resumeData ? scoreResume(resumeData, posting.description).total : undefined
+      const evaluation = evaluateRules(
+        { title: posting.title, company: posting.company, workMode: posting.workMode, postedAt: posting.postedAt, atsScore },
+        rules
+      )
+      if (evaluation.suppressed) continue
+
+      toCreate.push({
+        // createScrapedJobs also receives profileId as its own argument and
+        // spreads it onto each job (see lib/api/scraped-jobs.ts) — it's set here
+        // too only because CreateScrapedJobInput's Zod schema requires it.
+        profileId,
+        source: 'freehire',
+        sourceId: posting.sourceId,
+        title: posting.title,
+        company: posting.company,
+        location: posting.location,
+        url: posting.url,
+        description: posting.description,
+        postedAt: posting.postedAt,
+        workMode: posting.workMode,
+        atsScore,
+        matchedRules: evaluation.matchedRules,
+        resolvedActions: evaluation.resolvedActions,
+        status: 'new',
+      })
+    }
 
     if (toCreate.length > 0) {
       await createScrapedJobs(userId, profileId, toCreate)

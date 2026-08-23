@@ -10,6 +10,7 @@ const {
   mockCreateScrapedJobs,
   mockScoreResume,
   mockResumeFindOne,
+  mockListRulesForProfile,
 } = vi.hoisted(() => ({
   mockSearchFreehireJobs: vi.fn(),
   mockGetJobSearchProfile: vi.fn(),
@@ -17,6 +18,7 @@ const {
   mockCreateScrapedJobs: vi.fn(),
   mockScoreResume: vi.fn(),
   mockResumeFindOne: vi.fn(),
+  mockListRulesForProfile: vi.fn(),
 }))
 
 vi.mock('../sources/freehire', () => ({ searchFreehireJobs: mockSearchFreehireJobs }))
@@ -25,6 +27,7 @@ vi.mock('@/lib/api/scraped-jobs', () => ({
   findExistingSourceIds: mockFindExistingSourceIds,
   createScrapedJobs: mockCreateScrapedJobs,
 }))
+vi.mock('@/lib/api/jobsearch-rules', () => ({ listRulesForProfile: mockListRulesForProfile }))
 vi.mock('@/lib/ats/scorer', () => ({ scoreResume: mockScoreResume }))
 vi.mock('@/models/Resume', () => ({ default: { findOne: mockResumeFindOne } }))
 
@@ -56,6 +59,7 @@ beforeEach(() => {
   mockCreateScrapedJobs.mockResolvedValue(undefined)
   mockScoreResume.mockReturnValue({ total: 60 })
   mockResumeFindOne.mockReturnValue(sortLeanChain({ data: { basics: { name: 'Test' } } }))
+  mockListRulesForProfile.mockResolvedValue([])
 })
 
 describe('runScanForProfile', () => {
@@ -215,5 +219,48 @@ describe('runScanForProfile', () => {
 
     expect(mockScoreResume).not.toHaveBeenCalled()
     expect(mockCreateScrapedJobs.mock.calls[0][2][0].atsScore).toBeUndefined()
+  })
+
+  it('does not fetch rules when there are no new postings', async () => {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockListRulesForProfile).not.toHaveBeenCalled()
+  })
+
+  it('suppresses a posting matched by an ignore rule and never persists it', async () => {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [{ source: 'freehire', sourceId: 'a1', title: 'X', company: 'Blocked Co', url: 'https://x/a1', description: 'JD' }],
+    })
+    mockListRulesForProfile.mockResolvedValue([
+      { name: 'Block it', isActive: true, action: 'ignore', conditions: [{ field: 'company', op: 'in', value: ['Blocked Co'] }] },
+    ])
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.created).toBe(0)
+    expect(mockCreateScrapedJobs).not.toHaveBeenCalled()
+  })
+
+  it('sets matchedRules and resolvedActions from matched rules on a persisted posting', async () => {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [{ source: 'freehire', sourceId: 'a1', title: 'Backend Engineer', company: 'Acme', url: 'https://x/a1', description: 'JD' }],
+    })
+    mockScoreResume.mockReturnValue({ total: 80 })
+    mockListRulesForProfile.mockResolvedValue([
+      { name: 'High fit', isActive: true, action: 'notify', conditions: [{ field: 'atsScore', op: 'gte', value: 75 }] },
+    ])
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockCreateScrapedJobs.mock.calls[0][2][0]).toEqual(
+      expect.objectContaining({ matchedRules: ['High fit'], resolvedActions: ['notify'] })
+    )
   })
 })
