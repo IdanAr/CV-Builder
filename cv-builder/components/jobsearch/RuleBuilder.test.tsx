@@ -89,6 +89,23 @@ describe('RuleBuilder', () => {
     expect(body.action).toBe('ignore')
   })
 
+  it('renders draft_and_queue as a visible but disabled, unselectable option', async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ rules: [] }) } as Response)
+
+    render(<RuleBuilder profileId="p1" />)
+    await userEvent.click(await screen.findByRole('button', { name: /add rule/i }))
+
+    const thenSelect = screen.getByLabelText(/^then$/i) as HTMLSelectElement
+    const draftOption = screen.getByRole('option', { name: /draft & queue/i }) as HTMLOptionElement
+    expect(draftOption.disabled).toBe(true)
+
+    await userEvent.selectOptions(thenSelect, 'draft_and_queue')
+    expect(thenSelect.value).toBe('notify')
+
+    expect(screen.getByRole('option', { name: /^notify me$/i })).not.toBeDisabled()
+    expect(screen.getByRole('option', { name: /^ignore$/i })).not.toBeDisabled()
+  })
+
   it("toggles a rule's active state", async () => {
     const mockFetch = vi.fn()
     mockFetch.mockResolvedValueOnce({

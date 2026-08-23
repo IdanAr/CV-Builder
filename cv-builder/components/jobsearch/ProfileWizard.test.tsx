@@ -92,6 +92,30 @@ describe('ProfileWizard', () => {
     )
   })
 
+  it('shows an inline error and does not silently proceed when the default rule POST resolves with a non-ok status', async () => {
+    const onCreated = vi.fn()
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ profile: { _id: 'p1', name: 'Test' } }) })
+    mockFetch.mockResolvedValueOnce({ ok: false, json: async () => ({}) })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ProfileWizard onCreated={onCreated} />)
+    for (let i = 0; i < 4; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    }
+    await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
+    await userEvent.click(screen.getByRole('button', { name: /create profile/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /yes, notify me/i }))
+
+    expect(await screen.findByText(/couldn.t create the notify rule/i)).toBeInTheDocument()
+    // The failure isn't silent, but it also isn't a hard block — the
+    // profile was already created, so the user must still be able to
+    // leave via Skip rather than being auto-advanced or stranded.
+    expect(onCreated).not.toHaveBeenCalled()
+    await userEvent.click(screen.getByRole('button', { name: /skip/i }))
+    expect(onCreated).toHaveBeenCalledWith({ _id: 'p1', name: 'Test' })
+  })
+
   it('preserves city input when navigating away and back to step 2', async () => {
     render(<ProfileWizard onCreated={() => {}} />)
     // Navigate to step 2

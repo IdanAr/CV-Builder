@@ -246,6 +246,32 @@ describe('runScanForProfile', () => {
     expect(mockCreateScrapedJobs).not.toHaveBeenCalled()
   })
 
+  it('suppresses only the posting matched by an ignore rule, not the entire batch', async () => {
+    // Regression guard for a batch-wide-drop bug: a single mismatched
+    // posting in the earlier ignore-veto test can't distinguish "suppress
+    // this one posting" from "drop everything once any posting matches an
+    // ignore rule" (e.g. a stray `break`/`return` instead of `continue` in
+    // the per-posting loop). A mixed batch with one suppressed and one
+    // surviving posting proves the suppression is genuinely per-posting.
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [
+        { source: 'freehire', sourceId: 'blocked-1', title: 'X', company: 'Blocked Co', url: 'https://x/blocked-1', description: 'JD' },
+        { source: 'freehire', sourceId: 'ok-1', title: 'Y', company: 'Fine Co', url: 'https://x/ok-1', description: 'JD' },
+      ],
+    })
+    mockListRulesForProfile.mockResolvedValue([
+      { name: 'Block it', isActive: true, action: 'ignore', conditions: [{ field: 'company', op: 'in', value: ['Blocked Co'] }] },
+    ])
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.created).toBe(1)
+    expect(mockCreateScrapedJobs.mock.calls[0][2]).toHaveLength(1)
+    expect(mockCreateScrapedJobs.mock.calls[0][2][0].sourceId).toBe('ok-1')
+  })
+
   it('sets matchedRules and resolvedActions from matched rules on a persisted posting', async () => {
     mockGetJobSearchProfile.mockResolvedValue(baseProfile)
     mockSearchFreehireJobs.mockResolvedValue({

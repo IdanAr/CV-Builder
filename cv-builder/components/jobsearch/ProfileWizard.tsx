@@ -98,6 +98,7 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
   const [error, setError] = useState<string | null>(null)
   const [createdProfile, setCreatedProfile] = useState<{ _id: string; name: string } | null>(null)
   const [creatingRule, setCreatingRule] = useState(false)
+  const [ruleError, setRuleError] = useState<string | null>(null)
 
   function goNext() {
     const next = Math.min(step + 1, STEP_LABELS.length)
@@ -161,8 +162,9 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
   async function handleCreateDefaultRule() {
     if (!createdProfile) return
     setCreatingRule(true)
+    setRuleError(null)
     try {
-      await fetch('/api/jobsearch/rules', {
+      const res = await fetch('/api/jobsearch/rules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -174,14 +176,21 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
           action: 'notify',
         }),
       })
+      if (res.ok) {
+        onCreated(createdProfile)
+        return
+      }
+      // fetch() only throws on a network failure — a 400/404/500 resolves
+      // normally, so res.ok must be checked explicitly or a failed rule
+      // creation looks identical to a successful one. The profile itself
+      // was already created successfully, so this is best-effort: surface
+      // the failure but let the user leave via "Skip" rather than stranding
+      // them here or silently proceeding as if the rule was created.
+      setRuleError("Couldn't create the notify rule. You can add one later from the profile page.")
     } catch {
-      // Best-effort: the profile itself was already created successfully.
-      // The default rule is a convenience, not a requirement — the user can
-      // always add rules later via RuleBuilder — so a flaky POST here isn't
-      // surfaced as an error that would strand the user on this screen.
+      setRuleError("Couldn't create the notify rule. You can add one later from the profile page.")
     } finally {
       setCreatingRule(false)
-      onCreated(createdProfile)
     }
   }
 
@@ -194,6 +203,7 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
             Want us to notify you whenever a match scores ≥ {state.minAtsScore}% against this profile?
           </p>
         </div>
+        {ruleError && <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{ruleError}</div>}
         <div className="flex gap-2">
           <button
             type="button"
