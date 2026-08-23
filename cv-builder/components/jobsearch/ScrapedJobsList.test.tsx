@@ -105,6 +105,42 @@ describe('ScrapedJobsList', () => {
     expect(mockFetch).toHaveBeenCalledTimes(2)
   })
 
+  it('shows the posting\'s original publish date when available', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        scrapedJobs: [
+          {
+            _id: 'j1',
+            title: 'Backend Engineer',
+            company: 'Acme',
+            url: 'https://x/a1',
+            status: 'new',
+            postedAt: '2026-08-01T00:00:00.000Z',
+          },
+        ],
+      }),
+    } as Response)
+
+    render(<ScrapedJobsList profileId="p1" />)
+
+    expect(await screen.findByText(/posted/i)).toHaveTextContent('Posted Aug 1, 2026')
+  })
+
+  it('omits the posted-date line when postedAt is unknown', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        scrapedJobs: [{ _id: 'j1', title: 'Backend Engineer', company: 'Acme', url: 'https://x/a1', status: 'new' }],
+      }),
+    } as Response)
+
+    render(<ScrapedJobsList profileId="p1" />)
+
+    await screen.findByText('Backend Engineer')
+    expect(screen.queryByText(/posted/i)).not.toBeInTheDocument()
+  })
+
   it('shows an error banner without clearing the list when a scan fails', async () => {
     const mockFetch = vi.fn()
     mockFetch.mockResolvedValueOnce({

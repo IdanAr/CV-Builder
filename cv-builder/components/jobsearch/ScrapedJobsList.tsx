@@ -10,6 +10,15 @@ interface ScrapedJobSummary {
   location?: string
   atsScore?: number
   status: string
+  /** The posting's original publish date (first time it was seen live), not when we scraped it. */
+  postedAt?: string
+}
+
+function formatPostedAt(postedAt: string | undefined): string | null {
+  if (!postedAt) return null
+  const date = new Date(postedAt)
+  if (Number.isNaN(date.valueOf())) return null
+  return `Posted ${date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`
 }
 
 interface ScrapedJobsListProps {
@@ -105,24 +114,28 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
         <p className="text-sm text-gray-500">No scraped jobs yet — run a scan to find matches.</p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {jobs.map((job) => (
-            <li key={job._id} className="rounded border px-4 py-2">
-              <div className="flex items-center justify-between">
-                {job.url ? (
-                  <a href={job.url} target="_blank" rel="noreferrer" className="font-medium text-indigo-700 hover:underline">
-                    {job.title}
-                  </a>
-                ) : (
-                  <span className="font-medium">{job.title}</span>
-                )}
-                {job.atsScore !== undefined && <span className="text-sm text-gray-500">{job.atsScore}% fit</span>}
-              </div>
-              <div className="text-sm text-gray-600">
-                {job.company}
-                {job.location ? ` — ${job.location}` : ''}
-              </div>
-            </li>
-          ))}
+          {jobs.map((job) => {
+            const postedAtLabel = formatPostedAt(job.postedAt)
+            return (
+              <li key={job._id} className="rounded border px-4 py-2">
+                <div className="flex items-center justify-between">
+                  {job.url ? (
+                    <a href={job.url} target="_blank" rel="noreferrer" className="font-medium text-indigo-700 hover:underline">
+                      {job.title}
+                    </a>
+                  ) : (
+                    <span className="font-medium">{job.title}</span>
+                  )}
+                  {job.atsScore !== undefined && <span className="text-sm text-gray-500">{job.atsScore}% fit</span>}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {job.company}
+                  {job.location ? ` — ${job.location}` : ''}
+                </div>
+                {postedAtLabel && <div className="text-xs text-gray-400">{postedAtLabel}</div>}
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>
