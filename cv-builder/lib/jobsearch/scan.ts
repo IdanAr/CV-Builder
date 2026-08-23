@@ -23,7 +23,7 @@ export interface ScanResult {
 interface ScannedProfile {
   roles: string[]
   workModes: string[]
-  locations: { country?: string; city?: string }[]
+  locations: { country?: string; region?: string; city?: string }[]
   seniority: string[]
   categories: string[]
   industries: string[]
@@ -57,6 +57,7 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
 
   const searchResult = await searchFreehireJobs({
     query: profile.roles.join(' ') || undefined,
+    region: profile.locations.map((l) => l.region).filter((r): r is string => !!r),
     country: profile.locations.map((l) => l.country).filter((c): c is string => !!c),
     city: profile.locations.map((l) => l.city).filter((c): c is string => !!c),
     seniority: profile.seniority,
@@ -79,45 +80,70 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
     }
   }
 
-  const filtered = searchResult.postings.filter((p) => passesIndustryFilter(p, profile.industries))
-  const existingIds = await findExistingSourceIds(
-    userId,
-    profileId,
-    'freehire',
-    filtered.map((p) => p.sourceId)
-  )
-  const newPostings = filtered.filter((p) => !existingIds.has(p.sourceId))
+  // Everything from here on touches untrusted freehire data and the
+  // database — wrapped so this function truly never throws (Phase 5 wraps
+  // it in a QStash worker, where an uncaught throw means a retry storm
+  // instead of one clean degraded result).
+  try {
+    const filtered = searchResult.postings.filter((p) => passesIndustryFilter(p, profile.industries))
+    const existingIds = await findExistingSourceIds(
+      userId,
+      profileId,
+      'freehire',
+      filtered.map((p) => p.sourceId)
+    )
+    const notAlreadyStored = filtered.filter((p) => !existingIds.has(p.sourceId))
 
-  const resumeData = newPostings.length > 0 ? await resolveResumeData(userId, profile.resumeId) : null
+    // findExistingSourceIds only guards against sourceIds already persisted
+    // from a previous scan — freehire's own response can itself contain a
+    // repeated sourceId within one page, so dedupe within this batch too
+    // (keep the first occurrence) before it ever reaches insertMany.
+    const seenSourceIds = new Set<string>()
+    const newPostings = notAlreadyStored.filter((p) => {
+      if (seenSourceIds.has(p.sourceId)) return false
+      seenSourceIds.add(p.sourceId)
+      return true
+    })
 
-  const toCreate: CreateScrapedJobInput[] = newPostings.map((posting) => ({
-    // createScrapedJobs also receives profileId as its own argument and
-    // spreads it onto each job (see lib/api/scraped-jobs.ts) — it's set here
-    // too only because CreateScrapedJobInput's Zod schema requires it.
-    profileId,
-    source: 'freehire',
-    sourceId: posting.sourceId,
-    title: posting.title,
-    company: posting.company,
-    location: posting.location,
-    url: posting.url,
-    description: posting.description,
-    postedAt: posting.postedAt,
-    workMode: posting.workMode,
-    atsScore: resumeData ? scoreResume(resumeData, posting.description).total : undefined,
-    matchedRules: [],
-    resolvedActions: [],
-    status: 'new',
-  }))
+    const resumeData = newPostings.length > 0 ? await resolveResumeData(userId, profile.resumeId) : null
 
-  if (toCreate.length > 0) {
-    await createScrapedJobs(userId, profileId, toCreate)
-  }
+    const toCreate: CreateScrapedJobInput[] = newPostings.map((posting) => ({
+      // createScrapedJobs also receives profileId as its own argument and
+      // spreads it onto each job (see lib/api/scraped-jobs.ts) — it's set here
+      // too only because CreateScrapedJobInput's Zod schema requires it.
+      profileId,
+      source: 'freehire',
+      sourceId: posting.sourceId,
+      title: posting.title,
+      company: posting.company,
+      location: posting.location,
+      url: posting.url,
+      description: posting.description,
+      postedAt: posting.postedAt,
+      workMode: posting.workMode,
+      atsScore: resumeData ? scoreResume(resumeData, posting.description).total : undefined,
+      matchedRules: [],
+      resolvedActions: [],
+      status: 'new',
+    }))
 
-  return {
-    fetched: searchResult.postings.length,
-    created: toCreate.length,
-    skippedExisting: existingIds.size,
-    degraded: false,
+    if (toCreate.length > 0) {
+      await createScrapedJobs(userId, profileId, toCreate)
+    }
+
+    return {
+      fetched: searchResult.postings.length,
+      created: toCreate.length,
+      skippedExisting: existingIds.size,
+      degraded: false,
+    }
+  } catch (err) {
+    return {
+      fetched: 0,
+      created: 0,
+      skippedExisting: 0,
+      degraded: true,
+      errorMessage: err instanceof Error ? err.message : 'Scan failed unexpectedly',
+    }
   }
 }

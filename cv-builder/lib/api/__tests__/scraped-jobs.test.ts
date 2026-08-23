@@ -61,7 +61,7 @@ describe('findExistingSourceIds', () => {
 })
 
 describe('createScrapedJobs', () => {
-  it('stamps every job with userId and profileId before inserting', async () => {
+  it('stamps every job with userId and profileId before inserting, unordered', async () => {
     mockInsertMany.mockResolvedValue([])
 
     await createScrapedJobs('u1', 'p1', [
@@ -75,13 +75,74 @@ describe('createScrapedJobs', () => {
       } as never,
     ])
 
-    expect(mockInsertMany).toHaveBeenCalledWith([
-      expect.objectContaining({ userId: 'u1', profileId: 'p1', sourceId: 'a1' }),
-    ])
+    expect(mockInsertMany).toHaveBeenCalledWith(
+      [expect.objectContaining({ userId: 'u1', profileId: 'p1', sourceId: 'a1' })],
+      { ordered: false }
+    )
   })
 
   it('does nothing when given an empty list', async () => {
     await createScrapedJobs('u1', 'p1', [])
     expect(mockInsertMany).not.toHaveBeenCalled()
+  })
+
+  it('swallows a duplicate-key-only bulk write error instead of throwing', async () => {
+    const dupError = Object.assign(new Error('E11000 duplicate key error'), {
+      writeErrors: [{ code: 11000, errmsg: 'dup' }],
+    })
+    mockInsertMany.mockRejectedValue(dupError)
+
+    await expect(
+      createScrapedJobs('u1', 'p1', [
+        {
+          source: 'freehire',
+          sourceId: 'a1',
+          title: 'Engineer',
+          company: 'Acme',
+          url: 'https://freehire.me/jobs/a1',
+          description: 'Build things.',
+        } as never,
+      ])
+    ).resolves.toBeUndefined()
+  })
+
+  it('rethrows a bulk write error that mixes in a non-duplicate-key failure', async () => {
+    const mixedError = Object.assign(new Error('bulk write failed'), {
+      writeErrors: [
+        { code: 11000, errmsg: 'dup' },
+        { code: 121, errmsg: 'document failed validation' },
+      ],
+    })
+    mockInsertMany.mockRejectedValue(mixedError)
+
+    await expect(
+      createScrapedJobs('u1', 'p1', [
+        {
+          source: 'freehire',
+          sourceId: 'a1',
+          title: 'Engineer',
+          company: 'Acme',
+          url: 'https://freehire.me/jobs/a1',
+          description: 'Build things.',
+        } as never,
+      ])
+    ).rejects.toThrow('bulk write failed')
+  })
+
+  it('rethrows an error with no writeErrors at all (e.g. a connection failure)', async () => {
+    mockInsertMany.mockRejectedValue(new Error('connection reset'))
+
+    await expect(
+      createScrapedJobs('u1', 'p1', [
+        {
+          source: 'freehire',
+          sourceId: 'a1',
+          title: 'Engineer',
+          company: 'Acme',
+          url: 'https://freehire.me/jobs/a1',
+          description: 'Build things.',
+        } as never,
+      ])
+    ).rejects.toThrow('connection reset')
   })
 })

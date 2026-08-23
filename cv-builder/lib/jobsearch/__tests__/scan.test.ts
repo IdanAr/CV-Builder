@@ -153,6 +153,56 @@ describe('runScanForProfile', () => {
     expect(mockFindOne).toHaveBeenCalledWith({ _id: 'r1', userId: 'u1' })
   })
 
+  it('maps location region into the freehire search params alongside country and city', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({
+      ...baseProfile,
+      locations: [{ country: 'DE', region: 'Bavaria', city: 'Munich' }, { region: 'Île-de-France' }],
+    })
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockSearchFreehireJobs).toHaveBeenCalledWith(
+      expect.objectContaining({ region: ['Bavaria', 'Île-de-France'] })
+    )
+  })
+
+  it('returns a degraded result instead of throwing when createScrapedJobs fails unexpectedly', async () => {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [{ source: 'freehire', sourceId: 'a1', title: 'X', company: 'Y', url: 'https://x/a1', description: 'JD' }],
+    })
+    mockCreateScrapedJobs.mockRejectedValue(new Error('insertMany exploded'))
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result).toEqual({
+      fetched: 0,
+      created: 0,
+      skippedExisting: 0,
+      degraded: true,
+      errorMessage: 'insertMany exploded',
+    })
+  })
+
+  it('dedupes postings that share a sourceId within the same freehire response before persisting', async () => {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [
+        { source: 'freehire', sourceId: 'dup', title: 'First', company: 'Acme', url: 'https://x/dup', description: 'JD 1' },
+        { source: 'freehire', sourceId: 'dup', title: 'Second (repeat)', company: 'Acme', url: 'https://x/dup', description: 'JD 2' },
+      ],
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.created).toBe(1)
+    expect(mockCreateScrapedJobs.mock.calls[0][2]).toHaveLength(1)
+    expect(mockCreateScrapedJobs.mock.calls[0][2][0].title).toBe('First')
+  })
+
   it('leaves atsScore undefined when the user has no resume at all', async () => {
     mockResumeFindOne.mockReturnValue(sortLeanChain(null))
     mockGetJobSearchProfile.mockResolvedValue(baseProfile)

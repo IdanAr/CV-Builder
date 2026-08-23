@@ -31,5 +31,24 @@ export async function createScrapedJobs(
 ): Promise<void> {
   if (jobs.length === 0) return
   await dbConnect()
-  await ScrapedJob.insertMany(jobs.map((job) => ({ ...job, userId, profileId })))
+  try {
+    // `ordered: false` so a duplicate-key race on the unique
+    // (userId, profileId, source, sourceId) index — e.g. two concurrent
+    // scans for the same profile — doesn't abort the whole batch; every
+    // genuinely-new document still gets inserted.
+    await ScrapedJob.insertMany(
+      jobs.map((job) => ({ ...job, userId, profileId })),
+      { ordered: false }
+    )
+  } catch (err) {
+    const writeErrors = (err as { writeErrors?: Array<{ code?: number }> } | undefined)?.writeErrors
+    const isDuplicateKeyOnly =
+      Array.isArray(writeErrors) && writeErrors.length > 0 && writeErrors.every((we) => we.code === 11000)
+    if (!isDuplicateKeyOnly) {
+      throw err
+    }
+    // Every failure was an expected E11000 duplicate-key race — the point
+    // of ordered:false here is "insert everything genuinely new, silently
+    // skip anything already there." Nothing else to do.
+  }
 }
