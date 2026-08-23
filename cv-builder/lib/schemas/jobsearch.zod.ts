@@ -106,3 +106,75 @@ export const ScrapedJobSchema = z.object({
   status: ScrapedJobStatusEnum.default('new'),
 })
 export type CreateScrapedJobInput = z.infer<typeof ScrapedJobSchema>
+
+// Rule conditions for job-search matching (design spec §4). A discriminated
+// union on `field` so each field only accepts the ops/value shape that make
+// sense for it — e.g. postedWithinDays only ever takes `lte`, never `gte`.
+const AtsScoreConditionSchema = z.object({
+  field: z.literal('atsScore'),
+  op: z.enum(['gte', 'lte']),
+  value: z.number().int().min(0).max(100),
+})
+const CompanyConditionSchema = z.object({
+  field: z.literal('company'),
+  op: z.enum(['in', 'notIn']),
+  value: z.array(z.string().trim().min(1)).min(1),
+})
+const WorkModeConditionSchema = z.object({
+  field: z.literal('workMode'),
+  op: z.literal('in'),
+  value: z.array(WorkModeEnum).min(1),
+})
+const PostedWithinDaysConditionSchema = z.object({
+  field: z.literal('postedWithinDays'),
+  op: z.literal('lte'),
+  value: z.number().int().min(1),
+})
+const TitleConditionSchema = z.object({
+  field: z.literal('title'),
+  op: z.enum(['contains', 'notContains']),
+  value: z.string().trim().min(1),
+})
+
+export const RuleConditionSchema = z.discriminatedUnion('field', [
+  AtsScoreConditionSchema,
+  CompanyConditionSchema,
+  WorkModeConditionSchema,
+  PostedWithinDaysConditionSchema,
+  TitleConditionSchema,
+])
+export type RuleCondition = z.infer<typeof RuleConditionSchema>
+
+export const RULE_ACTIONS = ['notify', 'draft_and_queue', 'ignore'] as const
+export const RuleActionEnum = z.enum(RULE_ACTIONS)
+export type RuleAction = z.infer<typeof RuleActionEnum>
+
+export const JobSearchRuleSchema = z.object({
+  // null = applies to every profile this user has (design spec §4).
+  profileId: z.string().nullable().default(null),
+  name: z.string().trim().min(1, 'Name is required').max(100),
+  isActive: z.boolean().default(true),
+  // Display/notification ordering only — NOT precedence (design spec §4).
+  order: z.number().int().default(0),
+  conditions: z.array(RuleConditionSchema).min(1, 'At least one condition is required'),
+  action: RuleActionEnum,
+})
+export type JobSearchRuleInput = z.infer<typeof JobSearchRuleSchema>
+
+export const CreateJobSearchRuleSchema = JobSearchRuleSchema
+export type CreateJobSearchRuleInput = z.infer<typeof CreateJobSearchRuleSchema>
+
+// NOT derived via JobSearchRuleSchema.partial() — same reasoning as
+// PatchJobSearchProfileSchema above: this repo's Zod version re-applies
+// .default(...) for absent keys even through .partial(), which would
+// silently backfill/wipe fields on every PATCH. Hand-written, all-optional,
+// zero .default(...) calls.
+export const PatchJobSearchRuleSchema = z.object({
+  profileId: z.string().nullable().optional(),
+  name: z.string().trim().min(1, 'Name is required').max(100).optional(),
+  isActive: z.boolean().optional(),
+  order: z.number().int().optional(),
+  conditions: z.array(RuleConditionSchema).min(1, 'At least one condition is required').optional(),
+  action: RuleActionEnum.optional(),
+})
+export type PatchJobSearchRuleInput = z.infer<typeof PatchJobSearchRuleSchema>
