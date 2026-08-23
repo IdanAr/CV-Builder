@@ -2,12 +2,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/lib/db', () => ({ default: vi.fn().mockResolvedValue(undefined) }))
 
-const { mockFind, mockCreate, mockFindOne, mockFindOneAndUpdate, mockDeleteOne } = vi.hoisted(() => ({
+const {
+  mockFind,
+  mockCreate,
+  mockFindOne,
+  mockFindOneAndUpdate,
+  mockDeleteOne,
+  mockResumeFindOne,
+} = vi.hoisted(() => ({
   mockFind: vi.fn(),
   mockCreate: vi.fn(),
   mockFindOne: vi.fn(),
   mockFindOneAndUpdate: vi.fn(),
   mockDeleteOne: vi.fn(),
+  mockResumeFindOne: vi.fn(),
 }))
 
 vi.mock('@/models/JobSearchProfile', () => ({
@@ -17,6 +25,12 @@ vi.mock('@/models/JobSearchProfile', () => ({
     findOne: mockFindOne,
     findOneAndUpdate: mockFindOneAndUpdate,
     deleteOne: mockDeleteOne,
+  },
+}))
+
+vi.mock('@/models/Resume', () => ({
+  default: {
+    findOne: mockResumeFindOne,
   },
 }))
 
@@ -54,10 +68,30 @@ describe('listJobSearchProfiles', () => {
 describe('createJobSearchProfile', () => {
   it('stamps the input with the requesting userId', async () => {
     mockCreate.mockResolvedValue({ _id: 'p1', userId: 'u1', name: 'Frontend' })
+    mockResumeFindOne.mockReturnValue(leanChain(null))
 
     await createJobSearchProfile('u1', { name: 'Frontend' } as never)
 
-    expect(mockCreate).toHaveBeenCalledWith({ name: 'Frontend', userId: 'u1' })
+    expect(mockCreate).toHaveBeenCalledWith({ name: 'Frontend', resumeId: undefined, userId: 'u1' })
+  })
+
+  it('keeps a resumeId that belongs to the caller', async () => {
+    mockCreate.mockResolvedValue({ _id: 'p1', userId: 'u1', name: 'Frontend', resumeId: 'r1' })
+    mockResumeFindOne.mockReturnValue(leanChain({ _id: 'r1', userId: 'u1' }))
+
+    await createJobSearchProfile('u1', { name: 'Frontend', resumeId: 'r1' } as never)
+
+    expect(mockResumeFindOne).toHaveBeenCalledWith({ _id: 'r1', userId: 'u1' })
+    expect(mockCreate).toHaveBeenCalledWith({ name: 'Frontend', resumeId: 'r1', userId: 'u1' })
+  })
+
+  it('silently drops a resumeId that does not belong to the caller', async () => {
+    mockCreate.mockResolvedValue({ _id: 'p1', userId: 'u1', name: 'Frontend' })
+    mockResumeFindOne.mockReturnValue(leanChain(null))
+
+    await createJobSearchProfile('u1', { name: 'Frontend', resumeId: 'r-not-mine' } as never)
+
+    expect(mockCreate).toHaveBeenCalledWith({ name: 'Frontend', resumeId: undefined, userId: 'u1' })
   })
 })
 
@@ -84,6 +118,34 @@ describe('updateJobSearchProfile', () => {
     mockFindOneAndUpdate.mockReturnValue(leanChain({ _id: 'p1', userId: 'u1', minAtsScore: 80 }))
 
     await updateJobSearchProfile('u1', 'p1', { minAtsScore: 80 })
+
+    expect(mockFindOneAndUpdate).toHaveBeenCalledWith(
+      { _id: 'p1', userId: 'u1' },
+      { $set: { minAtsScore: 80 } },
+      { new: true }
+    )
+    expect(mockResumeFindOne).not.toHaveBeenCalled()
+  })
+
+  it('keeps a resumeId that belongs to the caller', async () => {
+    mockResumeFindOne.mockReturnValue(leanChain({ _id: 'r1', userId: 'u1' }))
+    mockFindOneAndUpdate.mockReturnValue(leanChain({ _id: 'p1', userId: 'u1', resumeId: 'r1' }))
+
+    await updateJobSearchProfile('u1', 'p1', { resumeId: 'r1' })
+
+    expect(mockResumeFindOne).toHaveBeenCalledWith({ _id: 'r1', userId: 'u1' })
+    expect(mockFindOneAndUpdate).toHaveBeenCalledWith(
+      { _id: 'p1', userId: 'u1' },
+      { $set: { resumeId: 'r1' } },
+      { new: true }
+    )
+  })
+
+  it('silently drops a resumeId that does not belong to the caller, without erroring', async () => {
+    mockResumeFindOne.mockReturnValue(leanChain(null))
+    mockFindOneAndUpdate.mockReturnValue(leanChain({ _id: 'p1', userId: 'u1' }))
+
+    await updateJobSearchProfile('u1', 'p1', { resumeId: 'r-not-mine', minAtsScore: 80 })
 
     expect(mockFindOneAndUpdate).toHaveBeenCalledWith(
       { _id: 'p1', userId: 'u1' },
