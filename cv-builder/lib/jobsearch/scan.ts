@@ -4,11 +4,18 @@
 import dbConnect from '@/lib/db'
 import { searchFreehireJobs } from './sources/freehire'
 import { getJobSearchProfile } from '@/lib/api/jobsearch-profiles'
-import { findExistingSourceIds, createScrapedJobs } from '@/lib/api/scraped-jobs'
+import {
+  findExistingSourceIds,
+  createScrapedJobs,
+  countDraftedInWindow,
+  listDraftQueueBacklog,
+  markScrapedJobDrafted,
+} from '@/lib/api/scraped-jobs'
 import { listRulesForProfile } from '@/lib/api/jobsearch-rules'
 import { scoreResume } from '@/lib/ats/scorer'
 import { matchesKeyword } from '@/lib/ats/keywords'
 import { evaluateRules } from './rules'
+import { runApplyPipeline, PER_PROFILE_DAILY_DRAFT_CAP, PER_USER_DAILY_DRAFT_CAP } from './apply'
 import Resume from '@/models/Resume'
 import type { CreateScrapedJobInput } from '@/lib/schemas/jobsearch.zod'
 import type { JobPosting } from './sources/types'
@@ -18,6 +25,7 @@ export interface ScanResult {
   fetched: number
   created: number
   skippedExisting: number
+  drafted: number
   degraded: boolean
   errorMessage?: string
 }
@@ -30,7 +38,15 @@ interface ScannedProfile {
   categories: string[]
   industries: string[]
   recencyDays: number
+  minAtsScore: number
   resumeId?: string
+}
+
+interface DraftQueueBacklogItem {
+  _id: unknown
+  title: string
+  company: string
+  description: string
 }
 
 async function resolveResumeData(userId: string, resumeId?: string): Promise<ResumeData | null> {
@@ -54,7 +70,64 @@ function passesIndustryFilter(posting: JobPosting, industries: string[]): boolea
 export async function runScanForProfile(userId: string, profileId: string): Promise<ScanResult> {
   const profile = (await getJobSearchProfile(userId, profileId)) as ScannedProfile | null
   if (!profile) {
-    return { fetched: 0, created: 0, skippedExisting: 0, degraded: true, errorMessage: 'Profile not found' }
+    return { fetched: 0, created: 0, skippedExisting: 0, drafted: 0, degraded: true, errorMessage: 'Profile not found' }
+  }
+
+  // Memoized so the backlog drain below and the new-postings loop further
+  // down share at most one DB read for the linked resume, even though each
+  // decides independently whether it needs it at all.
+  let resolvedResumeData: ResumeData | null | undefined
+  const getResumeData = async (): Promise<ResumeData | null> => {
+    if (resolvedResumeData === undefined) {
+      resolvedResumeData = await resolveResumeData(userId, profile.resumeId)
+    }
+    return resolvedResumeData
+  }
+
+  // Cap bookkeeping runs before the freehire fetch so a degraded/unreachable
+  // source (handled below) never blocks draining postings already sitting
+  // in the draft_and_queue backlog from a previous cap-limited run (design
+  // spec §7: "drafting for them waits for the next scan run").
+  let profileDraftsRemaining = PER_PROFILE_DAILY_DRAFT_CAP - (await countDraftedInWindow(userId, profileId))
+  let userDraftsRemaining = PER_USER_DAILY_DRAFT_CAP - (await countDraftedInWindow(userId))
+  let drafted = 0
+
+  if (profileDraftsRemaining > 0 && userDraftsRemaining > 0) {
+    const backlog = (await listDraftQueueBacklog(
+      userId,
+      profileId,
+      Math.min(profileDraftsRemaining, userDraftsRemaining)
+    )) as unknown as DraftQueueBacklogItem[]
+    if (backlog.length > 0) {
+      const resumeData = await getResumeData()
+      if (resumeData) {
+        for (const item of backlog) {
+          if (profileDraftsRemaining <= 0 || userDraftsRemaining <= 0) break
+          try {
+            const missingKeywords = scoreResume(resumeData, item.description).missingKeywords
+            const applyResult = await runApplyPipeline(
+              userId,
+              resumeData,
+              { title: item.title, company: item.company, description: item.description },
+              missingKeywords,
+              profile.minAtsScore
+            )
+            await markScrapedJobDrafted(userId, String(item._id), {
+              draftResumeId: applyResult.draftResumeId,
+              postTailorScore: applyResult.postTailorScore,
+              pendingApprovals: applyResult.pendingApprovals,
+              tailoredKeywords: applyResult.tailoredKeywords,
+              status: applyResult.status,
+            })
+            profileDraftsRemaining--
+            userDraftsRemaining--
+            drafted++
+          } catch {
+            // Left as backlog (draftedAt still unset) — retried on the next scan.
+          }
+        }
+      }
+    }
   }
 
   const searchResult = await searchFreehireJobs({
@@ -77,6 +150,7 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
       fetched: 0,
       created: 0,
       skippedExisting: 0,
+      drafted,
       degraded: true,
       errorMessage: searchResult.errorMessage,
     }
@@ -107,7 +181,7 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
       return true
     })
 
-    const resumeData = newPostings.length > 0 ? await resolveResumeData(userId, profile.resumeId) : null
+    const resumeData = newPostings.length > 0 ? await getResumeData() : null
     const rules = newPostings.length > 0 ? await listRulesForProfile(userId, profileId) : []
 
     // A for-loop rather than .map(), because a posting matched by an
@@ -117,12 +191,51 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
     // scan, which is the spec's intended behavior for suppressed postings.
     const toCreate: CreateScrapedJobInput[] = []
     for (const posting of newPostings) {
-      const atsScore = resumeData ? scoreResume(resumeData, posting.description).total : undefined
+      const scoreResult = resumeData ? scoreResume(resumeData, posting.description) : null
+      const atsScore = scoreResult?.total
       const evaluation = evaluateRules(
         { title: posting.title, company: posting.company, workMode: posting.workMode, postedAt: posting.postedAt, atsScore },
         rules
       )
       if (evaluation.suppressed) continue
+
+      // Semi-auto apply (design spec §7): only for draft_and_queue matches,
+      // only when there's a resume to tailor from, and only while today's
+      // per-profile and per-user caps still have room (§7's "Cost/spend
+      // safety valves"). A posting that misses the cap or whose pipeline
+      // throws simply stays at status 'new' with no draftedAt — the next
+      // scan's backlog drain (above) picks it back up.
+      let draftFields: Partial<CreateScrapedJobInput> = {}
+      if (
+        evaluation.resolvedActions.includes('draft_and_queue') &&
+        resumeData &&
+        scoreResult &&
+        profileDraftsRemaining > 0 &&
+        userDraftsRemaining > 0
+      ) {
+        try {
+          const applyResult = await runApplyPipeline(
+            userId,
+            resumeData,
+            { title: posting.title, company: posting.company, description: posting.description },
+            scoreResult.missingKeywords,
+            profile.minAtsScore
+          )
+          draftFields = {
+            draftResumeId: applyResult.draftResumeId,
+            postTailorScore: applyResult.postTailorScore,
+            pendingApprovals: applyResult.pendingApprovals,
+            tailoredKeywords: applyResult.tailoredKeywords,
+            status: applyResult.status,
+            draftedAt: new Date(),
+          }
+          profileDraftsRemaining--
+          userDraftsRemaining--
+          drafted++
+        } catch {
+          // Left at the default 'new' status below — picked up as backlog next scan.
+        }
+      }
 
       toCreate.push({
         // createScrapedJobs also receives profileId as its own argument and
@@ -141,9 +254,15 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
         atsScore,
         matchedRules: evaluation.matchedRules,
         resolvedActions: evaluation.resolvedActions,
+        // pendingApprovals/tailoredKeywords carry Zod .default([]) — the
+        // inferred CreateScrapedJobInput type makes them required fields,
+        // not optional, so they must be set explicitly here even when
+        // draftFields won't overwrite them (Task 1's review caught this
+        // exact class of bug in the pre-Phase-4 scan.ts).
         pendingApprovals: [],
         tailoredKeywords: [],
         status: 'new',
+        ...draftFields,
       })
     }
 
@@ -155,6 +274,7 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
       fetched: searchResult.postings.length,
       created: toCreate.length,
       skippedExisting: existingIds.size,
+      drafted,
       degraded: false,
     }
   } catch (err) {
@@ -162,6 +282,7 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
       fetched: 0,
       created: 0,
       skippedExisting: 0,
+      drafted,
       degraded: true,
       errorMessage: err instanceof Error ? err.message : 'Scan failed unexpectedly',
     }

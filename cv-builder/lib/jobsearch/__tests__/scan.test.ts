@@ -11,6 +11,10 @@ const {
   mockScoreResume,
   mockResumeFindOne,
   mockListRulesForProfile,
+  mockCountDraftedInWindow,
+  mockListDraftQueueBacklog,
+  mockMarkScrapedJobDrafted,
+  mockRunApplyPipeline,
 } = vi.hoisted(() => ({
   mockSearchFreehireJobs: vi.fn(),
   mockGetJobSearchProfile: vi.fn(),
@@ -19,6 +23,10 @@ const {
   mockScoreResume: vi.fn(),
   mockResumeFindOne: vi.fn(),
   mockListRulesForProfile: vi.fn(),
+  mockCountDraftedInWindow: vi.fn(),
+  mockListDraftQueueBacklog: vi.fn(),
+  mockMarkScrapedJobDrafted: vi.fn(),
+  mockRunApplyPipeline: vi.fn(),
 }))
 
 vi.mock('../sources/freehire', () => ({ searchFreehireJobs: mockSearchFreehireJobs }))
@@ -26,10 +34,18 @@ vi.mock('@/lib/api/jobsearch-profiles', () => ({ getJobSearchProfile: mockGetJob
 vi.mock('@/lib/api/scraped-jobs', () => ({
   findExistingSourceIds: mockFindExistingSourceIds,
   createScrapedJobs: mockCreateScrapedJobs,
+  countDraftedInWindow: mockCountDraftedInWindow,
+  listDraftQueueBacklog: mockListDraftQueueBacklog,
+  markScrapedJobDrafted: mockMarkScrapedJobDrafted,
 }))
 vi.mock('@/lib/api/jobsearch-rules', () => ({ listRulesForProfile: mockListRulesForProfile }))
 vi.mock('@/lib/ats/scorer', () => ({ scoreResume: mockScoreResume }))
 vi.mock('@/models/Resume', () => ({ default: { findOne: mockResumeFindOne } }))
+vi.mock('../apply', () => ({
+  runApplyPipeline: mockRunApplyPipeline,
+  PER_PROFILE_DAILY_DRAFT_CAP: 3,
+  PER_USER_DAILY_DRAFT_CAP: 10,
+}))
 
 import { runScanForProfile } from '../scan'
 
@@ -50,6 +66,7 @@ const baseProfile = {
   categories: [],
   industries: [],
   recencyDays: 14,
+  minAtsScore: 75,
   resumeId: undefined,
 }
 
@@ -57,9 +74,19 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockFindExistingSourceIds.mockResolvedValue(new Set())
   mockCreateScrapedJobs.mockResolvedValue(undefined)
-  mockScoreResume.mockReturnValue({ total: 60 })
+  mockScoreResume.mockReturnValue({ total: 60, missingKeywords: [] })
   mockResumeFindOne.mockReturnValue(sortLeanChain({ data: { basics: { name: 'Test' } } }))
   mockListRulesForProfile.mockResolvedValue([])
+  mockCountDraftedInWindow.mockResolvedValue(0)
+  mockListDraftQueueBacklog.mockResolvedValue([])
+  mockMarkScrapedJobDrafted.mockResolvedValue(undefined)
+  mockRunApplyPipeline.mockResolvedValue({
+    draftResumeId: 'draft1',
+    postTailorScore: 90,
+    pendingApprovals: [],
+    tailoredKeywords: [],
+    status: 'queued',
+  })
 })
 
 describe('runScanForProfile', () => {
@@ -185,6 +212,7 @@ describe('runScanForProfile', () => {
       fetched: 0,
       created: 0,
       skippedExisting: 0,
+      drafted: 0,
       degraded: true,
       errorMessage: 'insertMany exploded',
     })
@@ -288,5 +316,125 @@ describe('runScanForProfile', () => {
     expect(mockCreateScrapedJobs.mock.calls[0][2][0]).toEqual(
       expect.objectContaining({ matchedRules: ['High fit'], resolvedActions: ['notify'] })
     )
+  })
+
+  it('runs the apply pipeline and persists drafted fields for a draft_and_queue match', async () => {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [{ source: 'freehire', sourceId: 'a1', title: 'Backend Engineer', company: 'Acme', url: 'https://x/a1', description: 'JD' }],
+    })
+    mockScoreResume.mockReturnValue({ total: 80, missingKeywords: ['Node'] })
+    mockListRulesForProfile.mockResolvedValue([
+      { name: 'Draft it', isActive: true, action: 'draft_and_queue', conditions: [{ field: 'atsScore', op: 'gte', value: 75 }] },
+    ])
+    mockRunApplyPipeline.mockResolvedValue({
+      draftResumeId: 'draft1', postTailorScore: 91, pendingApprovals: [], tailoredKeywords: ['Node'], status: 'queued',
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockRunApplyPipeline).toHaveBeenCalledWith(
+      'u1', expect.anything(), expect.objectContaining({ title: 'Backend Engineer', company: 'Acme' }), ['Node'], 75
+    )
+    expect(mockCreateScrapedJobs.mock.calls[0][2][0]).toEqual(
+      expect.objectContaining({
+        draftResumeId: 'draft1', postTailorScore: 91, status: 'queued', tailoredKeywords: ['Node'], draftedAt: expect.any(Date),
+      })
+    )
+    expect(result.drafted).toBe(1)
+  })
+
+  it('does not run the apply pipeline for a draft_and_queue match when the user has no resume', async () => {
+    mockResumeFindOne.mockReturnValue(sortLeanChain(null))
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [{ source: 'freehire', sourceId: 'a1', title: 'X', company: 'Y', url: 'https://x/a1', description: 'JD' }],
+    })
+    mockListRulesForProfile.mockResolvedValue([
+      { name: 'Draft it', isActive: true, action: 'draft_and_queue', conditions: [{ field: 'title', op: 'contains', value: 'x' }] },
+    ])
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockRunApplyPipeline).not.toHaveBeenCalled()
+    expect(mockCreateScrapedJobs.mock.calls[0][2][0].status).toBe('new')
+    expect(result.drafted).toBe(0)
+  })
+
+  it('stops drafting once the per-profile daily cap is reached, leaving later matches as "new"', async () => {
+    mockCountDraftedInWindow.mockResolvedValue(3)
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [{ source: 'freehire', sourceId: 'a1', title: 'X', company: 'Y', url: 'https://x/a1', description: 'JD' }],
+    })
+    mockListRulesForProfile.mockResolvedValue([
+      { name: 'Draft it', isActive: true, action: 'draft_and_queue', conditions: [{ field: 'title', op: 'contains', value: 'x' }] },
+    ])
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockRunApplyPipeline).not.toHaveBeenCalled()
+    expect(mockCreateScrapedJobs.mock.calls[0][2][0].status).toBe('new')
+    expect(result.drafted).toBe(0)
+  })
+
+  it('stops drafting once the per-user aggregate daily cap is reached even though the per-profile cap has room', async () => {
+    mockCountDraftedInWindow.mockImplementation((_userId: string, profileId?: string) =>
+      Promise.resolve(profileId ? 0 : 10)
+    )
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [{ source: 'freehire', sourceId: 'a1', title: 'X', company: 'Y', url: 'https://x/a1', description: 'JD' }],
+    })
+    mockListRulesForProfile.mockResolvedValue([
+      { name: 'Draft it', isActive: true, action: 'draft_and_queue', conditions: [{ field: 'title', op: 'contains', value: 'x' }] },
+    ])
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockRunApplyPipeline).not.toHaveBeenCalled()
+    expect(result.drafted).toBe(0)
+  })
+
+  it('drains the existing draft_and_queue backlog before evaluating newly fetched postings', async () => {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+    mockListDraftQueueBacklog.mockResolvedValue([
+      { _id: 'backlog1', title: 'Old Match', company: 'Acme', description: 'JD' },
+    ])
+    mockScoreResume.mockReturnValue({ total: 80, missingKeywords: ['Node'] })
+    mockRunApplyPipeline.mockResolvedValue({
+      draftResumeId: 'draft2', postTailorScore: 92, pendingApprovals: [], tailoredKeywords: ['Node'], status: 'queued',
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockRunApplyPipeline).toHaveBeenCalledWith(
+      'u1', expect.anything(), expect.objectContaining({ title: 'Old Match' }), ['Node'], 75
+    )
+    expect(mockMarkScrapedJobDrafted).toHaveBeenCalledWith('u1', 'backlog1', {
+      draftResumeId: 'draft2', postTailorScore: 92, pendingApprovals: [], tailoredKeywords: ['Node'], status: 'queued',
+    })
+    expect(result.drafted).toBe(1)
+  })
+
+  it('leaves a backlog item undrafted (for retry next scan) when the apply pipeline throws', async () => {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+    mockListDraftQueueBacklog.mockResolvedValue([
+      { _id: 'backlog1', title: 'Old Match', company: 'Acme', description: 'JD' },
+    ])
+    mockScoreResume.mockReturnValue({ total: 80, missingKeywords: [] })
+    mockRunApplyPipeline.mockRejectedValue(new Error('Anthropic API error'))
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockMarkScrapedJobDrafted).not.toHaveBeenCalled()
+    expect(result.drafted).toBe(0)
+    expect(result.degraded).toBe(false)
   })
 })
