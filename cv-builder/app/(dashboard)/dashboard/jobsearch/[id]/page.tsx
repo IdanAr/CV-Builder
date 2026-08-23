@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
+import { RuleBuilder } from '@/components/jobsearch/RuleBuilder'
 import { ScrapedJobsList } from '@/components/jobsearch/ScrapedJobsList'
 
 interface PageProps {
@@ -16,6 +17,9 @@ export default async function JobSearchProfileScanPage({ params }: PageProps) {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="mb-6 text-xl font-semibold">Scraped Jobs</h1>
+      <div className="mb-8">
+        <RuleBuilder profileId={id} />
+      </div>
       <ScrapedJobsList profileId={id} />
     </div>
   )
