@@ -12,7 +12,7 @@ import {
   type JobLocation,
 } from '@/lib/schemas/jobsearch.zod'
 
-const STEP_LABELS = ['Roles', 'Location', 'Sources', 'Threshold', 'Review']
+const STEP_LABELS = ['Roles', 'Location', 'Focus', 'Threshold', 'Review']
 
 interface ProfileWizardProps {
   onCreated: (profile: { _id: string; name: string }) => void
@@ -50,6 +50,24 @@ function toTags(value: string): string[] {
 
 function formatList(tags: string[]): string {
   return tags.length > 0 ? tags.join(', ') : '—'
+}
+
+// Turns the API's Zod-issue array (VALIDATION_ERROR's `details`) into a
+// readable suffix for the error banner, so a rejected submission is
+// self-diagnosing instead of a dead-end "try again" message.
+function formatValidationDetails(details: unknown): string {
+  if (!Array.isArray(details) || details.length === 0) {
+    return ' Please try again.'
+  }
+  const messages = details
+    .map((issue) => {
+      if (!issue || typeof issue !== 'object' || !('message' in issue)) return null
+      const path = Array.isArray((issue as { path?: unknown[] }).path) ? (issue as { path: unknown[] }).path : []
+      const message = String((issue as { message: unknown }).message)
+      return path.length > 0 ? `${path.join('.')}: ${message}` : message
+    })
+    .filter((m): m is string => m !== null)
+  return messages.length > 0 ? ` ${messages.join('; ')}` : ' Please try again.'
 }
 
 // Draft text for the three free-form tag fields (roles/categories/industries).
@@ -129,7 +147,7 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
       if (res.ok) {
         onCreated(body.profile)
       } else {
-        setError('Failed to create profile. Please try again.')
+        setError(`Failed to create profile.${formatValidationDetails(body.details)}`)
       }
     } catch {
       setError('An error occurred. Please check your connection and try again.')
@@ -223,7 +241,12 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
               type="number"
               className="mt-1 w-full rounded border px-3 py-2 text-sm"
               value={state.recencyDays}
-              onChange={(e) => setState((s) => ({ ...s, recencyDays: Number(e.target.value) }))}
+              onChange={(e) =>
+                // Clamped to >=1 (the schema's floor) at the source, rather than
+                // letting a cleared/zeroed field reach the server as an invalid
+                // 400 the user has no way to interpret.
+                setState((s) => ({ ...s, recencyDays: Math.max(1, Number(e.target.value) || 0) }))
+              }
             />
           </label>
           <label className="text-sm font-medium">

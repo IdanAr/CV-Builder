@@ -153,12 +153,43 @@ describe('ProfileWizard', () => {
     expect(screen.getByText('senior')).toBeInTheDocument()
   })
 
+  it('clamps recencyDays to at least 1 when the field is cleared', async () => {
+    render(<ProfileWizard onCreated={() => {}} />)
+    for (let i = 0; i < 3; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    }
+    const recencyInput = screen.getByLabelText(/last n days/i) as HTMLInputElement
+    await userEvent.clear(recencyInput)
+    expect(Number(recencyInput.value)).toBeGreaterThanOrEqual(1)
+  })
+
+  it('surfaces the specific validation error when profile creation is rejected', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        error: 'Validation failed',
+        code: 'VALIDATION_ERROR',
+        details: [{ path: ['recencyDays'], message: 'Too small: expected number to be >=1' }],
+      }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ProfileWizard onCreated={() => {}} />)
+    for (let i = 0; i < 4; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    }
+    await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
+    await userEvent.click(screen.getByRole('button', { name: /create profile/i }))
+
+    expect(screen.getByText(/recencyDays: Too small/i)).toBeInTheDocument()
+  })
+
   it('shows a Back button that returns to the previous step', async () => {
     render(<ProfileWizard onCreated={() => {}} />)
     expect(screen.queryByRole('button', { name: /back/i })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /next/i }))
     await userEvent.click(screen.getByRole('button', { name: /next/i }))
-    expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('Sources')
+    expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('Focus')
     await userEvent.click(screen.getByRole('button', { name: /back/i }))
     expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('Location')
   })
