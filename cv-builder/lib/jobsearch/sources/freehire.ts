@@ -45,21 +45,21 @@ function normalizePosting(raw: unknown): JobPosting | null {
 }
 
 export async function searchFreehireJobs(params: FreehireSearchParams): Promise<SourceSearchResult> {
-  const baseUrl = process.env.FREEHIRE_API_URL ?? DEFAULT_BASE_URL
-  const url = new URL('/api/v1/agent/jobs/search', baseUrl)
-  if (params.query) url.searchParams.set('q', params.query)
-  if (params.region?.length) url.searchParams.set('region', params.region.join(','))
-  if (params.country?.length) url.searchParams.set('country', params.country.join(','))
-  if (params.city?.length) url.searchParams.set('city', params.city.join(','))
-  if (params.seniority?.length) url.searchParams.set('seniority', params.seniority.join(','))
-  if (params.category?.length) url.searchParams.set('category', params.category.join(','))
-  if (params.skill?.length) url.searchParams.set('skill', params.skill.join(','))
-  if (params.remote) url.searchParams.set('remote', params.remote)
-  if (params.jobage !== undefined) url.searchParams.set('jobage', String(params.jobage))
-  url.searchParams.set('page', String(params.page ?? 1))
-  url.searchParams.set('limit', String(params.limit ?? 25))
-
   try {
+    const baseUrl = process.env.FREEHIRE_API_URL ?? DEFAULT_BASE_URL
+    const url = new URL('/api/v1/agent/jobs/search', baseUrl)
+    if (params.query) url.searchParams.set('q', params.query)
+    if (params.region?.length) url.searchParams.set('region', params.region.join(','))
+    if (params.country?.length) url.searchParams.set('country', params.country.join(','))
+    if (params.city?.length) url.searchParams.set('city', params.city.join(','))
+    if (params.seniority?.length) url.searchParams.set('seniority', params.seniority.join(','))
+    if (params.category?.length) url.searchParams.set('category', params.category.join(','))
+    if (params.skill?.length) url.searchParams.set('skill', params.skill.join(','))
+    if (params.remote) url.searchParams.set('remote', params.remote)
+    if (params.jobage !== undefined) url.searchParams.set('jobage', String(params.jobage))
+    url.searchParams.set('page', String(params.page ?? 1))
+    url.searchParams.set('limit', String(params.limit ?? 25))
+
     const res = await fetch(url.toString())
     if (!res.ok) {
       return { postings: [], degraded: true, errorMessage: `freehire returned ${res.status}` }

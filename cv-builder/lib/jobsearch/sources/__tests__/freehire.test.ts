@@ -114,4 +114,14 @@ describe('searchFreehireJobs', () => {
     expect(calledUrl.searchParams.get('page')).toBe('2')
     expect(calledUrl.searchParams.get('limit')).toBe('10')
   })
+
+  it('degrades on a malformed FREEHIRE_API_URL instead of throwing', async () => {
+    process.env.FREEHIRE_API_URL = 'not a valid url'
+
+    const result = await searchFreehireJobs({})
+
+    expect(result.degraded).toBe(true)
+    expect(result.postings).toEqual([])
+    expect(result.errorMessage).toBeDefined()
+  })
 })
