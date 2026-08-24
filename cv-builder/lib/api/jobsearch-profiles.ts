@@ -69,3 +69,14 @@ export async function deleteJobSearchProfile(userId: string, id: string): Promis
   const result = await JobSearchProfile.deleteOne({ _id: id, userId })
   return result.deletedCount === 1
 }
+
+// System-wide query used only by the QStash cron fan-out
+// (app/api/jobsearch/scan/cron/route.ts) to publish one scan job per active
+// profile across every user — deliberately NOT scoped to a single userId,
+// unlike every other function in this file. There is no user session on a
+// Vercel Cron request to scope by. Never expose this via a user-facing API
+// route.
+export async function listAllActiveJobSearchProfiles() {
+  await dbConnect()
+  return JobSearchProfile.find({ isActive: true }).lean()
+}

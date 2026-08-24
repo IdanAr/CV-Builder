@@ -206,3 +206,45 @@ export async function deleteScrapedJobsByIds(userId: string, ids: string[]): Pro
   const result = await ScrapedJob.deleteMany({ _id: { $in: ids }, userId })
   return result.deletedCount ?? 0
 }
+
+export interface NotifyMatchSummary {
+  _id: unknown
+  profileId: string
+  title: string
+  company: string
+  location?: string
+  url: string
+  atsScore?: number
+  status: string
+  createdAt: Date
+}
+
+// Cross-profile: JobMatchesFeed (design spec §9) shows every 'notify' rule
+// match for this user regardless of which profile it came from, so this
+// intentionally omits the profileId scoping every other scraped-jobs query
+// in this file uses.
+export async function listNotifyMatches(userId: string): Promise<NotifyMatchSummary[]> {
+  await dbConnect()
+  return (await ScrapedJob.find(
+    { userId, resolvedActions: 'notify', status: { $in: ['new', 'notified'] } },
+    'profileId title company location url atsScore status createdAt'
+  )
+    .sort({ createdAt: -1 })
+    .lean()) as unknown as NotifyMatchSummary[]
+}
+
+export async function countUnreadNotifyMatches(userId: string): Promise<number> {
+  await dbConnect()
+  return ScrapedJob.countDocuments({ userId, resolvedActions: 'notify', status: 'new' })
+}
+
+// Marks every currently-unread notify match as seen (status 'new' ->
+// 'notified') — called once JobMatchesFeed has actually loaded the list, so
+// the AppNavbar badge count drops without requiring a per-item action.
+export async function markNotifyMatchesRead(userId: string): Promise<void> {
+  await dbConnect()
+  await ScrapedJob.updateMany(
+    { userId, resolvedActions: 'notify', status: 'new' },
+    { $set: { status: 'notified' } }
+  )
+}

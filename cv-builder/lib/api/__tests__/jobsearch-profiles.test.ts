@@ -40,6 +40,7 @@ import {
   getJobSearchProfile,
   updateJobSearchProfile,
   deleteJobSearchProfile,
+  listAllActiveJobSearchProfiles,
 } from '../jobsearch-profiles'
 
 function sortLeanChain(resolved: unknown) {
@@ -164,5 +165,19 @@ describe('deleteJobSearchProfile', () => {
   it('returns false when nothing matched (wrong user or missing id)', async () => {
     mockDeleteOne.mockResolvedValue({ deletedCount: 0 })
     expect(await deleteJobSearchProfile('u1', 'p1')).toBe(false)
+  })
+})
+
+describe('listAllActiveJobSearchProfiles', () => {
+  it('queries every profile with isActive:true, not scoped to any single user', async () => {
+    mockFind.mockReturnValue(leanChain([
+      { _id: 'p1', userId: 'u1', isActive: true },
+      { _id: 'p2', userId: 'u2', isActive: true },
+    ]))
+
+    const result = await listAllActiveJobSearchProfiles()
+
+    expect(mockFind).toHaveBeenCalledWith({ isActive: true })
+    expect(result).toHaveLength(2)
   })
 })

@@ -22,7 +22,18 @@ export const authConfig: NextAuthConfig = {
     signIn: '/signin',
   },
   callbacks: {
-    authorized({ auth }) {
+    // The QStash-triggered scan pipeline (design spec §6) has no user
+    // session: the cron route authenticates via CRON_SECRET
+    // (app/api/jobsearch/scan/cron/route.ts) and the worker route via
+    // QStash's own signature verification
+    // (app/api/jobsearch/scan/worker/route.ts's verifySignatureAppRouter).
+    // Both would otherwise be rejected here since proxy.ts's matcher covers
+    // all of /api/jobsearch/:path*.
+    authorized({ auth, request }) {
+      const path = request.nextUrl.pathname
+      if (path === '/api/jobsearch/scan/cron' || path === '/api/jobsearch/scan/worker') {
+        return true
+      }
       return !!auth?.user
     },
   },

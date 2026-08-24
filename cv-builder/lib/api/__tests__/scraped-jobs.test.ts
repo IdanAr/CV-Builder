@@ -2,14 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/lib/db', () => ({ default: vi.fn().mockResolvedValue(undefined) }))
 
-const { mockFind, mockInsertMany, mockCountDocuments, mockFindOne, mockUpdateOne, mockDeleteOne } = vi.hoisted(() => ({
-  mockFind: vi.fn(),
-  mockInsertMany: vi.fn(),
-  mockCountDocuments: vi.fn(),
-  mockFindOne: vi.fn(),
-  mockUpdateOne: vi.fn(),
-  mockDeleteOne: vi.fn(),
-}))
+const { mockFind, mockInsertMany, mockCountDocuments, mockFindOne, mockUpdateOne, mockDeleteOne, mockUpdateMany } =
+  vi.hoisted(() => ({
+    mockFind: vi.fn(),
+    mockInsertMany: vi.fn(),
+    mockCountDocuments: vi.fn(),
+    mockFindOne: vi.fn(),
+    mockUpdateOne: vi.fn(),
+    mockDeleteOne: vi.fn(),
+    mockUpdateMany: vi.fn(),
+  }))
 
 vi.mock('@/models/ScrapedJob', () => ({
   default: {
@@ -19,6 +21,7 @@ vi.mock('@/models/ScrapedJob', () => ({
     findOne: mockFindOne,
     updateOne: mockUpdateOne,
     deleteOne: mockDeleteOne,
+    updateMany: mockUpdateMany,
   },
 }))
 
@@ -35,6 +38,9 @@ import {
   convertScrapedJobToApplication,
   setScrapedJobDismissed,
   deleteScrapedJob,
+  listNotifyMatches,
+  countUnreadNotifyMatches,
+  markNotifyMatchesRead,
 } from '../scraped-jobs'
 
 function sortLeanChain(resolved: unknown) {
@@ -376,5 +382,45 @@ describe('deleteScrapedJob', () => {
     const result = await deleteScrapedJob('u1', 'missing')
 
     expect(result).toBe(false)
+  })
+})
+
+describe('listNotifyMatches', () => {
+  it('queries every notify-matched job for this user, regardless of profile, sorted newest first', async () => {
+    const mockSort = vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ _id: 'j1' }]) })
+    mockFind.mockReturnValue({ sort: mockSort })
+
+    const result = await listNotifyMatches('u1')
+
+    expect(mockFind).toHaveBeenCalledWith(
+      { userId: 'u1', resolvedActions: 'notify', status: { $in: ['new', 'notified'] } },
+      expect.any(String)
+    )
+    expect(mockSort).toHaveBeenCalledWith({ createdAt: -1 })
+    expect(result).toEqual([{ _id: 'j1' }])
+  })
+})
+
+describe('countUnreadNotifyMatches', () => {
+  it('counts only status:new notify-matched jobs', async () => {
+    mockCountDocuments.mockResolvedValue(4)
+
+    const result = await countUnreadNotifyMatches('u1')
+
+    expect(mockCountDocuments).toHaveBeenCalledWith({ userId: 'u1', resolvedActions: 'notify', status: 'new' })
+    expect(result).toBe(4)
+  })
+})
+
+describe('markNotifyMatchesRead', () => {
+  it('flips every unread notify-matched job to status:notified', async () => {
+    mockUpdateMany.mockResolvedValue({ modifiedCount: 3 })
+
+    await markNotifyMatchesRead('u1')
+
+    expect(mockUpdateMany).toHaveBeenCalledWith(
+      { userId: 'u1', resolvedActions: 'notify', status: 'new' },
+      { $set: { status: 'notified' } }
+    )
   })
 })

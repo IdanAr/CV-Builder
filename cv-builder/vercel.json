@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/jobsearch/scan/cron",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}
