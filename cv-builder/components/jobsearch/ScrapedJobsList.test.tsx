@@ -164,4 +164,109 @@ describe('ScrapedJobsList', () => {
     expect(await screen.findByText(/freehire returned 503/i)).toBeInTheDocument()
     expect(screen.getByText('Existing Job')).toBeInTheDocument()
   })
+
+  it('dismisses a listing and reloads the list', async () => {
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: 'https://x/a1', status: 'new' }] }),
+    })
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: 'https://x/a1', status: 'dismissed' }] }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ScrapedJobsList profileId="p1" />)
+    await screen.findByText('Job A')
+    await userEvent.click(screen.getByRole('button', { name: /^dismiss$/i }))
+
+    await waitFor(() =>
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/jobsearch/scraped-jobs/j1',
+        expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ dismissed: true }) })
+      )
+    )
+    expect(await screen.findByText('Non-Active')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^restore$/i })).toBeInTheDocument()
+  })
+
+  it('restores a dismissed listing', async () => {
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: 'https://x/a1', status: 'dismissed' }] }),
+    })
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: 'https://x/a1', status: 'new' }] }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ScrapedJobsList profileId="p1" />)
+    await screen.findByRole('button', { name: /^restore$/i })
+    await userEvent.click(screen.getByRole('button', { name: /^restore$/i }))
+
+    await waitFor(() =>
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/jobsearch/scraped-jobs/j1',
+        expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ dismissed: false }) })
+      )
+    )
+    expect(await screen.findByRole('button', { name: /^dismiss$/i })).toBeInTheDocument()
+  })
+
+  it('hides the dismiss/restore control for a submitted listing', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: 'https://x/a1', status: 'submitted' }],
+      }),
+    } as Response)
+
+    render(<ScrapedJobsList profileId="p1" />)
+
+    await screen.findByText('Job A')
+    expect(screen.queryByRole('button', { name: /^dismiss$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^restore$/i })).not.toBeInTheDocument()
+  })
+
+  it('deletes a listing after confirmation and reloads the list', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: 'https://x/a1', status: 'new' }] }),
+    })
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) })
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ scrapedJobs: [] }) })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ScrapedJobsList profileId="p1" />)
+    await screen.findByText('Job A')
+    await userEvent.click(screen.getByRole('button', { name: /^delete$/i }))
+
+    await waitFor(() =>
+      expect(mockFetch).toHaveBeenCalledWith('/api/jobsearch/scraped-jobs/j1', expect.objectContaining({ method: 'DELETE' }))
+    )
+    expect(await screen.findByText(/no scraped jobs yet/i)).toBeInTheDocument()
+  })
+
+  it('does not delete when the user cancels the confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: 'https://x/a1', status: 'new' }] }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ScrapedJobsList profileId="p1" />)
+    await screen.findByText('Job A')
+    await userEvent.click(screen.getByRole('button', { name: /^delete$/i }))
+
+    expect(mockFetch).not.toHaveBeenCalledWith('/api/jobsearch/scraped-jobs/j1', expect.objectContaining({ method: 'DELETE' }))
+    expect(screen.getByText('Job A')).toBeInTheDocument()
+  })
 })

@@ -20,13 +20,9 @@ const FIELD_LABELS: Record<RuleField, string> = {
   title: 'Title',
 }
 
-// draft_and_queue is stored (lib/jobsearch/scan.ts persists it in
-// resolvedActions) but nothing consumes it yet — deferred to a future
-// phase. Keep it visible in the UI for context but not selectable, so
-// users can't create a rule whose action silently does nothing.
 const ACTION_LABELS: Record<RuleAction, string> = {
   notify: 'Notify me',
-  draft_and_queue: 'Draft & queue (coming soon)',
+  draft_and_queue: 'Draft & queue',
   ignore: 'Ignore',
 }
 
@@ -394,7 +390,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
               onChange={(e) => setAction(e.target.value as RuleAction)}
             >
               {RULE_ACTIONS.map((a) => (
-                <option key={a} value={a} disabled={a === 'draft_and_queue'}>
+                <option key={a} value={a}>
                   {ACTION_LABELS[a]}
                 </option>
               ))}

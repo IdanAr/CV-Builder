@@ -29,6 +29,7 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
   const [jobs, setJobs] = useState<ScrapedJobSummary[] | null>(null)
   const [scanning, setScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -49,6 +50,45 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load()
   }, [load])
+
+  async function handleToggleDismissed(job: ScrapedJobSummary) {
+    setUpdatingId(job._id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/jobsearch/scraped-jobs/${job._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dismissed: job.status !== 'dismissed' }),
+      })
+      if (!res.ok) {
+        setError('Failed to update the listing. Please try again.')
+        return
+      }
+      await load()
+    } catch {
+      setError('Failed to update the listing. Please try again.')
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  async function handleDelete(job: ScrapedJobSummary) {
+    if (!window.confirm(`Delete "${job.title}"? This can't be undone.`)) return
+    setUpdatingId(job._id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/jobsearch/scraped-jobs/${job._id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        setError('Failed to delete the listing. Please try again.')
+        return
+      }
+      await load()
+    } catch {
+      setError('Failed to delete the listing. Please try again.')
+    } finally {
+      setUpdatingId(null)
+    }
+  }
 
   async function handleScan() {
     setScanning(true)
@@ -116,17 +156,43 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
         <ul className="flex flex-col gap-2">
           {jobs.map((job) => {
             const postedAtLabel = formatPostedAt(job.postedAt)
+            const isDismissed = job.status === 'dismissed'
+            const isSubmitted = job.status === 'submitted'
+            const isUpdating = updatingId === job._id
             return (
-              <li key={job._id} className="rounded border px-4 py-2">
-                <div className="flex items-center justify-between">
-                  {job.url ? (
-                    <a href={job.url} target="_blank" rel="noreferrer" className="font-medium text-indigo-700 hover:underline">
-                      {job.title}
-                    </a>
-                  ) : (
-                    <span className="font-medium">{job.title}</span>
-                  )}
-                  {job.atsScore !== undefined && <span className="text-sm text-gray-500">{job.atsScore}% fit</span>}
+              <li key={job._id} className={`rounded border px-4 py-2 ${isDismissed ? 'opacity-50' : ''}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {job.url ? (
+                      <a href={job.url} target="_blank" rel="noreferrer" className="font-medium text-indigo-700 hover:underline">
+                        {job.title}
+                      </a>
+                    ) : (
+                      <span className="font-medium">{job.title}</span>
+                    )}
+                    {isDismissed && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">Non-Active</span>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {job.atsScore !== undefined && <span className="text-sm text-gray-500">{job.atsScore}% fit</span>}
+                    {!isSubmitted && (
+                      <button
+                        type="button"
+                        disabled={isUpdating}
+                        className="rounded border px-2 py-0.5 text-xs disabled:opacity-40"
+                        onClick={() => handleToggleDismissed(job)}
+                      >
+                        {isDismissed ? 'Restore' : 'Dismiss'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={isUpdating}
+                      className="rounded border px-2 py-0.5 text-xs text-red-700 disabled:opacity-40"
+                      onClick={() => handleDelete(job)}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
                 <div className="text-sm text-gray-600">
                   {job.company}

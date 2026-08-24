@@ -11,6 +11,12 @@ const {
   mockScoreResume,
   mockResumeFindOne,
   mockListRulesForProfile,
+  mockCountDraftedInWindow,
+  mockListDraftQueueBacklog,
+  mockMarkScrapedJobDrafted,
+  mockRunApplyPipeline,
+  mockListNewScrapedJobs,
+  mockDeleteScrapedJobsByIds,
 } = vi.hoisted(() => ({
   mockSearchFreehireJobs: vi.fn(),
   mockGetJobSearchProfile: vi.fn(),
@@ -19,6 +25,12 @@ const {
   mockScoreResume: vi.fn(),
   mockResumeFindOne: vi.fn(),
   mockListRulesForProfile: vi.fn(),
+  mockCountDraftedInWindow: vi.fn(),
+  mockListDraftQueueBacklog: vi.fn(),
+  mockMarkScrapedJobDrafted: vi.fn(),
+  mockRunApplyPipeline: vi.fn(),
+  mockListNewScrapedJobs: vi.fn(),
+  mockDeleteScrapedJobsByIds: vi.fn(),
 }))
 
 vi.mock('../sources/freehire', () => ({ searchFreehireJobs: mockSearchFreehireJobs }))
@@ -26,12 +38,22 @@ vi.mock('@/lib/api/jobsearch-profiles', () => ({ getJobSearchProfile: mockGetJob
 vi.mock('@/lib/api/scraped-jobs', () => ({
   findExistingSourceIds: mockFindExistingSourceIds,
   createScrapedJobs: mockCreateScrapedJobs,
+  countDraftedInWindow: mockCountDraftedInWindow,
+  listDraftQueueBacklog: mockListDraftQueueBacklog,
+  markScrapedJobDrafted: mockMarkScrapedJobDrafted,
+  listNewScrapedJobs: mockListNewScrapedJobs,
+  deleteScrapedJobsByIds: mockDeleteScrapedJobsByIds,
 }))
 vi.mock('@/lib/api/jobsearch-rules', () => ({ listRulesForProfile: mockListRulesForProfile }))
 vi.mock('@/lib/ats/scorer', () => ({ scoreResume: mockScoreResume }))
 vi.mock('@/models/Resume', () => ({ default: { findOne: mockResumeFindOne } }))
+vi.mock('../apply', () => ({
+  runApplyPipeline: mockRunApplyPipeline,
+  PER_PROFILE_DAILY_DRAFT_CAP: 3,
+  PER_USER_DAILY_DRAFT_CAP: 10,
+}))
 
-import { runScanForProfile } from '../scan'
+import { runScanForProfile, MAX_ROLE_QUERIES } from '../scan'
 
 function leanChain(resolved: unknown) {
   return { lean: vi.fn().mockResolvedValue(resolved) }
@@ -43,13 +65,19 @@ function sortLeanChain(resolved: unknown) {
 const baseProfile = {
   _id: 'p1',
   userId: 'u1',
-  roles: ['Backend Engineer'],
+  // Empty by default: most tests below aren't exercising role-title
+  // relevance and use generic placeholder titles ('X', 'Y') that wouldn't
+  // survive the role-title filter. Tests that need a specific role set
+  // their own `roles` override with a title that actually matches it (see
+  // the "queries freehire once per role" tests below).
+  roles: [] as string[],
   workModes: [],
   locations: [],
   seniority: [],
   categories: [],
   industries: [],
   recencyDays: 14,
+  minAtsScore: 75,
   resumeId: undefined,
 }
 
@@ -57,9 +85,24 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockFindExistingSourceIds.mockResolvedValue(new Set())
   mockCreateScrapedJobs.mockResolvedValue(undefined)
-  mockScoreResume.mockReturnValue({ total: 60 })
+  // Default score sits above baseProfile.minAtsScore (75) so tests that
+  // don't care about the threshold filter aren't accidentally tripped by
+  // it; tests exercising the threshold override this explicitly.
+  mockScoreResume.mockReturnValue({ total: 80, missingKeywords: [] })
   mockResumeFindOne.mockReturnValue(sortLeanChain({ data: { basics: { name: 'Test' } } }))
   mockListRulesForProfile.mockResolvedValue([])
+  mockCountDraftedInWindow.mockResolvedValue(0)
+  mockListDraftQueueBacklog.mockResolvedValue([])
+  mockMarkScrapedJobDrafted.mockResolvedValue(undefined)
+  mockListNewScrapedJobs.mockResolvedValue([])
+  mockDeleteScrapedJobsByIds.mockResolvedValue(0)
+  mockRunApplyPipeline.mockResolvedValue({
+    draftResumeId: 'draft1',
+    postTailorScore: 90,
+    pendingApprovals: [],
+    tailoredKeywords: [],
+    status: 'queued',
+  })
 })
 
 describe('runScanForProfile', () => {
@@ -185,6 +228,8 @@ describe('runScanForProfile', () => {
       fetched: 0,
       created: 0,
       skippedExisting: 0,
+      drafted: 0,
+      pruned: 0,
       degraded: true,
       errorMessage: 'insertMany exploded',
     })
@@ -288,5 +333,350 @@ describe('runScanForProfile', () => {
     expect(mockCreateScrapedJobs.mock.calls[0][2][0]).toEqual(
       expect.objectContaining({ matchedRules: ['High fit'], resolvedActions: ['notify'] })
     )
+  })
+
+  it('runs the apply pipeline and persists drafted fields for a draft_and_queue match', async () => {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [{ source: 'freehire', sourceId: 'a1', title: 'Backend Engineer', company: 'Acme', url: 'https://x/a1', description: 'JD' }],
+    })
+    mockScoreResume.mockReturnValue({ total: 80, missingKeywords: ['Node'] })
+    mockListRulesForProfile.mockResolvedValue([
+      { name: 'Draft it', isActive: true, action: 'draft_and_queue', conditions: [{ field: 'atsScore', op: 'gte', value: 75 }] },
+    ])
+    mockRunApplyPipeline.mockResolvedValue({
+      draftResumeId: 'draft1', postTailorScore: 91, pendingApprovals: [], tailoredKeywords: ['Node'], status: 'queued',
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockRunApplyPipeline).toHaveBeenCalledWith(
+      'u1', expect.anything(), expect.objectContaining({ title: 'Backend Engineer', company: 'Acme' }), ['Node'], 75
+    )
+    expect(mockCreateScrapedJobs.mock.calls[0][2][0]).toEqual(
+      expect.objectContaining({
+        draftResumeId: 'draft1', postTailorScore: 91, status: 'queued', tailoredKeywords: ['Node'], draftedAt: expect.any(Date),
+      })
+    )
+    expect(result.drafted).toBe(1)
+  })
+
+  it('does not run the apply pipeline for a draft_and_queue match when the user has no resume', async () => {
+    mockResumeFindOne.mockReturnValue(sortLeanChain(null))
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [{ source: 'freehire', sourceId: 'a1', title: 'X', company: 'Y', url: 'https://x/a1', description: 'JD' }],
+    })
+    mockListRulesForProfile.mockResolvedValue([
+      { name: 'Draft it', isActive: true, action: 'draft_and_queue', conditions: [{ field: 'title', op: 'contains', value: 'x' }] },
+    ])
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockRunApplyPipeline).not.toHaveBeenCalled()
+    expect(mockCreateScrapedJobs.mock.calls[0][2][0].status).toBe('new')
+    expect(result.drafted).toBe(0)
+  })
+
+  it('stops drafting once the per-profile daily cap is reached, leaving later matches as "new"', async () => {
+    mockCountDraftedInWindow.mockResolvedValue(3)
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [{ source: 'freehire', sourceId: 'a1', title: 'X', company: 'Y', url: 'https://x/a1', description: 'JD' }],
+    })
+    mockListRulesForProfile.mockResolvedValue([
+      { name: 'Draft it', isActive: true, action: 'draft_and_queue', conditions: [{ field: 'title', op: 'contains', value: 'x' }] },
+    ])
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockRunApplyPipeline).not.toHaveBeenCalled()
+    expect(mockCreateScrapedJobs.mock.calls[0][2][0].status).toBe('new')
+    expect(result.drafted).toBe(0)
+  })
+
+  it('stops drafting once the per-user aggregate daily cap is reached even though the per-profile cap has room', async () => {
+    mockCountDraftedInWindow.mockImplementation((_userId: string, profileId?: string) =>
+      Promise.resolve(profileId ? 0 : 10)
+    )
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [{ source: 'freehire', sourceId: 'a1', title: 'X', company: 'Y', url: 'https://x/a1', description: 'JD' }],
+    })
+    mockListRulesForProfile.mockResolvedValue([
+      { name: 'Draft it', isActive: true, action: 'draft_and_queue', conditions: [{ field: 'title', op: 'contains', value: 'x' }] },
+    ])
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockRunApplyPipeline).not.toHaveBeenCalled()
+    expect(result.drafted).toBe(0)
+  })
+
+  it('drains the existing draft_and_queue backlog before evaluating newly fetched postings', async () => {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+    mockListDraftQueueBacklog.mockResolvedValue([
+      { _id: 'backlog1', title: 'Old Match', company: 'Acme', description: 'JD' },
+    ])
+    mockScoreResume.mockReturnValue({ total: 80, missingKeywords: ['Node'] })
+    mockRunApplyPipeline.mockResolvedValue({
+      draftResumeId: 'draft2', postTailorScore: 92, pendingApprovals: [], tailoredKeywords: ['Node'], status: 'queued',
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockRunApplyPipeline).toHaveBeenCalledWith(
+      'u1', expect.anything(), expect.objectContaining({ title: 'Old Match' }), ['Node'], 75
+    )
+    expect(mockMarkScrapedJobDrafted).toHaveBeenCalledWith('u1', 'backlog1', {
+      draftResumeId: 'draft2', postTailorScore: 92, pendingApprovals: [], tailoredKeywords: ['Node'], status: 'queued',
+    })
+    expect(result.drafted).toBe(1)
+  })
+
+  it('leaves a backlog item undrafted (for retry next scan) when the apply pipeline throws', async () => {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+    mockListDraftQueueBacklog.mockResolvedValue([
+      { _id: 'backlog1', title: 'Old Match', company: 'Acme', description: 'JD' },
+    ])
+    mockScoreResume.mockReturnValue({ total: 80, missingKeywords: [] })
+    mockRunApplyPipeline.mockRejectedValue(new Error('Anthropic API error'))
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockMarkScrapedJobDrafted).not.toHaveBeenCalled()
+    expect(result.drafted).toBe(0)
+    expect(result.degraded).toBe(false)
+  })
+
+  it('queries freehire once per role and merges results, deduping by sourceId', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: ['Data Analyst', 'Product Analyst'] })
+    mockSearchFreehireJobs.mockImplementation((params: { query?: string }) => {
+      if (params.query === 'Data Analyst') {
+        return Promise.resolve({
+          degraded: false,
+          postings: [
+            { source: 'freehire', sourceId: 'shared', title: 'Data Analyst', company: 'Acme', url: 'https://x/shared', description: 'JD' },
+            { source: 'freehire', sourceId: 'da-only', title: 'Data Analyst II', company: 'Acme', url: 'https://x/da-only', description: 'JD' },
+          ],
+        })
+      }
+      if (params.query === 'Product Analyst') {
+        return Promise.resolve({
+          degraded: false,
+          postings: [
+            { source: 'freehire', sourceId: 'shared', title: 'Product Analyst / Data Analyst', company: 'Acme', url: 'https://x/shared', description: 'JD' },
+            { source: 'freehire', sourceId: 'pa-only', title: 'Product Analyst', company: 'Acme', url: 'https://x/pa-only', description: 'JD' },
+          ],
+        })
+      }
+      return Promise.resolve({ degraded: false, postings: [] })
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockSearchFreehireJobs).toHaveBeenCalledTimes(2)
+    expect(mockSearchFreehireJobs).toHaveBeenCalledWith(expect.objectContaining({ query: 'Data Analyst' }))
+    expect(mockSearchFreehireJobs).toHaveBeenCalledWith(expect.objectContaining({ query: 'Product Analyst' }))
+    expect(result.fetched).toBe(3)
+    expect(mockCreateScrapedJobs.mock.calls[0][2]).toHaveLength(3)
+    const sourceIds = mockCreateScrapedJobs.mock.calls[0][2].map((j: { sourceId: string }) => j.sourceId).sort()
+    expect(sourceIds).toEqual(['da-only', 'pa-only', 'shared'])
+  })
+
+  it('caps the number of role queries at MAX_ROLE_QUERIES', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({
+      ...baseProfile,
+      roles: ['Role A', 'Role B', 'Role C', 'Role D', 'Role E', 'Role F', 'Role G'],
+    })
+    mockSearchFreehireJobs.mockResolvedValue({ degraded: false, postings: [] })
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockSearchFreehireJobs).toHaveBeenCalledTimes(MAX_ROLE_QUERIES)
+  })
+
+  it('sends no query and makes a single call when the profile has no roles', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: [] })
+    mockSearchFreehireJobs.mockResolvedValue({ degraded: false, postings: [] })
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockSearchFreehireJobs).toHaveBeenCalledTimes(1)
+    expect(mockSearchFreehireJobs).toHaveBeenCalledWith(expect.objectContaining({ query: undefined }))
+  })
+
+  it('returns results from the roles whose query succeeded when only some role queries are degraded', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: ['Data Analyst', 'Product Analyst'] })
+    mockSearchFreehireJobs.mockImplementation((params: { query?: string }) => {
+      if (params.query === 'Data Analyst') {
+        return Promise.resolve({ degraded: true, postings: [], errorMessage: 'freehire returned 503' })
+      }
+      return Promise.resolve({
+        degraded: false,
+        postings: [{ source: 'freehire', sourceId: 'pa-1', title: 'Product Analyst', company: 'Acme', url: 'https://x/pa-1', description: 'JD' }],
+      })
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.degraded).toBe(false)
+    expect(result.fetched).toBe(1)
+  })
+
+  it('degrades the whole scan only when every role query fails', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: ['Data Analyst', 'Product Analyst'] })
+    mockSearchFreehireJobs.mockResolvedValue({ degraded: true, postings: [], errorMessage: 'freehire returned 503' })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.degraded).toBe(true)
+    expect(result.errorMessage).toBe('freehire returned 503')
+    expect(mockCreateScrapedJobs).not.toHaveBeenCalled()
+  })
+
+  it('drops a posting whose title is missing one of the queried role\'s significant words, even though freehire returned it', async () => {
+    // Regression guard for freehire's own loose q= matching: verified live
+    // against the API that q="AI Developer" returns postings containing
+    // only one of the two words (e.g. "Senior Backend Developer",
+    // "Security Analyst") — freehire's result set can't be trusted as
+    // relevant on its own, so the title-word filter below it is load-bearing.
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: ['AI Developer'] })
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [
+        { source: 'freehire', sourceId: 'match', title: 'AI Full-Stack Developer', company: 'Acme', url: 'https://x/match', description: 'JD' },
+        { source: 'freehire', sourceId: 'no-ai', title: 'Senior Backend Developer', company: 'Acme', url: 'https://x/no-ai', description: 'JD' },
+        { source: 'freehire', sourceId: 'no-developer', title: 'Senior AI Product Manager', company: 'Acme', url: 'https://x/no-developer', description: 'JD' },
+      ],
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.fetched).toBe(1)
+    expect(mockCreateScrapedJobs.mock.calls[0][2]).toHaveLength(1)
+    expect(mockCreateScrapedJobs.mock.calls[0][2][0].sourceId).toBe('match')
+  })
+
+  it('gives a posting rejected under one role a fresh chance under a different role in the same scan', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: ['AI Developer', 'Product Manager'] })
+    mockSearchFreehireJobs.mockImplementation((params: { query?: string }) => {
+      if (params.query === 'AI Developer') {
+        return Promise.resolve({
+          degraded: false,
+          postings: [
+            { source: 'freehire', sourceId: 'pm-1', title: 'Senior AI Product Manager', company: 'Acme', url: 'https://x/pm-1', description: 'JD' },
+          ],
+        })
+      }
+      if (params.query === 'Product Manager') {
+        return Promise.resolve({
+          degraded: false,
+          postings: [
+            { source: 'freehire', sourceId: 'pm-1', title: 'Senior AI Product Manager', company: 'Acme', url: 'https://x/pm-1', description: 'JD' },
+          ],
+        })
+      }
+      return Promise.resolve({ degraded: false, postings: [] })
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.fetched).toBe(1)
+    expect(mockCreateScrapedJobs.mock.calls[0][2][0].sourceId).toBe('pm-1')
+  })
+
+  it('does not create a ScrapedJob for a posting scored below the profile\'s minAtsScore', async () => {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockScoreResume.mockReturnValue({ total: 50, missingKeywords: [] })
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [{ source: 'freehire', sourceId: 'a1', title: 'X', company: 'Y', url: 'https://x/a1', description: 'JD' }],
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.created).toBe(0)
+    expect(mockCreateScrapedJobs).not.toHaveBeenCalled()
+  })
+
+  it('prunes an existing "new" scraped job whose title no longer matches the profile\'s current roles', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: ['AI Developer'] })
+    mockListNewScrapedJobs.mockResolvedValue([
+      { _id: 'stale1', title: 'Senior Backend Engineer', company: 'Acme', description: 'JD', atsScore: 80 },
+    ])
+    mockDeleteScrapedJobsByIds.mockResolvedValue(1)
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockDeleteScrapedJobsByIds).toHaveBeenCalledWith('u1', ['stale1'])
+    expect(result.pruned).toBe(1)
+  })
+
+  it('prunes an existing "new" scraped job that no longer clears the profile\'s current threshold', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, minAtsScore: 70 })
+    mockListNewScrapedJobs.mockResolvedValue([
+      { _id: 'stale1', title: 'X', company: 'Y', description: 'JD', atsScore: 46 },
+    ])
+    mockDeleteScrapedJobsByIds.mockResolvedValue(1)
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockDeleteScrapedJobsByIds).toHaveBeenCalledWith('u1', ['stale1'])
+  })
+
+  it('leaves a "new" scraped job alone when it still matches the profile\'s current roles and threshold', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: ['AI Developer'], minAtsScore: 70 })
+    mockListNewScrapedJobs.mockResolvedValue([
+      { _id: 'ok1', title: 'AI Developer', company: 'Acme', description: 'JD', atsScore: 80 },
+    ])
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockDeleteScrapedJobsByIds).toHaveBeenCalledWith('u1', [])
+    expect(result.pruned).toBe(0)
+  })
+
+  it('never re-checks a job that is already dismissed, queued, needs_review, or submitted (listNewScrapedJobs only returns "new")', async () => {
+    // listNewScrapedJobs is the only read path pruning uses, and it's
+    // scoped to status:'new' at the data-access layer — this test locks in
+    // that pruning never even sees a non-'new' job, regardless of whether
+    // it would otherwise fail the current filters.
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: ['AI Developer'] })
+    mockListNewScrapedJobs.mockResolvedValue([])
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockListNewScrapedJobs).toHaveBeenCalledWith('u1', 'p1')
+    expect(mockDeleteScrapedJobsByIds).toHaveBeenCalledWith('u1', [])
+  })
+
+  it('filters below-threshold postings per-posting, not the whole batch', async () => {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockScoreResume.mockImplementation((_resume: unknown, description: string) =>
+      description === 'low JD' ? { total: 50, missingKeywords: [] } : { total: 90, missingKeywords: [] }
+    )
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [
+        { source: 'freehire', sourceId: 'low', title: 'X', company: 'Y', url: 'https://x/low', description: 'low JD' },
+        { source: 'freehire', sourceId: 'high', title: 'X', company: 'Y', url: 'https://x/high', description: 'high JD' },
+      ],
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.created).toBe(1)
+    expect(mockCreateScrapedJobs.mock.calls[0][2][0].sourceId).toBe('high')
   })
 })

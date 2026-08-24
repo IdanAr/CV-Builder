@@ -24,6 +24,9 @@ export interface IScrapedJob extends Document {
   resolvedActions: ResolvedAction[]
   draftResumeId?: string
   postTailorScore?: number
+  pendingApprovals: string[]
+  tailoredKeywords: string[]
+  draftedAt?: Date
   status: ScrapedJobStatus
   createdAt: Date
   updatedAt: Date
@@ -48,12 +51,16 @@ const ScrapedJobSchema = new Schema<IScrapedJob>(
     resolvedActions: { type: [String], default: [] },
     draftResumeId: { type: String },
     postTailorScore: { type: Number },
+    pendingApprovals: { type: [String], default: [] },
+    tailoredKeywords: { type: [String], default: [] },
+    draftedAt: { type: Date },
     status: { type: String, default: 'new' },
   },
   { timestamps: true, minimize: false }
 )
 
 ScrapedJobSchema.index({ userId: 1, profileId: 1, source: 1, sourceId: 1 }, { unique: true })
+ScrapedJobSchema.index({ userId: 1, draftedAt: 1 })
 
 const ScrapedJob = models.ScrapedJob ?? model<IScrapedJob>('ScrapedJob', ScrapedJobSchema)
 export default ScrapedJob

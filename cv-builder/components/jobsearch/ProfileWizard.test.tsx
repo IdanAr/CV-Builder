@@ -67,9 +67,11 @@ describe('ProfileWizard', () => {
 
   it('creates a default notify rule at the profile\'s threshold and then calls onCreated when the user accepts', async () => {
     const onCreated = vi.fn()
-    const mockFetch = vi.fn()
-    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ profile: { _id: 'p1', name: 'Test' } }) })
-    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ rule: { _id: 'r1' } }) })
+    const mockFetch = vi.fn((url: string, _opts?: { method?: string; body?: string }) => {
+      if (url === '/api/jobsearch/profiles') return Promise.resolve({ ok: true, json: async () => ({ profile: { _id: 'p1', name: 'Test' } }) })
+      if (url === '/api/jobsearch/rules') return Promise.resolve({ ok: true, json: async () => ({ rule: { _id: 'r1' } }) })
+      return Promise.resolve({ ok: true, json: async () => ({ resumes: [] }) })
+    })
     vi.stubGlobal('fetch', mockFetch)
 
     render(<ProfileWizard onCreated={onCreated} />)
@@ -81,8 +83,9 @@ describe('ProfileWizard', () => {
     await userEvent.click(await screen.findByRole('button', { name: /yes, notify me/i }))
 
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith({ _id: 'p1', name: 'Test' }))
-    expect(mockFetch).toHaveBeenNthCalledWith(2, '/api/jobsearch/rules', expect.objectContaining({ method: 'POST' }))
-    const body = JSON.parse(mockFetch.mock.calls[1][1].body)
+    expect(mockFetch).toHaveBeenCalledWith('/api/jobsearch/rules', expect.objectContaining({ method: 'POST' }))
+    const ruleCall = mockFetch.mock.calls.find((c) => c[0] === '/api/jobsearch/rules')
+    const body = JSON.parse(ruleCall![1]!.body!)
     expect(body).toEqual(
       expect.objectContaining({
         profileId: 'p1',
@@ -94,9 +97,11 @@ describe('ProfileWizard', () => {
 
   it('shows an inline error and does not silently proceed when the default rule POST resolves with a non-ok status', async () => {
     const onCreated = vi.fn()
-    const mockFetch = vi.fn()
-    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ profile: { _id: 'p1', name: 'Test' } }) })
-    mockFetch.mockResolvedValueOnce({ ok: false, json: async () => ({}) })
+    const mockFetch = vi.fn((url: string, _opts?: { method?: string; body?: string }) => {
+      if (url === '/api/jobsearch/profiles') return Promise.resolve({ ok: true, json: async () => ({ profile: { _id: 'p1', name: 'Test' } }) })
+      if (url === '/api/jobsearch/rules') return Promise.resolve({ ok: false, json: async () => ({}) })
+      return Promise.resolve({ ok: true, json: async () => ({ resumes: [] }) })
+    })
     vi.stubGlobal('fetch', mockFetch)
 
     render(<ProfileWizard onCreated={onCreated} />)
@@ -184,7 +189,8 @@ describe('ProfileWizard', () => {
     await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
     await userEvent.click(screen.getByRole('button', { name: /create profile/i }))
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    const profileCall = mockFetch.mock.calls.find((c) => c[0] === '/api/jobsearch/profiles')
+    const body = JSON.parse(profileCall![1].body)
     expect(body.roles).toEqual(['Data Analyst', 'Product Manager'])
   })
 
@@ -204,7 +210,8 @@ describe('ProfileWizard', () => {
     await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
     await userEvent.click(screen.getByRole('button', { name: /create profile/i }))
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    const profileCall = mockFetch.mock.calls.find((c) => c[0] === '/api/jobsearch/profiles')
+    const body = JSON.parse(profileCall![1].body)
     expect(body.seniority).toEqual(['senior', 'staff'])
   })
 
@@ -258,5 +265,97 @@ describe('ProfileWizard', () => {
     expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('Focus')
     await userEvent.click(screen.getByRole('button', { name: /back/i }))
     expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('Location')
+  })
+
+  it('offers the user\'s résumés on the threshold step and includes the chosen one in the submitted payload', async () => {
+    const mockFetch = vi.fn((url: string, _opts?: { method?: string; body?: string }) => {
+      if (url === '/api/resumes') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ resumes: [{ _id: 'r1', title: 'Frontend Resume' }, { _id: 'r2', title: 'Backend Resume' }] }),
+        })
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ profile: { _id: 'p1', name: 'Test' } }) })
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ProfileWizard onCreated={() => {}} />)
+    for (let i = 0; i < 3; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    }
+    const resumeSelect = await screen.findByLabelText(/résumé to tailor from/i)
+    expect(await screen.findByRole('option', { name: 'Backend Resume' })).toBeInTheDocument()
+    await userEvent.selectOptions(resumeSelect, 'r2')
+
+    await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
+    await userEvent.click(screen.getByRole('button', { name: /create profile/i }))
+
+    const profileCall = mockFetch.mock.calls.find((c) => c[0] === '/api/jobsearch/profiles')
+    const body = JSON.parse(profileCall![1]!.body!)
+    expect(body.resumeId).toBe('r2')
+  })
+
+  it('includes the selected country in the submitted payload', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ profile: { _id: 'p1', name: 'Test' } }) })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ProfileWizard onCreated={() => {}} />)
+    await userEvent.click(screen.getByRole('button', { name: /next/i })) // -> step 2
+    await userEvent.selectOptions(screen.getByLabelText(/country/i), 'IL')
+    for (let i = 0; i < 3; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    }
+    await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
+    await userEvent.click(screen.getByRole('button', { name: /create profile/i }))
+
+    const profileCall = mockFetch.mock.calls.find((c) => c[0] === '/api/jobsearch/profiles')
+    const body = JSON.parse(profileCall![1].body)
+    expect(body.locations).toEqual([{ country: 'IL' }])
+  })
+
+  it('edit mode: pre-fills from existingProfile and PATCHes instead of POSTing on save', async () => {
+    const onUpdated = vi.fn()
+    const onCreated = vi.fn()
+    const mockFetch = vi.fn((url: string, _opts?: { method?: string; body?: string }) => {
+      if (url === '/api/jobsearch/profiles/p1') {
+        return Promise.resolve({ ok: true, json: async () => ({ profile: { _id: 'p1', name: 'Updated Name' } }) })
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ resumes: [] }) })
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const existingProfile = {
+      _id: 'p1',
+      name: 'Original Name',
+      roles: ['Data Analyst'],
+      workModes: ['remote' as const],
+      locations: [{ country: 'IL', city: 'Tel Aviv' }],
+      seniority: ['senior' as const],
+      categories: ['Fintech'],
+      industries: [],
+      recencyDays: 7,
+      minAtsScore: 60,
+    }
+
+    render(<ProfileWizard onCreated={onCreated} onUpdated={onUpdated} existingProfile={existingProfile} />)
+
+    expect(screen.getByLabelText(/target roles/i)).toHaveValue('Data Analyst')
+    await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    expect(screen.getByLabelText(/^city$/i)).toHaveValue('Tel Aviv')
+    for (let i = 0; i < 3; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    }
+    expect(screen.getByLabelText(/profile name/i)).toHaveValue('Original Name')
+
+    await userEvent.clear(screen.getByLabelText(/profile name/i))
+    await userEvent.type(screen.getByLabelText(/profile name/i), 'Updated Name')
+    expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /save changes/i }))
+
+    await waitFor(() => expect(onUpdated).toHaveBeenCalledWith({ _id: 'p1', name: 'Updated Name' }))
+    expect(onCreated).not.toHaveBeenCalled()
+    const patchCall = mockFetch.mock.calls.find((c) => c[0] === '/api/jobsearch/profiles/p1')
+    expect(patchCall![1]).toEqual(expect.objectContaining({ method: 'PATCH' }))
   })
 })
