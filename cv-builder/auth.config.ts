@@ -31,7 +31,7 @@ export const authConfig: NextAuthConfig = {
     // all of /api/jobsearch/:path*.
     authorized({ auth, request }) {
       const path = request.nextUrl.pathname
-      if (path.startsWith('/api/jobsearch/scan/cron') || path.startsWith('/api/jobsearch/scan/worker')) {
+      if (path === '/api/jobsearch/scan/cron' || path === '/api/jobsearch/scan/worker') {
         return true
       }
       return !!auth?.user

@@ -43,4 +43,12 @@ describe('authConfig.callbacks.authorized', () => {
     })
     expect(result).toBe(true)
   })
+
+  it('does not bypass a lookalike path that merely starts with the same prefix', () => {
+    const result = authConfig.callbacks!.authorized!({
+      request: reqFor('/api/jobsearch/scan/cronjobs'),
+      auth: null,
+    })
+    expect(result).toBe(false)
+  })
 })
