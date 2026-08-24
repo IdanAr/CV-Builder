@@ -29,12 +29,6 @@ export async function publishScanJob(userId: string, profileId: string): Promise
   const headers = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
     ? { 'x-vercel-protection-bypass': process.env.VERCEL_AUTOMATION_BYPASS_SECRET }
     : undefined
-  // TEMPORARY diagnostic — remove once the Deployment Protection bypass is
-  // confirmed working end-to-end. Logs presence only, never the value.
-  console.log(
-    '[publishScanJob] VERCEL_AUTOMATION_BYPASS_SECRET present:',
-    !!process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-  )
   await client.publishJSON({
     url: `${resolveAppUrl()}/api/jobsearch/scan/worker`,
     body: { userId, profileId },
