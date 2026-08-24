@@ -2,12 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/lib/db', () => ({ default: vi.fn().mockResolvedValue(undefined) }))
 
-const { mockFind, mockInsertMany, mockCountDocuments, mockFindOne, mockUpdateOne } = vi.hoisted(() => ({
+const { mockFind, mockInsertMany, mockCountDocuments, mockFindOne, mockUpdateOne, mockDeleteOne } = vi.hoisted(() => ({
   mockFind: vi.fn(),
   mockInsertMany: vi.fn(),
   mockCountDocuments: vi.fn(),
   mockFindOne: vi.fn(),
   mockUpdateOne: vi.fn(),
+  mockDeleteOne: vi.fn(),
 }))
 
 vi.mock('@/models/ScrapedJob', () => ({
@@ -17,6 +18,7 @@ vi.mock('@/models/ScrapedJob', () => ({
     countDocuments: mockCountDocuments,
     findOne: mockFindOne,
     updateOne: mockUpdateOne,
+    deleteOne: mockDeleteOne,
   },
 }))
 
@@ -31,6 +33,8 @@ import {
   listDraftQueueBacklog,
   markScrapedJobDrafted,
   convertScrapedJobToApplication,
+  setScrapedJobDismissed,
+  deleteScrapedJob,
 } from '../scraped-jobs'
 
 function sortLeanChain(resolved: unknown) {
@@ -313,5 +317,64 @@ describe('convertScrapedJobToApplication', () => {
 
     expect(result).toEqual({ ok: false, code: 'ALREADY_SUBMITTED', message: 'Already marked as applied.' })
     expect(mockCreateApplication).not.toHaveBeenCalled()
+  })
+})
+
+describe('setScrapedJobDismissed', () => {
+  it('sets status to dismissed when dismissed=true', async () => {
+    mockFindOne.mockReturnValue(leanChain({ status: 'new' }))
+    mockUpdateOne.mockResolvedValue({ matchedCount: 1 })
+
+    const result = await setScrapedJobDismissed('u1', 'j1', true)
+
+    expect(mockUpdateOne).toHaveBeenCalledWith({ _id: 'j1', userId: 'u1' }, { $set: { status: 'dismissed' } })
+    expect(result).toBe(true)
+  })
+
+  it('sets status back to new when dismissed=false', async () => {
+    mockFindOne.mockReturnValue(leanChain({ status: 'dismissed' }))
+    mockUpdateOne.mockResolvedValue({ matchedCount: 1 })
+
+    const result = await setScrapedJobDismissed('u1', 'j1', false)
+
+    expect(mockUpdateOne).toHaveBeenCalledWith({ _id: 'j1', userId: 'u1' }, { $set: { status: 'new' } })
+    expect(result).toBe(true)
+  })
+
+  it('returns false without writing when the job does not exist for this user', async () => {
+    mockFindOne.mockReturnValue(leanChain(null))
+
+    const result = await setScrapedJobDismissed('u1', 'missing', true)
+
+    expect(mockUpdateOne).not.toHaveBeenCalled()
+    expect(result).toBe(false)
+  })
+
+  it('returns false without writing when the job is already submitted (terminal state)', async () => {
+    mockFindOne.mockReturnValue(leanChain({ status: 'submitted' }))
+
+    const result = await setScrapedJobDismissed('u1', 'j1', true)
+
+    expect(mockUpdateOne).not.toHaveBeenCalled()
+    expect(result).toBe(false)
+  })
+})
+
+describe('deleteScrapedJob', () => {
+  it('scopes the delete to userId and returns true on success', async () => {
+    mockDeleteOne.mockResolvedValue({ deletedCount: 1 })
+
+    const result = await deleteScrapedJob('u1', 'j1')
+
+    expect(mockDeleteOne).toHaveBeenCalledWith({ _id: 'j1', userId: 'u1' })
+    expect(result).toBe(true)
+  })
+
+  it('returns false when nothing matched', async () => {
+    mockDeleteOne.mockResolvedValue({ deletedCount: 0 })
+
+    const result = await deleteScrapedJob('u1', 'missing')
+
+    expect(result).toBe(false)
   })
 })

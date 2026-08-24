@@ -156,3 +156,25 @@ export async function convertScrapedJobToApplication(userId: string, id: string)
   })
   return { ok: true, application }
 }
+
+// Toggles a scraped job listing between visible ('new') and dismissed
+// ('dismissed') — the "Active"/"Non-Active" control on ScrapedJobsList.
+// Never overwrites 'submitted' (a terminal, already-applied state — nothing
+// useful comes from dismissing/restoring it) so the toggle only applies to
+// listings still mid-pipeline or not yet acted on.
+export async function setScrapedJobDismissed(userId: string, id: string, dismissed: boolean): Promise<boolean> {
+  await dbConnect()
+  const job = (await ScrapedJob.findOne({ _id: id, userId }, 'status').lean()) as { status: string } | null
+  if (!job || job.status === 'submitted') return false
+  const result = await ScrapedJob.updateOne(
+    { _id: id, userId },
+    { $set: { status: dismissed ? 'dismissed' : 'new' } }
+  )
+  return result.matchedCount === 1
+}
+
+export async function deleteScrapedJob(userId: string, id: string): Promise<boolean> {
+  await dbConnect()
+  const result = await ScrapedJob.deleteOne({ _id: id, userId })
+  return result.deletedCount === 1
+}
