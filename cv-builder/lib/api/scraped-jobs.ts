@@ -74,6 +74,12 @@ export async function listDraftQueueBacklog(userId: string, profileId: string, l
     profileId,
     resolvedActions: 'draft_and_queue',
     draftedAt: { $exists: false },
+    // Also gated on status:'new' (not just draftedAt unset) because a
+    // future notify feature could flip a stacked draft_and_queue+notify
+    // posting's status away from 'new' before its capped drafting turn
+    // comes up — if that ever ships, this filter needs revisiting so such
+    // a posting doesn't silently fall out of the backlog. Currently
+    // unreachable: nothing in this repo transitions status this way yet.
     status: 'new',
   })
     .sort({ firstSeenAt: 1 })
@@ -122,10 +128,25 @@ export async function convertScrapedJobToApplication(userId: string, id: string)
     }
   }
 
+  // Atomic claim: only one concurrent convert call for this job can pass
+  // this — the { status: { $ne: 'submitted' } } filter makes it a
+  // compare-and-set. This closes the race the old sequence left open (two
+  // concurrent requests could both pass the status==='submitted' check
+  // above before either wrote, each then calling createApplication and
+  // producing two real Application rows from one user confirmation).
+  const claim = await ScrapedJob.updateOne(
+    { _id: id, userId, status: { $ne: 'submitted' } },
+    { $set: { status: 'submitted' } }
+  )
+  if (claim.matchedCount === 0) {
+    return { ok: false, code: 'ALREADY_SUBMITTED', message: 'Already marked as applied.' }
+  }
+
   const application = await createApplication(userId, {
     resumeId: job.draftResumeId,
     company: job.company.slice(0, 200),
     role: job.title.slice(0, 200),
+    status: 'applied',
     // CreateApplicationInput's inferred type requires customFields (its Zod
     // field carries .default({}), which makes the output type non-optional
     // — the same class of issue Task 1 hit on ScrapedJob's defaulted array
@@ -133,6 +154,5 @@ export async function convertScrapedJobToApplication(userId: string, id: string)
     // the input object directly rather than parsing through the schema.
     customFields: {},
   })
-  await ScrapedJob.updateOne({ _id: id, userId }, { $set: { status: 'submitted' } })
   return { ok: true, application }
 }

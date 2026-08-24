@@ -287,12 +287,31 @@ describe('convertScrapedJobToApplication', () => {
   it('creates the application, marks the job submitted, and returns it on success', async () => {
     mockFindOne.mockReturnValue(leanChain(baseJob))
     mockCreateApplication.mockResolvedValue({ _id: 'app1', company: 'Acme', role: 'Backend Engineer' })
-    mockUpdateOne.mockResolvedValue({})
+    mockUpdateOne.mockResolvedValue({ matchedCount: 1 })
 
     const result = await convertScrapedJobToApplication('u1', 'j1')
 
-    expect(mockCreateApplication).toHaveBeenCalledWith('u1', { resumeId: 'r1', company: 'Acme', role: 'Backend Engineer', customFields: {} })
-    expect(mockUpdateOne).toHaveBeenCalledWith({ _id: 'j1', userId: 'u1' }, { $set: { status: 'submitted' } })
+    expect(mockUpdateOne).toHaveBeenCalledWith(
+      { _id: 'j1', userId: 'u1', status: { $ne: 'submitted' } },
+      { $set: { status: 'submitted' } }
+    )
+    expect(mockCreateApplication).toHaveBeenCalledWith('u1', {
+      resumeId: 'r1',
+      company: 'Acme',
+      role: 'Backend Engineer',
+      status: 'applied',
+      customFields: {},
+    })
     expect(result).toEqual({ ok: true, application: { _id: 'app1', company: 'Acme', role: 'Backend Engineer' } })
+  })
+
+  it('returns ALREADY_SUBMITTED when the atomic claim loses a concurrent race', async () => {
+    mockFindOne.mockReturnValue(leanChain({ ...baseJob, status: 'queued', pendingApprovals: [] }))
+    mockUpdateOne.mockResolvedValue({ matchedCount: 0 })
+
+    const result = await convertScrapedJobToApplication('u1', 'j1')
+
+    expect(result).toEqual({ ok: false, code: 'ALREADY_SUBMITTED', message: 'Already marked as applied.' })
+    expect(mockCreateApplication).not.toHaveBeenCalled()
   })
 })
