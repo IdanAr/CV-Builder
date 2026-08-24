@@ -71,4 +71,22 @@ describe('publishScanJob', () => {
 
     expect(Client).toHaveBeenCalledWith({ token: 'test-token', baseUrl: undefined })
   })
+
+  it('forwards the Vercel protection-bypass header when VERCEL_AUTOMATION_BYPASS_SECRET is set', async () => {
+    process.env.VERCEL_AUTOMATION_BYPASS_SECRET = 'bypass-secret'
+
+    await publishScanJob('u1', 'p1')
+
+    expect(mockPublishJSON).toHaveBeenCalledWith(
+      expect.objectContaining({ headers: { 'x-vercel-protection-bypass': 'bypass-secret' } })
+    )
+  })
+
+  it('omits the bypass header when VERCEL_AUTOMATION_BYPASS_SECRET is unset', async () => {
+    delete process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+
+    await publishScanJob('u1', 'p1')
+
+    expect(mockPublishJSON).toHaveBeenCalledWith(expect.objectContaining({ headers: undefined }))
+  })
 })

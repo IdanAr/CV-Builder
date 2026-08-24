@@ -27,9 +27,16 @@ export async function GET(req: Request) {
       try {
         await publishScanJob(profile.userId, String(profile._id))
         queued++
-      } catch {
+      } catch (err) {
         // One profile's publish failure shouldn't abort the whole fan-out —
         // it simply misses this scheduled run and gets picked up next time.
+        // Logged (not silently swallowed) so a systemic failure — bad
+        // QSTASH_TOKEN, wrong region, etc. — is actually diagnosable from
+        // Vercel's function logs instead of just an opaque failed count.
+        console.error(
+          `[GET /api/jobsearch/scan/cron] publishScanJob failed for profile ${String(profile._id)}`,
+          err
+        )
         failed++
       }
     }
