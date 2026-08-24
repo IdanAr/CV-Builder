@@ -178,3 +178,31 @@ export async function deleteScrapedJob(userId: string, id: string): Promise<bool
   const result = await ScrapedJob.deleteOne({ _id: id, userId })
   return result.deletedCount === 1
 }
+
+export interface NewScrapedJobSummary {
+  _id: unknown
+  title: string
+  company: string
+  description: string
+  atsScore?: number
+}
+
+// Scoped to status:'new' only — a job the user has already dismissed,
+// queued, needs_review'd, or submitted reflects a decision that shouldn't
+// be silently undone by a later profile-preference edit (see scan.ts's
+// stale-job pruning, which re-checks these against the profile's current
+// roles/threshold on every scan).
+export async function listNewScrapedJobs(userId: string, profileId: string): Promise<NewScrapedJobSummary[]> {
+  await dbConnect()
+  return (await ScrapedJob.find(
+    { userId, profileId, status: 'new' },
+    'title company description atsScore'
+  ).lean()) as unknown as NewScrapedJobSummary[]
+}
+
+export async function deleteScrapedJobsByIds(userId: string, ids: string[]): Promise<number> {
+  if (ids.length === 0) return 0
+  await dbConnect()
+  const result = await ScrapedJob.deleteMany({ _id: { $in: ids }, userId })
+  return result.deletedCount ?? 0
+}

@@ -15,6 +15,8 @@ const {
   mockListDraftQueueBacklog,
   mockMarkScrapedJobDrafted,
   mockRunApplyPipeline,
+  mockListNewScrapedJobs,
+  mockDeleteScrapedJobsByIds,
 } = vi.hoisted(() => ({
   mockSearchFreehireJobs: vi.fn(),
   mockGetJobSearchProfile: vi.fn(),
@@ -27,6 +29,8 @@ const {
   mockListDraftQueueBacklog: vi.fn(),
   mockMarkScrapedJobDrafted: vi.fn(),
   mockRunApplyPipeline: vi.fn(),
+  mockListNewScrapedJobs: vi.fn(),
+  mockDeleteScrapedJobsByIds: vi.fn(),
 }))
 
 vi.mock('../sources/freehire', () => ({ searchFreehireJobs: mockSearchFreehireJobs }))
@@ -37,6 +41,8 @@ vi.mock('@/lib/api/scraped-jobs', () => ({
   countDraftedInWindow: mockCountDraftedInWindow,
   listDraftQueueBacklog: mockListDraftQueueBacklog,
   markScrapedJobDrafted: mockMarkScrapedJobDrafted,
+  listNewScrapedJobs: mockListNewScrapedJobs,
+  deleteScrapedJobsByIds: mockDeleteScrapedJobsByIds,
 }))
 vi.mock('@/lib/api/jobsearch-rules', () => ({ listRulesForProfile: mockListRulesForProfile }))
 vi.mock('@/lib/ats/scorer', () => ({ scoreResume: mockScoreResume }))
@@ -88,6 +94,8 @@ beforeEach(() => {
   mockCountDraftedInWindow.mockResolvedValue(0)
   mockListDraftQueueBacklog.mockResolvedValue([])
   mockMarkScrapedJobDrafted.mockResolvedValue(undefined)
+  mockListNewScrapedJobs.mockResolvedValue([])
+  mockDeleteScrapedJobsByIds.mockResolvedValue(0)
   mockRunApplyPipeline.mockResolvedValue({
     draftResumeId: 'draft1',
     postTailorScore: 90,
@@ -221,6 +229,7 @@ describe('runScanForProfile', () => {
       created: 0,
       skippedExisting: 0,
       drafted: 0,
+      pruned: 0,
       degraded: true,
       errorMessage: 'insertMany exploded',
     })
@@ -595,6 +604,61 @@ describe('runScanForProfile', () => {
 
     expect(result.created).toBe(0)
     expect(mockCreateScrapedJobs).not.toHaveBeenCalled()
+  })
+
+  it('prunes an existing "new" scraped job whose title no longer matches the profile\'s current roles', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: ['AI Developer'] })
+    mockListNewScrapedJobs.mockResolvedValue([
+      { _id: 'stale1', title: 'Senior Backend Engineer', company: 'Acme', description: 'JD', atsScore: 80 },
+    ])
+    mockDeleteScrapedJobsByIds.mockResolvedValue(1)
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockDeleteScrapedJobsByIds).toHaveBeenCalledWith('u1', ['stale1'])
+    expect(result.pruned).toBe(1)
+  })
+
+  it('prunes an existing "new" scraped job that no longer clears the profile\'s current threshold', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, minAtsScore: 70 })
+    mockListNewScrapedJobs.mockResolvedValue([
+      { _id: 'stale1', title: 'X', company: 'Y', description: 'JD', atsScore: 46 },
+    ])
+    mockDeleteScrapedJobsByIds.mockResolvedValue(1)
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockDeleteScrapedJobsByIds).toHaveBeenCalledWith('u1', ['stale1'])
+  })
+
+  it('leaves a "new" scraped job alone when it still matches the profile\'s current roles and threshold', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: ['AI Developer'], minAtsScore: 70 })
+    mockListNewScrapedJobs.mockResolvedValue([
+      { _id: 'ok1', title: 'AI Developer', company: 'Acme', description: 'JD', atsScore: 80 },
+    ])
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockDeleteScrapedJobsByIds).toHaveBeenCalledWith('u1', [])
+    expect(result.pruned).toBe(0)
+  })
+
+  it('never re-checks a job that is already dismissed, queued, needs_review, or submitted (listNewScrapedJobs only returns "new")', async () => {
+    // listNewScrapedJobs is the only read path pruning uses, and it's
+    // scoped to status:'new' at the data-access layer — this test locks in
+    // that pruning never even sees a non-'new' job, regardless of whether
+    // it would otherwise fail the current filters.
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: ['AI Developer'] })
+    mockListNewScrapedJobs.mockResolvedValue([])
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockListNewScrapedJobs).toHaveBeenCalledWith('u1', 'p1')
+    expect(mockDeleteScrapedJobsByIds).toHaveBeenCalledWith('u1', [])
   })
 
   it('filters below-threshold postings per-posting, not the whole batch', async () => {

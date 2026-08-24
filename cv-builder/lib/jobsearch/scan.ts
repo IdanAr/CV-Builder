@@ -10,6 +10,8 @@ import {
   countDraftedInWindow,
   listDraftQueueBacklog,
   markScrapedJobDrafted,
+  listNewScrapedJobs,
+  deleteScrapedJobsByIds,
 } from '@/lib/api/scraped-jobs'
 import { listRulesForProfile } from '@/lib/api/jobsearch-rules'
 import { scoreResume } from '@/lib/ats/scorer'
@@ -26,6 +28,7 @@ export interface ScanResult {
   created: number
   skippedExisting: number
   drafted: number
+  pruned: number
   degraded: boolean
   errorMessage?: string
 }
@@ -61,7 +64,10 @@ async function resolveResumeData(userId: string, resumeId?: string): Promise<Res
   return fallback?.data ?? null
 }
 
-function passesIndustryFilter(posting: JobPosting, industries: string[]): boolean {
+// Narrower than JobPosting so this is reusable against both a freshly
+// fetched posting and a stored ScrapedJob summary (see pruneStaleScrapedJobs
+// below) — both carry title/company/description, nothing else is needed.
+function passesIndustryFilter(posting: { title: string; company: string; description: string }, industries: string[]): boolean {
   if (industries.length === 0) return true
   const haystack = `${posting.title} ${posting.company} ${posting.description}`
   return industries.some((tag) => matchesKeyword(haystack, tag))
@@ -140,11 +146,39 @@ async function fetchPostingsForRoles(
   return { postings, degraded: false }
 }
 
+// A profile-preference edit (tighter roles or a raised threshold) doesn't
+// retroactively touch postings scraped under the old preferences — scanning
+// is otherwise purely additive (dedup only ever skips re-fetching, never
+// removes). This re-checks every still-'new' job against the profile's
+// *current* roles/industries/threshold and deletes the ones that no longer
+// qualify, so a scan after a preference change actually shrinks the list
+// the way the wizard's filters imply it should. Jobs already dismissed,
+// queued, needs_review'd, or submitted are never touched (see
+// listNewScrapedJobs) — those reflect a decision the user or pipeline
+// already made, not just an unreviewed scan result.
+async function pruneStaleScrapedJobs(userId: string, profileId: string, profile: ScannedProfile): Promise<number> {
+  const jobs = await listNewScrapedJobs(userId, profileId)
+  const staleIds = jobs
+    .filter((job) => {
+      const roleOk = profile.roles.length === 0 || profile.roles.some((role) => passesRoleTitleFilter(job.title, role))
+      const industryOk = passesIndustryFilter(job, profile.industries)
+      const scoreOk = job.atsScore === undefined || job.atsScore >= profile.minAtsScore
+      return !(roleOk && industryOk && scoreOk)
+    })
+    .map((job) => String(job._id))
+  return deleteScrapedJobsByIds(userId, staleIds)
+}
+
 export async function runScanForProfile(userId: string, profileId: string): Promise<ScanResult> {
   const profile = (await getJobSearchProfile(userId, profileId)) as ScannedProfile | null
   if (!profile) {
-    return { fetched: 0, created: 0, skippedExisting: 0, drafted: 0, degraded: true, errorMessage: 'Profile not found' }
+    return { fetched: 0, created: 0, skippedExisting: 0, drafted: 0, pruned: 0, degraded: true, errorMessage: 'Profile not found' }
   }
+
+  // Runs before the backlog drain below so a job that no longer qualifies
+  // under the current preferences is never drafted from that backlog either
+  // (listDraftQueueBacklog only ever selects status:'new' items).
+  const pruned = await pruneStaleScrapedJobs(userId, profileId, profile)
 
   // Memoized so the backlog drain below and the new-postings loop further
   // down share at most one DB read for the linked resume, even though each
@@ -222,6 +256,7 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
       created: 0,
       skippedExisting: 0,
       drafted,
+      pruned,
       degraded: true,
       errorMessage: searchResult.errorMessage,
     }
@@ -353,6 +388,7 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
       created: toCreate.length,
       skippedExisting: existingIds.size,
       drafted,
+      pruned,
       degraded: false,
     }
   } catch (err) {
@@ -361,6 +397,7 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
       created: 0,
       skippedExisting: 0,
       drafted,
+      pruned,
       degraded: true,
       errorMessage: err instanceof Error ? err.message : 'Scan failed unexpectedly',
     }
