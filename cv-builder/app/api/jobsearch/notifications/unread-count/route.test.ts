@@ -20,13 +20,19 @@ afterEach(() => {
 describe('GET /api/jobsearch/notifications/unread-count', () => {
   it('returns 401 when unauthenticated', async () => {
     mockSession = null
-    const res = (await GET(new Request('http://test/api/jobsearch/notifications/unread-count') as never)) as Response
+    const req = new Request('http://test/api/jobsearch/notifications/unread-count', {
+      method: 'GET',
+    })
+    const res = (await GET(req as never, undefined as never)) as Response
     expect(res.status).toBe(401)
   })
 
   it('returns this user\'s unread count', async () => {
     mockCountUnread.mockResolvedValue(5)
-    const res = (await GET(new Request('http://test/api/jobsearch/notifications/unread-count') as never)) as Response
+    const req = new Request('http://test/api/jobsearch/notifications/unread-count', {
+      method: 'GET',
+    })
+    const res = (await GET(req as never, undefined as never)) as Response
     const body = await res.json()
     expect(mockCountUnread).toHaveBeenCalledWith('u1')
     expect(body.count).toBe(5)

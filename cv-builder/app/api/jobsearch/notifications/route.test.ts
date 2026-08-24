@@ -20,13 +20,19 @@ afterEach(() => {
 describe('GET /api/jobsearch/notifications', () => {
   it('returns 401 when unauthenticated', async () => {
     mockSession = null
-    const res = (await GET(new Request('http://test/api/jobsearch/notifications') as never)) as Response
+    const req = new Request('http://test/api/jobsearch/notifications', {
+      method: 'GET',
+    })
+    const res = (await GET(req as never, undefined as never)) as Response
     expect(res.status).toBe(401)
   })
 
   it('returns this user\'s notify matches', async () => {
     mockListNotifyMatches.mockResolvedValue([{ _id: 'j1', title: 'X' }])
-    const res = (await GET(new Request('http://test/api/jobsearch/notifications') as never)) as Response
+    const req = new Request('http://test/api/jobsearch/notifications', {
+      method: 'GET',
+    })
+    const res = (await GET(req as never, undefined as never)) as Response
     const body = await res.json()
     expect(mockListNotifyMatches).toHaveBeenCalledWith('u1')
     expect(body.matches).toEqual([{ _id: 'j1', title: 'X' }])

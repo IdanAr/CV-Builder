@@ -20,13 +20,19 @@ afterEach(() => {
 describe('POST /api/jobsearch/notifications/mark-read', () => {
   it('returns 401 when unauthenticated', async () => {
     mockSession = null
-    const res = (await POST(new Request('http://test/api/jobsearch/notifications/mark-read', { method: 'POST' }) as never)) as Response
+    const req = new Request('http://test/api/jobsearch/notifications/mark-read', {
+      method: 'POST',
+    })
+    const res = (await POST(req as never, undefined as never)) as Response
     expect(res.status).toBe(401)
   })
 
   it('marks this user\'s notify matches as read', async () => {
     mockMarkRead.mockResolvedValue(undefined)
-    const res = (await POST(new Request('http://test/api/jobsearch/notifications/mark-read', { method: 'POST' }) as never)) as Response
+    const req = new Request('http://test/api/jobsearch/notifications/mark-read', {
+      method: 'POST',
+    })
+    const res = (await POST(req as never, undefined as never)) as Response
     const body = await res.json()
     expect(mockMarkRead).toHaveBeenCalledWith('u1')
     expect(body.ok).toBe(true)
