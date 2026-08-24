@@ -67,6 +67,60 @@ function passesIndustryFilter(posting: JobPosting, industries: string[]): boolea
   return industries.some((tag) => matchesKeyword(haystack, tag))
 }
 
+/** Max distinct role titles queried per scan — bounds how many outbound freehire calls one profile can trigger. */
+export const MAX_ROLE_QUERIES = 5
+
+interface RoleQueryParams {
+  region: string[]
+  country: string[]
+  city: string[]
+  seniority: string[]
+  category: string[]
+  remote?: 'remote' | 'hybrid' | 'onsite'
+  jobage: number
+}
+
+// freehire's `q` param does a loose keyword match across the whole query
+// string — joining multiple distinct role titles into one space-separated
+// string made it match almost any posting containing any single word from
+// any role (e.g. "Product Analyst Data Analyst" matched "Senior Backend
+// Engineer" postings with none of those words in the title, because common
+// words like "product" show up somewhere in nearly every description),
+// rather than "any of these role titles." Querying once per role and
+// merging keeps each query focused enough that `q` actually narrows
+// results — verified directly against the live API: a single-role query
+// like "Data Analyst" returns only Data Analyst postings, while the joined
+// multi-role string returned an unrelated grab-bag.
+async function fetchPostingsForRoles(
+  roles: string[],
+  params: RoleQueryParams
+): Promise<{ postings: JobPosting[]; degraded: boolean; errorMessage?: string }> {
+  const queries = roles.length > 0 ? roles.slice(0, MAX_ROLE_QUERIES) : [undefined]
+  const results = await Promise.all(
+    queries.map((role) => searchFreehireJobs({ ...params, query: role, limit: 25 }))
+  )
+
+  const succeeded = results.filter((r) => !r.degraded)
+  if (succeeded.length === 0) {
+    return { postings: [], degraded: true, errorMessage: results[0]?.errorMessage }
+  }
+
+  // A posting can legitimately match more than one role query (e.g. a
+  // "Data Analyst" posting also containing "Analyst" in its title) — dedupe
+  // by sourceId across the merged results before this ever reaches the
+  // existing dedup-against-stored-jobs step below.
+  const seen = new Set<string>()
+  const postings: JobPosting[] = []
+  for (const result of succeeded) {
+    for (const posting of result.postings) {
+      if (seen.has(posting.sourceId)) continue
+      seen.add(posting.sourceId)
+      postings.push(posting)
+    }
+  }
+  return { postings, degraded: false }
+}
+
 export async function runScanForProfile(userId: string, profileId: string): Promise<ScanResult> {
   const profile = (await getJobSearchProfile(userId, profileId)) as ScannedProfile | null
   if (!profile) {
@@ -130,8 +184,7 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
     }
   }
 
-  const searchResult = await searchFreehireJobs({
-    query: profile.roles.join(' ') || undefined,
+  const searchResult = await fetchPostingsForRoles(profile.roles, {
     region: profile.locations.map((l) => l.region).filter((r): r is string => !!r),
     country: profile.locations.map((l) => l.country).filter((c): c is string => !!c),
     city: profile.locations.map((l) => l.city).filter((c): c is string => !!c),
@@ -142,7 +195,6 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
     // arbitrarily picking one and silently narrowing the search.
     remote: profile.workModes.length === 1 ? (profile.workModes[0] as 'remote' | 'hybrid' | 'onsite') : undefined,
     jobage: profile.recencyDays,
-    limit: 25,
   })
 
   if (searchResult.degraded) {

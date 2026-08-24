@@ -47,7 +47,7 @@ vi.mock('../apply', () => ({
   PER_USER_DAILY_DRAFT_CAP: 10,
 }))
 
-import { runScanForProfile } from '../scan'
+import { runScanForProfile, MAX_ROLE_QUERIES } from '../scan'
 
 function leanChain(resolved: unknown) {
   return { lean: vi.fn().mockResolvedValue(resolved) }
@@ -436,5 +436,91 @@ describe('runScanForProfile', () => {
     expect(mockMarkScrapedJobDrafted).not.toHaveBeenCalled()
     expect(result.drafted).toBe(0)
     expect(result.degraded).toBe(false)
+  })
+
+  it('queries freehire once per role and merges results, deduping by sourceId', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: ['Data Analyst', 'Product Analyst'] })
+    mockSearchFreehireJobs.mockImplementation((params: { query?: string }) => {
+      if (params.query === 'Data Analyst') {
+        return Promise.resolve({
+          degraded: false,
+          postings: [
+            { source: 'freehire', sourceId: 'shared', title: 'Data Analyst', company: 'Acme', url: 'https://x/shared', description: 'JD' },
+            { source: 'freehire', sourceId: 'da-only', title: 'Data Analyst II', company: 'Acme', url: 'https://x/da-only', description: 'JD' },
+          ],
+        })
+      }
+      if (params.query === 'Product Analyst') {
+        return Promise.resolve({
+          degraded: false,
+          postings: [
+            { source: 'freehire', sourceId: 'shared', title: 'Product Analyst / Data Analyst', company: 'Acme', url: 'https://x/shared', description: 'JD' },
+            { source: 'freehire', sourceId: 'pa-only', title: 'Product Analyst', company: 'Acme', url: 'https://x/pa-only', description: 'JD' },
+          ],
+        })
+      }
+      return Promise.resolve({ degraded: false, postings: [] })
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockSearchFreehireJobs).toHaveBeenCalledTimes(2)
+    expect(mockSearchFreehireJobs).toHaveBeenCalledWith(expect.objectContaining({ query: 'Data Analyst' }))
+    expect(mockSearchFreehireJobs).toHaveBeenCalledWith(expect.objectContaining({ query: 'Product Analyst' }))
+    expect(result.fetched).toBe(3)
+    expect(mockCreateScrapedJobs.mock.calls[0][2]).toHaveLength(3)
+    const sourceIds = mockCreateScrapedJobs.mock.calls[0][2].map((j: { sourceId: string }) => j.sourceId).sort()
+    expect(sourceIds).toEqual(['da-only', 'pa-only', 'shared'])
+  })
+
+  it('caps the number of role queries at MAX_ROLE_QUERIES', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({
+      ...baseProfile,
+      roles: ['Role A', 'Role B', 'Role C', 'Role D', 'Role E', 'Role F', 'Role G'],
+    })
+    mockSearchFreehireJobs.mockResolvedValue({ degraded: false, postings: [] })
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockSearchFreehireJobs).toHaveBeenCalledTimes(MAX_ROLE_QUERIES)
+  })
+
+  it('sends no query and makes a single call when the profile has no roles', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: [] })
+    mockSearchFreehireJobs.mockResolvedValue({ degraded: false, postings: [] })
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockSearchFreehireJobs).toHaveBeenCalledTimes(1)
+    expect(mockSearchFreehireJobs).toHaveBeenCalledWith(expect.objectContaining({ query: undefined }))
+  })
+
+  it('returns results from the roles whose query succeeded when only some role queries are degraded', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: ['Data Analyst', 'Product Analyst'] })
+    mockSearchFreehireJobs.mockImplementation((params: { query?: string }) => {
+      if (params.query === 'Data Analyst') {
+        return Promise.resolve({ degraded: true, postings: [], errorMessage: 'freehire returned 503' })
+      }
+      return Promise.resolve({
+        degraded: false,
+        postings: [{ source: 'freehire', sourceId: 'pa-1', title: 'Product Analyst', company: 'Acme', url: 'https://x/pa-1', description: 'JD' }],
+      })
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.degraded).toBe(false)
+    expect(result.fetched).toBe(1)
+  })
+
+  it('degrades the whole scan only when every role query fails', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: ['Data Analyst', 'Product Analyst'] })
+    mockSearchFreehireJobs.mockResolvedValue({ degraded: true, postings: [], errorMessage: 'freehire returned 503' })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.degraded).toBe(true)
+    expect(result.errorMessage).toBe('freehire returned 503')
+    expect(mockCreateScrapedJobs).not.toHaveBeenCalled()
   })
 })
