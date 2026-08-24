@@ -154,4 +154,55 @@ describe('QueuedApplicationsPanel', () => {
     expect(screen.getByText('Dear Acme, ...')).toBeInTheDocument()
     expect(mockFetch).toHaveBeenCalledWith('/api/resumes/r1')
   })
+
+  it('clears a stale draft-load error from a previously-viewed job when switching to another job', async () => {
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        scrapedJobs: [
+          {
+            _id: 'j1', title: 'Backend Engineer', company: 'Acme', url: 'https://x/j1',
+            atsScore: 60, postTailorScore: 90, status: 'queued',
+            matchedRules: [], resolvedActions: ['draft_and_queue'],
+            tailoredKeywords: [], pendingApprovals: [], draftResumeId: 'r1',
+          },
+          {
+            _id: 'j2', title: 'Frontend Engineer', company: 'Beta', url: 'https://x/j2',
+            atsScore: 65, postTailorScore: 92, status: 'queued',
+            matchedRules: [], resolvedActions: ['draft_and_queue'],
+            tailoredKeywords: [], pendingApprovals: [], draftResumeId: 'r2',
+          },
+        ],
+      })
+    )
+    mockFetch.mockResolvedValueOnce(jsonResponse(profile))
+    // Job j1's draft fetch fails.
+    mockFetch.mockResolvedValueOnce(jsonResponse({}, false))
+    // Job j2's draft fetch succeeds.
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        resume: { title: 'Frontend Engineer at Beta (tailored)', data: { basics: { summary: 'Beta summary.' }, coverLetter: 'Dear Beta, ...' } },
+      })
+    )
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<QueuedApplicationsPanel profileId="p1" />)
+
+    const viewDraftButtons = await screen.findAllByRole('button', { name: /view draft/i })
+    expect(viewDraftButtons).toHaveLength(2)
+
+    // Expand job j1 — its draft fetch fails, showing the error banner.
+    await userEvent.click(viewDraftButtons[0])
+    expect(await screen.findByText(/failed to load the tailored draft/i)).toBeInTheDocument()
+
+    // Collapse job j1.
+    await userEvent.click(await screen.findByRole('button', { name: /hide draft/i }))
+
+    // Expand job j2 — its draft loads successfully; j1's stale error must not linger.
+    const viewDraftButtonsAfterCollapse = await screen.findAllByRole('button', { name: /view draft/i })
+    await userEvent.click(viewDraftButtonsAfterCollapse[1])
+
+    expect(await screen.findByText('Beta summary.')).toBeInTheDocument()
+    expect(screen.queryByText(/failed to load the tailored draft/i)).not.toBeInTheDocument()
+  })
 })

@@ -70,8 +70,8 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
       return
     }
     setExpandedId(job._id)
-    if (!job.draftResumeId || drafts[job._id]) return
     setDraftLoadError(null)
+    if (!job.draftResumeId || drafts[job._id]) return
     try {
       const res = await fetch(`/api/resumes/${job.draftResumeId}`)
       if (!res.ok) {
