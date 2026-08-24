@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ProfileWizardSteps } from './ProfileWizardSteps'
+import { COUNTRIES } from '@/lib/jobsearch/countries'
 import {
   WORK_MODES,
   SENIORITY_LEVELS,
@@ -14,8 +15,33 @@ import {
 
 const STEP_LABELS = ['Roles', 'Location', 'Focus', 'Threshold', 'Review']
 
+interface ExistingProfile {
+  _id: string
+  name: string
+  resumeId?: string
+  roles: string[]
+  workModes: WorkMode[]
+  locations: JobLocation[]
+  seniority: Seniority[]
+  categories: string[]
+  industries: string[]
+  recencyDays: number
+  minAtsScore: number
+}
+
 interface ProfileWizardProps {
-  onCreated: (profile: { _id: string; name: string }) => void
+  // Create mode: pass onCreated. Edit mode: pass existingProfile + onUpdated
+  // — the wizard pre-fills from it, PATCHes instead of POSTs, and skips the
+  // post-creation "offer a default rule" screen (that only makes sense the
+  // first time a profile is set up).
+  onCreated?: (profile: { _id: string; name: string }) => void
+  onUpdated?: (profile: { _id: string; name: string }) => void
+  existingProfile?: ExistingProfile
+}
+
+interface ResumeOption {
+  id: string
+  title: string
 }
 
 // roles/categories/industries are deliberately absent here — they live only
@@ -23,6 +49,7 @@ interface ProfileWizardProps {
 // summary, the submit payload), never duplicated into this state.
 interface WizardState {
   name: string
+  resumeId?: string
   seniority: Seniority[]
   workModes: WorkMode[]
   locations: JobLocation[]
@@ -30,7 +57,18 @@ interface WizardState {
   minAtsScore: number
 }
 
-function initialState(): WizardState {
+function initialState(existingProfile?: ExistingProfile): WizardState {
+  if (existingProfile) {
+    return {
+      name: existingProfile.name,
+      resumeId: existingProfile.resumeId,
+      seniority: existingProfile.seniority,
+      workModes: existingProfile.workModes,
+      locations: existingProfile.locations,
+      recencyDays: existingProfile.recencyDays,
+      minAtsScore: existingProfile.minAtsScore,
+    }
+  }
   return {
     name: '',
     seniority: [],
@@ -85,20 +123,49 @@ interface DraftText {
   industries: string
 }
 
-function initialDraftText(): DraftText {
-  return { roles: '', categories: '', industries: '' }
+function initialDraftText(existingProfile?: ExistingProfile): DraftText {
+  return {
+    roles: existingProfile?.roles.join(', ') ?? '',
+    categories: existingProfile?.categories.join(', ') ?? '',
+    industries: existingProfile?.industries.join(', ') ?? '',
+  }
 }
 
-export function ProfileWizard({ onCreated }: ProfileWizardProps) {
+export function ProfileWizard({ onCreated, onUpdated, existingProfile }: ProfileWizardProps) {
+  const isEditing = !!existingProfile
   const [step, setStep] = useState(1)
   const [maxUnlocked, setMaxUnlocked] = useState(1)
-  const [state, setState] = useState<WizardState>(initialState)
-  const [draftText, setDraftText] = useState<DraftText>(initialDraftText)
+  const [state, setState] = useState<WizardState>(() => initialState(existingProfile))
+  const [draftText, setDraftText] = useState<DraftText>(() => initialDraftText(existingProfile))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [createdProfile, setCreatedProfile] = useState<{ _id: string; name: string } | null>(null)
   const [creatingRule, setCreatingRule] = useState(false)
   const [ruleError, setRuleError] = useState<string | null>(null)
+  const [resumeOptions, setResumeOptions] = useState<ResumeOption[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadResumes() {
+      try {
+        const res = await fetch('/api/resumes')
+        if (!res.ok) throw new Error('failed to load resumes')
+        const body = await res.json()
+        const options = Array.isArray(body.resumes)
+          ? body.resumes.map((r: { _id: string; title: string }) => ({ id: r._id, title: r.title }))
+          : []
+        if (!cancelled) setResumeOptions(options)
+      } catch {
+        // Not fatal — the resume picker just shows no options, and scanning
+        // falls back to the user's most recently updated resume server-side.
+        if (!cancelled) setResumeOptions([])
+      }
+    }
+    loadResumes()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function goNext() {
     const next = Math.min(step + 1, STEP_LABELS.length)
@@ -141,16 +208,23 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
       industries: toTags(draftText.industries),
     }
     try {
-      const res = await fetch('/api/jobsearch/profiles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
+      const res = await fetch(
+        isEditing ? `/api/jobsearch/profiles/${existingProfile._id}` : '/api/jobsearch/profiles',
+        {
+          method: isEditing ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+      )
       const body = await res.json()
       if (res.ok) {
-        setCreatedProfile(body.profile)
+        if (isEditing) {
+          onUpdated?.(body.profile)
+        } else {
+          setCreatedProfile(body.profile)
+        }
       } else {
-        setError(`Failed to create profile.${formatValidationDetails(body.details)}`)
+        setError(`Failed to ${isEditing ? 'save changes' : 'create profile'}.${formatValidationDetails(body.details)}`)
       }
     } catch {
       setError('An error occurred. Please check your connection and try again.')
@@ -177,7 +251,7 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
         }),
       })
       if (res.ok) {
-        onCreated(createdProfile)
+        onCreated?.(createdProfile)
         return
       }
       // fetch() only throws on a network failure — a 400/404/500 resolves
@@ -213,7 +287,7 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
           >
             Yes, notify me
           </button>
-          <button type="button" className="rounded border px-4 py-2 text-sm" onClick={() => onCreated(createdProfile)}>
+          <button type="button" className="rounded border px-4 py-2 text-sm" onClick={() => onCreated?.(createdProfile)}>
             Skip
           </button>
         </div>
@@ -265,12 +339,35 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
             ))}
           </div>
           <label className="text-sm font-medium">
+            Country
+            <select
+              className="mt-1 w-full rounded border px-3 py-2 text-sm"
+              value={state.locations[0]?.country ?? ''}
+              onChange={(e) =>
+                setState((s) => ({
+                  ...s,
+                  locations: [{ ...s.locations[0], country: e.target.value || undefined }],
+                }))
+              }
+            >
+              <option value="">Any country</option>
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm font-medium">
             City
             <input
               className="mt-1 w-full rounded border px-3 py-2 text-sm"
               value={state.locations[0]?.city ?? ''}
               onChange={(e) =>
-                setState((s) => ({ ...s, locations: [{ city: e.target.value }] }))
+                setState((s) => ({
+                  ...s,
+                  locations: [{ ...s.locations[0], city: e.target.value || undefined }],
+                }))
               }
             />
           </label>
@@ -325,6 +422,21 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
               onChange={(e) => setState((s) => ({ ...s, minAtsScore: Number(e.target.value) }))}
             />
           </label>
+          <label className="text-sm font-medium">
+            Résumé to tailor from
+            <select
+              className="mt-1 w-full rounded border px-3 py-2 text-sm"
+              value={state.resumeId ?? ''}
+              onChange={(e) => setState((s) => ({ ...s, resumeId: e.target.value || undefined }))}
+            >
+              <option value="">Use my most recently updated résumé</option>
+              {resumeOptions.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.title}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       )}
 
@@ -337,12 +449,16 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
             <dd>{formatList(state.seniority)}</dd>
             <dt className="font-medium text-gray-600">Work modes</dt>
             <dd>{formatList(state.workModes)}</dd>
+            <dt className="font-medium text-gray-600">Country</dt>
+            <dd>{COUNTRIES.find((c) => c.code === state.locations[0]?.country)?.name || '—'}</dd>
             <dt className="font-medium text-gray-600">City</dt>
             <dd>{state.locations[0]?.city || '—'}</dd>
             <dt className="font-medium text-gray-600">Categories</dt>
             <dd>{formatList(toTags(draftText.categories))}</dd>
             <dt className="font-medium text-gray-600">Industries</dt>
             <dd>{formatList(toTags(draftText.industries))}</dd>
+            <dt className="font-medium text-gray-600">Résumé</dt>
+            <dd>{resumeOptions.find((r) => r.id === state.resumeId)?.title || 'Most recently updated'}</dd>
             <dt className="font-medium text-gray-600">Recency window</dt>
             <dd>{state.recencyDays} days</dd>
             <dt className="font-medium text-gray-600">ATS threshold</dt>
@@ -380,7 +496,7 @@ export function ProfileWizard({ onCreated }: ProfileWizardProps) {
               className="rounded bg-indigo-600 px-4 py-2 text-sm text-white disabled:opacity-40"
               onClick={handleSubmit}
             >
-              Create profile
+              {isEditing ? 'Save changes' : 'Create profile'}
             </button>
           )}
         </div>
