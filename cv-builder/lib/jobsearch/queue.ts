@@ -19,8 +19,19 @@ export async function publishScanJob(userId: string, profileId: string): Promise
   // (e.g. qstash-us-east-1.upstash.io) — omitting this silently sends every
   // publish call to the wrong region, where the token won't authenticate.
   const client = new Client({ token: process.env.QSTASH_TOKEN, baseUrl: process.env.QSTASH_URL })
+  // If Vercel Deployment Protection (SSO/password) is enabled on this
+  // project, every request — including QStash's own callback — gets
+  // redirected to a login page before our route ever runs. Vercel
+  // auto-injects VERCEL_AUTOMATION_BYPASS_SECRET once a "Protection Bypass
+  // for Automation" secret exists for the project; forwarding it as a
+  // header (which QStash preserves on delivery) lets the callback through.
+  // Absent locally and on unprotected deployments — harmlessly omitted.
+  const headers = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+    ? { 'x-vercel-protection-bypass': process.env.VERCEL_AUTOMATION_BYPASS_SECRET }
+    : undefined
   await client.publishJSON({
     url: `${resolveAppUrl()}/api/jobsearch/scan/worker`,
     body: { userId, profileId },
+    headers,
   })
 }
