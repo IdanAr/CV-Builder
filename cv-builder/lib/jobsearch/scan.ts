@@ -18,7 +18,7 @@ import { evaluateRules } from './rules'
 import { runApplyPipeline, PER_PROFILE_DAILY_DRAFT_CAP, PER_USER_DAILY_DRAFT_CAP } from './apply'
 import Resume from '@/models/Resume'
 import type { CreateScrapedJobInput } from '@/lib/schemas/jobsearch.zod'
-import type { JobPosting } from './sources/types'
+import type { JobPosting, SourceSearchResult } from './sources/types'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 export interface ScanResult {
@@ -67,6 +67,20 @@ function passesIndustryFilter(posting: JobPosting, industries: string[]): boolea
   return industries.some((tag) => matchesKeyword(haystack, tag))
 }
 
+// freehire's `q` param does a loose OR-across-words match even within a
+// single role query (verified directly against the live API: q="AI
+// Developer" returns "Senior Backend Developer" and "Security Analyst"
+// postings — neither word appears together, and quoting the phrase makes no
+// difference), so freehire's own result set can't be trusted as "relevant to
+// this role." This requires every significant word of the queried role to
+// appear in the posting's title (word-boundary, case-insensitive) before it
+// counts as a match for that role.
+function passesRoleTitleFilter(title: string, role: string): boolean {
+  const words = role.split(/\s+/).filter((w) => w.length > 0)
+  if (words.length === 0) return true
+  return words.every((word) => matchesKeyword(title, word))
+}
+
 /** Max distinct role titles queried per scan — bounds how many outbound freehire calls one profile can trigger. */
 export const MAX_ROLE_QUERIES = 5
 
@@ -100,7 +114,9 @@ async function fetchPostingsForRoles(
     queries.map((role) => searchFreehireJobs({ ...params, query: role, limit: 25 }))
   )
 
-  const succeeded = results.filter((r) => !r.degraded)
+  const succeeded = results
+    .map((result, i) => ({ result, role: queries[i] }))
+    .filter((entry): entry is { result: SourceSearchResult; role: string | undefined } => !entry.result.degraded)
   if (succeeded.length === 0) {
     return { postings: [], degraded: true, errorMessage: results[0]?.errorMessage }
   }
@@ -108,12 +124,15 @@ async function fetchPostingsForRoles(
   // A posting can legitimately match more than one role query (e.g. a
   // "Data Analyst" posting also containing "Analyst" in its title) — dedupe
   // by sourceId across the merged results before this ever reaches the
-  // existing dedup-against-stored-jobs step below.
+  // existing dedup-against-stored-jobs step below. A posting rejected by one
+  // role's title filter still gets a fresh chance under a different role's
+  // query, so the filter check must run before it's marked "seen."
   const seen = new Set<string>()
   const postings: JobPosting[] = []
-  for (const result of succeeded) {
+  for (const { result, role } of succeeded) {
     for (const posting of result.postings) {
       if (seen.has(posting.sourceId)) continue
+      if (role !== undefined && !passesRoleTitleFilter(posting.title, role)) continue
       seen.add(posting.sourceId)
       postings.push(posting)
     }
@@ -245,6 +264,13 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
     for (const posting of newPostings) {
       const scoreResult = resumeData ? scoreResume(resumeData, posting.description) : null
       const atsScore = scoreResult?.total
+      // Postings scored below the profile's own fit threshold never become a
+      // ScrapedJob at all (per product decision: the wizard's "threshold"
+      // step should behave like the roles/location filters, not merely
+      // gate auto-draft readiness). A posting with no resume to score
+      // against (atsScore undefined) is never filtered — there's nothing to
+      // compare against the threshold.
+      if (atsScore !== undefined && atsScore < profile.minAtsScore) continue
       const evaluation = evaluateRules(
         { title: posting.title, company: posting.company, workMode: posting.workMode, postedAt: posting.postedAt, atsScore },
         rules

@@ -59,7 +59,12 @@ function sortLeanChain(resolved: unknown) {
 const baseProfile = {
   _id: 'p1',
   userId: 'u1',
-  roles: ['Backend Engineer'],
+  // Empty by default: most tests below aren't exercising role-title
+  // relevance and use generic placeholder titles ('X', 'Y') that wouldn't
+  // survive the role-title filter. Tests that need a specific role set
+  // their own `roles` override with a title that actually matches it (see
+  // the "queries freehire once per role" tests below).
+  roles: [] as string[],
   workModes: [],
   locations: [],
   seniority: [],
@@ -74,7 +79,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockFindExistingSourceIds.mockResolvedValue(new Set())
   mockCreateScrapedJobs.mockResolvedValue(undefined)
-  mockScoreResume.mockReturnValue({ total: 60, missingKeywords: [] })
+  // Default score sits above baseProfile.minAtsScore (75) so tests that
+  // don't care about the threshold filter aren't accidentally tripped by
+  // it; tests exercising the threshold override this explicitly.
+  mockScoreResume.mockReturnValue({ total: 80, missingKeywords: [] })
   mockResumeFindOne.mockReturnValue(sortLeanChain({ data: { basics: { name: 'Test' } } }))
   mockListRulesForProfile.mockResolvedValue([])
   mockCountDraftedInWindow.mockResolvedValue(0)
@@ -522,5 +530,89 @@ describe('runScanForProfile', () => {
     expect(result.degraded).toBe(true)
     expect(result.errorMessage).toBe('freehire returned 503')
     expect(mockCreateScrapedJobs).not.toHaveBeenCalled()
+  })
+
+  it('drops a posting whose title is missing one of the queried role\'s significant words, even though freehire returned it', async () => {
+    // Regression guard for freehire's own loose q= matching: verified live
+    // against the API that q="AI Developer" returns postings containing
+    // only one of the two words (e.g. "Senior Backend Developer",
+    // "Security Analyst") — freehire's result set can't be trusted as
+    // relevant on its own, so the title-word filter below it is load-bearing.
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: ['AI Developer'] })
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [
+        { source: 'freehire', sourceId: 'match', title: 'AI Full-Stack Developer', company: 'Acme', url: 'https://x/match', description: 'JD' },
+        { source: 'freehire', sourceId: 'no-ai', title: 'Senior Backend Developer', company: 'Acme', url: 'https://x/no-ai', description: 'JD' },
+        { source: 'freehire', sourceId: 'no-developer', title: 'Senior AI Product Manager', company: 'Acme', url: 'https://x/no-developer', description: 'JD' },
+      ],
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.fetched).toBe(1)
+    expect(mockCreateScrapedJobs.mock.calls[0][2]).toHaveLength(1)
+    expect(mockCreateScrapedJobs.mock.calls[0][2][0].sourceId).toBe('match')
+  })
+
+  it('gives a posting rejected under one role a fresh chance under a different role in the same scan', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, roles: ['AI Developer', 'Product Manager'] })
+    mockSearchFreehireJobs.mockImplementation((params: { query?: string }) => {
+      if (params.query === 'AI Developer') {
+        return Promise.resolve({
+          degraded: false,
+          postings: [
+            { source: 'freehire', sourceId: 'pm-1', title: 'Senior AI Product Manager', company: 'Acme', url: 'https://x/pm-1', description: 'JD' },
+          ],
+        })
+      }
+      if (params.query === 'Product Manager') {
+        return Promise.resolve({
+          degraded: false,
+          postings: [
+            { source: 'freehire', sourceId: 'pm-1', title: 'Senior AI Product Manager', company: 'Acme', url: 'https://x/pm-1', description: 'JD' },
+          ],
+        })
+      }
+      return Promise.resolve({ degraded: false, postings: [] })
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.fetched).toBe(1)
+    expect(mockCreateScrapedJobs.mock.calls[0][2][0].sourceId).toBe('pm-1')
+  })
+
+  it('does not create a ScrapedJob for a posting scored below the profile\'s minAtsScore', async () => {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockScoreResume.mockReturnValue({ total: 50, missingKeywords: [] })
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [{ source: 'freehire', sourceId: 'a1', title: 'X', company: 'Y', url: 'https://x/a1', description: 'JD' }],
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.created).toBe(0)
+    expect(mockCreateScrapedJobs).not.toHaveBeenCalled()
+  })
+
+  it('filters below-threshold postings per-posting, not the whole batch', async () => {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockScoreResume.mockImplementation((_resume: unknown, description: string) =>
+      description === 'low JD' ? { total: 50, missingKeywords: [] } : { total: 90, missingKeywords: [] }
+    )
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [
+        { source: 'freehire', sourceId: 'low', title: 'X', company: 'Y', url: 'https://x/low', description: 'low JD' },
+        { source: 'freehire', sourceId: 'high', title: 'X', company: 'Y', url: 'https://x/high', description: 'high JD' },
+      ],
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.created).toBe(1)
+    expect(mockCreateScrapedJobs.mock.calls[0][2][0].sourceId).toBe('high')
   })
 })
