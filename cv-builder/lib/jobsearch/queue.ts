@@ -13,7 +13,12 @@ function resolveAppUrl(): string {
 }
 
 export async function publishScanJob(userId: string, profileId: string): Promise<void> {
-  const client = new Client({ token: process.env.QSTASH_TOKEN })
+  // QStash's SDK defaults to the EU region endpoint (qstash.upstash.io) when
+  // no baseUrl is given. A US-region (or any non-default-region) QStash
+  // instance's token/signing keys only work against that region's own URL
+  // (e.g. qstash-us-east-1.upstash.io) — omitting this silently sends every
+  // publish call to the wrong region, where the token won't authenticate.
+  const client = new Client({ token: process.env.QSTASH_TOKEN, baseUrl: process.env.QSTASH_URL })
   await client.publishJSON({
     url: `${resolveAppUrl()}/api/jobsearch/scan/worker`,
     body: { userId, profileId },

@@ -55,4 +55,20 @@ describe('publishScanJob', () => {
       expect.objectContaining({ url: 'http://localhost:3000/api/jobsearch/scan/worker' })
     )
   })
+
+  it('passes QSTASH_URL as the client baseUrl when set, for a non-default-region QStash instance', async () => {
+    process.env.QSTASH_URL = 'https://qstash-us-east-1.upstash.io'
+
+    await publishScanJob('u1', 'p1')
+
+    expect(Client).toHaveBeenCalledWith({ token: 'test-token', baseUrl: 'https://qstash-us-east-1.upstash.io' })
+  })
+
+  it('omits baseUrl (SDK defaults to the EU region) when QSTASH_URL is unset', async () => {
+    delete process.env.QSTASH_URL
+
+    await publishScanJob('u1', 'p1')
+
+    expect(Client).toHaveBeenCalledWith({ token: 'test-token', baseUrl: undefined })
+  })
 })
