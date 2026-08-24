@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // app/(dashboard)/dashboard/page.test.tsx
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 const redirectMock = vi.fn()
@@ -33,6 +33,10 @@ vi.mock('@/lib/api/board-config', () => ({
 }))
 
 describe('Dashboard page', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ count: 0 }) }))
+  })
+
   afterEach(() => {
     vi.clearAllMocks()
   })
@@ -57,5 +61,6 @@ describe('Dashboard page', () => {
     render(element)
     expect(redirectMock).not.toHaveBeenCalled()
     expect(screen.getByRole('link', { name: /^homepage$/i })).toHaveAttribute('href', '/')
+    expect(await screen.findByLabelText('Job matches')).toHaveAttribute('href', '/dashboard/jobsearch/notifications')
   })
 })

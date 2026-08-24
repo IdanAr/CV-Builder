@@ -12,6 +12,7 @@ import UploadCVButton from '@/components/UploadCVButton'
 import { EmptyDashboardState } from '@/components/EmptyDashboardState'
 import { AppNavbar } from '@/components/ui/AppNavbar'
 import { UserProfileButton } from '@/components/ui/UserProfileButton'
+import { NotificationBell } from '@/components/jobsearch/NotificationBell'
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -49,6 +50,7 @@ export default async function DashboardPage() {
               Applications
             </Link>
             <div className="w-px h-4 bg-indigo-200" />
+            <NotificationBell />
             <UserProfileButton user={session.user} />
           </div>
         }
