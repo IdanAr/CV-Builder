@@ -36,13 +36,22 @@ async function handler(req: Request) {
 // import-time crash in any environment where the signing-key env vars
 // aren't set until after this module has already been imported (e.g. a
 // test that configures them in `beforeEach`).
+//
+// The construction itself happens inside the request's try/catch below
+// (not just the call to the built handler) because verifySignatureAppRouter()
+// also throws synchronously, at construction time, when none of
+// QSTASH_CURRENT_SIGNING_KEY / QSTASH_NEXT_SIGNING_KEY / QSTASH_REGION are
+// set — e.g. a deployer who forgot to configure the QStash env vars. Without
+// the construction inside the try block, that throw would propagate as an
+// unhandled crash (a generic Next.js 500) instead of this route's intended
+// clean 401.
 let verifiedHandler: ((request: Request, params?: unknown) => Promise<Response>) | undefined
 
 export async function POST(request: Request, params?: unknown) {
-  if (!verifiedHandler) {
-    verifiedHandler = verifySignatureAppRouter(handler)
-  }
   try {
+    if (!verifiedHandler) {
+      verifiedHandler = verifySignatureAppRouter(handler)
+    }
     return await verifiedHandler(request, params)
   } catch (err) {
     // The underlying Receiver throws (rather than returning a rejecting

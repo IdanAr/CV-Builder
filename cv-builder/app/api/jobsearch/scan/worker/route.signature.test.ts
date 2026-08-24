@@ -42,4 +42,30 @@ describe('POST /api/jobsearch/scan/worker signature verification', () => {
     expect(res.status).not.toBe(200)
     expect(mockRunScan).not.toHaveBeenCalled()
   })
+
+  it('fails cleanly (not an unhandled crash) when the QStash signing-key env vars are entirely unset', async () => {
+    delete process.env.QSTASH_CURRENT_SIGNING_KEY
+    delete process.env.QSTASH_NEXT_SIGNING_KEY
+    delete process.env.QSTASH_REGION
+
+    // The route module caches its verifySignatureAppRouter()-wrapped handler
+    // in a module-scoped variable built lazily on first request. Earlier
+    // tests in this file already built it with valid keys, so re-import a
+    // fresh module instance here to actually exercise the construction-time
+    // throw (verifySignatureAppRouter throws synchronously when none of the
+    // signing-key / region env vars are set).
+    vi.resetModules()
+    const { POST: freshPost } = await import('./route')
+
+    const req = new Request('http://test/api/jobsearch/scan/worker', {
+      method: 'POST',
+      body: JSON.stringify({ userId: 'u1', profileId: 'p1' }),
+    })
+
+    const res = await freshPost(req as never, undefined as never)
+
+    expect(res).toBeInstanceOf(Response)
+    expect(res.status).not.toBe(200)
+    expect(mockRunScan).not.toHaveBeenCalled()
+  })
 })
