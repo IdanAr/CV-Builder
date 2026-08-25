@@ -108,6 +108,64 @@ describe('ProfileList', () => {
     expect(screen.queryByRole('button', { name: /create.*profile/i })).not.toBeInTheDocument()
   })
 
+  it('deletes a profile via DELETE after confirmation', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ profiles: [{ _id: 'p1', name: 'Frontend', isActive: true }] }),
+    })
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) })
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ profiles: [] }) })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ProfileList />)
+    await screen.findByText('Frontend')
+    await userEvent.click(screen.getByRole('button', { name: /delete frontend/i }))
+
+    expect(confirmSpy).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(mockFetch).toHaveBeenCalledWith('/api/jobsearch/profiles/p1', expect.objectContaining({ method: 'DELETE' }))
+    )
+    confirmSpy.mockRestore()
+  })
+
+  it('does not delete when the confirmation is dismissed', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ profiles: [{ _id: 'p1', name: 'Frontend', isActive: true }] }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ProfileList />)
+    await screen.findByText('Frontend')
+    await userEvent.click(screen.getByRole('button', { name: /delete frontend/i }))
+
+    expect(confirmSpy).toHaveBeenCalled()
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    confirmSpy.mockRestore()
+  })
+
+  it('shows an error message when DELETE fails', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ profiles: [{ _id: 'p1', name: 'Frontend', isActive: true }] }),
+    })
+    mockFetch.mockResolvedValueOnce({ ok: false, json: async () => ({}) })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ProfileList />)
+    await screen.findByText('Frontend')
+    await userEvent.click(screen.getByRole('button', { name: /delete frontend/i }))
+
+    expect(await screen.findByText(/failed to delete profile/i)).toBeInTheDocument()
+    confirmSpy.mockRestore()
+  })
+
   it('links each profile to its scraped-jobs page', async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,

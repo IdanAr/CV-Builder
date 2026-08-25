@@ -7,6 +7,7 @@ import { listResumeOptions } from '@/lib/api/resumes'
 import ApplicationsView from '@/components/applications/ApplicationsView'
 import { AppNavbar } from '@/components/ui/AppNavbar'
 import { UserProfileButton } from '@/components/ui/UserProfileButton'
+import { JobSearchNav } from '@/components/jobsearch/JobSearchNav'
 import type { ApplicationRow, BoardConfigData } from '@/lib/applications/types'
 
 export default async function ApplicationsPage() {
@@ -32,6 +33,7 @@ export default async function ApplicationsPage() {
               My CVs
             </Link>
             <div className="h-4 w-px bg-indigo-200" />
+            <JobSearchNav />
             <UserProfileButton user={session.user} />
           </div>
         }
