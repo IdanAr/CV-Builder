@@ -2,6 +2,7 @@
 // app/(dashboard)/dashboard/page.test.tsx
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 const redirectMock = vi.fn()
 vi.mock('next/navigation', () => ({
@@ -61,6 +62,12 @@ describe('Dashboard page', () => {
     render(element)
     expect(redirectMock).not.toHaveBeenCalled()
     expect(screen.getByRole('link', { name: /^homepage$/i })).toHaveAttribute('href', '/')
-    expect(await screen.findByLabelText('Job matches')).toHaveAttribute('href', '/dashboard/jobsearch/notifications')
+
+    await userEvent.click(await screen.findByLabelText('Job search menu'))
+    expect(screen.getByRole('menuitem', { name: /Job Matches/ })).toHaveAttribute(
+      'href',
+      '/dashboard/jobsearch/notifications'
+    )
+    expect(screen.getByRole('menuitem', { name: 'Profiles' })).toHaveAttribute('href', '/dashboard/jobsearch')
   })
 })
