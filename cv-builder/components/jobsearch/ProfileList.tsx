@@ -59,6 +59,21 @@ export function ProfileList() {
     }
   }
 
+  async function deleteProfile(profile: ProfileSummary) {
+    if (!window.confirm(`Delete "${profile.name}"? This can't be undone.`)) return
+    setError(null)
+    try {
+      const res = await fetch(`/api/jobsearch/profiles/${profile._id}`, { method: 'DELETE' })
+      if (res.ok) {
+        await load()
+      } else {
+        setError('Failed to delete profile. Please try again.')
+      }
+    } catch {
+      setError('An error occurred. Please check your connection and try again.')
+    }
+  }
+
   // Only fully replace the view with an error screen when the very first load
   // failed and there's nothing to show yet. Once profiles have loaded
   // successfully, a later failed reload/toggle shows an inline banner above
@@ -121,15 +136,25 @@ export function ProfileList() {
               <Link href={`/dashboard/jobsearch/${profile._id}`} className="font-medium text-indigo-700 hover:underline">
                 {profile.name}
               </Link>
-              <label className="flex items-center gap-1.5 text-sm">
-                <input
-                  type="checkbox"
-                  aria-label="Active"
-                  checked={profile.isActive}
-                  onChange={() => toggleActive(profile)}
-                />
-                Active
-              </label>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input
+                    type="checkbox"
+                    aria-label="Active"
+                    checked={profile.isActive}
+                    onChange={() => toggleActive(profile)}
+                  />
+                  Active
+                </label>
+                <button
+                  type="button"
+                  aria-label={`Delete ${profile.name}`}
+                  className="text-sm text-red-600 hover:underline"
+                  onClick={() => deleteProfile(profile)}
+                >
+                  Delete
+                </button>
+              </div>
             </li>
           ))}
         </ul>
