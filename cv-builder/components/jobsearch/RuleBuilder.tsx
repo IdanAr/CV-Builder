@@ -236,7 +236,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
       {error && <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
       {rules.length === 0 && !showForm && (
-        <p className="text-sm text-gray-500">No rules yet — postings will be stored but won&apos;t trigger notifications.</p>
+        <p className="text-sm text-gray-500">No rules yet - postings will be stored but won&apos;t trigger notifications.</p>
       )}
 
       {rules.length > 0 && (
@@ -246,7 +246,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
               <div>
                 <div className="font-medium">{rule.name}</div>
                 <div className="text-xs text-gray-500">
-                  {ACTION_LABELS[rule.action]} — {rule.conditions.map(describeCondition).join('; ')}
+                  {ACTION_LABELS[rule.action]} - {rule.conditions.map(describeCondition).join('; ')}
                 </div>
               </div>
               <div className="flex items-center gap-3">

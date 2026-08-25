@@ -32,7 +32,7 @@ function highlightApprovals(text: string, approvals: string[]): React.ReactNode 
         <mark
           key={`${i}-${phrase}`}
           className="bg-amber-200 text-amber-900 rounded px-0.5"
-          title="Not in your original notes — please verify before accepting"
+          title="Not in your original notes - please verify before accepting"
         >
           {node.slice(idx, idx + phrase.length)}
         </mark>
@@ -182,7 +182,7 @@ export function CoverLetterPanel() {
         >
           {draft.pendingApprovals.length > 0 && (
             <p className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-700">
-              Highlighted items were not in your original notes — verify before using this letter.
+              Highlighted items were not in your original notes - verify before using this letter.
             </p>
           )}
           <p className="mb-3 whitespace-pre-wrap text-sm leading-relaxed text-gray-800">
@@ -241,7 +241,7 @@ export function CoverLetterPanel() {
         <textarea
           value={data.coverLetter ?? ''}
           onChange={(e) => setData({ coverLetter: e.target.value })}
-          placeholder="Your generated cover letter will appear here — feel free to edit it directly."
+          placeholder="Your generated cover letter will appear here - feel free to edit it directly."
           className="w-full h-80 rounded-lg border border-indigo-200 bg-white/70 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
       </div>

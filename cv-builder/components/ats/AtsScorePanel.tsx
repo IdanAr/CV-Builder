@@ -405,13 +405,13 @@ export function AtsScorePanel() {
                       <div>
                         <p className="text-xs font-semibold text-teal-700 mb-0.5">🔎 Semantic Match</p>
                         <p className="text-xs text-gray-600 leading-relaxed">
-                          AI checks whether your resume already covers a missing keyword through a synonym or related term (e.g. &quot;k8s&quot; counts for &quot;Kubernetes&quot;) — it doesn&apos;t rewrite anything.
+                          AI checks whether your resume already covers a missing keyword through a synonym or related term (e.g. &quot;k8s&quot; counts for &quot;Kubernetes&quot;) - it doesn&apos;t rewrite anything.
                         </p>
                       </div>
                       <div>
                         <p className="text-xs font-semibold text-indigo-700 mb-0.5">✨ Tailor with AI</p>
                         <p className="text-xs text-gray-600 leading-relaxed">
-                          AI rewrites your summary and bullet points to naturally work in the missing keywords — you review and approve each suggested change before it&apos;s applied.
+                          AI rewrites your summary and bullet points to naturally work in the missing keywords - you review and approve each suggested change before it&apos;s applied.
                         </p>
                       </div>
                     </div>
@@ -422,7 +422,7 @@ export function AtsScorePanel() {
               {!hasTriedSemanticThisAnalysis && semanticStatus !== 'ready' && (
                 <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
                   <p className="text-xs text-amber-800">
-                    💡 Try Semantic Match first — it can clear keywords you already cover before spending an AI rewrite on them.
+                    💡 Try Semantic Match first - it can clear keywords you already cover before spending an AI rewrite on them.
                   </p>
                 </div>
               )}
@@ -432,7 +432,7 @@ export function AtsScorePanel() {
               )}
 
               <p className="mb-1 text-xs text-red-700">
-                Click a keyword you don&apos;t have to ignore it — the AI tools above will skip it too.
+                Click a keyword you don&apos;t have to ignore it - the AI tools above will skip it too.
               </p>
               <p className="mb-2 text-xs text-indigo-600">
                 <span className="text-red-700">●</span> must-have / unclear&nbsp;&nbsp;
@@ -544,7 +544,7 @@ export function AtsScorePanel() {
         <div className="space-y-4">
           {result && result.missingKeywords.length === 0 && result.excludedMissingKeywords.length === 0 ? (
             <div className="rounded-xl border border-green-200 bg-green-50 p-6 text-center">
-              <p className="text-sm text-green-700 font-medium">Nothing to fix — great match!</p>
+              <p className="text-sm text-green-700 font-medium">Nothing to fix - great match!</p>
             </div>
           ) : fixStatus === 'idle' ? (
             <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-6 text-center">
@@ -584,7 +584,7 @@ export function AtsScorePanel() {
               ) : (
                 <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-center">
                   <p className="text-sm text-indigo-600">
-                    No specific fixes found — try re-analyzing after updating your highlights.
+                    No specific fixes found - try re-analyzing after updating your highlights.
                   </p>
                 </div>
               )}

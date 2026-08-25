@@ -51,7 +51,7 @@ export default function TermsOfUsePage() {
         <p className="mt-2">
           You retain ownership of the résumé data, uploaded files, cover letters, and application-tracking data you
           submit to the Service (&ldquo;Your Content&rdquo;). You grant us a limited, non-exclusive license to
-          store, process, and display Your Content solely to provide the Service to you — for example, rendering
+          store, process, and display Your Content solely to provide the Service to you - for example, rendering
           your résumé, generating AI suggestions from it, and producing your exported PDF/DOCX files. You are
           responsible for ensuring you have the right to submit Your Content, including any information about
           former employers or references you include.
@@ -63,7 +63,7 @@ export default function TermsOfUsePage() {
         <p className="mt-2">
           The Service uses artificial intelligence to suggest bullet points, rewrite text, score your résumé
           against Applicant Tracking Systems, and draft cover letters. AI-generated output may be inaccurate,
-          incomplete, or contain claims not supported by the information you provided — this is why certain
+          incomplete, or contain claims not supported by the information you provided - this is why certain
           suggestions require your explicit review and approval before being saved. You are solely responsible for
           reviewing all AI-generated content for accuracy before relying on it, saving it, or submitting it to any
           employer. An ATS compatibility score is an estimate based on general parsing heuristics; it is not a

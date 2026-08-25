@@ -8,7 +8,7 @@ export function EmptyDashboardState() {
     <div className="rounded-xl border border-indigo-100 bg-white/50 py-12 px-6 text-center backdrop-blur-sm">
       <h2 className="text-lg font-semibold text-indigo-900">Let&apos;s build your first CV</h2>
       <p className="mx-auto mt-1 max-w-md text-sm text-indigo-400">
-        Import your existing CV or start fresh — either way you get a live preview and an ATS score.
+        Import your existing CV or start fresh - either way you get a live preview and an ATS score.
       </p>
       <div className="mx-auto mt-8 grid max-w-2xl gap-4 sm:grid-cols-2">
         <div className="flex flex-col rounded-xl border border-indigo-200 bg-white/70 p-6 text-left shadow-sm">

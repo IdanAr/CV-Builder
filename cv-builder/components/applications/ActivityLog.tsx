@@ -8,8 +8,8 @@ import type { ActivityEntry } from '@/lib/applications/types'
 import { formatRelativeTime } from '@/lib/format-relative-time'
 
 export function formatActivityLine(entry: ActivityEntry): string {
-  const from = entry.fromValue === null ? '—' : `'${entry.fromValue}'`
-  const to = entry.toValue === null ? '—' : `'${entry.toValue}'`
+  const from = entry.fromValue === null ? '-' : `'${entry.fromValue}'`
+  const to = entry.toValue === null ? '-' : `'${entry.toValue}'`
   return `${entry.fieldLabel} changed from ${from} to ${to}`
 }
 
@@ -96,7 +96,7 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
           )}
           {entries !== null && entries.length === 0 && (
             <p className="px-1 py-2 text-sm text-indigo-400">
-              No changes yet — edits to this application will appear here.
+              No changes yet - edits to this application will appear here.
             </p>
           )}
           {entries !== null &&

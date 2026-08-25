@@ -87,9 +87,9 @@ export function ProfileSettings({ profileId }: ProfileSettingsProps) {
       </div>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
         <dt className="font-medium text-gray-600">Roles</dt>
-        <dd>{profile.roles.length > 0 ? profile.roles.join(', ') : '—'}</dd>
+        <dd>{profile.roles.length > 0 ? profile.roles.join(', ') : '-'}</dd>
         <dt className="font-medium text-gray-600">Location</dt>
-        <dd>{[countryName, profile.locations[0]?.city].filter(Boolean).join(', ') || '—'}</dd>
+        <dd>{[countryName, profile.locations[0]?.city].filter(Boolean).join(', ') || '-'}</dd>
         <dt className="font-medium text-gray-600">Recency / threshold</dt>
         <dd>
           {profile.recencyDays} days · {profile.minAtsScore}%

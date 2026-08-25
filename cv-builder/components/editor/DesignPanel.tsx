@@ -449,7 +449,7 @@ export function DesignPanel() {
       {meta.templateId === 'sidebar' && (
         <div>
           <label className={labelClass}>
-            Rail width — <span className="font-mono">{meta.sidebarRailWidth ?? 33}%</span>
+            Rail width - <span className="font-mono">{meta.sidebarRailWidth ?? 33}%</span>
           </label>
           <input type="range" min={20} max={40} step={1}
             aria-label="Rail width"
@@ -560,7 +560,7 @@ export function DesignPanel() {
       {/* Margins */}
       <div>
         <label className={labelClass}>
-          Page margins — <span className="font-mono">{meta.pageMargins.toFixed(1)}&quot;</span>
+          Page margins - <span className="font-mono">{meta.pageMargins.toFixed(1)}&quot;</span>
         </label>
         <input type="range" min={0.5} max={1.5} step={0.1}
           value={meta.pageMargins}
@@ -574,7 +574,7 @@ export function DesignPanel() {
       {/* Line spacing */}
       <div>
         <label className={labelClass}>
-          Line spacing — <span className="font-mono">{meta.lineSpacing.toFixed(2)}</span>
+          Line spacing - <span className="font-mono">{meta.lineSpacing.toFixed(2)}</span>
         </label>
         <input type="range" min={1.0} max={1.15} step={0.05}
           value={meta.lineSpacing}

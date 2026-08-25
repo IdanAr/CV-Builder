@@ -454,7 +454,7 @@ function buildRailParas(
       case 'certificates':
         if (!certificates.length) break
         paras.push(railHeading('Certifications'))
-        for (const c of certificates) paras.push(new Paragraph({ children: [new TextRun({ text: c.name ?? '', bold: true, font: bodyFont, size: 20, color: railText }), ...(c.issuer ? [new TextRun({ text: ` — ${c.issuer}`, font: bodyFont, size: 20, color: railSoft })] : []), ...(c.date ? [new TextRun({ text: `  ·  ${formatDate(c.date)}`, font: bodyFont, size: 20, color: railMuted })] : [])], spacing: { after: 40 } }))
+        for (const c of certificates) paras.push(new Paragraph({ children: [new TextRun({ text: c.name ?? '', bold: true, font: bodyFont, size: 20, color: railText }), ...(c.issuer ? [new TextRun({ text: ` - ${c.issuer}`, font: bodyFont, size: 20, color: railSoft })] : []), ...(c.date ? [new TextRun({ text: `  ·  ${formatDate(c.date)}`, font: bodyFont, size: 20, color: railMuted })] : [])], spacing: { after: 40 } }))
         break
       case 'awards':
         if (!awards.length) break
@@ -667,7 +667,7 @@ function buildSectionParas(sections: string[], ctx: SectionRenderCtx): Paragraph
           out.push(new Paragraph({
             children: [
               new TextRun({ text: c.name ?? '', bold: true, font: bodyFont, size: 20 }),
-              ...(c.issuer ? [new TextRun({ text: ` — ${c.issuer}`, font: bodyFont, size: 20, color: '666666' })] : []),
+              ...(c.issuer ? [new TextRun({ text: ` - ${c.issuer}`, font: bodyFont, size: 20, color: '666666' })] : []),
               ...(c.date ? [new TextRun({ text: `\t${formatDate(c.date)}`, font: bodyFont, size: 20, color: '666666' })] : []),
             ],
             tabStops: [{ type: 'right' as never, position: tabWidthTwips }],

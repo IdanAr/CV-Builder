@@ -93,7 +93,7 @@ export default function UploadProgressModal({
       runPhase(EXTRACTING_PHASE)
     } else if (stage === 'done') {
       setPercent(100)
-      setLabel('Done — opening your CV…')
+      setLabel('Done - opening your CV…')
     }
 
     return clearTimers

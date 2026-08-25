@@ -193,7 +193,7 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
               <Text key={i} style={{ marginBottom: 4 }}>
                 <Text style={styles.bold}>
                   {c.name ?? ''}
-                  {c.issuer ? <Text style={styles.small}> — {c.issuer}</Text> : null}
+                  {c.issuer ? <Text style={styles.small}> - {c.issuer}</Text> : null}
                 </Text>
                 {c.date ? <Text style={styles.small}>{'  ·  '}{c.date}</Text> : null}
               </Text>

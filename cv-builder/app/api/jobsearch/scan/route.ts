@@ -11,7 +11,7 @@ export const POST = auth(async function POST(req) {
 
   const rate = checkRateLimit(`${req.auth.user.id}:scan`, SCAN_RATE_LIMIT)
   if (!rate.allowed) {
-    return apiError('RATE_LIMITED', 'Too many scan requests — please wait a moment.', 429, undefined, rate.retryAfterSeconds)
+    return apiError('RATE_LIMITED', 'Too many scan requests - please wait a moment.', 429, undefined, rate.retryAfterSeconds)
   }
 
   try {

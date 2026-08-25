@@ -35,7 +35,7 @@ function highlightApprovals(text: string, approvals: string[]): React.ReactNode 
         <mark
           key={`${i}-${phrase}`}
           className="bg-yellow-200 text-yellow-900 rounded px-0.5"
-          title="Not in your original notes — please verify before accepting"
+          title="Not in your original notes - please verify before accepting"
         >
           {node.slice(idx, idx + phrase.length)}
         </mark>
@@ -164,7 +164,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
           >
             {result.pendingApprovals.length > 0 && (
               <p className="mb-2 rounded border border-yellow-200 bg-yellow-50 px-2 py-1 text-xs text-yellow-700">
-                Highlighted items were not in your original notes — verify before accepting.
+                Highlighted items were not in your original notes - verify before accepting.
               </p>
             )}
             <p className="mb-3 text-sm leading-relaxed text-gray-800">

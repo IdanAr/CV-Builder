@@ -16,7 +16,7 @@ export const POST = auth(async (req, ctx) => {
 
   const rate = checkRateLimit(`${req.auth.user.id}:ai`, AI_RATE_LIMIT)
   if (!rate.allowed) {
-    return apiError('RATE_LIMITED', 'Too many AI requests — please wait a moment.', 429, undefined, rate.retryAfterSeconds)
+    return apiError('RATE_LIMITED', 'Too many AI requests - please wait a moment.', 429, undefined, rate.retryAfterSeconds)
   }
 
   try {

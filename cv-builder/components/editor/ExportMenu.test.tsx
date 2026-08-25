@@ -9,7 +9,7 @@ describe('ExportMenu', () => {
     render(<ExportMenu onExport={onExport} />)
 
     fireEvent.click(screen.getByRole('button', { name: /export/i }))
-    fireEvent.click(screen.getByText('PDF — ATS-optimized'))
+    fireEvent.click(screen.getByText('PDF - ATS-optimized'))
 
     expect(onExport).toHaveBeenCalledWith('pdf', 'ats')
   })
@@ -18,17 +18,17 @@ describe('ExportMenu', () => {
     render(<ExportMenu onExport={vi.fn()} />)
     fireEvent.click(screen.getByRole('button', { name: /export/i }))
 
-    expect(screen.getByText('PDF — Designed')).toBeTruthy()
-    expect(screen.getByText('PDF — ATS-optimized')).toBeTruthy()
-    expect(screen.getByText('DOCX — Designed')).toBeTruthy()
-    expect(screen.getByText('DOCX — ATS-optimized')).toBeTruthy()
+    expect(screen.getByText('PDF - Designed')).toBeTruthy()
+    expect(screen.getByText('PDF - ATS-optimized')).toBeTruthy()
+    expect(screen.getByText('DOCX - Designed')).toBeTruthy()
+    expect(screen.getByText('DOCX - ATS-optimized')).toBeTruthy()
   })
 
   it('closes after selecting an item', () => {
     render(<ExportMenu onExport={vi.fn()} />)
     fireEvent.click(screen.getByRole('button', { name: /export/i }))
-    fireEvent.click(screen.getByText('DOCX — Designed'))
-    expect(screen.queryByText('PDF — Designed')).toBeNull()
+    fireEvent.click(screen.getByText('DOCX - Designed'))
+    expect(screen.queryByText('PDF - Designed')).toBeNull()
   })
 
   it('exposes menu semantics and expanded state', () => {

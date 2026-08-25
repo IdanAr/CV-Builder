@@ -13,7 +13,7 @@ export const POST = auth(async function POST(req) {
 
   const rate = checkRateLimit(`${req.auth.user.id}:ai`, AI_RATE_LIMIT)
   if (!rate.allowed) {
-    return apiError('RATE_LIMITED', 'Too many AI requests — please wait a moment.', 429, undefined, rate.retryAfterSeconds)
+    return apiError('RATE_LIMITED', 'Too many AI requests - please wait a moment.', 429, undefined, rate.retryAfterSeconds)
   }
 
   let body: unknown
@@ -36,7 +36,7 @@ export const POST = auth(async function POST(req) {
     const name = (data.basics as Record<string, unknown> | undefined)?.name
     const title = typeof name === 'string' && name
       ? `${name}'s CV`
-      : `Uploaded CV — ${new Date().toISOString().slice(0, 10)}`
+      : `Uploaded CV - ${new Date().toISOString().slice(0, 10)}`
 
     const meta = ResumeMetaSchema.parse({})
     // Only surface built-in sections the parser actually found entries for —

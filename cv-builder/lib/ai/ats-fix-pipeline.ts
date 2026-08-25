@@ -109,7 +109,7 @@ Missing keywords to incorporate: ${keywords.join(', ')}
 Resume sections available to improve:
 ${sectionsText}
 
-Propose up to 12 targeted edits across the sections above to naturally work in as many of the missing keywords as fit well - prioritize the summary and the two most recent roles, since those carry the most ATS weight. Not every keyword needs its own edit; a single strong edit may incorporate more than one keyword, and some low-value keywords may not fit anywhere naturally - skip those rather than forcing them in. Preserve factual accuracy - do not invent metrics, numbers, or experiences not implied by the original text. Do not use em dashes (—) in the suggested text; use a regular hyphen (-) or rephrase instead.${newSummaryInstruction}
+Propose up to 12 targeted edits across the sections above to naturally work in as many of the missing keywords as fit well - prioritize the summary and the two most recent roles, since those carry the most ATS weight. Not every keyword needs its own edit; a single strong edit may incorporate more than one keyword, and some low-value keywords may not fit anywhere naturally - skip those rather than forcing them in. Preserve factual accuracy - do not invent metrics, numbers, or experiences not implied by the original text. Do not use em dashes (-) in the suggested text; use a regular hyphen (-) or rephrase instead.${newSummaryInstruction}
 
 Return a JSON array. Maximum 12 fixes. Each object:
 {

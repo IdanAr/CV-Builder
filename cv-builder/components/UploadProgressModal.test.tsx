@@ -132,7 +132,7 @@ describe('UploadProgressModal', () => {
     expect(screen.getByText('Finalizing…')).toBeInTheDocument()
   })
 
-  it('shows 100% and "Done — opening your CV…" when stage is "done"', () => {
+  it('shows 100% and "Done - opening your CV…" when stage is "done"', () => {
     render(
       <UploadProgressModal
         open
@@ -143,7 +143,7 @@ describe('UploadProgressModal', () => {
       />
     )
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100')
-    expect(screen.getByText('Done — opening your CV…')).toBeInTheDocument()
+    expect(screen.getByText('Done - opening your CV…')).toBeInTheDocument()
   })
 
   it('does not call onClose when the backdrop is clicked while reading', () => {

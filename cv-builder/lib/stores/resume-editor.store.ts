@@ -297,27 +297,27 @@ async function performSave(): Promise<void> {
     // Validation errors won't resolve on retry — surface them immediately with details.
     if (status === 400) {
       const details = cause?.body?.details
-      console.error('[AutoSave] Validation error — save aborted:', details ?? cause?.body)
+      console.error('[AutoSave] Validation error - save aborted:', details ?? cause?.body)
       _retryCount = 0
-      _setSaveError("Couldn't save — some fields have invalid values. Check URLs and email addresses.")
+      _setSaveError("Couldn't save - some fields have invalid values. Check URLs and email addresses.")
       return
     }
     if (status === 401) {
       console.error('[AutoSave] Session expired')
       _retryCount = 0
-      _setSaveError("Couldn't save — your session has expired. Please refresh the page.")
+      _setSaveError("Couldn't save - your session has expired. Please refresh the page.")
       return
     }
     if (_retryCount < MAX_RETRIES) {
       const delay = RETRY_DELAYS[_retryCount] ?? 12000
       _retryCount++
       console.warn(`[AutoSave] Save failed (attempt ${_retryCount}/${MAX_RETRIES}), retrying in ${delay / 1000}s…`, err)
-      _setSaveError(`Couldn't save — retrying… (attempt ${_retryCount}/${MAX_RETRIES})`)
+      _setSaveError(`Couldn't save - retrying… (attempt ${_retryCount}/${MAX_RETRIES})`)
       _retryTimer = setTimeout(performSave, delay)
     } else {
       console.error('[AutoSave] All retries exhausted:', err)
       _retryCount = 0
-      _setSaveError("Couldn't save after several attempts — please check your connection and try again.")
+      _setSaveError("Couldn't save after several attempts - please check your connection and try again.")
     }
   } finally {
     _setIsSaving(false)

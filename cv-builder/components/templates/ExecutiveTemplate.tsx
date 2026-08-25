@@ -190,7 +190,7 @@ export function ExecutiveTemplate({ data, meta }: TemplateProps) {
             {certificates.map((c, i) => (
               <div key={i} data-pv-entry={i} style={{ marginBottom: '6px', fontSize: '10pt' }}>
                 <strong>{c.name}</strong>
-                {c.issuer && <span style={{ color: '#666' }}> — {c.issuer}</span>}
+                {c.issuer && <span style={{ color: '#666' }}> - {c.issuer}</span>}
                 {c.date && <span style={{ color: '#666' }}>  ·  {c.date}</span>}
               </div>
             ))}

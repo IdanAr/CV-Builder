@@ -32,8 +32,8 @@ describe('formatActivityLine', () => {
     expect(formatActivityLine(entries[0])).toBe("Status changed from 'Applied' to 'Interviewing'")
   })
 
-  it('renders null values as an em dash', () => {
-    expect(formatActivityLine(entries[1])).toBe("Company changed from — to 'Acme'")
+  it('renders null values as a hyphen', () => {
+    expect(formatActivityLine(entries[1])).toBe("Company changed from - to 'Acme'")
   })
 })
 

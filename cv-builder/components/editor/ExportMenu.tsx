@@ -44,11 +44,11 @@ export function ExportMenu({ onExport }: ExportMenuProps) {
         role="menu"
         className="w-56 overflow-hidden rounded-xl border border-white/40 bg-white/90 shadow-xl backdrop-blur-xl"
       >
-        {item('PDF — Designed', 'Exact match of the preview', 'pdf', 'designed')}
-        {item('PDF — ATS-optimized', 'Single-column, parser-safe', 'pdf', 'ats')}
+        {item('PDF - Designed', 'Exact match of the preview', 'pdf', 'designed')}
+        {item('PDF - ATS-optimized', 'Single-column, parser-safe', 'pdf', 'ats')}
         <div className="my-1 border-t border-indigo-100" aria-hidden="true" />
-        {item('DOCX — Designed', 'Exact match of the preview', 'docx', 'designed')}
-        {item('DOCX — ATS-optimized', 'Single-column, parser-safe', 'docx', 'ats')}
+        {item('DOCX - Designed', 'Exact match of the preview', 'docx', 'designed')}
+        {item('DOCX - ATS-optimized', 'Single-column, parser-safe', 'docx', 'ats')}
       </div>
     </Popover>
   )

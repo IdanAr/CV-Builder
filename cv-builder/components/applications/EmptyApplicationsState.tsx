@@ -10,7 +10,7 @@ export function EmptyApplicationsState({ onCreate }: { onCreate: () => void }) {
     <div className="rounded-xl border border-indigo-100 bg-white/50 py-12 px-6 text-center backdrop-blur-sm">
       <h2 className="text-lg font-semibold text-indigo-900">Track your job applications</h2>
       <p className="mx-auto mt-1 max-w-md text-sm text-indigo-400">
-        One row per application — status, resume used, notes, and any custom columns you add. Every
+        One row per application - status, resume used, notes, and any custom columns you add. Every
         change is logged with a timestamp.
       </p>
       <div className="mx-auto mt-8 grid max-w-2xl gap-4 sm:grid-cols-2">

@@ -117,7 +117,7 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
   if (jobs.length === 0) {
     return (
       <p className="text-sm text-gray-500">
-        No queued drafts yet — postings matched to a &quot;Draft &amp; queue&quot; rule will appear here.
+        No queued drafts yet - postings matched to a &quot;Draft &amp; queue&quot; rule will appear here.
       </p>
     )
   }
@@ -132,7 +132,7 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
           const reason =
             job.status === 'needs_review'
               ? job.pendingApprovals.length > 0
-                ? `Needs your review — unverified: ${job.pendingApprovals.join(', ')}`
+                ? `Needs your review - unverified: ${job.pendingApprovals.join(', ')}`
                 : `Below your ${minAtsScore}% threshold`
               : null
 
@@ -145,7 +145,7 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
                   </a>
                   <div className="text-sm text-gray-600">
                     {job.company}
-                    {job.location ? ` — ${job.location}` : ''}
+                    {job.location ? ` - ${job.location}` : ''}
                   </div>
                 </div>
                 <span
@@ -158,7 +158,7 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
               </div>
 
               <div className="mt-2 text-sm text-gray-600">
-                Fit score: {job.atsScore ?? '—'}% → {job.postTailorScore ?? '—'}%
+                Fit score: {job.atsScore ?? '-'}% → {job.postTailorScore ?? '-'}%
               </div>
 
               {reason && <div className="mt-1 text-xs text-amber-700">{reason}</div>}

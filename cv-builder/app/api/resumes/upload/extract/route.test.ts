@@ -96,7 +96,7 @@ describe('POST /api/resumes/upload/extract', () => {
     })
     const res = await POST(req as never, {} as never) as Response
     expect(res.status).toBe(201)
-    expect(mockCreateResume.mock.calls[0][1].title).toMatch(/^Uploaded CV — \d{4}-\d{2}-\d{2}$/)
+    expect(mockCreateResume.mock.calls[0][1].title).toMatch(/^Uploaded CV - \d{4}-\d{2}-\d{2}$/)
   })
 
   it('appends custom:<id> entries to meta.sectionOrder for extracted custom sections', async () => {

@@ -25,9 +25,9 @@ export default function PrivacyPolicyPage() {
           Google or GitHub, we receive your name, email address, and profile picture from that provider.
         </p>
         <p className="mt-2">
-          <strong>Résumé and career data.</strong> Information you enter or upload while building a résumé —
+          <strong>Résumé and career data.</strong> Information you enter or upload while building a résumé -
           including your name, contact details, work history, education, skills, certifications, awards,
-          publications, volunteer experience, languages, interests, projects, and any cover letter text — along with
+          publications, volunteer experience, languages, interests, projects, and any cover letter text - along with
           your chosen template and design settings.
         </p>
         <p className="mt-2">
@@ -38,7 +38,7 @@ export default function PrivacyPolicyPage() {
         <p className="mt-2">
           <strong>Uploaded files.</strong> If you upload an existing résumé (PDF or DOCX) to import it, the file is
           parsed to extract its text in order to prefill your résumé. The uploaded file itself is processed in
-          memory and is not stored — only the résumé data you subsequently save is retained.
+          memory and is not stored - only the résumé data you subsequently save is retained.
         </p>
         <p className="mt-2">
           <strong>Job posting text.</strong> If you paste a job description into the ATS scoring or cover letter
@@ -66,12 +66,12 @@ export default function PrivacyPolicyPage() {
       <section>
         <h2 className="text-xl font-semibold text-gray-900">3. AI-Assisted Features</h2>
         <p className="mt-2">
-          Certain features — writing suggestions, ATS scoring and keyword matching, ATS-format rewrites, and cover
-          letter generation — send the relevant text of your résumé and, where applicable, any job description you
+          Certain features - writing suggestions, ATS scoring and keyword matching, ATS-format rewrites, and cover
+          letter generation - send the relevant text of your résumé and, where applicable, any job description you
           paste in (not the raw uploaded file) to Anthropic&apos;s Claude API for processing. Anthropic processes
           this text solely to generate the requested output and according to its own terms. AI-generated suggestions
-          are shown to you for review, and — where the system flags a claim it cannot verify against your original
-          text — for your explicit approval, before anything is saved to your résumé.
+          are shown to you for review, and - where the system flags a claim it cannot verify against your original
+          text - for your explicit approval, before anything is saved to your résumé.
         </p>
       </section>
 
@@ -83,13 +83,13 @@ export default function PrivacyPolicyPage() {
           it:
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-6">
-          <li><strong>Google</strong> and <strong>GitHub</strong> — for authentication (OAuth sign-in);</li>
-          <li><strong>Anthropic</strong> — to power AI-assisted writing, scoring, and extraction features (Section 3);</li>
-          <li><strong>MongoDB, Inc. (MongoDB Atlas)</strong> — to store your account and résumé data in our database; and</li>
-          <li><strong>Vercel, Inc.</strong> — to host and serve the application.</li>
+          <li><strong>Google</strong> and <strong>GitHub</strong> - for authentication (OAuth sign-in);</li>
+          <li><strong>Anthropic</strong> - to power AI-assisted writing, scoring, and extraction features (Section 3);</li>
+          <li><strong>MongoDB, Inc. (MongoDB Atlas)</strong> - to store your account and résumé data in our database; and</li>
+          <li><strong>Vercel, Inc.</strong> - to host and serve the application.</li>
         </ul>
         <p className="mt-2">
-          We do not use any advertising, analytics, or tracking services — the Service does not include any
+          We do not use any advertising, analytics, or tracking services - the Service does not include any
           third-party analytics or tracking scripts. We may also disclose information if required to do so by law,
           or to protect the rights, property, or safety of CV Builder, our users, or others.
         </p>
@@ -100,8 +100,8 @@ export default function PrivacyPolicyPage() {
         <p className="mt-2">
           We use only the cookies necessary to keep you signed in: a session cookie set by our authentication
           system, and short-lived cookies used during the Google/GitHub sign-in process itself. We do not use
-          advertising or cross-site tracking cookies. We also store display preferences — such as your chosen
-          application board view and preview zoom level — locally in your browser; this data never leaves your
+          advertising or cross-site tracking cookies. We also store display preferences - such as your chosen
+          application board view and preview zoom level - locally in your browser; this data never leaves your
           device.
         </p>
       </section>
@@ -116,7 +116,7 @@ export default function PrivacyPolicyPage() {
           <a href="mailto:idan.rbel@gmail.com" className="text-indigo-600 hover:text-indigo-800">
             idan.rbel@gmail.com
           </a>{' '}
-          — we will process such requests within a reasonable time.
+          - we will process such requests within a reasonable time.
         </p>
       </section>
 
@@ -137,7 +137,7 @@ export default function PrivacyPolicyPage() {
       <section>
         <h2 className="text-xl font-semibold text-gray-900">8. Data Security</h2>
         <p className="mt-2">
-          We do not store passwords — sign-in is handled entirely through Google and GitHub&apos;s own OAuth
+          We do not store passwords - sign-in is handled entirely through Google and GitHub&apos;s own OAuth
           systems. Data is transmitted over encrypted (HTTPS) connections, and we apply reasonable technical and
           organizational measures to protect your information. No method of transmission or storage is completely
           secure, and we cannot guarantee absolute security.

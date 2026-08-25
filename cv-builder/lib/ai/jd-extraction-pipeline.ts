@@ -60,8 +60,8 @@ Rules:
 - Deduplicate. Return as many distinct terms as the job description actually specifies, up to ${MAX_TERMS}.
 
 For each term, also classify how strongly the job description requires it:
-- "must": explicitly required — marked "must", "must have", "required", or stated as a hard requirement with no qualifier.
-- "nice-to-have": explicitly optional — marked "nice to have", "advantage", "preferred", "plus", "bonus", or similar.
+- "must": explicitly required - marked "must", "must have", "required", or stated as a hard requirement with no qualifier.
+- "nice-to-have": explicitly optional - marked "nice to have", "advantage", "preferred", "plus", "bonus", or similar.
 - "ambiguous": the job description does not clearly state whether this is required or optional.
 
 Return ONLY a JSON array of objects, no other text. Each object has this exact shape: {"term": "<term>", "priority": "must" | "nice-to-have" | "ambiguous"}.

@@ -151,7 +151,7 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
       </div>
       {error && <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
       {jobs.length === 0 ? (
-        <p className="text-sm text-gray-500">No scraped jobs yet — run a scan to find matches.</p>
+        <p className="text-sm text-gray-500">No scraped jobs yet - run a scan to find matches.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {jobs.map((job) => {
@@ -196,7 +196,7 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
                 </div>
                 <div className="text-sm text-gray-600">
                   {job.company}
-                  {job.location ? ` — ${job.location}` : ''}
+                  {job.location ? ` - ${job.location}` : ''}
                 </div>
                 {postedAtLabel && <div className="text-xs text-gray-400">{postedAtLabel}</div>}
               </li>

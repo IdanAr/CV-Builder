@@ -87,7 +87,7 @@ function toTags(value: string): string[] {
 }
 
 function formatList(tags: string[]): string {
-  return tags.length > 0 ? tags.join(', ') : '—'
+  return tags.length > 0 ? tags.join(', ') : '-'
 }
 
 // Turns the API's Zod-issue array (VALIDATION_ERROR's `details`) into a
@@ -385,7 +385,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
             />
           </label>
           <label className="text-sm font-medium">
-            Industries (comma-separated — soft-matched against results, not queried directly)
+            Industries (comma-separated - soft-matched against results, not queried directly)
             <input
               className="mt-1 w-full rounded border px-3 py-2 text-sm"
               value={draftText.industries}
@@ -450,9 +450,9 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
             <dt className="font-medium text-gray-600">Work modes</dt>
             <dd>{formatList(state.workModes)}</dd>
             <dt className="font-medium text-gray-600">Country</dt>
-            <dd>{COUNTRIES.find((c) => c.code === state.locations[0]?.country)?.name || '—'}</dd>
+            <dd>{COUNTRIES.find((c) => c.code === state.locations[0]?.country)?.name || '-'}</dd>
             <dt className="font-medium text-gray-600">City</dt>
-            <dd>{state.locations[0]?.city || '—'}</dd>
+            <dd>{state.locations[0]?.city || '-'}</dd>
             <dt className="font-medium text-gray-600">Categories</dt>
             <dd>{formatList(toTags(draftText.categories))}</dd>
             <dt className="font-medium text-gray-600">Industries</dt>

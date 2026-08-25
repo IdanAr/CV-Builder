@@ -96,7 +96,7 @@ export function AtsFixReviewPanel({
           disabled={verifiedCount === 0}
           title={
             verifiedCount < visible.length
-              ? 'Fixes with unverified figures are skipped — apply those individually after checking them'
+              ? 'Fixes with unverified figures are skipped - apply those individually after checking them'
               : undefined
           }
           className="px-3 py-1 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
@@ -181,7 +181,7 @@ export function AtsFixReviewPanel({
               {fix.pendingApprovals.length > 0 && (
                 <div className="rounded bg-amber-50 border border-amber-200 px-3 py-2">
                   <p className="text-xs text-amber-700 font-medium mb-1">
-                    Contains figures not in your original text — verify before applying:
+                    Contains figures not in your original text - verify before applying:
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {fix.pendingApprovals.map((claim) => (

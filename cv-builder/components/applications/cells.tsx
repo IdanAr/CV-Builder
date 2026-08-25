@@ -96,7 +96,7 @@ function EditableCell({
       onClick={() => setEditing(true)}
       className="block w-full truncate rounded px-1.5 py-0.5 text-left text-sm text-indigo-900 hover:bg-indigo-50"
     >
-      {display ?? <span className="text-indigo-300">—</span>}
+      {display ?? <span className="text-indigo-300">-</span>}
     </button>
   )
 }
@@ -142,7 +142,7 @@ export function DateCell(props: CellProps & { readOnly?: boolean }) {
   if (props.readOnly) {
     return (
       <span className="block truncate px-1.5 py-0.5 text-sm text-indigo-900" aria-label={props.ariaLabel}>
-        {display || <span className="text-indigo-300">—</span>}
+        {display || <span className="text-indigo-300">-</span>}
       </span>
     )
   }
@@ -199,7 +199,7 @@ export function UrlCell(props: CellProps) {
           {displayUrl}
         </a>
       ) : (
-        <span className="min-w-0 flex-1 truncate text-sm text-indigo-300">—</span>
+        <span className="min-w-0 flex-1 truncate text-sm text-indigo-300">-</span>
       )}
       <button
         type="button"
@@ -276,7 +276,7 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
             {selected.label}
           </span>
         ) : (
-          <span className="text-sm text-indigo-300">—</span>
+          <span className="text-sm text-indigo-300">-</span>
         )}
       </button>
       {open && (
@@ -333,7 +333,7 @@ export function ResumeCell(
         }}
         className="w-full truncate rounded border border-transparent bg-transparent px-0.5 py-0.5 text-sm text-indigo-900 hover:border-indigo-200 focus:border-indigo-400 focus:outline-none"
       >
-        <option value="">— none —</option>
+        <option value="">- none -</option>
         {/* Keep a stale link visible even if the resume list no longer contains it. */}
         {current && !props.resumes.some((r) => r.id === current) && (
           <option value={current}>{props.resumeTitle ?? current}</option>

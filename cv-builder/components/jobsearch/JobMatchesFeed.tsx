@@ -86,7 +86,7 @@ export function JobMatchesFeed() {
       {error && <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
       {matches.length === 0 ? (
         <p className="text-sm text-gray-500">
-          No job matches yet — they&apos;ll show up here once a scan finds one that matches one of your notify rules.
+          No job matches yet - they&apos;ll show up here once a scan finds one that matches one of your notify rules.
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -118,7 +118,7 @@ export function JobMatchesFeed() {
                 </div>
                 <div className="text-sm text-gray-600">
                   {match.company}
-                  {match.location ? ` — ${match.location}` : ''}
+                  {match.location ? ` - ${match.location}` : ''}
                 </div>
               </li>
             )
