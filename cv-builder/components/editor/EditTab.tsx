@@ -247,7 +247,12 @@ export function EditTab() {
         )}
       </div>
 
-      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      {/* Explicit id makes dnd-kit's auto-generated aria ids (DndDescribedBy-N)
+          deterministic across server and client — without it dnd-kit derives
+          the suffix from an internal render-order counter, which starts from
+          a different count on a fresh SSR pass than on the client's first
+          hydration render, producing a hydration mismatch. */}
+      <DndContext id="edit-tab-sections" collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={orderedSections} strategy={verticalListSortingStrategy}>
           {orderedSections.map((section) => {
             if (section.startsWith('custom:')) {
