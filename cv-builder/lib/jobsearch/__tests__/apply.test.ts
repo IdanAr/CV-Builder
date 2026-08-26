@@ -33,7 +33,7 @@ describe('runApplyPipeline', () => {
   })
 
   it('returns status "queued" when there are no pending approvals and the score clears the threshold', async () => {
-    const result = await runApplyPipeline('u1', baseResumeData as never, posting, [], 75)
+    const result = await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1')
     expect(result.status).toBe('queued')
     expect(result.draftResumeId).toBe('r1')
     expect(result.postTailorScore).toBe(90)
@@ -41,7 +41,7 @@ describe('runApplyPipeline', () => {
 
   it('returns status "needs_review" when the post-tailor score is below minAtsScore', async () => {
     mockScoreResume.mockReturnValue({ total: 60, missingKeywords: [] })
-    const result = await runApplyPipeline('u1', baseResumeData as never, posting, [], 75)
+    const result = await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1')
     expect(result.status).toBe('needs_review')
   })
 
@@ -50,7 +50,7 @@ describe('runApplyPipeline', () => {
       { id: 'fix-summary', section: 'summary', original: '', suggested: 'Grew revenue 40%.', targetKeywords: ['revenue'], pendingApprovals: ['40%'] },
     ])
     mockScoreResume.mockReturnValue({ total: 95, missingKeywords: [] })
-    const result = await runApplyPipeline('u1', baseResumeData as never, posting, [], 75)
+    const result = await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1')
     expect(result.status).toBe('needs_review')
     expect(result.pendingApprovals).toEqual(['40%'])
   })
@@ -60,7 +60,7 @@ describe('runApplyPipeline', () => {
       { id: 'fix-summary', section: 'summary', original: 'Engineer.', suggested: 'Backend engineer with Node experience.', targetKeywords: ['Node'], pendingApprovals: [] },
     ])
 
-    await runApplyPipeline('u1', baseResumeData as never, posting, ['Node'], 75)
+    await runApplyPipeline('u1', baseResumeData as never, posting, ['Node'], 75, 'source-r1')
 
     expect(mockRunAtsFixPipeline).toHaveBeenCalledWith(baseResumeData, ['Node'])
     expect(mockScoreResume).toHaveBeenCalledWith(
@@ -77,8 +77,15 @@ describe('runApplyPipeline', () => {
         applicationStatus: 'draft',
         targetCompany: 'Acme',
         targetRole: 'Backend Engineer',
-      })
+      }),
+      expect.anything()
     )
+  })
+
+  it('passes sourceResumeId through as parentResumeId so the draft records lineage', async () => {
+    await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1')
+
+    expect(mockCreateResume).toHaveBeenCalledWith('u1', expect.anything(), { parentResumeId: 'source-r1' })
   })
 
   it('deduplicates tailoredKeywords across multiple fixes', async () => {
@@ -91,7 +98,8 @@ describe('runApplyPipeline', () => {
       { ...baseResumeData, work: [{ name: 'Co', highlights: ['x'] }] } as never,
       posting,
       [],
-      75
+      75,
+      'source-r1'
     )
     expect(result.tailoredKeywords.sort()).toEqual(['API', 'Node'])
   })
@@ -99,7 +107,14 @@ describe('runApplyPipeline', () => {
   it('truncates an oversized title/company/role before persisting the draft resume', async () => {
     const longTitle = 'T'.repeat(250)
     const longCompany = 'C'.repeat(250)
-    await runApplyPipeline('u1', baseResumeData as never, { ...posting, title: longTitle, company: longCompany }, [], 75)
+    await runApplyPipeline(
+      'u1',
+      baseResumeData as never,
+      { ...posting, title: longTitle, company: longCompany },
+      [],
+      75,
+      'source-r1'
+    )
 
     const call = mockCreateResume.mock.calls[0][1]
     expect(call.title.length).toBeLessThanOrEqual(200)

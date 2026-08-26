@@ -3,7 +3,10 @@
 import dbConnect from '@/lib/db'
 import ScrapedJob from '@/models/ScrapedJob'
 import { createApplication } from '@/lib/api/applications'
+import { ensureJobMetadataColumns, JOB_URL_COLUMN_ID, JOB_LOCATION_COLUMN_ID } from '@/lib/api/board-config'
+import { getJobSearchProfile } from '@/lib/api/jobsearch-profiles'
 import type { CreateScrapedJobInput, ScrapeSource, ScrapedJobStatus } from '@/lib/schemas/jobsearch.zod'
+import type { CustomFieldValue } from '@/lib/schemas/application.zod'
 
 export async function listScrapedJobs(userId: string, profileId: string) {
   await dbConnect()
@@ -112,6 +115,8 @@ export async function convertScrapedJobToApplication(userId: string, id: string)
     pendingApprovals: string[]
     company: string
     title: string
+    url: string
+    location?: string
   } | null
   if (!job) return { ok: false, code: 'NOT_FOUND', message: 'Not found' }
   if (!job.draftResumeId) {
@@ -142,19 +147,56 @@ export async function convertScrapedJobToApplication(userId: string, id: string)
     return { ok: false, code: 'ALREADY_SUBMITTED', message: 'Already marked as applied.' }
   }
 
+  // Provisions the "Job URL"/"Location" custom columns on first use so the
+  // customFields written below actually render as real columns in the
+  // user's applications table instead of being invisible, orphaned keys.
+  await ensureJobMetadataColumns(userId)
+  const customFields: Record<string, CustomFieldValue> = {}
+  if (job.url) customFields[JOB_URL_COLUMN_ID] = job.url
+  if (job.location) customFields[JOB_LOCATION_COLUMN_ID] = job.location
+
   const application = await createApplication(userId, {
     resumeId: job.draftResumeId,
     company: job.company.slice(0, 200),
     role: job.title.slice(0, 200),
     status: 'applied',
-    // CreateApplicationInput's inferred type requires customFields (its Zod
-    // field carries .default({}), which makes the output type non-optional
-    // — the same class of issue Task 1 hit on ScrapedJob's defaulted array
-    // fields). Supply the empty default explicitly since this call builds
-    // the input object directly rather than parsing through the schema.
-    customFields: {},
+    customFields,
   })
   return { ok: true, application }
+}
+
+export type ApproveResult =
+  | { ok: true; status: ScrapedJobStatus }
+  | { ok: false; code: 'NOT_FOUND' | 'NO_PENDING_APPROVALS'; message: string }
+
+// Resolves the "Needs your review" state caused by unverified claims: the
+// user has read the flagged claims (surfaced by detectHallucinations at
+// draft time) and either confirmed they're accurate or edited the draft
+// resume directly (via its normal editor) to remove them — either way,
+// clearing pendingApprovals is a manual attestation, the same trust model
+// AtsFixReviewPanel's "Apply" already uses elsewhere for unverified figures.
+// A job held back purely by a low postTailorScore (pendingApprovals already
+// empty) has nothing for this to clear — the caller only offers this action
+// once pendingApprovals.length > 0.
+export async function approveScrapedJob(userId: string, id: string): Promise<ApproveResult> {
+  await dbConnect()
+  const job = (await ScrapedJob.findOne({ userId, _id: id }).lean()) as {
+    profileId: string
+    pendingApprovals: string[]
+    postTailorScore?: number
+  } | null
+  if (!job) return { ok: false, code: 'NOT_FOUND', message: 'Not found' }
+  if (job.pendingApprovals.length === 0) {
+    return { ok: false, code: 'NO_PENDING_APPROVALS', message: 'Nothing to approve on this posting.' }
+  }
+
+  const profile = (await getJobSearchProfile(userId, job.profileId)) as { minAtsScore?: number } | null
+  const minAtsScore = profile?.minAtsScore ?? 0
+  const status: ScrapedJobStatus =
+    job.postTailorScore !== undefined && job.postTailorScore < minAtsScore ? 'needs_review' : 'queued'
+
+  await ScrapedJob.updateOne({ _id: id, userId }, { $set: { pendingApprovals: [], status } })
+  return { ok: true, status }
 }
 
 // Toggles a scraped job listing between visible ('new') and dismissed

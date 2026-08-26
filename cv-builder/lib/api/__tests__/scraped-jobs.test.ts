@@ -28,6 +28,16 @@ vi.mock('@/models/ScrapedJob', () => ({
 const { mockCreateApplication } = vi.hoisted(() => ({ mockCreateApplication: vi.fn() }))
 vi.mock('@/lib/api/applications', () => ({ createApplication: mockCreateApplication }))
 
+const { mockEnsureJobMetadataColumns } = vi.hoisted(() => ({ mockEnsureJobMetadataColumns: vi.fn() }))
+vi.mock('@/lib/api/board-config', () => ({
+  ensureJobMetadataColumns: mockEnsureJobMetadataColumns,
+  JOB_URL_COLUMN_ID: 'jobUrl',
+  JOB_LOCATION_COLUMN_ID: 'jobLocation',
+}))
+
+const { mockGetJobSearchProfile } = vi.hoisted(() => ({ mockGetJobSearchProfile: vi.fn() }))
+vi.mock('@/lib/api/jobsearch-profiles', () => ({ getJobSearchProfile: mockGetJobSearchProfile }))
+
 import {
   listScrapedJobs,
   findExistingSourceIds,
@@ -36,6 +46,7 @@ import {
   listDraftQueueBacklog,
   markScrapedJobDrafted,
   convertScrapedJobToApplication,
+  approveScrapedJob,
   setScrapedJobDismissed,
   deleteScrapedJob,
   listNotifyMatches,
@@ -55,6 +66,7 @@ function sortLimitLeanChain(resolved: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockEnsureJobMetadataColumns.mockResolvedValue(undefined)
 })
 
 describe('listScrapedJobs', () => {
@@ -315,6 +327,20 @@ describe('convertScrapedJobToApplication', () => {
     expect(result).toEqual({ ok: true, application: { _id: 'app1', company: 'Acme', role: 'Backend Engineer' } })
   })
 
+  it('provisions the job-metadata columns and writes the posting URL/location as custom fields', async () => {
+    mockFindOne.mockReturnValue(leanChain({ ...baseJob, url: 'https://x/a1', location: 'Berlin' }))
+    mockCreateApplication.mockResolvedValue({ _id: 'app1', company: 'Acme', role: 'Backend Engineer' })
+    mockUpdateOne.mockResolvedValue({ matchedCount: 1 })
+
+    await convertScrapedJobToApplication('u1', 'j1')
+
+    expect(mockEnsureJobMetadataColumns).toHaveBeenCalledWith('u1')
+    expect(mockCreateApplication).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({ customFields: { jobUrl: 'https://x/a1', jobLocation: 'Berlin' } })
+    )
+  })
+
   it('returns ALREADY_SUBMITTED when the atomic claim loses a concurrent race', async () => {
     mockFindOne.mockReturnValue(leanChain({ ...baseJob, status: 'queued', pendingApprovals: [] }))
     mockUpdateOne.mockResolvedValue({ matchedCount: 0 })
@@ -323,6 +349,56 @@ describe('convertScrapedJobToApplication', () => {
 
     expect(result).toEqual({ ok: false, code: 'ALREADY_SUBMITTED', message: 'Already marked as applied.' })
     expect(mockCreateApplication).not.toHaveBeenCalled()
+  })
+})
+
+describe('approveScrapedJob', () => {
+  it('returns NOT_FOUND when the job does not exist for this user', async () => {
+    mockFindOne.mockReturnValue(leanChain(null))
+
+    const result = await approveScrapedJob('u1', 'missing')
+
+    expect(result).toEqual({ ok: false, code: 'NOT_FOUND', message: 'Not found' })
+  })
+
+  it('returns NO_PENDING_APPROVALS when there are no flagged claims to clear', async () => {
+    mockFindOne.mockReturnValue(leanChain({ profileId: 'p1', pendingApprovals: [], postTailorScore: 60 }))
+
+    const result = await approveScrapedJob('u1', 'j1')
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.code).toBe('NO_PENDING_APPROVALS')
+  })
+
+  it('clears pendingApprovals and sets status "queued" when the score already clears the threshold', async () => {
+    mockFindOne.mockReturnValue(
+      leanChain({ profileId: 'p1', pendingApprovals: ['40%'], postTailorScore: 90 })
+    )
+    mockGetJobSearchProfile.mockResolvedValue({ minAtsScore: 75 })
+
+    const result = await approveScrapedJob('u1', 'j1')
+
+    expect(mockGetJobSearchProfile).toHaveBeenCalledWith('u1', 'p1')
+    expect(mockUpdateOne).toHaveBeenCalledWith(
+      { _id: 'j1', userId: 'u1' },
+      { $set: { pendingApprovals: [], status: 'queued' } }
+    )
+    expect(result).toEqual({ ok: true, status: 'queued' })
+  })
+
+  it('clears pendingApprovals but keeps status "needs_review" when the score is still below the threshold', async () => {
+    mockFindOne.mockReturnValue(
+      leanChain({ profileId: 'p1', pendingApprovals: ['40%'], postTailorScore: 60 })
+    )
+    mockGetJobSearchProfile.mockResolvedValue({ minAtsScore: 75 })
+
+    const result = await approveScrapedJob('u1', 'j1')
+
+    expect(mockUpdateOne).toHaveBeenCalledWith(
+      { _id: 'j1', userId: 'u1' },
+      { $set: { pendingApprovals: [], status: 'needs_review' } }
+    )
+    expect(result).toEqual({ ok: true, status: 'needs_review' })
   })
 })
 

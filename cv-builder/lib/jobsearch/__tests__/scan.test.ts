@@ -89,7 +89,7 @@ beforeEach(() => {
   // don't care about the threshold filter aren't accidentally tripped by
   // it; tests exercising the threshold override this explicitly.
   mockScoreResume.mockReturnValue({ total: 80, missingKeywords: [] })
-  mockResumeFindOne.mockReturnValue(sortLeanChain({ data: { basics: { name: 'Test' } } }))
+  mockResumeFindOne.mockReturnValue(sortLeanChain({ _id: 'r-default', data: { basics: { name: 'Test' } } }))
   mockListRulesForProfile.mockResolvedValue([])
   mockCountDraftedInWindow.mockResolvedValue(0)
   mockListDraftQueueBacklog.mockResolvedValue([])
@@ -352,7 +352,7 @@ describe('runScanForProfile', () => {
     const result = await runScanForProfile('u1', 'p1')
 
     expect(mockRunApplyPipeline).toHaveBeenCalledWith(
-      'u1', expect.anything(), expect.objectContaining({ title: 'Backend Engineer', company: 'Acme' }), ['Node'], 75
+      'u1', expect.anything(), expect.objectContaining({ title: 'Backend Engineer', company: 'Acme' }), ['Node'], 75, 'r-default'
     )
     expect(mockCreateScrapedJobs.mock.calls[0][2][0]).toEqual(
       expect.objectContaining({
@@ -431,7 +431,7 @@ describe('runScanForProfile', () => {
     const result = await runScanForProfile('u1', 'p1')
 
     expect(mockRunApplyPipeline).toHaveBeenCalledWith(
-      'u1', expect.anything(), expect.objectContaining({ title: 'Old Match' }), ['Node'], 75
+      'u1', expect.anything(), expect.objectContaining({ title: 'Old Match' }), ['Node'], 75, 'r-default'
     )
     expect(mockMarkScrapedJobDrafted).toHaveBeenCalledWith('u1', 'backlog1', {
       draftResumeId: 'draft2', postTailorScore: 92, pendingApprovals: [], tailoredKeywords: ['Node'], status: 'queued',

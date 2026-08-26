@@ -66,3 +66,47 @@ export async function patchBoardConfig(userId: string, patch: PatchBoardConfigIn
 
   return BoardConfig.findOneAndUpdate({ userId }, { $set: setPayload }, { new: true }).lean()
 }
+
+/** Fixed ids for the custom columns job-search's "Mark as applied" writes into. */
+export const JOB_URL_COLUMN_ID = 'jobUrl'
+export const JOB_LOCATION_COLUMN_ID = 'jobLocation'
+
+// Auto-provisions the "Job URL"/"Location" custom columns the first time a
+// scraped posting is converted to an application, so that conversion's
+// customFields (keyed by these fixed ids) actually render as real columns in
+// the user's table instead of being invisible, orphaned keys — the same
+// failure mode a customFields write against a never-configured column id
+// would otherwise produce. Idempotent: a user who already has a column with
+// one of these ids (e.g. re-running after a previous conversion) is left
+// untouched rather than appended a duplicate.
+export async function ensureJobMetadataColumns(userId: string): Promise<void> {
+  const config = await getOrCreateBoardConfig(userId)
+  const columns = config.columns as BoardColumn[]
+  const existingIds = new Set(columns.map((c) => c.id))
+  const missing: BoardColumn[] = []
+  const maxOrder = columns.reduce((max, c) => Math.max(max, c.order), 0)
+
+  if (!existingIds.has(JOB_URL_COLUMN_ID)) {
+    missing.push({
+      id: JOB_URL_COLUMN_ID,
+      key: JOB_URL_COLUMN_ID,
+      label: 'Job URL',
+      type: 'url',
+      isBuiltIn: false,
+      order: maxOrder + 1000,
+    })
+  }
+  if (!existingIds.has(JOB_LOCATION_COLUMN_ID)) {
+    missing.push({
+      id: JOB_LOCATION_COLUMN_ID,
+      key: JOB_LOCATION_COLUMN_ID,
+      label: 'Location',
+      type: 'text',
+      isBuiltIn: false,
+      order: maxOrder + 2000,
+    })
+  }
+  if (missing.length === 0) return
+
+  await patchBoardConfig(userId, { columns: [...columns, ...missing] })
+}
