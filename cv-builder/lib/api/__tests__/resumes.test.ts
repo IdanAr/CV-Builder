@@ -140,6 +140,15 @@ describe('createResume', () => {
     expect(mockCreate).toHaveBeenCalledWith({ userId: 'u1', ...input })
     expect(result).toEqual(created)
   })
+
+  it('records parentResumeId when passed via options, for job-search tailored drafts', async () => {
+    const input = { title: 'Tailored CV', data: {}, meta: {}, applicationStatus: 'draft' as const }
+    mockCreate.mockResolvedValue({ toObject: () => ({ _id: 'r3', userId: 'u1', ...input }) })
+
+    await createResume('u1', input as never, { parentResumeId: 'r1' })
+
+    expect(mockCreate).toHaveBeenCalledWith({ userId: 'u1', ...input, parentResumeId: 'r1' })
+  })
 })
 
 describe('patchResume', () => {

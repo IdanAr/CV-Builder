@@ -205,4 +205,139 @@ describe('QueuedApplicationsPanel', () => {
     expect(await screen.findByText('Beta summary.')).toBeInTheDocument()
     expect(screen.queryByText(/failed to load the tailored draft/i)).not.toBeInTheDocument()
   })
+
+  it('links "Open resume" to the draft resume in a new tab', async () => {
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        scrapedJobs: [
+          {
+            _id: 'j1', title: 'Backend Engineer', company: 'Acme', url: 'https://x/j1',
+            atsScore: 60, postTailorScore: 90, status: 'queued',
+            matchedRules: [], resolvedActions: ['draft_and_queue'],
+            tailoredKeywords: [], pendingApprovals: [], draftResumeId: 'r1',
+          },
+        ],
+      })
+    )
+    mockFetch.mockResolvedValueOnce(jsonResponse(profile))
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<QueuedApplicationsPanel profileId="p1" />)
+
+    const link = await screen.findByRole('link', { name: /open resume/i })
+    expect(link).toHaveAttribute('href', '/dashboard/resumes/r1')
+    expect(link).toHaveAttribute('target', '_blank')
+  })
+
+  it('shows Approve and Reject for a needs_review job with pending approvals, and approving clears them', async () => {
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        scrapedJobs: [
+          {
+            _id: 'j1', title: 'Backend Engineer', company: 'Acme', url: 'https://x/j1',
+            atsScore: 60, postTailorScore: 90, status: 'needs_review',
+            matchedRules: [], resolvedActions: ['draft_and_queue'],
+            tailoredKeywords: [], pendingApprovals: ['40%'], draftResumeId: 'r1',
+          },
+        ],
+      })
+    )
+    mockFetch.mockResolvedValueOnce(jsonResponse(profile))
+    mockFetch.mockResolvedValueOnce(jsonResponse({ status: 'queued' }))
+    mockFetch.mockResolvedValueOnce(jsonResponse({ scrapedJobs: [] }))
+    mockFetch.mockResolvedValueOnce(jsonResponse(profile))
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<QueuedApplicationsPanel profileId="p1" />)
+
+    expect(await screen.findByRole('button', { name: /^reject$/i })).toBeInTheDocument()
+    await userEvent.click(await screen.findByRole('button', { name: /^approve$/i }))
+
+    await waitFor(() =>
+      expect(mockFetch).toHaveBeenCalledWith('/api/jobsearch/scraped-jobs/j1/approve', { method: 'POST' })
+    )
+  })
+
+  it('omits Approve (nothing to clear) when needs_review is purely a score shortfall', async () => {
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        scrapedJobs: [
+          {
+            _id: 'j1', title: 'Backend Engineer', company: 'Acme', url: 'https://x/j1',
+            atsScore: 60, postTailorScore: 68, status: 'needs_review',
+            matchedRules: [], resolvedActions: ['draft_and_queue'],
+            tailoredKeywords: [], pendingApprovals: [], draftResumeId: 'r1',
+          },
+        ],
+      })
+    )
+    mockFetch.mockResolvedValueOnce(jsonResponse(profile))
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<QueuedApplicationsPanel profileId="p1" />)
+
+    expect(await screen.findByRole('button', { name: /^reject$/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^approve$/i })).not.toBeInTheDocument()
+  })
+
+  it('rejects a needs_review job by dismissing it, after confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        scrapedJobs: [
+          {
+            _id: 'j1', title: 'Backend Engineer', company: 'Acme', url: 'https://x/j1',
+            atsScore: 60, postTailorScore: 68, status: 'needs_review',
+            matchedRules: [], resolvedActions: ['draft_and_queue'],
+            tailoredKeywords: [], pendingApprovals: [], draftResumeId: 'r1',
+          },
+        ],
+      })
+    )
+    mockFetch.mockResolvedValueOnce(jsonResponse(profile))
+    mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }))
+    mockFetch.mockResolvedValueOnce(jsonResponse({ scrapedJobs: [] }))
+    mockFetch.mockResolvedValueOnce(jsonResponse(profile))
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<QueuedApplicationsPanel profileId="p1" />)
+
+    await userEvent.click(await screen.findByRole('button', { name: /^reject$/i }))
+
+    await waitFor(() =>
+      expect(mockFetch).toHaveBeenCalledWith('/api/jobsearch/scraped-jobs/j1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dismissed: true }),
+      })
+    )
+  })
+
+  it('never shows Approve/Reject for a "queued" job', async () => {
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        scrapedJobs: [
+          {
+            _id: 'j1', title: 'Backend Engineer', company: 'Acme', url: 'https://x/j1',
+            atsScore: 60, postTailorScore: 90, status: 'queued',
+            matchedRules: [], resolvedActions: ['draft_and_queue'],
+            tailoredKeywords: [], pendingApprovals: [], draftResumeId: 'r1',
+          },
+        ],
+      })
+    )
+    mockFetch.mockResolvedValueOnce(jsonResponse(profile))
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<QueuedApplicationsPanel profileId="p1" />)
+
+    await screen.findByText('Backend Engineer')
+    expect(screen.queryByRole('button', { name: /^approve$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^reject$/i })).not.toBeInTheDocument()
+  })
 })

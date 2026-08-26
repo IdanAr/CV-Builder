@@ -77,6 +77,8 @@ export default async function DashboardPage() {
                   formatScore: resume.formatScore ?? 0,
                   createdAt: resume.createdAt.toISOString(),
                   updatedAt: resume.updatedAt.toISOString(),
+                  parentResumeId: resume.parentResumeId ? String(resume.parentResumeId) : undefined,
+                  parentResumeTitle: resume.parentResumeTitle,
                 }}
                 applicationBadge={badgeMap.get(String(resume._id)) ?? { kind: 'none' }}
               />

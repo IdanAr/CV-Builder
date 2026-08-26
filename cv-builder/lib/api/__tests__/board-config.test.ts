@@ -16,7 +16,13 @@ vi.mock('@/models/BoardConfig', () => ({
   },
 }))
 
-import { getOrCreateBoardConfig, patchBoardConfig } from '../board-config'
+import {
+  getOrCreateBoardConfig,
+  patchBoardConfig,
+  ensureJobMetadataColumns,
+  JOB_URL_COLUMN_ID,
+  JOB_LOCATION_COLUMN_ID,
+} from '../board-config'
 import { defaultBoardColumns } from '@/lib/schemas/application.zod'
 
 beforeEach(() => vi.clearAllMocks())
@@ -109,5 +115,38 @@ describe('patchBoardConfig', () => {
       c.id === 'status' ? { ...c, type: 'text' as const, options: undefined } : c
     )
     await expect(patchBoardConfig('u1', { columns })).rejects.toThrow(/status/i)
+  })
+})
+
+describe('ensureJobMetadataColumns', () => {
+  it('appends both columns when neither already exists', async () => {
+    const existing = { userId: 'u1', columns: defaultBoardColumns(), sort: [] }
+    mockFindOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(existing) })
+    mockFindOneAndUpdate.mockReturnValue({ lean: vi.fn().mockResolvedValue({}) })
+
+    await ensureJobMetadataColumns('u1')
+
+    const patchedColumns = mockFindOneAndUpdate.mock.calls[0][1].$set.columns
+    const ids = patchedColumns.map((c: { id: string }) => c.id)
+    expect(ids).toContain(JOB_URL_COLUMN_ID)
+    expect(ids).toContain(JOB_LOCATION_COLUMN_ID)
+    expect(patchedColumns).toHaveLength(defaultBoardColumns().length + 2)
+  })
+
+  it('is a no-op when both columns already exist', async () => {
+    const existing = {
+      userId: 'u1',
+      columns: [
+        ...defaultBoardColumns(),
+        { id: JOB_URL_COLUMN_ID, key: JOB_URL_COLUMN_ID, label: 'Job URL', type: 'url' as const, isBuiltIn: false, order: 6000 },
+        { id: JOB_LOCATION_COLUMN_ID, key: JOB_LOCATION_COLUMN_ID, label: 'Location', type: 'text' as const, isBuiltIn: false, order: 7000 },
+      ],
+      sort: [],
+    }
+    mockFindOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(existing) })
+
+    await ensureJobMetadataColumns('u1')
+
+    expect(mockFindOneAndUpdate).not.toHaveBeenCalled()
   })
 })

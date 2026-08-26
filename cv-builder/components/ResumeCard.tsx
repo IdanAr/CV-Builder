@@ -33,6 +33,8 @@ interface ResumeCardProps {
     formatScore: number
     createdAt: string
     updatedAt: string
+    parentResumeId?: string
+    parentResumeTitle?: string
   }
   applicationBadge: ResumeApplicationBadge
 }
@@ -212,6 +214,14 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
           <p className="truncate text-sm text-indigo-400">
             {resume.data.basics?.label ?? 'No role set'} · {resume.meta.templateId ?? 'classic'} template
           </p>
+          {resume.parentResumeId && resume.parentResumeTitle && (
+            <Link
+              href={`/dashboard/resumes/${resume.parentResumeId}`}
+              className="pointer-events-auto mt-0.5 inline-block truncate text-xs text-indigo-400 hover:text-indigo-600 hover:underline"
+            >
+              Based on: {resume.parentResumeTitle}
+            </Link>
+          )}
         </div>
         
         {/* Added 'relative z-10' to lift these buttons above the invisible link.

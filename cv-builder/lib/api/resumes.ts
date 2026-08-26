@@ -28,9 +28,19 @@ export async function getResume(userId: string, id: string) {
   return Resume.findOne({ _id: id, userId }).lean()
 }
 
-export async function createResume(userId: string, input: CreateResumeInput) {
+// `parentResumeId` is deliberately not part of CreateResumeSchema/CreateResumeInput
+// — it's not something a client of POST /api/resumes should be able to set
+// arbitrarily (there's no ownership check on an attacker-supplied id, only on
+// how it's later *displayed* via listResumes' scoped title lookup). Trusted
+// server-side callers (job-search's tailoring pipeline) pass it here instead,
+// the same lineage field duplicateResume() sets directly via Resume.create.
+export async function createResume(
+  userId: string,
+  input: CreateResumeInput,
+  options?: { parentResumeId?: string }
+) {
   await dbConnect()
-  const resume = await Resume.create({ userId, ...input })
+  const resume = await Resume.create({ userId, ...input, parentResumeId: options?.parentResumeId })
   return resume.toObject()
 }
 

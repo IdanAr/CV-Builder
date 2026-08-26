@@ -343,4 +343,22 @@ describe('ResumeCard', () => {
 
     vi.useRealTimers()
   })
+
+  it('shows a lineage indicator linking to the parent resume when one is set', () => {
+    render(
+      <ResumeCard
+        resume={{ ...baseResume, parentResumeId: 'parent1', parentResumeTitle: 'Original Resume' }}
+        applicationBadge={{ kind: 'none' }}
+      />
+    )
+
+    const link = screen.getByRole('link', { name: /based on: original resume/i })
+    expect(link).toHaveAttribute('href', '/dashboard/resumes/parent1')
+  })
+
+  it('omits the lineage indicator for a resume with no parent', () => {
+    render(<ResumeCard resume={baseResume} applicationBadge={{ kind: 'none' }} />)
+
+    expect(screen.queryByText(/based on:/i)).not.toBeInTheDocument()
+  })
 })

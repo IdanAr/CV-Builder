@@ -52,16 +52,25 @@ interface DraftQueueBacklogItem {
   description: string
 }
 
-async function resolveResumeData(userId: string, resumeId?: string): Promise<ResumeData | null> {
+interface ResolvedResume {
+  id: string
+  data: ResumeData
+}
+
+// Returns the source resume's id alongside its data so tailored drafts can
+// record lineage (Resume.parentResumeId) back to the resume they were built
+// from — the same field duplicateResume() sets for manual copies.
+async function resolveResumeData(userId: string, resumeId?: string): Promise<ResolvedResume | null> {
   await dbConnect()
   if (resumeId) {
-    const resume = (await Resume.findOne({ _id: resumeId, userId }).lean()) as { data: ResumeData } | null
-    if (resume) return resume.data
+    const resume = (await Resume.findOne({ _id: resumeId, userId }).lean()) as { _id: unknown; data: ResumeData } | null
+    if (resume) return { id: String(resume._id), data: resume.data }
   }
   const fallback = (await Resume.findOne({ userId }).sort({ updatedAt: -1 }).lean()) as {
+    _id: unknown
     data: ResumeData
   } | null
-  return fallback?.data ?? null
+  return fallback ? { id: String(fallback._id), data: fallback.data } : null
 }
 
 // Narrower than JobPosting so this is reusable against both a freshly
@@ -183,8 +192,8 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
   // Memoized so the backlog drain below and the new-postings loop further
   // down share at most one DB read for the linked resume, even though each
   // decides independently whether it needs it at all.
-  let resolvedResumeData: ResumeData | null | undefined
-  const getResumeData = async (): Promise<ResumeData | null> => {
+  let resolvedResumeData: ResolvedResume | null | undefined
+  const getResumeData = async (): Promise<ResolvedResume | null> => {
     if (resolvedResumeData === undefined) {
       resolvedResumeData = await resolveResumeData(userId, profile.resumeId)
     }
@@ -211,13 +220,14 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
         for (const item of backlog) {
           if (profileDraftsRemaining <= 0 || userDraftsRemaining <= 0) break
           try {
-            const missingKeywords = scoreResume(resumeData, item.description).missingKeywords
+            const missingKeywords = scoreResume(resumeData.data, item.description).missingKeywords
             const applyResult = await runApplyPipeline(
               userId,
-              resumeData,
+              resumeData.data,
               { title: item.title, company: item.company, description: item.description },
               missingKeywords,
-              profile.minAtsScore
+              profile.minAtsScore,
+              resumeData.id
             )
             await markScrapedJobDrafted(userId, String(item._id), {
               draftResumeId: applyResult.draftResumeId,
@@ -297,7 +307,7 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
     // scan, which is the spec's intended behavior for suppressed postings.
     const toCreate: CreateScrapedJobInput[] = []
     for (const posting of newPostings) {
-      const scoreResult = resumeData ? scoreResume(resumeData, posting.description) : null
+      const scoreResult = resumeData ? scoreResume(resumeData.data, posting.description) : null
       const atsScore = scoreResult?.total
       // Postings scored below the profile's own fit threshold never become a
       // ScrapedJob at all (per product decision: the wizard's "threshold"
@@ -329,10 +339,11 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
         try {
           const applyResult = await runApplyPipeline(
             userId,
-            resumeData,
+            resumeData.data,
             { title: posting.title, company: posting.company, description: posting.description },
             scoreResult.missingKeywords,
-            profile.minAtsScore
+            profile.minAtsScore,
+            resumeData.id
           )
           draftFields = {
             draftResumeId: applyResult.draftResumeId,

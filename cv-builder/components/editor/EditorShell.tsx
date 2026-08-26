@@ -68,6 +68,14 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
   const [previewExpanded, setPreviewExpanded] = useState(false)
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
   const [dividerActive, setDividerActive] = useState(false)
+  // getPanelWidthBounds() reads window.innerWidth, which doesn't exist during
+  // SSR — calling it directly in the divider's aria-valuemin/max below would
+  // render DEFAULT_PANEL_WIDTH on the server but the real viewport-derived
+  // bounds on the client's very first (hydration) pass, a mismatch React
+  // hydration can't reconcile. Gating on `mounted` keeps that first client
+  // render identical to the server's, then swaps in the real bounds on the
+  // next (client-only) render once mounted flips true.
+  const [mounted, setMounted] = useState(false)
   const [mobileView, setMobileView] = useState<MobileView>('edit')
   const draggingRef = useRef(false)
   const dragStartWidthRef = useRef(DEFAULT_PANEL_WIDTH)
@@ -92,6 +100,11 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
 
   useEffect(() => {
     return initAutoSave()
+  }, [])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true)
   }, [])
 
   useEffect(() => {
@@ -433,8 +446,8 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
                 aria-orientation="vertical"
                 aria-label="Resize editor panel"
                 aria-valuenow={panelWidth}
-                aria-valuemin={getPanelWidthBounds().min}
-                aria-valuemax={getPanelWidthBounds().max}
+                aria-valuemin={mounted ? getPanelWidthBounds().min : DEFAULT_PANEL_WIDTH}
+                aria-valuemax={mounted ? getPanelWidthBounds().max : DEFAULT_PANEL_WIDTH}
                 tabIndex={0}
                 className={`group/divider w-1.5 shrink-0 cursor-col-resize select-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
                   dividerActive ? 'bg-indigo-400/60' : 'hover:bg-indigo-400/40 bg-indigo-200/30'

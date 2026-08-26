@@ -43,7 +43,8 @@ export async function runApplyPipeline(
   resumeData: ResumeData,
   posting: ApplyPostingInput,
   missingKeywords: string[],
-  minAtsScore: number
+  minAtsScore: number,
+  sourceResumeId: string
 ): Promise<ApplyResult> {
   const fixes = await runAtsFixPipeline(resumeData, missingKeywords)
 
@@ -85,7 +86,7 @@ export async function runApplyPipeline(
     applicationStatus: 'draft',
     targetCompany: truncate(posting.company, 200),
     targetRole: truncate(posting.title, 200),
-  })
+  }, { parentResumeId: sourceResumeId })
 
   return {
     draftResumeId: String(resume._id),

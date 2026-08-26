@@ -35,6 +35,7 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
   const [drafts, setDrafts] = useState<Record<string, DraftPreview>>({})
   const [draftLoadError, setDraftLoadError] = useState<string | null>(null)
   const [convertingId, setConvertingId] = useState<string | null>(null)
+  const [actioningId, setActioningId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -110,6 +111,46 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
     }
   }
 
+  async function handleApprove(job: QueuedJobSummary) {
+    setActioningId(job._id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/jobsearch/scraped-jobs/${job._id}/approve`, { method: 'POST' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        setError((body as { error?: string }).error ?? 'Failed to approve the flagged claims.')
+        return
+      }
+      await load()
+    } catch {
+      setError('Failed to approve the flagged claims.')
+    } finally {
+      setActioningId(null)
+    }
+  }
+
+  async function handleReject(job: QueuedJobSummary) {
+    if (!window.confirm(`Reject "${job.title}"? It will be dismissed from your queue.`)) return
+    setActioningId(job._id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/jobsearch/scraped-jobs/${job._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dismissed: true }),
+      })
+      if (!res.ok) {
+        setError('Failed to reject the posting. Please try again.')
+        return
+      }
+      await load()
+    } catch {
+      setError('Failed to reject the posting. Please try again.')
+    } finally {
+      setActioningId(null)
+    }
+  }
+
   if (jobs === null) {
     return error ? <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null
   }
@@ -170,10 +211,20 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
                 </div>
               )}
 
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" className="rounded border px-3 py-1 text-sm" onClick={() => toggleExpand(job)}>
                   {isExpanded ? 'Hide draft' : 'View draft'}
                 </button>
+                {job.draftResumeId && (
+                  <a
+                    href={`/dashboard/resumes/${job.draftResumeId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded border px-3 py-1 text-sm text-indigo-700 hover:bg-indigo-50"
+                  >
+                    Open resume
+                  </a>
+                )}
                 <button
                   type="button"
                   disabled={job.pendingApprovals.length > 0 || convertingId === job._id}
@@ -183,6 +234,29 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
                 >
                   {convertingId === job._id ? 'Marking…' : 'Mark as applied'}
                 </button>
+                {job.status === 'needs_review' && (
+                  <>
+                    {job.pendingApprovals.length > 0 && (
+                      <button
+                        type="button"
+                        disabled={actioningId === job._id}
+                        title="Confirm the flagged claims are accurate (or that you've fixed them in the draft)"
+                        className="rounded border border-green-300 px-3 py-1 text-sm text-green-700 hover:bg-green-50 disabled:opacity-40"
+                        onClick={() => handleApprove(job)}
+                      >
+                        {actioningId === job._id ? 'Approving…' : 'Approve'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={actioningId === job._id}
+                      className="rounded border border-red-300 px-3 py-1 text-sm text-red-700 hover:bg-red-50 disabled:opacity-40"
+                      onClick={() => handleReject(job)}
+                    >
+                      Reject
+                    </button>
+                  </>
+                )}
               </div>
 
               {isExpanded && (
