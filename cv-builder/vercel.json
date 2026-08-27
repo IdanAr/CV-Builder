@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/jobsearch/scan/cron",
-      "schedule": "0 6 * * *"
+      "schedule": "30 8 * * *"
     }
   ]
 }
