@@ -39,6 +39,11 @@ describe('GET /api/jobsearch/scan/cron', () => {
     expect(res.status).toBe(401)
   })
 
+  it('rejects a bearer token of a different length without throwing', async () => {
+    const res = await GET(req('Bearer x'))
+    expect(res.status).toBe(401)
+  })
+
   it('publishes one scan job per active profile and reports the count', async () => {
     mockListAllActive.mockResolvedValue([
       { _id: 'p1', userId: 'u1' },
