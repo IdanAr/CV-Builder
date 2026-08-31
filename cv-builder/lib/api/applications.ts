@@ -201,17 +201,23 @@ export async function patchApplication(userId: string, id: string, patch: PatchA
     }
   }
 
-  const updated = await Application.findOneAndUpdate(
-    { _id: id, userId },
-    { $set: setPayload },
-    { new: true }
-  ).lean()
-
-  if (updated && activityRows.length > 0) {
-    await ApplicationActivity.insertMany(activityRows)
+  const session = await Application.db.startSession()
+  try {
+    const updated = await session.withTransaction(async () => {
+      const doc = await Application.findOneAndUpdate(
+        { _id: id, userId },
+        { $set: setPayload },
+        { new: true, session }
+      ).lean()
+      if (doc && activityRows.length > 0) {
+        await ApplicationActivity.insertMany(activityRows, { session })
+      }
+      return doc
+    })
+    return updated ?? null
+  } finally {
+    await session.endSession()
   }
-
-  return updated
 }
 
 export async function deleteApplication(userId: string, id: string): Promise<boolean> {

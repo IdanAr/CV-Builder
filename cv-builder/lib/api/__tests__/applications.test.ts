@@ -8,25 +8,39 @@ const {
   mockAppCreate,
   mockAppFindOneAndUpdate,
   mockAppDeleteOne,
+  mockAppStartSession,
+  mockSessionWithTransaction,
+  mockSessionEndSession,
   mockActivityFind,
   mockActivityInsertMany,
   mockActivityDeleteMany,
   mockResumeFind,
   mockResumeFindOne,
   mockGetOrCreateBoardConfig,
-} = vi.hoisted(() => ({
-  mockAppFind: vi.fn(),
-  mockAppFindOne: vi.fn(),
-  mockAppCreate: vi.fn(),
-  mockAppFindOneAndUpdate: vi.fn(),
-  mockAppDeleteOne: vi.fn(),
-  mockActivityFind: vi.fn(),
-  mockActivityInsertMany: vi.fn(),
-  mockActivityDeleteMany: vi.fn(),
-  mockResumeFind: vi.fn(),
-  mockResumeFindOne: vi.fn(),
-  mockGetOrCreateBoardConfig: vi.fn(),
-}))
+} = vi.hoisted(() => {
+  const mockSessionWithTransaction = vi.fn((fn: () => Promise<unknown>) => fn())
+  const mockSessionEndSession = vi.fn().mockResolvedValue(undefined)
+  const mockAppStartSession = vi.fn().mockResolvedValue({
+    withTransaction: mockSessionWithTransaction,
+    endSession: mockSessionEndSession,
+  })
+  return {
+    mockAppFind: vi.fn(),
+    mockAppFindOne: vi.fn(),
+    mockAppCreate: vi.fn(),
+    mockAppFindOneAndUpdate: vi.fn(),
+    mockAppDeleteOne: vi.fn(),
+    mockAppStartSession,
+    mockSessionWithTransaction,
+    mockSessionEndSession,
+    mockActivityFind: vi.fn(),
+    mockActivityInsertMany: vi.fn(),
+    mockActivityDeleteMany: vi.fn(),
+    mockResumeFind: vi.fn(),
+    mockResumeFindOne: vi.fn(),
+    mockGetOrCreateBoardConfig: vi.fn(),
+  }
+})
 
 vi.mock('@/models/Application', () => ({
   default: {
@@ -35,6 +49,7 @@ vi.mock('@/models/Application', () => ({
     create: mockAppCreate,
     findOneAndUpdate: mockAppFindOneAndUpdate,
     deleteOne: mockAppDeleteOne,
+    db: { startSession: mockAppStartSession },
   },
 }))
 
@@ -269,7 +284,7 @@ describe('patchApplication (diff-and-log)', () => {
     expect(mockAppFindOneAndUpdate).toHaveBeenCalledWith(
       { _id: 'a1', userId: 'u1' },
       { $set: { order: 1500 } },
-      { new: true }
+      { new: true, session: expect.anything() }
     )
   })
 
@@ -295,7 +310,7 @@ describe('patchApplication (diff-and-log)', () => {
     expect(mockAppFindOneAndUpdate).toHaveBeenCalledWith(
       { _id: 'a1', userId: 'u1' },
       { $set: { 'customFields.col-x': 'Dana' } },
-      { new: true }
+      { new: true, session: expect.anything() }
     )
     const rows = mockActivityInsertMany.mock.calls[0][0]
     expect(rows).toEqual([
@@ -372,7 +387,7 @@ describe('patchApplication (diff-and-log)', () => {
     expect(mockAppFindOneAndUpdate).toHaveBeenCalledWith(
       { _id: 'a1', userId: 'u1' },
       { $set: {} },
-      { new: true }
+      { new: true, session: expect.anything() }
     )
     expect(mockActivityInsertMany).not.toHaveBeenCalled()
   })
