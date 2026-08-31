@@ -89,6 +89,23 @@ describe('CreateApplicationSchema', () => {
     expect(result.resumeId).toBe('r1')
     expect(result.status).toBe('applied')
   })
+
+  it('never lets a __proto__ key survive into parsed customFields (prototype-pollution guard)', () => {
+    // A JS object literal's `__proto__` key sets the prototype rather than
+    // becoming an own enumerable key, so it wouldn't reach Object.keys() here
+    // — JSON.parse (what a real request body goes through) is what actually
+    // produces an attacker-controlled *own* `__proto__` key on the input.
+    // Zod's z.record() itself already drops that key while building its
+    // output object (the same own-vs-prototype-setter distinction applies to
+    // its internal assignment), so the safe, verifiable outcome is that the
+    // parsed customFields never carries an own `__proto__` key — not
+    // necessarily that parsing fails outright.
+    const body = JSON.parse('{"customFields": {"__proto__": "x", "safe-key": "y"}}')
+    const result = CreateApplicationSchema.safeParse(body)
+    expect(result.success).toBe(true)
+    expect(Object.prototype.hasOwnProperty.call(result.data!.customFields, '__proto__')).toBe(false)
+    expect(result.data!.customFields['safe-key']).toBe('y')
+  })
 })
 
 describe('PatchApplicationSchema', () => {
@@ -108,6 +125,21 @@ describe('PatchApplicationSchema', () => {
   it('allows resumeId to be set to null (unlink resume)', () => {
     const result = PatchApplicationSchema.safeParse({ resumeId: null })
     expect(result.success).toBe(true)
+  })
+
+  it('never lets a __proto__ key survive into parsed customFields (prototype-pollution guard)', () => {
+    // See the matching CreateApplicationSchema test above for why this
+    // asserts the key is stripped rather than that parsing fails.
+    const body = JSON.parse('{"customFields": {"__proto__": "x", "safe-key": "y"}}')
+    const result = PatchApplicationSchema.safeParse(body)
+    expect(result.success).toBe(true)
+    expect(Object.prototype.hasOwnProperty.call(result.data!.customFields, '__proto__')).toBe(false)
+    expect(result.data!.customFields!['safe-key']).toBe('y')
+  })
+
+  it('rejects constructor/prototype keys in customFields', () => {
+    expect(PatchApplicationSchema.safeParse({ customFields: { constructor: 'x' } }).success).toBe(false)
+    expect(PatchApplicationSchema.safeParse({ customFields: { prototype: 'x' } }).success).toBe(false)
   })
 })
 
