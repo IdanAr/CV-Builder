@@ -47,4 +47,34 @@ describe('ExportMenu', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('menu')).toBeNull()
   })
+
+  it('moves focus to the first menu item when opened', () => {
+    render(<ExportMenu onExport={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: /export/i }))
+
+    expect(screen.getAllByRole('menuitem')[0]).toHaveFocus()
+  })
+
+  it('moves focus to the next item on ArrowDown, wrapping past the last item', () => {
+    render(<ExportMenu onExport={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: /export/i }))
+    const items = screen.getAllByRole('menuitem')
+
+    fireEvent.keyDown(items[0], { key: 'ArrowDown' })
+    expect(items[1]).toHaveFocus()
+
+    fireEvent.keyDown(items[1], { key: 'ArrowDown' })
+    fireEvent.keyDown(items[2], { key: 'ArrowDown' })
+    fireEvent.keyDown(items[3], { key: 'ArrowDown' })
+    expect(items[0]).toHaveFocus()
+  })
+
+  it('moves focus to the previous item on ArrowUp, wrapping before the first item', () => {
+    render(<ExportMenu onExport={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: /export/i }))
+    const items = screen.getAllByRole('menuitem')
+
+    fireEvent.keyDown(items[0], { key: 'ArrowUp' })
+    expect(items[3]).toHaveFocus()
+  })
 })

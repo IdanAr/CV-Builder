@@ -8,6 +8,17 @@ export interface ExportMenuProps {
   onExport: (format: 'pdf' | 'docx', mode: ExportMode) => void
 }
 
+function focusMenuItem(container: HTMLElement, direction: 1 | -1) {
+  const items = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+  if (items.length === 0) return
+  const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement)
+  const nextIndex =
+    currentIndex === -1
+      ? (direction === 1 ? 0 : items.length - 1)
+      : (currentIndex + direction + items.length) % items.length
+  items[nextIndex]?.focus()
+}
+
 export function ExportMenu({ onExport }: ExportMenuProps) {
   const [open, setOpen] = useState(false)
 
@@ -41,7 +52,12 @@ export function ExportMenu({ onExport }: ExportMenuProps) {
       }
     >
       <div
+        ref={(el) => { el?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus() }}
         role="menu"
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown') { e.preventDefault(); focusMenuItem(e.currentTarget, 1) }
+          if (e.key === 'ArrowUp') { e.preventDefault(); focusMenuItem(e.currentTarget, -1) }
+        }}
         className="w-56 overflow-hidden rounded-xl border border-white/40 bg-white/90 shadow-xl backdrop-blur-xl"
       >
         {item('PDF - Designed', 'Exact match of the preview', 'pdf', 'designed')}
