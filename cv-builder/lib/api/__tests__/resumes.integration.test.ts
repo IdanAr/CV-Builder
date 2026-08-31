@@ -9,10 +9,11 @@ import type { CreateResumeInput, PatchResumeInput } from '@/lib/schemas/resume.z
 let createResume: typeof import('../resumes')['createResume']
 let patchResume: typeof import('../resumes')['patchResume']
 let getResume: typeof import('../resumes')['getResume']
+let listResumes: typeof import('../resumes')['listResumes']
 
 beforeAll(async () => {
   await connectMemoryMongo()
-  ;({ createResume, patchResume, getResume } = await import('../resumes'))
+  ;({ createResume, patchResume, getResume, listResumes } = await import('../resumes'))
 }, 30000)
 
 afterAll(async () => {
@@ -59,5 +60,47 @@ describe('patchResume — meta.columnAssignment persistence', () => {
     const reloaded = await getResume('u1', id)
     expect(reloaded?.meta.templateId).toBe('modern')
     expect(reloaded?.meta.columnAssignment).toEqual({ work: 'left', education: 'right' })
+  })
+})
+
+describe('listResumes — format score caching', () => {
+  it('persists a computed formatScore so a second read reuses it without recomputing', async () => {
+    const created = await createResume('u1', baseInput)
+    const id = String(created._id)
+
+    const first = await listResumes('u1')
+    expect(first[0].formatScore).toBeDefined()
+
+    // Directly corrupt the DB's cached value (bypassing scoreResume entirely)
+    // to prove the second read comes from the cache, not a fresh computation.
+    const Resume = (await import('@/models/Resume')).default
+    // { timestamps: false } — schema-level timestamps also apply to plain
+    // updateOne() calls, so without this the update below would itself bump
+    // updatedAt and immediately re-invalidate the cache it's setting.
+    await Resume.updateOne({ _id: id }, { $set: { cachedFormatScore: 999 } }, { timestamps: false })
+
+    const second = await listResumes('u1')
+    expect(second[0].formatScore).toBe(999)
+  })
+
+  it('recomputes after the resume is edited, since editing bumps updatedAt past the cached formatScoreComputedAt', async () => {
+    const created = await createResume('u1', baseInput)
+    const id = String(created._id)
+
+    const first = await listResumes('u1')
+    const originalScore = first[0].formatScore
+
+    const Resume = (await import('@/models/Resume')).default
+    // { timestamps: false } — schema-level timestamps also apply to plain
+    // updateOne() calls, so without this the update below would itself bump
+    // updatedAt and immediately re-invalidate the cache it's setting.
+    await Resume.updateOne({ _id: id }, { $set: { cachedFormatScore: 999 } }, { timestamps: false })
+    await patchResume('u1', id, { data: { basics: { name: 'Jane Doe' } } })
+
+    const second = await listResumes('u1')
+    // The edit's own updatedAt bump makes the corrupted 999 cache stale, so
+    // this must recompute — landing back on the real score, not 999.
+    expect(second[0].formatScore).not.toBe(999)
+    expect(second[0].formatScore).toBe(originalScore)
   })
 })
