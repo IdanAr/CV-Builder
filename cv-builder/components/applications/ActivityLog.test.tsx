@@ -87,6 +87,22 @@ describe('ActivityLog', () => {
     expect(await screen.findByText(/Could not load/)).toBeInTheDocument()
   })
 
+  it('closes on Escape and returns focus to the trigger button', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ activity: [] }) })
+    )
+    render(<ActivityLog applicationId="a1" company="Acme" />)
+    const trigger = screen.getByRole('button', { name: /Activity log/ })
+    fireEvent.click(trigger)
+    await screen.findByText('Activity')
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(screen.queryByText('Activity')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+  })
+
   describe('viewport-aware flip', () => {
     // jsdom returns an all-zero rect for every element by default. The
     // component measures two different divs — its outer trigger wrapper
