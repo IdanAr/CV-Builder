@@ -184,7 +184,7 @@ describe('ApplicationsTable', () => {
     const { onCellChange } = renderTable()
 
     fireEvent.click(screen.getByRole('button', { name: 'Change Status for Acme' }))
-    fireEvent.click(screen.getByRole('button', { name: /Interviewing/ }))
+    fireEvent.click(screen.getByRole('option', { name: /Interviewing/ }))
 
     expect(onCellChange).toHaveBeenCalledTimes(1)
     const [appId, column, value] = onCellChange.mock.calls[0]
