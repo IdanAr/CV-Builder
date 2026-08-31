@@ -55,6 +55,18 @@ describe('ActivityLog', () => {
     expect(screen.getByText('2 hours ago')).toBeInTheDocument()
   })
 
+  it('announces the panel as a live region so loading-to-loaded transitions are heard', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ activity: entries }) })
+    )
+    render(<ActivityLog applicationId="a1" company="Acme" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Activity log for application at Acme' }))
+    const panel = (await screen.findByText('Activity')).closest('[role="status"]')
+    expect(panel).toHaveAttribute('aria-live', 'polite')
+  })
+
   it('shows an empty-state line when there is no activity yet', async () => {
     vi.stubGlobal(
       'fetch',
