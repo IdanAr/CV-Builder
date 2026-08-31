@@ -240,8 +240,18 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
     function onDocClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setOpen(false)
+        ;(ref.current?.firstElementChild as HTMLElement | null)?.focus()
+      }
+    }
     document.addEventListener('mousedown', onDocClick)
-    return () => document.removeEventListener('mousedown', onDocClick)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('keydown', onKeyDown)
+    }
   }, [open])
 
   // Flip the popover to open upward when there isn't enough room below the
@@ -264,6 +274,7 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
       <button
         type="button"
         aria-label={`Change ${props.ariaLabel}`}
+        aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center gap-1.5 rounded px-1 py-0.5 text-left hover:bg-indigo-50"
@@ -282,6 +293,8 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
       {open && (
         <div
           ref={panelRef}
+          role="listbox"
+          aria-label={props.ariaLabel}
           className={`absolute left-0 z-20 min-w-[10rem] rounded-lg border border-indigo-100 bg-white p-1 shadow-lg ${
             openUpward ? 'bottom-full mb-1' : 'top-full mt-1'
           }`}
@@ -290,9 +303,12 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
             <button
               key={option.id}
               type="button"
+              role="option"
+              aria-selected={option.id === props.value}
               onClick={() => {
                 setOpen(false)
                 if (option.id !== props.value) props.onCommit(option.id)
+                ;(ref.current?.firstElementChild as HTMLElement | null)?.focus()
               }}
               className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-indigo-50"
             >
@@ -306,6 +322,7 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
             onClick={() => {
               setOpen(false)
               if (props.value !== null && props.value !== '') props.onCommit(null)
+              ;(ref.current?.firstElementChild as HTMLElement | null)?.focus()
             }}
             className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm text-indigo-400 hover:bg-indigo-50"
           >
