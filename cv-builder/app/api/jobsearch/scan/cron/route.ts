@@ -1,7 +1,16 @@
+import { timingSafeEqual } from 'crypto'
 import { NextResponse } from 'next/server'
 import { listAllActiveJobSearchProfiles } from '@/lib/api/jobsearch-profiles'
 import { publishScanJob } from '@/lib/jobsearch/queue'
 import { apiError, handleRouteError } from '@/lib/api/route-errors'
+
+function isValidCronAuth(authHeader: string | null): boolean {
+  if (!process.env.CRON_SECRET || !authHeader) return false
+  const expected = Buffer.from(`Bearer ${process.env.CRON_SECRET}`)
+  const actual = Buffer.from(authHeader)
+  if (expected.length !== actual.length) return false
+  return timingSafeEqual(expected, actual)
+}
 
 // Vercel Cron target (see vercel.json's `crons` entry). Not wrapped in the
 // session-based auth() HOF — a scheduled cron request carries no user
@@ -11,7 +20,7 @@ import { apiError, handleRouteError } from '@/lib/api/route-errors'
 // session-auth matcher (see Task 5).
 export async function GET(req: Request) {
   const authHeader = req.headers.get('authorization')
-  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isValidCronAuth(authHeader)) {
     return apiError('UNAUTHORIZED', 'Unauthorized', 401)
   }
 
