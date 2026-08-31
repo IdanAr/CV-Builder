@@ -5,48 +5,13 @@ import { useEffect, useState } from 'react'
 import { Sparkles, Loader2 } from 'lucide-react'
 import type { SuggestionField, PipelineResult } from '@/lib/ai/pipeline'
 import { Popover } from '@/components/ui/Popover'
+import { highlightApprovals } from '@/lib/ai/highlight-approvals'
 
 interface AiSuggestButtonProps {
   resumeId: string
   currentValue: string
   context: { jobTitle?: string; company?: string; field: SuggestionField }
   onAccept: (value: string) => void
-}
-
-function highlightApprovals(text: string, approvals: string[]): React.ReactNode {
-  if (approvals.length === 0) return <>{text}</>
-  let nodes: Array<string | React.ReactElement> = [text]
-  for (const phrase of approvals) {
-    const nextNodes: Array<string | React.ReactElement> = []
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i]
-      if (typeof node !== 'string') {
-        nextNodes.push(node)
-        continue
-      }
-      const lowerNode = node.toLowerCase()
-      const idx = lowerNode.indexOf(phrase.toLowerCase())
-      if (idx === -1) {
-        nextNodes.push(node)
-        continue
-      }
-      if (idx > 0) nextNodes.push(node.slice(0, idx))
-      nextNodes.push(
-        <mark
-          key={`${i}-${phrase}`}
-          className="bg-yellow-200 text-yellow-900 rounded px-0.5"
-          title="Not in your original notes - please verify before accepting"
-        >
-          {node.slice(idx, idx + phrase.length)}
-        </mark>
-      )
-      if (idx + phrase.length < node.length) {
-        nextNodes.push(node.slice(idx + phrase.length))
-      }
-    }
-    nodes = nextNodes
-  }
-  return <>{nodes}</>
 }
 
 export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: AiSuggestButtonProps) {

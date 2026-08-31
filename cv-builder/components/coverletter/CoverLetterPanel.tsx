@@ -2,48 +2,11 @@
 
 import { useId, useState } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
+import { highlightApprovals } from '@/lib/ai/highlight-approvals'
 
 interface CoverLetterDraft {
   content: string
   pendingApprovals: string[]
-}
-
-// Mirrors AiSuggestButton's highlightApprovals: marks AI-generated claims that
-// couldn't be traced back to the user's original notes.
-function highlightApprovals(text: string, approvals: string[]): React.ReactNode {
-  if (approvals.length === 0) return <>{text}</>
-  let nodes: Array<string | React.ReactElement> = [text]
-  for (const phrase of approvals) {
-    const nextNodes: Array<string | React.ReactElement> = []
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i]
-      if (typeof node !== 'string') {
-        nextNodes.push(node)
-        continue
-      }
-      const lowerNode = node.toLowerCase()
-      const idx = lowerNode.indexOf(phrase.toLowerCase())
-      if (idx === -1) {
-        nextNodes.push(node)
-        continue
-      }
-      if (idx > 0) nextNodes.push(node.slice(0, idx))
-      nextNodes.push(
-        <mark
-          key={`${i}-${phrase}`}
-          className="bg-amber-200 text-amber-900 rounded px-0.5"
-          title="Not in your original notes - please verify before accepting"
-        >
-          {node.slice(idx, idx + phrase.length)}
-        </mark>
-      )
-      if (idx + phrase.length < node.length) {
-        nextNodes.push(node.slice(idx + phrase.length))
-      }
-    }
-    nodes = nextNodes
-  }
-  return <>{nodes}</>
 }
 
 export function CoverLetterPanel() {
