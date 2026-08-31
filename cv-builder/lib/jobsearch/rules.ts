@@ -12,7 +12,7 @@ export interface RuleEvaluationInput {
 }
 
 // The minimal shape evaluateRules needs from a stored rule — deliberately
-// narrower than the full JobSearchRuleInput/Mongoose document so callers
+// narrower than the full JobSearchRuleSchema/Mongoose document so callers
 // (e.g. scan.ts, working from a .lean() document) don't need to satisfy
 // every model field just to evaluate matching.
 export interface EvaluatableRule {
