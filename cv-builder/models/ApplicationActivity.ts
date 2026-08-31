@@ -25,6 +25,10 @@ const ApplicationActivitySchema = new Schema<IApplicationActivity>({
   changedAt: { type: Date, required: true, default: () => new Date() },
 })
 
+// Matches lib/api/applications.ts's activity-log query:
+// find({ applicationId, userId }).sort({ changedAt: -1 })
+ApplicationActivitySchema.index({ applicationId: 1, userId: 1, changedAt: -1 })
+
 const ApplicationActivity =
   models.ApplicationActivity ??
   model<IApplicationActivity>('ApplicationActivity', ApplicationActivitySchema)
