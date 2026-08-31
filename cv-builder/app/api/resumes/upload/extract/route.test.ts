@@ -58,6 +58,19 @@ describe('POST /api/resumes/upload/extract', () => {
     expect(body.code).toBe('BAD_REQUEST')
   })
 
+  it('returns 400 (not a crash) when the JSON body is the literal value null', async () => {
+    const { POST } = await import('./route')
+    const req = new Request('http://localhost/api/resumes/upload/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(null),
+    })
+    const res = await POST(req as never, {} as never) as Response
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.code).toBe('BAD_REQUEST')
+  })
+
   it('returns 400 when text field is missing', async () => {
     const { POST } = await import('./route')
     const req = new Request('http://localhost/api/resumes/upload/extract', {
