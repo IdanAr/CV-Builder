@@ -10,6 +10,11 @@ export interface IResume extends Document {
   targetCompany?: string
   targetRole?: string
   parentResumeId?: string
+  // Cache-aside for listResumes' ATS format score: reused when
+  // formatScoreComputedAt >= updatedAt, recomputed otherwise. See
+  // lib/api/resumes.ts's listResumes.
+  cachedFormatScore?: number
+  formatScoreComputedAt?: Date
   createdAt: Date
   updatedAt: Date
 }
@@ -24,6 +29,8 @@ const ResumeSchema = new Schema<IResume>(
     targetCompany: { type: String, maxlength: 200 },
     targetRole: { type: String, maxlength: 200 },
     parentResumeId: { type: String },
+    cachedFormatScore: { type: Number },
+    formatScoreComputedAt: { type: Date },
   },
   { timestamps: true }
 )

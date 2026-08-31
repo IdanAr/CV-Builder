@@ -8,12 +8,53 @@ export async function listResumes(userId: string) {
   await dbConnect()
   const resumes = await Resume.find({ userId }).sort({ updatedAt: -1 }).lean()
   const titleById = new Map<string, string>(resumes.map((r) => [String(r._id), r.title]))
-  return resumes.map((r) => ({
-    ...r,
-    sectionsFilledCount: sectionsFilledCount((r.data ?? {}) as ResumeData),
-    formatScore: scoreResume((r.data ?? {}) as ResumeData, '').breakdown.format,
-    parentResumeTitle: r.parentResumeId ? titleById.get(String(r.parentResumeId)) : undefined,
-  }))
+
+  // Cache-aside: reuse a resume's formatScore when it was computed at or
+  // after the resume's last edit; recompute (and persist) otherwise. Editing
+  // a resume already bumps `updatedAt` via the schema's timestamps, so that
+  // alone is the staleness signal — no separate invalidation step needed.
+  const now = new Date()
+  const bulkOps: Array<{
+    updateOne: { filter: { _id: unknown }; update: { $set: { cachedFormatScore: number; formatScoreComputedAt: Date } } }
+  }> = []
+
+  const results = resumes.map((r) => {
+    const isFresh =
+      r.cachedFormatScore !== undefined &&
+      r.formatScoreComputedAt !== undefined &&
+      r.formatScoreComputedAt >= r.updatedAt
+    const formatScore = isFresh
+      ? r.cachedFormatScore
+      : scoreResume((r.data ?? {}) as ResumeData, '').breakdown.format
+
+    if (!isFresh) {
+      bulkOps.push({
+        updateOne: {
+          filter: { _id: r._id },
+          update: { $set: { cachedFormatScore: formatScore, formatScoreComputedAt: now } },
+        },
+      })
+    }
+
+    return {
+      ...r,
+      sectionsFilledCount: sectionsFilledCount((r.data ?? {}) as ResumeData),
+      formatScore,
+      parentResumeTitle: r.parentResumeId ? titleById.get(String(r.parentResumeId)) : undefined,
+    }
+  })
+
+  // Awaited (not fire-and-forget): a Vercel serverless function can be frozen
+  // right after the response is sent, so an un-awaited write isn't reliable.
+  // { timestamps: false } is required — without it this bulkWrite bumps
+  // updatedAt itself, which (since it's set a moment after the
+  // formatScoreComputedAt captured above) immediately re-invalidates the
+  // very cache entry it just wrote, defeating the cache on every read.
+  if (bulkOps.length > 0) {
+    await Resume.bulkWrite(bulkOps, { timestamps: false })
+  }
+
+  return results
 }
 
 /** Lightweight id/title pairs for pickers (applications table resume column). */

@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/lib/db', () => ({ default: vi.fn().mockResolvedValue(undefined) }))
 
 // Use vi.hoisted so mock references are available when the factory is hoisted
-const { mockSort, mockLean, mockFind, mockFindOne, mockCreate, mockFindOneAndUpdate, mockDeleteOne } =
+const { mockSort, mockLean, mockFind, mockFindOne, mockCreate, mockFindOneAndUpdate, mockDeleteOne, mockBulkWrite } =
   vi.hoisted(() => {
     const mockSort = vi.fn()
     const mockLean = vi.fn()
@@ -13,7 +13,8 @@ const { mockSort, mockLean, mockFind, mockFindOne, mockCreate, mockFindOneAndUpd
     const mockCreate = vi.fn()
     const mockFindOneAndUpdate = vi.fn()
     const mockDeleteOne = vi.fn()
-    return { mockSort, mockLean, mockFind, mockFindOne, mockCreate, mockFindOneAndUpdate, mockDeleteOne }
+    const mockBulkWrite = vi.fn()
+    return { mockSort, mockLean, mockFind, mockFindOne, mockCreate, mockFindOneAndUpdate, mockDeleteOne, mockBulkWrite }
   })
 
 vi.mock('@/models/Resume', () => ({
@@ -23,6 +24,7 @@ vi.mock('@/models/Resume', () => ({
     create: mockCreate,
     findOneAndUpdate: mockFindOneAndUpdate,
     deleteOne: mockDeleteOne,
+    bulkWrite: mockBulkWrite,
   },
 }))
 
@@ -91,6 +93,75 @@ describe('listResumes', () => {
     const result = await listResumes('u1')
 
     expect(result[0].parentResumeTitle).toBeUndefined()
+  })
+
+  it('reuses a cached formatScore when it is newer than the last edit, without a DB write', async () => {
+    const updatedAt = new Date('2026-01-01T00:00:00Z')
+    const computedAt = new Date('2026-01-02T00:00:00Z') // after updatedAt — fresh
+    const fakeResumes = [
+      {
+        _id: 'r1', userId: 'u1', title: 'My CV', data: {}, meta: {},
+        updatedAt, cachedFormatScore: 17, formatScoreComputedAt: computedAt,
+      },
+    ]
+    mockSort.mockReturnValue({ lean: mockLean })
+    mockLean.mockResolvedValue(fakeResumes)
+
+    const result = await listResumes('u1')
+
+    expect(result[0].formatScore).toBe(17)
+    expect(mockBulkWrite).not.toHaveBeenCalled()
+  })
+
+  it('recomputes and persists when the cache predates the last edit', async () => {
+    const updatedAt = new Date('2026-01-02T00:00:00Z')
+    const computedAt = new Date('2026-01-01T00:00:00Z') // before updatedAt — stale
+    const fakeResumes = [
+      {
+        _id: 'r1', userId: 'u1', title: 'My CV', data: {}, meta: {},
+        updatedAt, cachedFormatScore: 5, formatScoreComputedAt: computedAt,
+      },
+    ]
+    mockSort.mockReturnValue({ lean: mockLean })
+    mockLean.mockResolvedValue(fakeResumes)
+
+    const result = await listResumes('u1')
+
+    // A brand-new, empty `data` object always scores the same fixed formatScore
+    // regardless of the (now-stale) cached 5 — the exact value doesn't matter
+    // here, only that it was recomputed (not the stale cached 5) and persisted.
+    expect(result[0].formatScore).not.toBe(5)
+    expect(mockBulkWrite).toHaveBeenCalledWith(
+      [
+        { updateOne: { filter: { _id: 'r1' }, update: { $set: { cachedFormatScore: result[0].formatScore, formatScoreComputedAt: expect.any(Date) } } } },
+      ],
+      { timestamps: false }
+    )
+  })
+
+  it('recomputes and persists when there is no cached score yet', async () => {
+    const fakeResumes = [{ _id: 'r1', userId: 'u1', title: 'My CV', data: {}, meta: {}, updatedAt: new Date() }]
+    mockSort.mockReturnValue({ lean: mockLean })
+    mockLean.mockResolvedValue(fakeResumes)
+
+    const result = await listResumes('u1')
+
+    expect(result[0].formatScore).toBeDefined()
+    expect(mockBulkWrite).toHaveBeenCalledTimes(1)
+  })
+
+  it('batches multiple stale/missing-cache resumes into a single bulkWrite call', async () => {
+    const fakeResumes = [
+      { _id: 'r1', userId: 'u1', title: 'A', data: {}, meta: {}, updatedAt: new Date() },
+      { _id: 'r2', userId: 'u1', title: 'B', data: {}, meta: {}, updatedAt: new Date() },
+    ]
+    mockSort.mockReturnValue({ lean: mockLean })
+    mockLean.mockResolvedValue(fakeResumes)
+
+    await listResumes('u1')
+
+    expect(mockBulkWrite).toHaveBeenCalledTimes(1)
+    expect(mockBulkWrite.mock.calls[0][0]).toHaveLength(2)
   })
 })
 
