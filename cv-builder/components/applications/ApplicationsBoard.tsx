@@ -254,6 +254,7 @@ export default function ApplicationsBoard({
   return (
     <div className="overflow-x-auto pb-2">
       <DndContext
+        id="applications-board"
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}

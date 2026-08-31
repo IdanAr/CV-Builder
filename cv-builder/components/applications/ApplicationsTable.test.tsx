@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import ApplicationsTable from './ApplicationsTable'
 import { defaultBoardColumns } from '@/lib/schemas/application.zod'
 import type { ApplicationRow } from '@/lib/applications/types'
@@ -105,6 +105,37 @@ describe('ApplicationsTable', () => {
   it('enables row drag handles when no column sort is active', () => {
     renderTable({ rowDragEnabled: true })
     expect(screen.getByRole('button', { name: 'Reorder application at Acme' })).toBeEnabled()
+  })
+
+  it('gives the row and column DndContexts a deterministic aria-describedby across separate mounts (prevents SSR/hydration mismatch)', () => {
+    // dnd-kit derives aria-describedby from an explicit DndContext `id` when
+    // given one; without it, it falls back to a module-level auto-increment
+    // counter that has no way of staying in sync between a server render and
+    // the client's hydration render — the exact class of bug already fixed
+    // once in EditTab.tsx via `<DndContext id="edit-tab-sections">`. Mounting
+    // twice in the same process reproduces that divergence: an unfixed
+    // DndContext would report a different aria-describedby on the second
+    // mount (e.g. "DndDescribedBy-1" then "DndDescribedBy-2"), while an
+    // explicit id always reports the same literal value.
+    renderTable()
+    const rowGripFirst = screen
+      .getByRole('button', { name: 'Reorder application at Acme' })
+      .getAttribute('aria-describedby')
+    const columnGripFirst = screen
+      .getByRole('button', { name: 'Reorder Company column' })
+      .getAttribute('aria-describedby')
+    cleanup()
+
+    renderTable()
+    const rowGripSecond = screen
+      .getByRole('button', { name: 'Reorder application at Acme' })
+      .getAttribute('aria-describedby')
+    const columnGripSecond = screen
+      .getByRole('button', { name: 'Reorder Company column' })
+      .getAttribute('aria-describedby')
+
+    expect(rowGripSecond).toBe(rowGripFirst)
+    expect(columnGripSecond).toBe(columnGripFirst)
   })
 
   it('renders a drag grip on every column header', () => {

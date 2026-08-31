@@ -226,7 +226,7 @@ export default function ApplicationsTable({
     <div className="min-h-[28rem] overflow-x-auto rounded-xl border border-white/30 bg-white/65 shadow-lg backdrop-blur-xl">
       <div role="table" aria-label="Applications" className="min-w-max">
         {/* Header (columns are drag-reorderable) */}
-        <DndContext collisionDetection={closestCenter} onDragEnd={handleColumnDragEnd}>
+        <DndContext id="applications-table-columns" collisionDetection={closestCenter} onDragEnd={handleColumnDragEnd}>
           <SortableContext items={ordered.map((c) => c.id)} strategy={horizontalListSortingStrategy}>
             <div role="row" className="sticky top-0 z-10 flex border-b border-indigo-100 bg-white">
               <div role="columnheader" style={{ width: GRIP_COLUMN_WIDTH }} className="shrink-0" />
@@ -249,7 +249,7 @@ export default function ApplicationsTable({
         </DndContext>
 
         {/* Rows (drag-reorderable while no column sort is active) */}
-        <DndContext collisionDetection={closestCenter} onDragEnd={handleRowDragEnd}>
+        <DndContext id="applications-table-rows" collisionDetection={closestCenter} onDragEnd={handleRowDragEnd}>
           <SortableContext
             items={applications.map((a) => a._id)}
             strategy={verticalListSortingStrategy}
