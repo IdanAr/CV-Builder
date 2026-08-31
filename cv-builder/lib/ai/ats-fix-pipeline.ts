@@ -134,7 +134,8 @@ Return ONLY the JSON array, no other text.`
   try {
     const jsonMatch = responseText.match(/\[[\s\S]*\]/)
     raw = jsonMatch ? JSON.parse(jsonMatch[0]) : []
-  } catch {
+  } catch (err) {
+    console.error('runAtsFixPipeline: failed to parse Claude response as JSON', err, responseText.slice(0, 500))
     return []
   }
 

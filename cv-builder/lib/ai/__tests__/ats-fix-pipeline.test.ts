@@ -264,6 +264,19 @@ describe('runAtsFixPipeline', () => {
     expect(fixes).toEqual([])
   })
 
+  it('logs an error and returns empty array when the response contains malformed JSON inside brackets', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockCreate.mockResolvedValueOnce({
+      content: [{ type: 'text', text: '[{"sectionIndex": 0, this is not valid json}]' }],
+    })
+
+    const fixes = await runAtsFixPipeline(sampleData, ['react'])
+
+    expect(fixes).toEqual([])
+    expect(consoleSpy).toHaveBeenCalled()
+    consoleSpy.mockRestore()
+  })
+
   it('limits input to 20 keywords', async () => {
     mockClaudeResponse([])
     const manyKeywords = Array.from({ length: 30 }, (_, i) => `keyword${i}`)
