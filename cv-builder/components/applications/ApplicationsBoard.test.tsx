@@ -42,6 +42,25 @@ describe('ApplicationsBoard', () => {
     expect(screen.getByRole('group', { name: 'Rejected column' })).toBeInTheDocument()
   })
 
+  it('gives the DndContext a deterministic aria-describedby across separate mounts (prevents SSR/hydration mismatch)', () => {
+    // Same dnd-kit id-determinism issue already fixed once in EditTab.tsx —
+    // see the matching test in ApplicationsTable.test.tsx for the full
+    // mechanism explanation.
+    const { unmount } = render(
+      <ApplicationsBoard applications={apps} columns={defaultBoardColumns()} onCardMove={vi.fn()} />
+    )
+    const first = screen.getByText('Acme').closest('[aria-describedby]')?.getAttribute('aria-describedby')
+    unmount()
+
+    render(
+      <ApplicationsBoard applications={apps} columns={defaultBoardColumns()} onCardMove={vi.fn()} />
+    )
+    const second = screen.getByText('Acme').closest('[aria-describedby]')?.getAttribute('aria-describedby')
+
+    expect(first).toBeTruthy()
+    expect(second).toBe(first)
+  })
+
   it('orders cards within a lane by their manual order value', () => {
     render(
       <ApplicationsBoard applications={apps} columns={defaultBoardColumns()} onCardMove={vi.fn()} />

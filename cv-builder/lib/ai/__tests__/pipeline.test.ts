@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const mockAnthropicCreate = vi.fn()
 
 vi.mock('../models', () => ({
+  DEFAULT_MODEL: 'claude-haiku-4-5-20251001',
   getAnthropic: () => ({
     messages: { create: mockAnthropicCreate },
   }),
@@ -100,5 +101,15 @@ describe('runSuggestionPipeline', () => {
     const firstCallMessages = mockAnthropicCreate.mock.calls[0][0].messages[0].content as string
     expect(firstCallMessages).toContain('Acme Corp')
     expect(firstCallMessages).toContain('Engineer')
+  })
+
+  it('does not throw when Claude returns an empty content array', async () => {
+    mockAnthropicCreate.mockResolvedValue({ content: [] })
+
+    const { runSuggestionPipeline } = await import('../pipeline')
+    const result = await runSuggestionPipeline('react dashboard 500 users', { field: 'highlight' })
+
+    expect(result.suggestion).toBe('')
+    expect(result.pendingApprovals).toEqual([])
   })
 })

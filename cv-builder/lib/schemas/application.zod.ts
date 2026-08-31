@@ -85,6 +85,19 @@ export function defaultBoardColumns(): BoardColumn[] {
 export const CustomFieldValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])
 export type CustomFieldValue = z.infer<typeof CustomFieldValueSchema>
 
+// Rejects keys that could pollute Object.prototype once looped into a
+// Mongoose dot-notation $set path (lib/api/applications.ts) — defense in
+// depth alongside the mongoose version bump past GHSA-664h-wqgq-64gw /
+// CVE-2026-73562. A JSON-parsed "__proto__" key is a normal own property,
+// not the object's actual prototype, so Object.keys() sees it here.
+const DANGEROUS_CUSTOM_FIELD_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
+
+export const CustomFieldsSchema = z
+  .record(z.string(), CustomFieldValueSchema)
+  .refine((fields) => Object.keys(fields).every((key) => !DANGEROUS_CUSTOM_FIELD_KEYS.has(key)), {
+    message: 'Invalid custom field key',
+  })
+
 export const CreateApplicationSchema = z.object({
   resumeId: z.string().optional(),
   // Empty strings allowed so a blank quick-add row can be created and filled inline.
@@ -92,7 +105,7 @@ export const CreateApplicationSchema = z.object({
   role: z.string().trim().max(200).optional().default(''),
   // References an option id in the user's status column config — not an enum.
   status: z.string().optional(),
-  customFields: z.record(z.string(), CustomFieldValueSchema).optional().default({}),
+  customFields: CustomFieldsSchema.optional().default({}),
 })
 export type CreateApplicationInput = z.infer<typeof CreateApplicationSchema>
 
@@ -103,6 +116,6 @@ export const PatchApplicationSchema = z.object({
   status: z.string().optional(),
   order: z.number().optional(),
   // Merged per-key into the existing customFields map.
-  customFields: z.record(z.string(), CustomFieldValueSchema).optional(),
+  customFields: CustomFieldsSchema.optional(),
 })
 export type PatchApplicationInput = z.infer<typeof PatchApplicationSchema>

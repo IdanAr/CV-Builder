@@ -51,7 +51,6 @@ export const JobSearchProfileSchema = z.object({
   minAtsScore: z.number().int().min(0).max(100).default(DEFAULT_MIN_ATS_SCORE),
   isActive: z.boolean().default(true),
 })
-export type JobSearchProfileInput = z.infer<typeof JobSearchProfileSchema>
 
 export const CreateJobSearchProfileSchema = JobSearchProfileSchema
 export type CreateJobSearchProfileInput = z.infer<typeof CreateJobSearchProfileSchema>
@@ -190,7 +189,6 @@ export const JobSearchRuleSchema = z.object({
   conditions: z.array(RuleConditionSchema).min(1, 'At least one condition is required'),
   action: RuleActionEnum,
 })
-export type JobSearchRuleInput = z.infer<typeof JobSearchRuleSchema>
 
 export const CreateJobSearchRuleSchema = JobSearchRuleSchema
 export type CreateJobSearchRuleInput = z.infer<typeof CreateJobSearchRuleSchema>

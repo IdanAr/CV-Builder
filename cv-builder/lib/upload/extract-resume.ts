@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import { getAnthropic } from '@/lib/ai/models'
+import { getAnthropic, DEFAULT_MODEL } from '@/lib/ai/models'
 import { ResumeDataSchema, CUSTOM_SECTION_FIELDS } from '@/lib/schemas/resume.zod'
 import type { ResumeData, CustomSection, CustomSectionItem, CustomSectionFieldType, WorkRole, EducationRole, CustomSectionRole } from '@/lib/schemas/resume.zod'
 
@@ -55,7 +55,7 @@ export async function extractResume(text: string): Promise<ResumeData> {
   const anthropic = getAnthropic()
 
   const msg = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: DEFAULT_MODEL,
     max_tokens: 4096,
     // Extraction must be deterministic — the same CV text uploaded twice
     // should parse the same way. Uncontrolled sampling (the SDK default)

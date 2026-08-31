@@ -342,11 +342,12 @@ export function DesignPanel() {
       {/* Template selector */}
       <div>
         <p className={labelClass}>Template</p>
-        <div className="space-y-2">
+        <div className="space-y-2" role="group" aria-label="Template">
           {TEMPLATES.map((t) => (
             <button
               key={t.id}
               type="button"
+              aria-pressed={meta.templateId === t.id}
               onClick={() => setMeta({ templateId: t.id })}
               className={`w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-xl border transition-all duration-200 ${
                 meta.templateId === t.id
@@ -372,7 +373,7 @@ export function DesignPanel() {
           <p className="text-xs text-indigo-300 mt-1.5">The Sidebar template always uses a rail + main column layout.</p>
         ) : (
           <>
-            <div className="flex gap-2">
+            <div className="flex gap-2" role="group" aria-label="Layout">
               {(meta.templateId === 'minimal'
                 ? (['single-column'] as const)
                 : (['single-column', 'two-column'] as const)
@@ -380,6 +381,7 @@ export function DesignPanel() {
                 <button
                   key={layout}
                   type="button"
+                  aria-pressed={meta.layout === layout}
                   onClick={() => setMeta({ layout })}
                   className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 text-sm rounded-xl border transition-all duration-200 ${
                     meta.layout === layout

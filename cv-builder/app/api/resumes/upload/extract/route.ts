@@ -23,9 +23,8 @@ export const POST = auth(async function POST(req) {
     return NextResponse.json({ error: 'Invalid JSON body', code: 'BAD_REQUEST' }, { status: 400 })
   }
 
-  const text = typeof (body as Record<string, unknown>).text === 'string'
-    ? ((body as Record<string, unknown>).text as string).trim()
-    : ''
+  const bodyRecord = body !== null && typeof body === 'object' ? (body as Record<string, unknown>) : {}
+  const text = typeof bodyRecord.text === 'string' ? bodyRecord.text.trim() : ''
 
   if (!text) {
     return NextResponse.json({ error: 'text is required', code: 'BAD_REQUEST' }, { status: 400 })
@@ -33,7 +32,7 @@ export const POST = auth(async function POST(req) {
 
   try {
     const data = await extractResume(text)
-    const name = (data.basics as Record<string, unknown> | undefined)?.name
+    const name = data.basics?.name
     const title = typeof name === 'string' && name
       ? `${name}'s CV`
       : `Uploaded CV - ${new Date().toISOString().slice(0, 10)}`

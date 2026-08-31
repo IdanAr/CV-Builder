@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { getResume } from '@/lib/api/resumes'
 import { scoreResume } from '@/lib/ats/scorer'
-import { extractJdRequirements, normalizePriority, type KeywordPriority } from '@/lib/ai/jd-extraction-pipeline'
+import { extractJdRequirements, normalizePriority, MAX_JD_LENGTH, type KeywordPriority } from '@/lib/ai/jd-extraction-pipeline'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/rate-limit'
 import { apiError, handleRouteError } from '@/lib/api/route-errors'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
@@ -20,7 +20,8 @@ export const POST = auth(async (req, ctx) => {
     }
 
     const body = await req.json().catch(() => ({}))
-    const jobDescription: string = typeof body.jobDescription === 'string' ? body.jobDescription : ''
+    const jobDescription: string =
+      typeof body.jobDescription === 'string' ? body.jobDescription.slice(0, MAX_JD_LENGTH) : ''
     const excludedKeywords: string[] = Array.isArray(body.excludedKeywords)
       ? body.excludedKeywords.filter((k: unknown) => typeof k === 'string').slice(0, 200)
       : []

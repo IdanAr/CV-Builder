@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { getAnthropic } from './models'
+import { getAnthropic, DEFAULT_MODEL } from './models'
 import { detectHallucinations } from './hallucination-guard'
 import { flattenAllText } from '@/lib/ats/scorer'
 import { resolveWorkRoles, LEGACY_ROLE_ID } from '@/lib/roles'
@@ -123,7 +123,7 @@ Return ONLY the JSON array, no other text.`
 
   const anthropic = getAnthropic()
   const msg = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: DEFAULT_MODEL,
     max_tokens: 3000,
     messages: [{ role: 'user', content: prompt }],
   })
@@ -134,7 +134,8 @@ Return ONLY the JSON array, no other text.`
   try {
     const jsonMatch = responseText.match(/\[[\s\S]*\]/)
     raw = jsonMatch ? JSON.parse(jsonMatch[0]) : []
-  } catch {
+  } catch (err) {
+    console.error('runAtsFixPipeline: failed to parse Claude response as JSON', err, responseText.slice(0, 500))
     return []
   }
 

@@ -6,6 +6,7 @@
 // DndContext/SortableContext pattern as EditTab.tsx); row dragging is
 // disabled while a column sort is active, since manual ordering and an
 // active sort are contradictory.
+import { memo } from 'react'
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -31,7 +32,7 @@ import {
 const DEFAULT_COLUMN_WIDTH = 160
 const GRIP_COLUMN_WIDTH = 28
 
-export function ApplicationCell({
+export const ApplicationCell = memo(function ApplicationCell({
   app,
   column,
   resumes,
@@ -82,7 +83,7 @@ export function ApplicationCell({
     default:
       return <TextCell value={value} onCommit={onCommit} ariaLabel={ariaLabel} />
   }
-}
+})
 
 export function columnWidth(column: BoardColumn): number {
   return column.width ?? DEFAULT_COLUMN_WIDTH
@@ -225,7 +226,7 @@ export default function ApplicationsTable({
     <div className="min-h-[28rem] overflow-x-auto rounded-xl border border-white/30 bg-white/65 shadow-lg backdrop-blur-xl">
       <div role="table" aria-label="Applications" className="min-w-max">
         {/* Header (columns are drag-reorderable) */}
-        <DndContext collisionDetection={closestCenter} onDragEnd={handleColumnDragEnd}>
+        <DndContext id="applications-table-columns" collisionDetection={closestCenter} onDragEnd={handleColumnDragEnd}>
           <SortableContext items={ordered.map((c) => c.id)} strategy={horizontalListSortingStrategy}>
             <div role="row" className="sticky top-0 z-10 flex border-b border-indigo-100 bg-white">
               <div role="columnheader" style={{ width: GRIP_COLUMN_WIDTH }} className="shrink-0" />
@@ -248,7 +249,7 @@ export default function ApplicationsTable({
         </DndContext>
 
         {/* Rows (drag-reorderable while no column sort is active) */}
-        <DndContext collisionDetection={closestCenter} onDragEnd={handleRowDragEnd}>
+        <DndContext id="applications-table-rows" collisionDetection={closestCenter} onDragEnd={handleRowDragEnd}>
           <SortableContext
             items={applications.map((a) => a._id)}
             strategy={verticalListSortingStrategy}

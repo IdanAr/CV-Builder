@@ -4,6 +4,7 @@ const mockCreate = vi.fn()
 
 vi.mock('../models', () => ({
   getAnthropic: vi.fn(() => ({ messages: { create: mockCreate } })),
+  DEFAULT_MODEL: 'claude-haiku-4-5-20251001',
 }))
 
 import { runAtsFixPipeline } from '../ats-fix-pipeline'
@@ -262,6 +263,19 @@ describe('runAtsFixPipeline', () => {
 
     const fixes = await runAtsFixPipeline(sampleData, ['react'])
     expect(fixes).toEqual([])
+  })
+
+  it('logs an error and returns empty array when the response contains malformed JSON inside brackets', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockCreate.mockResolvedValueOnce({
+      content: [{ type: 'text', text: '[{"sectionIndex": 0, this is not valid json}]' }],
+    })
+
+    const fixes = await runAtsFixPipeline(sampleData, ['react'])
+
+    expect(fixes).toEqual([])
+    expect(consoleSpy).toHaveBeenCalled()
+    consoleSpy.mockRestore()
   })
 
   it('limits input to 20 keywords', async () => {

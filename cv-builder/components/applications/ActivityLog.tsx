@@ -81,6 +81,8 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
       {open && (
         <div
           ref={panelRef}
+          role="status"
+          aria-live="polite"
           className={`absolute right-0 z-30 max-h-72 w-80 overflow-y-auto rounded-lg border border-indigo-100 bg-white p-2 shadow-xl ${
             openUpward ? 'bottom-full mb-1' : 'top-full mt-1'
           }`}

@@ -21,6 +21,12 @@ jobs:
           cache: 'npm'
           cache-dependency-path: cv-builder/package-lock.json
 
+      - name: Cache MongoDB binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('cv-builder/package-lock.json') }}
+
       - name: Install dependencies
         run: npm ci
 

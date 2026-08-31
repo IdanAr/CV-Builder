@@ -233,6 +233,16 @@ export async function flushSave(): Promise<void> {
   await performSave()
 }
 
+// Fire-and-forget timer callback for performSave: the debounce and retry
+// timers don't await the result (saveError state is how they already
+// communicate failure to the UI), so this exists only to prevent an
+// unhandled promise rejection now that performSave can reject.
+function scheduleSave(delay: number): ReturnType<typeof setTimeout> {
+  return setTimeout(() => {
+    performSave().catch(() => {})
+  }, delay)
+}
+
 export function initAutoSave(): () => void {
   _retryCount = 0
   if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null }
@@ -242,7 +252,7 @@ export function initAutoSave(): () => void {
     (isDirty) => {
       if (!isDirty) return
       if (_saveTimer) clearTimeout(_saveTimer)
-      _saveTimer = setTimeout(performSave, 1000)
+      _saveTimer = scheduleSave(1000)
     }
   )
   const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -287,7 +297,7 @@ async function performSave(): Promise<void> {
       _setIsDirty(false)
     } else {
       if (_saveTimer) clearTimeout(_saveTimer)
-      _saveTimer = setTimeout(performSave, 1000)
+      _saveTimer = scheduleSave(1000)
     }
     _setSaveError(null)
     _retryCount = 0
@@ -300,25 +310,22 @@ async function performSave(): Promise<void> {
       console.error('[AutoSave] Validation error - save aborted:', details ?? cause?.body)
       _retryCount = 0
       _setSaveError("Couldn't save - some fields have invalid values. Check URLs and email addresses.")
-      return
-    }
-    if (status === 401) {
+    } else if (status === 401) {
       console.error('[AutoSave] Session expired')
       _retryCount = 0
       _setSaveError("Couldn't save - your session has expired. Please refresh the page.")
-      return
-    }
-    if (_retryCount < MAX_RETRIES) {
+    } else if (_retryCount < MAX_RETRIES) {
       const delay = RETRY_DELAYS[_retryCount] ?? 12000
       _retryCount++
       console.warn(`[AutoSave] Save failed (attempt ${_retryCount}/${MAX_RETRIES}), retrying in ${delay / 1000}s…`, err)
       _setSaveError(`Couldn't save - retrying… (attempt ${_retryCount}/${MAX_RETRIES})`)
-      _retryTimer = setTimeout(performSave, delay)
+      _retryTimer = scheduleSave(delay)
     } else {
       console.error('[AutoSave] All retries exhausted:', err)
       _retryCount = 0
       _setSaveError("Couldn't save after several attempts - please check your connection and try again.")
     }
+    throw err
   } finally {
     _setIsSaving(false)
   }

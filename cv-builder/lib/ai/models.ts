@@ -1,6 +1,10 @@
 // lib/ai/models.ts
 import Anthropic from '@anthropic-ai/sdk'
 
+// Single source of truth for the model every AI pipeline in this app calls —
+// previously duplicated as a string literal in 6 separate files.
+export const DEFAULT_MODEL = 'claude-haiku-4-5-20251001'
+
 let _anthropic: Anthropic | null = null
 
 export function getAnthropic(): Anthropic {

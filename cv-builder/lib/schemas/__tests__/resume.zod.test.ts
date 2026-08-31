@@ -140,6 +140,31 @@ describe('CreateResumeSchema', () => {
   it('rejects whitespace-only title', () => {
     expect(CreateResumeSchema.safeParse({ title: '   ' }).success).toBe(false)
   })
+
+  it('creates a fresh data object on each parse (no shared reference)', () => {
+    const r1 = CreateResumeSchema.parse({ title: 'CV 1' })
+    const r2 = CreateResumeSchema.parse({ title: 'CV 2' })
+    expect(r1.data).not.toBe(r2.data)
+  })
+})
+
+describe('ResumeDataSchema — unmodeled fields', () => {
+  it('silently drops an unmodeled "references" field instead of erroring', () => {
+    const result = ResumeDataSchema.safeParse({ references: [{ name: 'John', reference: 'Great' }] })
+    expect(result.success).toBe(true)
+    expect(result.success && 'references' in result.data).toBe(false)
+  })
+
+  it('accepts a non-URL string for basics.image (no format validation at the schema level)', () => {
+    expect(ResumeDataSchema.safeParse({ basics: { image: 'not-a-url' } }).success).toBe(true)
+  })
+})
+
+describe('ResumeMetaSchema — lenient color fields (DesignPanel enforces hex format client-side, not this schema)', () => {
+  it('accepts an empty string or an arbitrary non-hex string for primaryColor', () => {
+    expect(ResumeMetaSchema.safeParse({ primaryColor: '' }).success).toBe(true)
+    expect(ResumeMetaSchema.safeParse({ primaryColor: 'red' }).success).toBe(true)
+  })
 })
 
 describe('CustomSectionSchema', () => {
