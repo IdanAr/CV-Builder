@@ -31,5 +31,10 @@ const ApplicationSchema = new Schema<IApplication>(
   { timestamps: true, minimize: false }
 )
 
+// Matches lib/api/applications.ts's listApplications (find({userId}).sort({order:1}))
+// and createApplication's findOne({userId}).sort({order:-1}) — same compound
+// index serves both sort directions.
+ApplicationSchema.index({ userId: 1, order: 1 })
+
 const Application = models.Application ?? model<IApplication>('Application', ApplicationSchema)
 export default Application
