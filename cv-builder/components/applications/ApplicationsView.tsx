@@ -3,7 +3,7 @@
 // Client orchestrator for the applications page: owns the applications +
 // board-config state, optimistic cell edits, and the recoverable-delete
 // (optimistic-hide + undo toast) flow shared by the table and board views.
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast, useToastStore } from '@/lib/stores/toast.store'
 import { onToastPause, onToastResume } from '@/components/ui/Toaster'
 import type { BoardColumn, CustomFieldValue, SortEntry } from '@/lib/schemas/application.zod'
@@ -87,6 +87,13 @@ export default function ApplicationsView({
   // have moved document.activeElement away from the trigger by the time a
   // parent effect ran.
   const columnModalTriggerRef = useRef<HTMLElement | null>(null)
+  // Kept in sync so handleCellChange's revert-on-failure path can read the
+  // latest applications without needing `applications` in its own
+  // useCallback deps (see handleCellChange below).
+  const applicationsRef = useRef(applications)
+  useEffect(() => {
+    applicationsRef.current = applications
+  }, [applications])
   function openColumnModal(next: { mode: 'add' } | { mode: 'edit'; column: BoardColumn }) {
     columnModalTriggerRef.current = document.activeElement as HTMLElement | null
     setColumnModal(next)
@@ -289,26 +296,37 @@ export default function ApplicationsView({
   }
 
   // --- Inline cell editing (optimistic, reverts on failure) -----------------
-  async function handleCellChange(appId: string, column: BoardColumn, value: CustomFieldValue) {
-    const patch = buildCellPatch(column, value)
-    if (!patch) return
-    const previous = applications
-    setApplications((apps) =>
-      apps.map((a) => (a._id === appId ? applyCellLocally(a, column, value, resumes) : a))
-    )
-    try {
-      const res = await fetch(`/api/applications/${appId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      })
-      if (!res.ok) throw new Error('Patch failed')
-    } catch (err) {
-      console.error(err)
-      setApplications(previous)
-      toast.error('Could not save that change. Please try again.')
-    }
-  }
+  // useCallback'd with a dependency array that excludes `applications` on
+  // purpose: this handler is threaded down to every ApplicationCell as
+  // `onCellChange`, and ApplicationCell is React.memo'd specifically so an
+  // edit to one cell doesn't re-render every other cell in the table. If this
+  // closure were recreated whenever `applications` changes (i.e. on every
+  // edit, including the one that just happened), that memoization would be
+  // defeated on every single keystroke commit. The revert-on-failure path
+  // reads the latest applications via a ref instead.
+  const handleCellChange = useCallback(
+    async (appId: string, column: BoardColumn, value: CustomFieldValue) => {
+      const patch = buildCellPatch(column, value)
+      if (!patch) return
+      const previous = applicationsRef.current
+      setApplications((apps) =>
+        apps.map((a) => (a._id === appId ? applyCellLocally(a, column, value, resumes) : a))
+      )
+      try {
+        const res = await fetch(`/api/applications/${appId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        })
+        if (!res.ok) throw new Error('Patch failed')
+      } catch (err) {
+        console.error(err)
+        setApplications(previous)
+        toast.error('Could not save that change. Please try again.')
+      }
+    },
+    [resumes]
+  )
 
   // --- Quick add -------------------------------------------------------------
   async function handleAddRow() {
@@ -428,10 +446,19 @@ export default function ApplicationsView({
     }
   }, [])
 
-  const visibleApplications = applications.filter((a) => !hiddenIds.has(a._id))
   const columns = boardConfig.columns
-  const filteredApplications = applyFilters(visibleApplications, filters, columns)
-  const sortedApplications = sortApplications(filteredApplications, boardConfig.sort, columns)
+  const visibleApplications = useMemo(
+    () => applications.filter((a) => !hiddenIds.has(a._id)),
+    [applications, hiddenIds]
+  )
+  const filteredApplications = useMemo(
+    () => applyFilters(visibleApplications, filters, columns),
+    [visibleApplications, filters, columns]
+  )
+  const sortedApplications = useMemo(
+    () => sortApplications(filteredApplications, boardConfig.sort, columns),
+    [filteredApplications, boardConfig.sort, columns]
+  )
 
   if (applications.length === 0) {
     return <EmptyApplicationsState onCreate={handleAddRow} />

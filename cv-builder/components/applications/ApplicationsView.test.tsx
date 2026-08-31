@@ -1,6 +1,20 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import type { ApplicationsTableProps } from './ApplicationsTable'
+
+const capturedOnCellChange: Array<ApplicationsTableProps['onCellChange']> = []
+vi.mock('./ApplicationsTable', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./ApplicationsTable')>()
+  return {
+    ...actual,
+    default: function SpyApplicationsTable(props: ApplicationsTableProps) {
+      capturedOnCellChange.push(props.onCellChange)
+      return actual.default(props)
+    },
+  }
+})
+
 import ApplicationsView from './ApplicationsView'
 import { defaultBoardColumns } from '@/lib/schemas/application.zod'
 import type { ApplicationRow } from '@/lib/applications/types'
@@ -82,6 +96,23 @@ describe('ApplicationsView view toggle', () => {
     renderView()
     expect(screen.getByText('Acme')).toBeInTheDocument()
     expect(screen.queryByText('Zeta')).not.toBeInTheDocument()
+  })
+})
+
+describe('ApplicationsView cell-edit render stability', () => {
+  it('keeps the onCellChange handler identity stable across re-renders triggered by unrelated state', () => {
+    capturedOnCellChange.length = 0
+    renderView()
+    expect(capturedOnCellChange.length).toBeGreaterThan(0)
+    const first = capturedOnCellChange[capturedOnCellChange.length - 1]
+
+    // Trigger a re-render via unrelated state (view-mode toggle back to
+    // 'table' forces ApplicationsTable to re-render with no data change).
+    fireEvent.click(screen.getByRole('button', { name: 'Board' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }))
+
+    const last = capturedOnCellChange[capturedOnCellChange.length - 1]
+    expect(last).toBe(first)
   })
 })
 
