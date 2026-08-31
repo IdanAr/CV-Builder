@@ -101,4 +101,14 @@ describe('runSuggestionPipeline', () => {
     expect(firstCallMessages).toContain('Acme Corp')
     expect(firstCallMessages).toContain('Engineer')
   })
+
+  it('does not throw when Claude returns an empty content array', async () => {
+    mockAnthropicCreate.mockResolvedValue({ content: [] })
+
+    const { runSuggestionPipeline } = await import('../pipeline')
+    const result = await runSuggestionPipeline('react dashboard 500 users', { field: 'highlight' })
+
+    expect(result.suggestion).toBe('')
+    expect(result.pendingApprovals).toEqual([])
+  })
 })

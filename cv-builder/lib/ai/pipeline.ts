@@ -23,7 +23,7 @@ async function callClaude(prompt: string): Promise<string> {
     messages: [{ role: 'user', content: prompt }],
   })
   const block = msg.content[0]
-  return block.type === 'text' ? block.text.trim() : ''
+  return block?.type === 'text' ? block.text.trim() : ''
 }
 
 async function generate(input: string, ctx: PipelineContext): Promise<string> {
