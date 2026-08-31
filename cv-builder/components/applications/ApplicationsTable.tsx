@@ -6,6 +6,7 @@
 // DndContext/SortableContext pattern as EditTab.tsx); row dragging is
 // disabled while a column sort is active, since manual ordering and an
 // active sort are contradictory.
+import { memo } from 'react'
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -31,7 +32,7 @@ import {
 const DEFAULT_COLUMN_WIDTH = 160
 const GRIP_COLUMN_WIDTH = 28
 
-export function ApplicationCell({
+export const ApplicationCell = memo(function ApplicationCell({
   app,
   column,
   resumes,
@@ -82,7 +83,7 @@ export function ApplicationCell({
     default:
       return <TextCell value={value} onCommit={onCommit} ariaLabel={ariaLabel} />
   }
-}
+})
 
 export function columnWidth(column: BoardColumn): number {
   return column.width ?? DEFAULT_COLUMN_WIDTH

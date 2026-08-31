@@ -5,6 +5,16 @@ import ApplicationsTable from './ApplicationsTable'
 import { defaultBoardColumns } from '@/lib/schemas/application.zod'
 import type { ApplicationRow } from '@/lib/applications/types'
 
+const cellRenderCounts: Record<string, number> = {}
+vi.mock('./cells', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./cells')>()
+  function countedTextCell(props: Parameters<typeof actual.TextCell>[0]) {
+    cellRenderCounts[props.ariaLabel] = (cellRenderCounts[props.ariaLabel] ?? 0) + 1
+    return actual.TextCell(props)
+  }
+  return { ...actual, TextCell: countedTextCell }
+})
+
 const apps: ApplicationRow[] = [
   {
     _id: 'a1',
@@ -184,6 +194,45 @@ describe('ApplicationsTable', () => {
     })
 
     expect(screen.getByRole('link', { name: 'not a url' })).toBeInTheDocument()
+  })
+
+  it("memoizes ApplicationCell: editing one row does not re-render an unrelated row's cell", () => {
+    for (const key of Object.keys(cellRenderCounts)) delete cellRenderCounts[key]
+    const onCellChange = vi.fn()
+    const onDeleteRow = vi.fn()
+    // Stable references across both renders, matching how ApplicationsView
+    // actually threads these down (resumes/onCellChange/onDeleteRow don't
+    // change identity on an unrelated cell edit) — a fresh array/function
+    // literal on the second render would defeat React.memo for every cell,
+    // not just the touched one, which isn't the scenario this test targets.
+    const resumes = [{ id: 'r1', title: 'Backend CV' }]
+    const { rerender } = render(
+      <ApplicationsTable
+        applications={apps}
+        columns={columns}
+        resumes={resumes}
+        onCellChange={onCellChange}
+        onDeleteRow={onDeleteRow}
+      />
+    )
+    const globexRoleCountBefore = cellRenderCounts['Role for Globex']
+    expect(globexRoleCountBefore).toBeGreaterThan(0)
+
+    // Same update shape ApplicationsView.tsx's own apps.map() produces: a1
+    // gets a new object, a2 keeps its exact previous reference.
+    const updatedApps = apps.map((a) => (a._id === 'a1' ? { ...a, company: 'Acme Corp' } : a))
+    rerender(
+      <ApplicationsTable
+        applications={updatedApps}
+        columns={columns}
+        resumes={resumes}
+        onCellChange={onCellChange}
+        onDeleteRow={onDeleteRow}
+      />
+    )
+
+    expect(cellRenderCounts['Role for Globex']).toBe(globexRoleCountBefore)
+    expect(cellRenderCounts['Company for Acme Corp']).toBeGreaterThan(0)
   })
 
   it('fires onDeleteRow', () => {
