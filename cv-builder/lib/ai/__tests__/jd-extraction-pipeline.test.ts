@@ -4,6 +4,7 @@ const mockCreate = vi.fn()
 
 vi.mock('../models', () => ({
   getAnthropic: vi.fn(() => ({ messages: { create: mockCreate } })),
+  DEFAULT_MODEL: 'claude-haiku-4-5-20251001',
 }))
 
 import { extractJdRequirements } from '../jd-extraction-pipeline'

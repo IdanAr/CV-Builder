@@ -4,6 +4,7 @@ const mockCreate = vi.fn()
 
 vi.mock('@/lib/ai/models', () => ({
   getAnthropic: () => ({ messages: { create: mockCreate } }),
+  DEFAULT_MODEL: 'claude-haiku-4-5-20251001',
 }))
 
 const { extractResume, ExtractionError } = await import('../extract-resume')

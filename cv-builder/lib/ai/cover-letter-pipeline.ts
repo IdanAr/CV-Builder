@@ -1,5 +1,5 @@
 // lib/ai/cover-letter-pipeline.ts
-import { getAnthropic } from './models'
+import { getAnthropic, DEFAULT_MODEL } from './models'
 import { detectHallucinations } from './hallucination-guard'
 import { flattenAllText } from '@/lib/ats/scorer'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
@@ -30,7 +30,7 @@ Write a 3-paragraph professional cover letter: (1) a greeting and opening line s
 
   const anthropic = getAnthropic()
   const msg = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: DEFAULT_MODEL,
     max_tokens: 800,
     messages: [{ role: 'user', content: prompt }],
   })

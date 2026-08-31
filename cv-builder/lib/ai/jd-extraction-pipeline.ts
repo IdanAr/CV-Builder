@@ -1,8 +1,8 @@
 // lib/ai/jd-extraction-pipeline.ts
 import { z } from 'zod'
-import { getAnthropic } from './models'
+import { getAnthropic, DEFAULT_MODEL } from './models'
 
-const MAX_JD_LENGTH = 10_000
+export const MAX_JD_LENGTH = 10_000
 const MAX_TERMS = 60
 
 export type KeywordPriority = 'must' | 'nice-to-have' | 'ambiguous'
@@ -75,7 +75,7 @@ Example output: [{"term": "React", "priority": "must"}, {"term": "GraphQL", "pri
 
   const anthropic = getAnthropic()
   const msg = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: DEFAULT_MODEL,
     max_tokens: 1500,
     messages: [{ role: 'user', content: prompt }],
   })

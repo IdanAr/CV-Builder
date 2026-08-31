@@ -1,5 +1,5 @@
 // lib/ai/pipeline.ts
-import { getAnthropic } from './models'
+import { getAnthropic, DEFAULT_MODEL } from './models'
 import { detectHallucinations } from './hallucination-guard'
 
 export type SuggestionField = 'highlight' | 'summary'
@@ -18,7 +18,7 @@ interface PipelineContext {
 async function callClaude(prompt: string): Promise<string> {
   const anthropic = getAnthropic()
   const msg = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: DEFAULT_MODEL,
     max_tokens: 200,
     messages: [{ role: 'user', content: prompt }],
   })

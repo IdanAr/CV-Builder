@@ -79,7 +79,7 @@ BoardConfig         { userId, columns: BoardColumn[], sort: SortEntry[] }    // 
 
 ### Auth & route protection
 
-`middleware.ts` uses Auth.js's `authorized` callback (`auth.config.ts`) gated on `matcher: ['/dashboard/:path*', '/api/resumes/:path*', '/api/applications/:path*', '/api/preview/:path*']`. All API routes under those prefixes are expected to be session-scoped via the `auth()` wrapper and filtered to the requesting user — new routes under these paths must follow the same pattern, and `middleware.test.ts` should be extended when matcher coverage changes.
+`proxy.ts` (Next.js 16's rename of the old `middleware.ts`) uses Auth.js's `authorized` callback (`auth.config.ts`) gated on `matcher: ['/dashboard/:path*', '/api/resumes/:path*', '/api/applications/:path*', '/api/preview/:path*']`. All API routes under those prefixes are expected to be session-scoped via the `auth()` wrapper and filtered to the requesting user — new routes under these paths must follow the same pattern, and `middleware.test.ts` should be extended when matcher coverage changes.
 
 ### Directory map
 
@@ -88,7 +88,7 @@ cv-builder/
 ├── app/
 │   ├── (auth)/signin/                       # GitHub / Google sign-in
 │   ├── (dashboard)/dashboard/                # Résumé library, applications view, editor ([id]/)
-│   └── api/                                  # resumes/, applications/, preview/pagination/, auth/
+│   └── api/                                  # resumes/, applications/, jobsearch/, preview/pagination/, auth/
 ├── components/
 │   ├── editor/       # EditorShell, EditTab, DesignPanel, PreviewTab, forms/
 │   ├── templates/     # HTML/CSS live-preview templates (5)
@@ -96,18 +96,21 @@ cv-builder/
 │   ├── ai/              # AiSuggestButton
 │   ├── coverletter/      # CoverLetterPanel
 │   ├── applications/      # ApplicationsView, Board, Table, Filters, ActivityLog, ColumnForm
+│   ├── jobsearch/           # ProfileWizard and watched-company/scraped-job UI
 │   └── ui/                  # AppNavbar, PlasmaBackground, Toaster, UserProfileButton
 ├── lib/
-│   ├── ai/             # pipeline.ts, ats-fix-pipeline.ts, cover-letter-pipeline.ts, hallucination-guard.ts, models.ts
+│   ├── ai/             # pipeline.ts, ats-fix-pipeline.ts, cover-letter-pipeline.ts, jd-extraction-pipeline.ts, keyword-analysis-pipeline.ts, hallucination-guard.ts, models.ts
 │   ├── ats/             # scorer.ts, keywords.ts
-│   ├── applications/     # cells.ts, filter.ts, order.ts, sort.ts, types.ts
-│   ├── docx/               # resume-docx.ts
-│   ├── pdf/templates/       # 6 @react-pdf/renderer templates incl. AtsPdfTemplate
-│   ├── schemas/               # resume.zod.ts, application.zod.ts — single source of truth
-│   ├── stores/                  # resume-editor.store.ts, toast.store.ts (Zustand)
-│   ├── upload/                    # parse-file.ts, extract-resume.ts
+│   ├── api/              # data-access layer used by app/api/** routes: resumes.ts, applications.ts, board-config.ts, jobsearch-profiles.ts, jobsearch-rules.ts, scraped-jobs.ts
+│   ├── applications/       # cells.ts, filter.ts, order.ts, sort.ts, types.ts
+│   ├── jobsearch/            # apply.ts, scan.ts, rules.ts, queue.ts, sources/ (Comeet adapter+resolver)
+│   ├── docx/                   # resume-docx.ts
+│   ├── pdf/templates/           # 6 @react-pdf/renderer templates incl. AtsPdfTemplate
+│   ├── schemas/                   # resume.zod.ts, application.zod.ts, jobsearch.zod.ts — single source of truth
+│   ├── stores/                      # resume-editor.store.ts, toast.store.ts (Zustand)
+│   ├── upload/                        # parse-file.ts, extract-resume.ts
 │   └── rate-limit.ts, export-mode.ts, preview-pagination.ts, mongodb.ts, auth.ts, db.ts
-├── models/                # Mongoose models: Resume.ts, Application.ts, ApplicationActivity.ts, BoardConfig.ts
+├── models/                # Mongoose models: Resume.ts, Application.ts, ApplicationActivity.ts, BoardConfig.ts, JobSearchProfile.ts, JobSearchRule.ts, ScrapedJob.ts
 └── docs/superpowers/       # sprint-by-sprint specs/ and plans/ — git-ignored, local only
 ```
 

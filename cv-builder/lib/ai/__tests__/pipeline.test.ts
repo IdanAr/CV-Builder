@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const mockAnthropicCreate = vi.fn()
 
 vi.mock('../models', () => ({
+  DEFAULT_MODEL: 'claude-haiku-4-5-20251001',
   getAnthropic: () => ({
     messages: { create: mockAnthropicCreate },
   }),

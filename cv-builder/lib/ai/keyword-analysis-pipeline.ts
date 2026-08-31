@@ -1,6 +1,6 @@
 // lib/ai/keyword-analysis-pipeline.ts
 import { z } from 'zod'
-import { getAnthropic } from './models'
+import { getAnthropic, DEFAULT_MODEL } from './models'
 
 const MAX_KEYWORDS = 30
 const MAX_RESUME_TEXT_LENGTH = 10_000
@@ -38,7 +38,7 @@ Return ONLY a JSON array containing the subset of the keywords above that are al
 
   const anthropic = getAnthropic()
   const msg = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: DEFAULT_MODEL,
     max_tokens: 500,
     messages: [{ role: 'user', content: prompt }],
   })
