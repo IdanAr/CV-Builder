@@ -5,6 +5,7 @@ vi.mock('@/lib/db', () => ({ default: vi.fn().mockResolvedValue(undefined) }))
 
 const {
   mockSearchFreehireJobs,
+  mockSearchComeetJobs,
   mockGetJobSearchProfile,
   mockFindExistingSourceIds,
   mockCreateScrapedJobs,
@@ -19,6 +20,7 @@ const {
   mockDeleteScrapedJobsByIds,
 } = vi.hoisted(() => ({
   mockSearchFreehireJobs: vi.fn(),
+  mockSearchComeetJobs: vi.fn(),
   mockGetJobSearchProfile: vi.fn(),
   mockFindExistingSourceIds: vi.fn(),
   mockCreateScrapedJobs: vi.fn(),
@@ -34,6 +36,7 @@ const {
 }))
 
 vi.mock('../sources/freehire', () => ({ searchFreehireJobs: mockSearchFreehireJobs }))
+vi.mock('../sources/comeet', () => ({ searchComeetJobs: mockSearchComeetJobs }))
 vi.mock('@/lib/api/jobsearch-profiles', () => ({ getJobSearchProfile: mockGetJobSearchProfile }))
 vi.mock('@/lib/api/scraped-jobs', () => ({
   findExistingSourceIds: mockFindExistingSourceIds,
@@ -76,6 +79,7 @@ const baseProfile = {
   seniority: [],
   categories: [],
   industries: [],
+  comeetCompanies: [] as { name: string; uid: string; token: string }[],
   recencyDays: 14,
   minAtsScore: 75,
   resumeId: undefined,
@@ -678,5 +682,99 @@ describe('runScanForProfile', () => {
 
     expect(result.created).toBe(1)
     expect(mockCreateScrapedJobs.mock.calls[0][2][0].sourceId).toBe('high')
+  })
+
+  describe('multi-source (freehire + Comeet)', () => {
+    const comeetCompany = { name: 'Acme Israel', uid: 'ACM.001', token: 'tok_abc' }
+
+    it('merges postings from both sources into one scan result', async () => {
+      mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, comeetCompanies: [comeetCompany] })
+      mockSearchFreehireJobs.mockResolvedValue({
+        degraded: false,
+        postings: [{ source: 'freehire', sourceId: 'fh1', title: 'X', company: 'Y', url: 'https://x/fh1', description: 'd' }],
+      })
+      mockSearchComeetJobs.mockResolvedValue({
+        degraded: false,
+        postings: [{ source: 'comeet', sourceId: 'cm1', title: 'X', company: 'Acme', url: 'https://x/cm1', description: 'd' }],
+      })
+
+      const result = await runScanForProfile('u1', 'p1')
+
+      expect(result.fetched).toBe(2)
+      expect(result.created).toBe(2)
+      expect(mockSearchComeetJobs).toHaveBeenCalledWith(comeetCompany)
+    })
+
+    it('continues with Comeet postings when freehire is fully degraded', async () => {
+      mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, comeetCompanies: [comeetCompany] })
+      mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: true, errorMessage: 'freehire returned 503' })
+      mockSearchComeetJobs.mockResolvedValue({
+        degraded: false,
+        postings: [{ source: 'comeet', sourceId: 'cm1', title: 'X', company: 'Acme', url: 'https://x/cm1', description: 'd' }],
+      })
+
+      const result = await runScanForProfile('u1', 'p1')
+
+      expect(result.degraded).toBe(false)
+      expect(result.created).toBe(1)
+      expect(mockCreateScrapedJobs.mock.calls[0][2][0].source).toBe('comeet')
+    })
+
+    it('returns degraded only when freehire and every watched Comeet company fail', async () => {
+      mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, comeetCompanies: [comeetCompany] })
+      mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: true, errorMessage: 'freehire returned 503' })
+      mockSearchComeetJobs.mockResolvedValue({ postings: [], degraded: true, errorMessage: 'comeet (Acme Israel) returned 401' })
+
+      const result = await runScanForProfile('u1', 'p1')
+
+      expect(result.degraded).toBe(true)
+      expect(mockCreateScrapedJobs).not.toHaveBeenCalled()
+    })
+
+    it('tolerates one bad Comeet company without blocking others or freehire', async () => {
+      const goodCompany = { name: 'Good Co', uid: 'GOOD.1', token: 'tok_good' }
+      const badCompany = { name: 'Bad Co', uid: 'BAD.1', token: 'tok_bad' }
+      mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, comeetCompanies: [goodCompany, badCompany] })
+      mockSearchFreehireJobs.mockResolvedValue({
+        degraded: false,
+        postings: [{ source: 'freehire', sourceId: 'fh1', title: 'X', company: 'Y', url: 'https://x/fh1', description: 'd' }],
+      })
+      mockSearchComeetJobs.mockImplementation(async (company: { uid: string }) =>
+        company.uid === 'BAD.1'
+          ? { postings: [], degraded: true, errorMessage: 'comeet (Bad Co) returned 401' }
+          : {
+              degraded: false,
+              postings: [{ source: 'comeet', sourceId: 'cm-good', title: 'X', company: 'Good Co', url: 'https://x/good', description: 'd' }],
+            }
+      )
+
+      const result = await runScanForProfile('u1', 'p1')
+
+      expect(result.degraded).toBe(false)
+      expect(result.fetched).toBe(2)
+      expect(result.created).toBe(2)
+    })
+
+    it('dedupes sourceIds independently per source, so identical id strings from different sources are both created', async () => {
+      mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, comeetCompanies: [comeetCompany] })
+      mockSearchFreehireJobs.mockResolvedValue({
+        degraded: false,
+        postings: [{ source: 'freehire', sourceId: '123', title: 'X', company: 'Y', url: 'https://x/fh', description: 'd' }],
+      })
+      mockSearchComeetJobs.mockResolvedValue({
+        degraded: false,
+        postings: [{ source: 'comeet', sourceId: '123', title: 'X', company: 'Acme', url: 'https://x/cm', description: 'd' }],
+      })
+      // Only freehire's '123' is already stored — comeet's own '123' is a distinct job.
+      mockFindExistingSourceIds.mockImplementation(async (_u: string, _p: string, source: string) =>
+        source === 'freehire' ? new Set(['123']) : new Set()
+      )
+
+      const result = await runScanForProfile('u1', 'p1')
+
+      expect(result.skippedExisting).toBe(1)
+      expect(result.created).toBe(1)
+      expect(mockCreateScrapedJobs.mock.calls[0][2][0].source).toBe('comeet')
+    })
   })
 })

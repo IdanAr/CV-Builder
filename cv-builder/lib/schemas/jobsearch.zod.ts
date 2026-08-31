@@ -21,6 +21,22 @@ export type JobLocation = z.infer<typeof JobLocationSchema>
 export const DEFAULT_RECENCY_DAYS = 14
 export const DEFAULT_MIN_ATS_SCORE = 75
 
+// One Comeet-hosted employer to poll directly (see lib/jobsearch/sources/comeet.ts) —
+// Comeet has no cross-company search, so unlike freehire this is a hand-curated list
+// rather than a role/keyword query. `token` is the company's public-facing careers-page
+// token (same tier as freehire's own public API — not a user secret), obtained from
+// that company's own public Comeet careers page.
+export const ComeetCompanyWatchSchema = z.object({
+  name: z.string().trim().min(1, 'Company name is required').max(100),
+  uid: z.string().trim().min(1, 'Company UID is required').max(100),
+  token: z.string().trim().min(1, 'Company token is required').max(200),
+})
+export type ComeetCompanyWatch = z.infer<typeof ComeetCompanyWatchSchema>
+
+// Bounds how many outbound Comeet calls one profile can trigger per scan (see
+// lib/jobsearch/scan.ts's MAX_COMEET_COMPANIES, which re-enforces this at fetch time).
+export const MAX_COMEET_COMPANIES = 10
+
 export const JobSearchProfileSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(100),
   resumeId: z.string().optional(),
@@ -30,6 +46,7 @@ export const JobSearchProfileSchema = z.object({
   seniority: z.array(SeniorityEnum).default([]),
   categories: z.array(z.string().trim().min(1)).default([]),
   industries: z.array(z.string().trim().min(1)).default([]),
+  comeetCompanies: z.array(ComeetCompanyWatchSchema).max(MAX_COMEET_COMPANIES).default([]),
   recencyDays: z.number().int().min(1).max(90).default(DEFAULT_RECENCY_DAYS),
   minAtsScore: z.number().int().min(0).max(100).default(DEFAULT_MIN_ATS_SCORE),
   isActive: z.boolean().default(true),
@@ -56,13 +73,14 @@ export const PatchJobSearchProfileSchema = z.object({
   seniority: z.array(SeniorityEnum).optional(),
   categories: z.array(z.string().trim().min(1)).optional(),
   industries: z.array(z.string().trim().min(1)).optional(),
+  comeetCompanies: z.array(ComeetCompanyWatchSchema).max(MAX_COMEET_COMPANIES).optional(),
   recencyDays: z.number().int().min(1).max(90).optional(),
   minAtsScore: z.number().int().min(0).max(100).optional(),
   isActive: z.boolean().optional(),
 })
 export type PatchJobSearchProfileInput = z.infer<typeof PatchJobSearchProfileSchema>
 
-export const SCRAPE_SOURCES = ['freehire'] as const
+export const SCRAPE_SOURCES = ['freehire', 'comeet'] as const
 export const ScrapeSourceEnum = z.enum(SCRAPE_SOURCES)
 export type ScrapeSource = z.infer<typeof ScrapeSourceEnum>
 

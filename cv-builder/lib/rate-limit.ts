@@ -24,6 +24,8 @@ export const UPLOAD_RATE_LIMIT: RateLimitOptions = { limit: 10, windowMs: 60_000
 export const PREVIEW_RATE_LIMIT: RateLimitOptions = { limit: 30, windowMs: 60_000 }
 /** Job-search scan endpoint (outbound freehire.me call + bulk scoring): 5 requests/min per user. */
 export const SCAN_RATE_LIMIT: RateLimitOptions = { limit: 5, windowMs: 60_000 }
+/** Comeet careers-page URL resolver (outbound fetch to a user-supplied comeet.com URL): 10 requests/min per user. */
+export const COMEET_RESOLVE_RATE_LIMIT: RateLimitOptions = { limit: 10, windowMs: 60_000 }
 
 interface Bucket {
   tokens: number

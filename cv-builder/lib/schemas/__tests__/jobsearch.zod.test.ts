@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   JobSearchProfileSchema,
   PatchJobSearchProfileSchema,
+  ComeetCompanyWatchSchema,
+  MAX_COMEET_COMPANIES,
   DEFAULT_RECENCY_DAYS,
   DEFAULT_MIN_ATS_SCORE,
   SENIORITY_LEVELS,
@@ -20,6 +22,33 @@ describe('JobSearchProfileSchema', () => {
     expect(result.isActive).toBe(true)
     expect(result.roles).toEqual([])
     expect(result.locations).toEqual([])
+    expect(result.comeetCompanies).toEqual([])
+  })
+
+  it('accepts a watched Comeet company', () => {
+    const result = JobSearchProfileSchema.safeParse({
+      name: 'Test',
+      comeetCompanies: [{ name: 'Acme Israel', uid: 'ACM.001', token: 'tok_abc' }],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a watched Comeet company missing a required field', () => {
+    const result = JobSearchProfileSchema.safeParse({
+      name: 'Test',
+      comeetCompanies: [{ name: 'Acme Israel', uid: '' }],
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it(`rejects more than ${MAX_COMEET_COMPANIES} watched Comeet companies`, () => {
+    const tooMany = Array.from({ length: MAX_COMEET_COMPANIES + 1 }, (_, i) => ({
+      name: `Company ${i}`,
+      uid: `UID.${i}`,
+      token: `tok_${i}`,
+    }))
+    const result = JobSearchProfileSchema.safeParse({ name: 'Test', comeetCompanies: tooMany })
+    expect(result.success).toBe(false)
   })
 
   it('rejects an empty name', () => {
@@ -60,6 +89,7 @@ describe('JobSearchProfileSchema', () => {
       seniority: ['senior'],
       categories: ['ml_ai'],
       industries: ['fintech'],
+      comeetCompanies: [{ name: 'Acme Israel', uid: 'ACM.001', token: 'tok_abc' }],
       recencyDays: 7,
       minAtsScore: 80,
       isActive: false,
@@ -82,6 +112,28 @@ describe('PatchJobSearchProfileSchema', () => {
   it('accepts an empty patch', () => {
     const result = PatchJobSearchProfileSchema.parse({})
     expect(result).toEqual({})
+  })
+
+  it('accepts comeetCompanies when provided, without backfilling it when absent', () => {
+    const withCompanies = PatchJobSearchProfileSchema.parse({
+      comeetCompanies: [{ name: 'Acme Israel', uid: 'ACM.001', token: 'tok_abc' }],
+    })
+    expect(withCompanies.comeetCompanies).toHaveLength(1)
+
+    const without = PatchJobSearchProfileSchema.parse({ isActive: true })
+    expect(without).not.toHaveProperty('comeetCompanies')
+  })
+})
+
+describe('ComeetCompanyWatchSchema', () => {
+  it('trims whitespace on all fields', () => {
+    const result = ComeetCompanyWatchSchema.parse({ name: ' Acme ', uid: ' ACM.001 ', token: ' tok_abc ' })
+    expect(result).toEqual({ name: 'Acme', uid: 'ACM.001', token: 'tok_abc' })
+  })
+
+  it('rejects an empty token', () => {
+    const result = ComeetCompanyWatchSchema.safeParse({ name: 'Acme', uid: 'ACM.001', token: '' })
+    expect(result.success).toBe(false)
   })
 })
 

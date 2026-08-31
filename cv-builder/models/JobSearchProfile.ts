@@ -1,5 +1,5 @@
 import { Schema, model, models, type Document } from 'mongoose'
-import type { JobLocation, WorkMode } from '@/lib/schemas/jobsearch.zod'
+import type { ComeetCompanyWatch, JobLocation, WorkMode } from '@/lib/schemas/jobsearch.zod'
 
 export interface IJobSearchProfile extends Document {
   userId: string
@@ -11,6 +11,7 @@ export interface IJobSearchProfile extends Document {
   seniority: string[]
   categories: string[]
   industries: string[]
+  comeetCompanies: ComeetCompanyWatch[]
   recencyDays: number
   minAtsScore: number
   isActive: boolean
@@ -20,6 +21,11 @@ export interface IJobSearchProfile extends Document {
 
 const JobLocationSubSchema = new Schema<JobLocation>(
   { country: String, region: String, city: String },
+  { _id: false }
+)
+
+const ComeetCompanyWatchSubSchema = new Schema<ComeetCompanyWatch>(
+  { name: String, uid: String, token: String },
   { _id: false }
 )
 
@@ -34,6 +40,7 @@ const JobSearchProfileSchema = new Schema<IJobSearchProfile>(
     seniority: { type: [String], default: [] },
     categories: { type: [String], default: [] },
     industries: { type: [String], default: [] },
+    comeetCompanies: { type: [ComeetCompanyWatchSubSchema], default: [] },
     recencyDays: { type: Number, default: 14 },
     minAtsScore: { type: Number, default: 75 },
     isActive: { type: Boolean, default: true },

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ProfileWizard } from './ProfileWizard'
 import { COUNTRIES } from '@/lib/jobsearch/countries'
-import type { WorkMode, Seniority, JobLocation } from '@/lib/schemas/jobsearch.zod'
+import type { WorkMode, Seniority, JobLocation, ComeetCompanyWatch } from '@/lib/schemas/jobsearch.zod'
 
 interface FullProfile {
   _id: string
@@ -15,6 +15,10 @@ interface FullProfile {
   seniority: Seniority[]
   categories: string[]
   industries: string[]
+  // Optional: a profile saved before this field existed comes back from a .lean()
+  // read without it at all (Mongoose doesn't backfill schema defaults onto
+  // pre-existing documents).
+  comeetCompanies?: ComeetCompanyWatch[]
   recencyDays: number
   minAtsScore: number
 }
@@ -90,6 +94,16 @@ export function ProfileSettings({ profileId }: ProfileSettingsProps) {
         <dd>{profile.roles.length > 0 ? profile.roles.join(', ') : '-'}</dd>
         <dt className="font-medium text-gray-600">Location</dt>
         <dd>{[countryName, profile.locations[0]?.city].filter(Boolean).join(', ') || '-'}</dd>
+        <dt className="font-medium text-gray-600">Watched companies</dt>
+        <dd>
+          {/* A profile saved before this field existed comes back from a .lean()
+              read without comeetCompanies at all (Mongoose doesn't backfill schema
+              defaults onto pre-existing documents) — fall back to an empty list. */}
+          {(() => {
+            const companies = profile.comeetCompanies ?? []
+            return companies.length > 0 ? companies.map((c) => c.name).join(', ') : '-'
+          })()}
+        </dd>
         <dt className="font-medium text-gray-600">Recency / threshold</dt>
         <dd>
           {profile.recencyDays} days · {profile.minAtsScore}%

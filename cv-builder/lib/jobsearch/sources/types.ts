@@ -1,5 +1,5 @@
 export interface JobPosting {
-  source: 'freehire'
+  source: 'freehire' | 'comeet'
   sourceId: string
   title: string
   company: string

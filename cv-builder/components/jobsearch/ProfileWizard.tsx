@@ -11,9 +11,10 @@ import {
   type WorkMode,
   type Seniority,
   type JobLocation,
+  type ComeetCompanyWatch,
 } from '@/lib/schemas/jobsearch.zod'
 
-const STEP_LABELS = ['Roles', 'Location', 'Focus', 'Threshold', 'Review']
+const STEP_LABELS = ['Roles', 'Location', 'Focus', 'Sources', 'Threshold', 'Review']
 
 interface ExistingProfile {
   _id: string
@@ -25,6 +26,10 @@ interface ExistingProfile {
   seniority: Seniority[]
   categories: string[]
   industries: string[]
+  // Optional: a profile saved before this field existed comes back from a .lean()
+  // read without it at all (Mongoose doesn't backfill schema defaults onto
+  // pre-existing documents).
+  comeetCompanies?: ComeetCompanyWatch[]
   recencyDays: number
   minAtsScore: number
 }
@@ -53,6 +58,7 @@ interface WizardState {
   seniority: Seniority[]
   workModes: WorkMode[]
   locations: JobLocation[]
+  comeetCompanies: ComeetCompanyWatch[]
   recencyDays: number
   minAtsScore: number
 }
@@ -65,6 +71,10 @@ function initialState(existingProfile?: ExistingProfile): WizardState {
       seniority: existingProfile.seniority,
       workModes: existingProfile.workModes,
       locations: existingProfile.locations,
+      // A profile saved before this field existed comes back from a .lean() read
+      // without comeetCompanies at all (Mongoose doesn't backfill schema defaults
+      // onto pre-existing documents) — fall back to an empty list.
+      comeetCompanies: existingProfile.comeetCompanies ?? [],
       recencyDays: existingProfile.recencyDays,
       minAtsScore: existingProfile.minAtsScore,
     }
@@ -74,6 +84,7 @@ function initialState(existingProfile?: ExistingProfile): WizardState {
     seniority: [],
     workModes: [],
     locations: [],
+    comeetCompanies: [],
     recencyDays: DEFAULT_RECENCY_DAYS,
     minAtsScore: DEFAULT_MIN_ATS_SCORE,
   }
@@ -143,6 +154,9 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
   const [creatingRule, setCreatingRule] = useState(false)
   const [ruleError, setRuleError] = useState<string | null>(null)
   const [resumeOptions, setResumeOptions] = useState<ResumeOption[]>([])
+  const [comeetUrlInput, setComeetUrlInput] = useState('')
+  const [comeetResolving, setComeetResolving] = useState(false)
+  const [comeetResolveError, setComeetResolveError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -193,6 +207,43 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
         ? s.seniority.filter((l) => l !== level)
         : [...s.seniority, level],
     }))
+  }
+
+  // Resolves the pasted careers-page URL server-side (POST /api/jobsearch/comeet/resolve)
+  // into a full {name, uid, token} entry — the user never sees or types the UID/token
+  // themselves, unlike the earlier three-field form this replaced.
+  async function handleResolveComeetUrl() {
+    const url = comeetUrlInput.trim()
+    if (!url) return
+    if (state.comeetCompanies.some((c) => c.uid && url.includes(c.uid))) {
+      setComeetResolveError('That company is already in the list.')
+      return
+    }
+    setComeetResolving(true)
+    setComeetResolveError(null)
+    try {
+      const res = await fetch('/api/jobsearch/comeet/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      })
+      const body = await res.json()
+      if (!res.ok) {
+        setComeetResolveError(body.error ?? 'Could not resolve that URL. Please try again.')
+        return
+      }
+      const company = body.company as ComeetCompanyWatch
+      setState((s) => ({ ...s, comeetCompanies: [...s.comeetCompanies, company] }))
+      setComeetUrlInput('')
+    } catch {
+      setComeetResolveError('Could not resolve that URL. Please try again.')
+    } finally {
+      setComeetResolving(false)
+    }
+  }
+
+  function removeComeetCompany(index: number) {
+    setState((s) => ({ ...s, comeetCompanies: s.comeetCompanies.filter((_, i) => i !== index) }))
   }
 
   async function handleSubmit() {
@@ -397,6 +448,51 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
 
       {step === 4 && (
         <div className="flex flex-col gap-3">
+          <p className="text-sm text-gray-600">
+            Optional: track specific companies that use Comeet for hiring (common among
+            Israeli high-tech employers). Comeet has no keyword search across companies,
+            so postings are fetched per company — paste that company&apos;s own public
+            Comeet careers page URL (e.g. comeet.com/jobs/company-name/uid) and we&apos;ll
+            look it up for you.
+          </p>
+          {state.comeetCompanies.map((company, index) => (
+            <div key={index} className="flex items-center justify-between gap-2 rounded border p-2">
+              <span className="text-sm font-medium">{company.name}</span>
+              <button
+                type="button"
+                className="rounded border px-3 py-2 text-sm text-red-600"
+                onClick={() => removeComeetCompany(index)}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <div className="flex flex-wrap items-start gap-2">
+            <label className="flex-1 text-sm font-medium">
+              Company careers page URL
+              <input
+                className="mt-1 w-full rounded border px-3 py-2 text-sm"
+                placeholder="https://www.comeet.com/jobs/company-name/uid"
+                value={comeetUrlInput}
+                onChange={(e) => setComeetUrlInput(e.target.value)}
+                disabled={comeetResolving}
+              />
+            </label>
+            <button
+              type="button"
+              className="mt-6 rounded border px-3 py-2 text-sm disabled:opacity-50"
+              onClick={handleResolveComeetUrl}
+              disabled={comeetResolving || !comeetUrlInput.trim()}
+            >
+              {comeetResolving ? 'Looking up…' : '+ Add company'}
+            </button>
+          </div>
+          {comeetResolveError && <p className="text-sm text-red-600">{comeetResolveError}</p>}
+        </div>
+      )}
+
+      {step === 5 && (
+        <div className="flex flex-col gap-3">
           <label className="text-sm font-medium">
             Only show postings from the last N days
             <input
@@ -440,7 +536,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
         </div>
       )}
 
-      {step === 5 && (
+      {step === 6 && (
         <div className="flex flex-col gap-3">
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded border bg-gray-50 px-3 py-2 text-sm">
             <dt className="font-medium text-gray-600">Roles</dt>
@@ -457,6 +553,8 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
             <dd>{formatList(toTags(draftText.categories))}</dd>
             <dt className="font-medium text-gray-600">Industries</dt>
             <dd>{formatList(toTags(draftText.industries))}</dd>
+            <dt className="font-medium text-gray-600">Watched companies</dt>
+            <dd>{formatList(state.comeetCompanies.map((c) => c.name).filter(Boolean))}</dd>
             <dt className="font-medium text-gray-600">Résumé</dt>
             <dd>{resumeOptions.find((r) => r.id === state.resumeId)?.title || 'Most recently updated'}</dd>
             <dt className="font-medium text-gray-600">Recency window</dt>

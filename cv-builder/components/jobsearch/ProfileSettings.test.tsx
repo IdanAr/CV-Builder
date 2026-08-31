@@ -56,7 +56,7 @@ describe('ProfileSettings', () => {
     await userEvent.click(await screen.findByRole('button', { name: /edit preferences/i }))
     expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('Roles')
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
     await userEvent.click(screen.getByRole('button', { name: /save changes/i }))
@@ -74,5 +74,31 @@ describe('ProfileSettings', () => {
     await userEvent.click(screen.getByRole('button', { name: /cancel/i }))
 
     expect(screen.getByRole('button', { name: /edit preferences/i })).toBeInTheDocument()
+  })
+
+  it('shows watched Comeet company names, or "-" when none are configured', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      jsonResponse({
+        profile: { ...baseProfile, comeetCompanies: [{ name: 'Acme Israel', uid: 'ACM.001', token: 'tok_abc' }] },
+      })
+    )
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ProfileSettings profileId="p1" />)
+
+    expect(await screen.findByText('Acme Israel')).toBeInTheDocument()
+  })
+
+  it('falls back to "-" for a profile saved before comeetCompanies existed', async () => {
+    // Simulates a pre-migration document: no comeetCompanies field at all
+    // (Mongoose .lean() doesn't backfill schema defaults onto existing docs).
+    const { comeetCompanies: _unused, ...profileWithoutComeet } = { ...baseProfile, comeetCompanies: [] }
+    const mockFetch = vi.fn().mockResolvedValue(jsonResponse({ profile: profileWithoutComeet }))
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ProfileSettings profileId="p1" />)
+
+    expect(await screen.findByText('Data Analyst')).toBeInTheDocument()
+    expect(screen.getByText('Watched companies').nextSibling).toHaveTextContent('-')
   })
 })

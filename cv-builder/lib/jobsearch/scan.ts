@@ -3,6 +3,7 @@
 // function in a QStash-triggered worker route without changing it.
 import dbConnect from '@/lib/db'
 import { searchFreehireJobs } from './sources/freehire'
+import { searchComeetJobs, type ComeetCompanyPref } from './sources/comeet'
 import { getJobSearchProfile } from '@/lib/api/jobsearch-profiles'
 import {
   findExistingSourceIds,
@@ -19,7 +20,7 @@ import { matchesKeyword } from '@/lib/ats/keywords'
 import { evaluateRules } from './rules'
 import { runApplyPipeline, PER_PROFILE_DAILY_DRAFT_CAP, PER_USER_DAILY_DRAFT_CAP } from './apply'
 import Resume from '@/models/Resume'
-import type { CreateScrapedJobInput } from '@/lib/schemas/jobsearch.zod'
+import type { CreateScrapedJobInput, ScrapeSource } from '@/lib/schemas/jobsearch.zod'
 import type { JobPosting, SourceSearchResult } from './sources/types'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
@@ -40,6 +41,10 @@ interface ScannedProfile {
   seniority: string[]
   categories: string[]
   industries: string[]
+  // Optional: a profile document saved before this field existed comes back from
+  // getJobSearchProfile's .lean() read without it at all (Mongoose doesn't backfill
+  // schema defaults onto pre-existing documents).
+  comeetCompanies?: ComeetCompanyPref[]
   recencyDays: number
   minAtsScore: number
   resumeId?: string
@@ -99,6 +104,13 @@ function passesRoleTitleFilter(title: string, role: string): boolean {
 /** Max distinct role titles queried per scan — bounds how many outbound freehire calls one profile can trigger. */
 export const MAX_ROLE_QUERIES = 5
 
+/**
+ * Max watched Comeet companies polled per scan — bounds how many outbound Comeet
+ * calls one profile can trigger. Re-enforced here (rather than trusted solely from
+ * the schema's own .max()) the same way MAX_ROLE_QUERIES re-bounds profile.roles.
+ */
+export const MAX_COMEET_COMPANIES = 10
+
 interface RoleQueryParams {
   region: string[]
   country: string[]
@@ -153,6 +165,30 @@ async function fetchPostingsForRoles(
     }
   }
   return { postings, degraded: false }
+}
+
+// Comeet has no keyword/role query of its own (see lib/jobsearch/sources/comeet.ts) —
+// this just lists every position for each watched company and lets the caller apply
+// the same passesRoleTitleFilter used for freehire afterward. Each company's fetch is
+// independent: one dead/unauthorized company degrades only its own contribution,
+// mirroring how fetchPostingsForRoles tolerates individual role-query failures above.
+async function fetchComeetPostings(
+  companies: ComeetCompanyPref[]
+): Promise<{ postings: JobPosting[]; anySucceeded: boolean }> {
+  // Zero configured companies correctly yields anySucceeded: false — there's no
+  // company whose fetch actually succeeded, so this must not rescue an otherwise
+  // total freehire failure into a false non-degraded result.
+  const results = await Promise.all(
+    companies.slice(0, MAX_COMEET_COMPANIES).map((company) => searchComeetJobs(company))
+  )
+  const postings: JobPosting[] = []
+  let anySucceeded = false
+  for (const result of results) {
+    if (result.degraded) continue
+    anySucceeded = true
+    postings.push(...result.postings)
+  }
+  return { postings, anySucceeded }
 }
 
 // A profile-preference edit (tighter roles or a raised threshold) doesn't
@@ -247,20 +283,26 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
     }
   }
 
-  const searchResult = await fetchPostingsForRoles(profile.roles, {
-    region: profile.locations.map((l) => l.region).filter((r): r is string => !!r),
-    country: profile.locations.map((l) => l.country).filter((c): c is string => !!c),
-    city: profile.locations.map((l) => l.city).filter((c): c is string => !!c),
-    seniority: profile.seniority,
-    category: profile.categories,
-    // freehire's --remote facet takes exactly one value; a profile with 0
-    // or 2+ selected work modes omits the facet entirely rather than
-    // arbitrarily picking one and silently narrowing the search.
-    remote: profile.workModes.length === 1 ? (profile.workModes[0] as 'remote' | 'hybrid' | 'onsite') : undefined,
-    jobage: profile.recencyDays,
-  })
+  const [freehireResult, comeetResult] = await Promise.all([
+    fetchPostingsForRoles(profile.roles, {
+      region: profile.locations.map((l) => l.region).filter((r): r is string => !!r),
+      country: profile.locations.map((l) => l.country).filter((c): c is string => !!c),
+      city: profile.locations.map((l) => l.city).filter((c): c is string => !!c),
+      seniority: profile.seniority,
+      category: profile.categories,
+      // freehire's --remote facet takes exactly one value; a profile with 0
+      // or 2+ selected work modes omits the facet entirely rather than
+      // arbitrarily picking one and silently narrowing the search.
+      remote: profile.workModes.length === 1 ? (profile.workModes[0] as 'remote' | 'hybrid' | 'onsite') : undefined,
+      jobage: profile.recencyDays,
+    }),
+    fetchComeetPostings(profile.comeetCompanies ?? []),
+  ])
 
-  if (searchResult.degraded) {
+  // Overall degraded only when BOTH sources produced nothing — one dead source
+  // (freehire down, or every watched Comeet company unauthorized/unreachable)
+  // shouldn't blank out a scan that's still getting data from the other.
+  if (freehireResult.degraded && !comeetResult.anySucceeded) {
     return {
       fetched: 0,
       created: 0,
@@ -268,32 +310,54 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
       drafted,
       pruned,
       degraded: true,
-      errorMessage: searchResult.errorMessage,
+      errorMessage: freehireResult.errorMessage,
     }
   }
+
+  // Comeet has no role query of its own (see fetchComeetPostings) — apply the same
+  // title filter freehire's per-role queries already enforce per posting (empty
+  // roles = no filter, matching freehire's own fallback for an unspecified query).
+  const comeetPostings =
+    profile.roles.length === 0
+      ? comeetResult.postings
+      : comeetResult.postings.filter((p) => profile.roles.some((role) => passesRoleTitleFilter(p.title, role)))
+
+  const mergedPostings = [...(freehireResult.degraded ? [] : freehireResult.postings), ...comeetPostings]
 
   // Everything from here on touches untrusted freehire data and the
   // database — wrapped so this function truly never throws (Phase 5 wraps
   // it in a QStash worker, where an uncaught throw means a retry storm
   // instead of one clean degraded result).
   try {
-    const filtered = searchResult.postings.filter((p) => passesIndustryFilter(p, profile.industries))
-    const existingIds = await findExistingSourceIds(
-      userId,
-      profileId,
-      'freehire',
-      filtered.map((p) => p.sourceId)
-    )
-    const notAlreadyStored = filtered.filter((p) => !existingIds.has(p.sourceId))
+    const filtered = mergedPostings.filter((p) => passesIndustryFilter(p, profile.industries))
 
-    // findExistingSourceIds only guards against sourceIds already persisted
-    // from a previous scan — freehire's own response can itself contain a
-    // repeated sourceId within one page, so dedupe within this batch too
-    // (keep the first occurrence) before it ever reaches insertMany.
-    const seenSourceIds = new Set<string>()
+    // findExistingSourceIds is scoped to a single source per call — group by source
+    // so a sourceId string that happens to collide across sources (e.g. freehire's
+    // '123' and comeet's '123' being different jobs) is never treated as one job.
+    const bySource = new Map<ScrapeSource, JobPosting[]>()
+    for (const p of filtered) {
+      const list = bySource.get(p.source) ?? []
+      list.push(p)
+      bySource.set(p.source, list)
+    }
+    const existingKeys = new Set<string>()
+    let existingCount = 0
+    for (const [source, postingsForSource] of bySource) {
+      const ids = await findExistingSourceIds(userId, profileId, source, postingsForSource.map((p) => p.sourceId))
+      existingCount += ids.size
+      for (const id of ids) existingKeys.add(`${source}:${id}`)
+    }
+    const notAlreadyStored = filtered.filter((p) => !existingKeys.has(`${p.source}:${p.sourceId}`))
+
+    // existingKeys only guards against sourceIds already persisted from a previous
+    // scan — a source's own response can itself contain a repeated sourceId within
+    // one page, so dedupe within this batch too (keep the first occurrence) before
+    // it ever reaches insertMany.
+    const seenKeys = new Set<string>()
     const newPostings = notAlreadyStored.filter((p) => {
-      if (seenSourceIds.has(p.sourceId)) return false
-      seenSourceIds.add(p.sourceId)
+      const key = `${p.source}:${p.sourceId}`
+      if (seenKeys.has(key)) return false
+      seenKeys.add(key)
       return true
     })
 
@@ -366,7 +430,7 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
         // spreads it onto each job (see lib/api/scraped-jobs.ts) — it's set here
         // too only because CreateScrapedJobInput's Zod schema requires it.
         profileId,
-        source: 'freehire',
+        source: posting.source,
         sourceId: posting.sourceId,
         title: posting.title,
         company: posting.company,
@@ -395,9 +459,9 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
     }
 
     return {
-      fetched: searchResult.postings.length,
+      fetched: mergedPostings.length,
       created: toCreate.length,
-      skippedExisting: existingIds.size,
+      skippedExisting: existingCount,
       drafted,
       pruned,
       degraded: false,

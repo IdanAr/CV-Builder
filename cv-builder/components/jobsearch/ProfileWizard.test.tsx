@@ -9,10 +9,10 @@ beforeEach(() => {
 })
 
 describe('ProfileWizard', () => {
-  it('starts on step 1 and advances to step 5 via Next', async () => {
+  it('starts on step 1 and advances to step 6 via Next', async () => {
     render(<ProfileWizard onCreated={() => {}} />)
     expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('Roles')
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
     expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('Review')
@@ -20,7 +20,7 @@ describe('ProfileWizard', () => {
 
   it('disables the create button until a profile name is entered', async () => {
     render(<ProfileWizard onCreated={() => {}} />)
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
     expect(screen.getByRole('button', { name: /create profile/i })).toBeDisabled()
@@ -36,7 +36,7 @@ describe('ProfileWizard', () => {
     vi.stubGlobal('fetch', mockFetch)
 
     render(<ProfileWizard onCreated={() => {}} />)
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
     await userEvent.type(screen.getByLabelText(/profile name/i), 'Frontend, Remote EU')
@@ -55,7 +55,7 @@ describe('ProfileWizard', () => {
     vi.stubGlobal('fetch', mockFetch)
 
     render(<ProfileWizard onCreated={onCreated} />)
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
     await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
@@ -75,7 +75,7 @@ describe('ProfileWizard', () => {
     vi.stubGlobal('fetch', mockFetch)
 
     render(<ProfileWizard onCreated={onCreated} />)
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
     await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
@@ -105,7 +105,7 @@ describe('ProfileWizard', () => {
     vi.stubGlobal('fetch', mockFetch)
 
     render(<ProfileWizard onCreated={onCreated} />)
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
     await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
@@ -148,7 +148,7 @@ describe('ProfileWizard', () => {
     vi.stubGlobal('fetch', mockFetch)
 
     render(<ProfileWizard onCreated={onCreated} />)
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
     await userEvent.type(screen.getByLabelText(/profile name/i), 'Frontend, Remote EU')
@@ -183,7 +183,7 @@ describe('ProfileWizard', () => {
 
     render(<ProfileWizard onCreated={() => {}} />)
     await userEvent.type(screen.getByLabelText(/target roles/i), 'Data Analyst, Product Manager')
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
     await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
@@ -204,7 +204,7 @@ describe('ProfileWizard', () => {
     render(<ProfileWizard onCreated={() => {}} />)
     await userEvent.click(screen.getByRole('checkbox', { name: /^senior$/i }))
     await userEvent.click(screen.getByRole('checkbox', { name: /^staff$/i }))
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
     await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
@@ -219,7 +219,7 @@ describe('ProfileWizard', () => {
     render(<ProfileWizard onCreated={() => {}} />)
     await userEvent.type(screen.getByLabelText(/target roles/i), 'Data Analyst')
     await userEvent.click(screen.getByRole('checkbox', { name: /^senior$/i }))
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
     expect(screen.getByText('Data Analyst')).toBeInTheDocument()
@@ -228,7 +228,7 @@ describe('ProfileWizard', () => {
 
   it('clamps recencyDays to at least 1 when the field is cleared', async () => {
     render(<ProfileWizard onCreated={() => {}} />)
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
     const recencyInput = screen.getByLabelText(/last n days/i) as HTMLInputElement
@@ -248,7 +248,7 @@ describe('ProfileWizard', () => {
     vi.stubGlobal('fetch', mockFetch)
 
     render(<ProfileWizard onCreated={() => {}} />)
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
     await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
@@ -280,7 +280,7 @@ describe('ProfileWizard', () => {
     vi.stubGlobal('fetch', mockFetch)
 
     render(<ProfileWizard onCreated={() => {}} />)
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
     const resumeSelect = await screen.findByLabelText(/résumé to tailor from/i)
@@ -303,7 +303,7 @@ describe('ProfileWizard', () => {
     render(<ProfileWizard onCreated={() => {}} />)
     await userEvent.click(screen.getByRole('button', { name: /next/i })) // -> step 2
     await userEvent.selectOptions(screen.getByLabelText(/country/i), 'IL')
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
     await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
@@ -343,7 +343,7 @@ describe('ProfileWizard', () => {
     expect(screen.getByLabelText(/target roles/i)).toHaveValue('Data Analyst')
     await userEvent.click(screen.getByRole('button', { name: /next/i }))
     expect(screen.getByLabelText(/^city$/i)).toHaveValue('Tel Aviv')
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       await userEvent.click(screen.getByRole('button', { name: /next/i }))
     }
     expect(screen.getByLabelText(/profile name/i)).toHaveValue('Original Name')
@@ -357,5 +357,85 @@ describe('ProfileWizard', () => {
     expect(onCreated).not.toHaveBeenCalled()
     const patchCall = mockFetch.mock.calls.find((c) => c[0] === '/api/jobsearch/profiles/p1')
     expect(patchCall![1]).toEqual(expect.objectContaining({ method: 'PATCH' }))
+  })
+
+  describe('Sources step (watched Comeet companies)', () => {
+    async function goToSourcesStep() {
+      render(<ProfileWizard onCreated={() => {}} />)
+      for (let i = 0; i < 3; i++) {
+        await userEvent.click(screen.getByRole('button', { name: /next/i }))
+      }
+      expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('Sources')
+    }
+
+    function stubFetch(overrides?: { resolveOk?: boolean; resolveError?: string }) {
+      const mockFetch = vi.fn().mockImplementation((url: string) => {
+        if (url === '/api/jobsearch/comeet/resolve') {
+          if (overrides?.resolveOk === false) {
+            return Promise.resolve({
+              ok: false,
+              json: async () => ({ error: overrides?.resolveError ?? 'Could not resolve that URL.' }),
+            })
+          }
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ company: { name: 'Acme Israel', uid: 'ACM.001', token: 'tok_abc' } }),
+          })
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ profile: { _id: 'p1', name: 'Test' } }) })
+      })
+      vi.stubGlobal('fetch', mockFetch)
+      return mockFetch
+    }
+
+    it('resolves a pasted careers page URL and includes the company in the submitted payload', async () => {
+      const mockFetch = stubFetch()
+
+      await goToSourcesStep()
+      await userEvent.type(
+        screen.getByLabelText(/careers page url/i),
+        'https://www.comeet.com/jobs/acme/ACM.001'
+      )
+      await userEvent.click(screen.getByRole('button', { name: /add company/i }))
+      await waitFor(() => expect(screen.getByText('Acme Israel')).toBeInTheDocument())
+
+      for (let i = 0; i < 2; i++) {
+        await userEvent.click(screen.getByRole('button', { name: /next/i }))
+      }
+      await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
+      await userEvent.click(screen.getByRole('button', { name: /create profile/i }))
+
+      const resolveCall = mockFetch.mock.calls.find((c) => c[0] === '/api/jobsearch/comeet/resolve')
+      expect(JSON.parse(resolveCall![1].body)).toEqual({ url: 'https://www.comeet.com/jobs/acme/ACM.001' })
+      const profileCall = mockFetch.mock.calls.find((c) => c[0] === '/api/jobsearch/profiles')
+      const body = JSON.parse(profileCall![1].body)
+      expect(body.comeetCompanies).toEqual([{ name: 'Acme Israel', uid: 'ACM.001', token: 'tok_abc' }])
+    })
+
+    it('shows an inline error and adds nothing when resolution fails', async () => {
+      stubFetch({ resolveOk: false, resolveError: 'Could not find company data on that page.' })
+
+      await goToSourcesStep()
+      await userEvent.type(screen.getByLabelText(/careers page url/i), 'https://www.comeet.com/jobs/nope/1')
+      await userEvent.click(screen.getByRole('button', { name: /add company/i }))
+
+      expect(await screen.findByText('Could not find company data on that page.')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /remove/i })).not.toBeInTheDocument()
+    })
+
+    it('removes a resolved company via its Remove button', async () => {
+      stubFetch()
+
+      await goToSourcesStep()
+      await userEvent.type(
+        screen.getByLabelText(/careers page url/i),
+        'https://www.comeet.com/jobs/acme/ACM.001'
+      )
+      await userEvent.click(screen.getByRole('button', { name: /add company/i }))
+      await waitFor(() => expect(screen.getByText('Acme Israel')).toBeInTheDocument())
+
+      await userEvent.click(screen.getByRole('button', { name: /remove/i }))
+      expect(screen.queryByText('Acme Israel')).not.toBeInTheDocument()
+    })
   })
 })
