@@ -91,4 +91,16 @@ describe('FilterBar', () => {
 
     expect(screen.getByLabelText(/company contains/i)).toHaveValue('')
   })
+
+  it('closes on Escape and returns focus to the "+ Filter" trigger', () => {
+    render(<FilterBar columns={columns} filters={[]} onChange={vi.fn()} />)
+    const trigger = screen.getByRole('button', { name: '+ Filter' })
+    fireEvent.click(trigger)
+    expect(screen.getByLabelText(/filter by/i)).toBeInTheDocument()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(screen.queryByLabelText(/filter by/i)).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+  })
 })
