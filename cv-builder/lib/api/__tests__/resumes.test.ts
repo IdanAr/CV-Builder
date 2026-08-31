@@ -131,9 +131,12 @@ describe('listResumes', () => {
     // regardless of the (now-stale) cached 5 — the exact value doesn't matter
     // here, only that it was recomputed (not the stale cached 5) and persisted.
     expect(result[0].formatScore).not.toBe(5)
-    expect(mockBulkWrite).toHaveBeenCalledWith([
-      { updateOne: { filter: { _id: 'r1' }, update: { $set: { cachedFormatScore: result[0].formatScore, formatScoreComputedAt: expect.any(Date) } } } },
-    ])
+    expect(mockBulkWrite).toHaveBeenCalledWith(
+      [
+        { updateOne: { filter: { _id: 'r1' }, update: { $set: { cachedFormatScore: result[0].formatScore, formatScoreComputedAt: expect.any(Date) } } } },
+      ],
+      { timestamps: false }
+    )
   })
 
   it('recomputes and persists when there is no cached score yet', async () => {

@@ -46,8 +46,12 @@ export async function listResumes(userId: string) {
 
   // Awaited (not fire-and-forget): a Vercel serverless function can be frozen
   // right after the response is sent, so an un-awaited write isn't reliable.
+  // { timestamps: false } is required — without it this bulkWrite bumps
+  // updatedAt itself, which (since it's set a moment after the
+  // formatScoreComputedAt captured above) immediately re-invalidates the
+  // very cache entry it just wrote, defeating the cache on every read.
   if (bulkOps.length > 0) {
-    await Resume.bulkWrite(bulkOps)
+    await Resume.bulkWrite(bulkOps, { timestamps: false })
   }
 
   return results

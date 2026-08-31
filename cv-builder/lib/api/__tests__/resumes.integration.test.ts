@@ -3,6 +3,7 @@
 // the bug this guards against (silent strict-mode field stripping) only
 // happens in Mongoose's real update-cast path — see the linked plan.
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
+import mongoose from 'mongoose'
 import { connectMemoryMongo, disconnectMemoryMongo, clearMemoryMongo } from '@/test/mongo-memory'
 import type { CreateResumeInput, PatchResumeInput } from '@/lib/schemas/resume.zod'
 
@@ -64,43 +65,44 @@ describe('patchResume — meta.columnAssignment persistence', () => {
 })
 
 describe('listResumes — format score caching', () => {
-  it('persists a computed formatScore so a second read reuses it without recomputing', async () => {
+  it('reuses a formatScore cached at/after the resume was last updated', async () => {
     const created = await createResume('u1', baseInput)
-    const id = String(created._id)
 
-    const first = await listResumes('u1')
-    expect(first[0].formatScore).toBeDefined()
+    // Seed the cache directly via the raw driver — bypassing Mongoose's own
+    // timestamps middleware entirely, since relying on a per-query override
+    // of schema-level timestamps proved unreliable here. This gives the test
+    // exact control over both fields the staleness comparison reads.
+    const collection = mongoose.connection.collection('resumes')
+    const freshTimestamp = new Date(created.updatedAt.getTime() + 1000)
+    await collection.updateOne(
+      { _id: created._id },
+      { $set: { cachedFormatScore: 999, formatScoreComputedAt: freshTimestamp } }
+    )
 
-    // Directly corrupt the DB's cached value (bypassing scoreResume entirely)
-    // to prove the second read comes from the cache, not a fresh computation.
-    const Resume = (await import('@/models/Resume')).default
-    // { timestamps: false } — schema-level timestamps also apply to plain
-    // updateOne() calls, so without this the update below would itself bump
-    // updatedAt and immediately re-invalidate the cache it's setting.
-    await Resume.updateOne({ _id: id }, { $set: { cachedFormatScore: 999 } }, { timestamps: false })
-
-    const second = await listResumes('u1')
-    expect(second[0].formatScore).toBe(999)
+    const result = await listResumes('u1')
+    expect(result[0].formatScore).toBe(999)
   })
 
   it('recomputes after the resume is edited, since editing bumps updatedAt past the cached formatScoreComputedAt', async () => {
     const created = await createResume('u1', baseInput)
     const id = String(created._id)
+    const originalScore = (await listResumes('u1'))[0].formatScore
 
-    const first = await listResumes('u1')
-    const originalScore = first[0].formatScore
+    const collection = mongoose.connection.collection('resumes')
+    // "Fresh" at the moment it's set — computed exactly when last updated.
+    await collection.updateOne(
+      { _id: created._id },
+      { $set: { cachedFormatScore: 999, formatScoreComputedAt: created.updatedAt } }
+    )
+    // Sanity check: the seeded cache is reused before any further edit.
+    expect((await listResumes('u1'))[0].formatScore).toBe(999)
 
-    const Resume = (await import('@/models/Resume')).default
-    // { timestamps: false } — schema-level timestamps also apply to plain
-    // updateOne() calls, so without this the update below would itself bump
-    // updatedAt and immediately re-invalidate the cache it's setting.
-    await Resume.updateOne({ _id: id }, { $set: { cachedFormatScore: 999 } }, { timestamps: false })
     await patchResume('u1', id, { data: { basics: { name: 'Jane Doe' } } })
 
-    const second = await listResumes('u1')
-    // The edit's own updatedAt bump makes the corrupted 999 cache stale, so
+    const afterEdit = await listResumes('u1')
+    // The edit's own updatedAt bump makes the seeded 999 cache stale, so
     // this must recompute — landing back on the real score, not 999.
-    expect(second[0].formatScore).not.toBe(999)
-    expect(second[0].formatScore).toBe(originalScore)
+    expect(afterEdit[0].formatScore).not.toBe(999)
+    expect(afterEdit[0].formatScore).toBe(originalScore)
   })
 })
