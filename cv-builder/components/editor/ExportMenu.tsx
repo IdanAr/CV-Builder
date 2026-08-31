@@ -41,6 +41,7 @@ export function ExportMenu({ onExport }: ExportMenuProps) {
       }
     >
       <div
+        ref={(el) => { el?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus() }}
         role="menu"
         className="w-56 overflow-hidden rounded-xl border border-white/40 bg-white/90 shadow-xl backdrop-blur-xl"
       >

@@ -47,4 +47,11 @@ describe('ExportMenu', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('menu')).toBeNull()
   })
+
+  it('moves focus to the first menu item when opened', () => {
+    render(<ExportMenu onExport={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: /export/i }))
+
+    expect(screen.getAllByRole('menuitem')[0]).toHaveFocus()
+  })
 })
