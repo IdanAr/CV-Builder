@@ -32,6 +32,21 @@ beforeEach(() => {
 })
 
 describe('DesignPanel', () => {
+  it('marks the active template and layout buttons as pressed for assistive tech', () => {
+    render(<DesignPanel />)
+    // Anchored to the start: "Classic"/"Modern" alone would also match the
+    // "Classic Blue"/"Modern..." color-preset buttons' aria-labels below.
+    const classicBtn = screen.getByRole('button', { name: /^classic\b/i })
+    expect(classicBtn).toHaveAttribute('aria-pressed', 'true')
+    const modernBtn = screen.getByRole('button', { name: /^modern\b/i })
+    expect(modernBtn).toHaveAttribute('aria-pressed', 'false')
+
+    const singleColumnBtn = screen.getByRole('button', { name: /single column/i })
+    expect(singleColumnBtn).toHaveAttribute('aria-pressed', 'true')
+    const twoColumnBtn = screen.getByRole('button', { name: /two columns/i })
+    expect(twoColumnBtn).toHaveAttribute('aria-pressed', 'false')
+  })
+
   it('renders template options', () => {
     render(<DesignPanel />)
     expect(screen.getByText('Classic')).toBeTruthy()
