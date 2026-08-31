@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 
 interface CoverLetterDraft {
@@ -47,6 +47,7 @@ function highlightApprovals(text: string, approvals: string[]): React.ReactNode 
 }
 
 export function CoverLetterPanel() {
+  const id = useId()
   const resumeId = useResumeEditorStore((s) => s.resumeId)
   const data = useResumeEditorStore((s) => s.data)
   const setData = useResumeEditorStore((s) => s.setData)
@@ -137,10 +138,11 @@ export function CoverLetterPanel() {
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
       <div>
-        <label className="block text-sm font-medium text-indigo-700 mb-1">
+        <label htmlFor={`${id}-jd`} className="block text-sm font-medium text-indigo-700 mb-1">
           Paste the job description
         </label>
         <textarea
+          id={`${id}-jd`}
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
           placeholder="Paste the job description here to generate a tailored cover letter…"
@@ -148,14 +150,18 @@ export function CoverLetterPanel() {
         />
 
         <div className="mt-2 flex gap-2">
+          <label htmlFor={`${id}-company`} className="sr-only">Company name</label>
           <input
+            id={`${id}-company`}
             type="text"
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
             placeholder="Company name (optional)"
             className="flex-1 rounded-lg border border-indigo-200 bg-white/70 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
+          <label htmlFor={`${id}-role`} className="sr-only">Role title</label>
           <input
+            id={`${id}-role`}
             type="text"
             value={roleName}
             onChange={(e) => setRoleName(e.target.value)}
@@ -207,7 +213,7 @@ export function CoverLetterPanel() {
 
       <div>
         <div className="mb-1 flex items-center justify-between">
-          <label className="block text-sm font-medium text-indigo-700">
+          <label htmlFor={`${id}-output`} className="block text-sm font-medium text-indigo-700">
             Your cover letter
           </label>
           <div className="flex gap-2">
@@ -239,6 +245,7 @@ export function CoverLetterPanel() {
         </div>
         {exportError && <p className="mb-1 text-xs text-red-500">{exportError}</p>}
         <textarea
+          id={`${id}-output`}
           value={data.coverLetter ?? ''}
           onChange={(e) => setData({ coverLetter: e.target.value })}
           placeholder="Your generated cover letter will appear here - feel free to edit it directly."

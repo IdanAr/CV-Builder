@@ -39,6 +39,14 @@ describe('CoverLetterPanel', () => {
     expect(screen.getByText('Generate')).toBeDisabled()
   })
 
+  it('gives every field a programmatically-associated accessible name', () => {
+    render(<CoverLetterPanel />)
+    expect(screen.getByRole('textbox', { name: /paste the job description/i })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: /company name/i })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: /role title/i })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: /your cover letter/i })).toBeInTheDocument()
+  })
+
   it('clicking Generate with no JD text does nothing (fetch is never called)', () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
