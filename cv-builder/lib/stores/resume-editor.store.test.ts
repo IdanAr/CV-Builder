@@ -96,6 +96,21 @@ describe('flushSave', () => {
 
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it('rejects and surfaces a save error when the PATCH fails', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({}),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    useResumeEditorStore.setState({ isDirty: true })
+
+    await expect(flushSave()).rejects.toThrow()
+
+    expect(useResumeEditorStore.getState().saveError).toContain('session has expired')
+  })
 })
 
 describe('removeBuiltInSection', () => {

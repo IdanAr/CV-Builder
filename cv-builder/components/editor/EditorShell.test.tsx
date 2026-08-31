@@ -281,6 +281,37 @@ describe('EditorShell export flushes pending changes first', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     expect(fetchMock.mock.calls[0][1]?.method).toBe('POST')
   })
+
+  it('aborts the export and shows an error toast when the flush save fails', async () => {
+    // The export call itself is mocked to SUCCEED (not throw) so that, under
+    // the current bug (flushSave never rejects), the test reaches a distinct,
+    // non-racy failure: a success toast instead of the expected error toast —
+    // rather than both the buggy and fixed paths coincidentally producing an
+    // error toast via two different catch blocks.
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method === 'PATCH') {
+        return { ok: false, status: 401, json: async () => ({}) }
+      }
+      return { ok: true, blob: async () => new Blob(['x'], { type: 'application/pdf' }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:mock'), revokeObjectURL: vi.fn() })
+
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    act(() => {
+      useResumeEditorStore.setState({ isDirty: true })
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }))
+
+    const { useToastStore } = await import('@/lib/stores/toast.store')
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts.some((t) => t.variant === 'error')).toBe(true)
+    )
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][1]?.method).toBe('PATCH')
+  })
 })
 
 describe('EditorShell pendingFocus', () => {
