@@ -2,9 +2,9 @@
 import type { ReactNode } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { EditTab } from './EditTab'
+import { EditTab, computeSectionBadges, computeCustomSectionNames, computeCustomSectionBadges } from './EditTab'
 import { useResumeEditorStore, type ResumeEditorStore } from '@/lib/stores/resume-editor.store'
-import type { CustomSection, CustomSectionFieldType } from '@/lib/schemas/resume.zod'
+import type { CustomSection, CustomSectionFieldType, ResumeData } from '@/lib/schemas/resume.zod'
 
 vi.mock('@/lib/stores/resume-editor.store', () => ({
   useResumeEditorStore: Object.assign(vi.fn(), { getState: vi.fn() }),
@@ -341,5 +341,47 @@ describe('EditTab — pendingFocus', () => {
     render(<EditTab />)
     expect(screen.getByText('WorkForm')).toBeTruthy()
     expect(clearFocus).not.toHaveBeenCalled()
+  })
+})
+
+describe('computeSectionBadges', () => {
+  it('reports "empty" for a section with no entries', () => {
+    const data = {} as ResumeData
+    expect(computeSectionBadges(data).work).toBe('empty')
+  })
+
+  it('reports an entry count for a section with entries', () => {
+    const data = { work: [{ name: 'Acme' }, { name: 'Globex' }] } as unknown as ResumeData
+    expect(computeSectionBadges(data).work).toBe('2 entries')
+  })
+
+  it('reports a filled-field count for basics', () => {
+    const data = { basics: { name: 'Jane', email: 'j@x.com' } } as ResumeData
+    expect(computeSectionBadges(data).basics).toBe('2 fields filled')
+  })
+
+  it('produces identical output for two data objects that differ only in an unrelated field', () => {
+    const dataA = { basics: { name: 'Jane' }, work: [{ name: 'Acme' }] } as unknown as ResumeData
+    const dataB = { basics: { name: 'Jane' }, work: [{ name: 'Acme' }], coverLetter: 'a whole new letter' } as unknown as ResumeData
+    expect(computeSectionBadges(dataA)).toEqual(computeSectionBadges(dataB))
+  })
+})
+
+describe('computeCustomSectionNames / computeCustomSectionBadges', () => {
+  it('keys names and badges by custom section id', () => {
+    const data = {
+      customSections: [
+        { id: 'c1', name: 'Military Service', items: [{}] },
+        { id: 'c2', name: 'References', items: [] },
+      ],
+    } as unknown as ResumeData
+    expect(computeCustomSectionNames(data)).toEqual({ c1: 'Military Service', c2: 'References' })
+    expect(computeCustomSectionBadges(data)).toEqual({ c1: '1 entry', c2: 'empty' })
+  })
+
+  it('returns an empty object when there are no custom sections', () => {
+    const data = {} as ResumeData
+    expect(computeCustomSectionNames(data)).toEqual({})
+    expect(computeCustomSectionBadges(data)).toEqual({})
   })
 })

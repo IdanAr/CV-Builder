@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
+import { useShallow } from 'zustand/react/shallow'
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { AccordionSection, type DragHandleProps } from './AccordionSection'
@@ -64,6 +65,26 @@ function getCustomBadge(section: CustomSection): string {
     : 'empty'
 }
 
+// Flat, primitive-valued records so a useShallow-wrapped selector can
+// correctly skip a re-render when nothing here actually changed — a nested
+// object/array would get a fresh identity on every call even with identical
+// content, defeating useShallow's one-level equality check.
+export function computeSectionBadges(data: ResumeData): Record<string, string> {
+  const badges: Record<string, string> = {}
+  for (const key of Object.keys(SECTION_LABELS)) {
+    badges[key] = getBadge(key, data)
+  }
+  return badges
+}
+
+export function computeCustomSectionNames(data: ResumeData): Record<string, string> {
+  return Object.fromEntries((data.customSections ?? []).map((cs) => [cs.id, cs.name]))
+}
+
+export function computeCustomSectionBadges(data: ResumeData): Record<string, string> {
+  return Object.fromEntries((data.customSections ?? []).map((cs) => [cs.id, getCustomBadge(cs)]))
+}
+
 function SortableAccordionItem({
   id,
   children,
@@ -79,7 +100,9 @@ export function EditTab() {
   const [openSection, setOpenSection] = useState<string | null>('basics')
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const meta = useResumeEditorStore((s) => s.meta)
-  const data = useResumeEditorStore((s) => s.data)
+  const sectionBadges = useResumeEditorStore(useShallow((s) => computeSectionBadges(s.data)))
+  const customSectionNames = useResumeEditorStore(useShallow((s) => computeCustomSectionNames(s.data)))
+  const customSectionBadges = useResumeEditorStore(useShallow((s) => computeCustomSectionBadges(s.data)))
   const setMeta = useResumeEditorStore((s) => s.setMeta)
   const addCustomSection = useResumeEditorStore((s) => s.addCustomSection)
   const updateCustomSection = useResumeEditorStore((s) => s.updateCustomSection)
@@ -156,7 +179,7 @@ export function EditTab() {
   }
 
   function handleDeleteBuiltIn(section: string) {
-    const arr = (data as Record<string, unknown[]>)[section]
+    const arr = (useResumeEditorStore.getState().data as Record<string, unknown[]>)[section]
     const count = Array.isArray(arr) ? arr.length : 0
     if (count > 0) {
       const label = SECTION_LABELS[section] ?? section
@@ -191,7 +214,7 @@ export function EditTab() {
       {/* basics is always first and not sortable */}
       <AccordionSection
         title={SECTION_LABELS['basics']}
-        badge={getBadge('basics', data)}
+        badge={sectionBadges['basics']}
         isOpen={openSection === 'basics'}
         onToggle={() => setOpenSection((prev) => (prev === 'basics' ? null : 'basics'))}
         icon={<SectionIcon section="basics" />}
@@ -257,15 +280,15 @@ export function EditTab() {
           {orderedSections.map((section) => {
             if (section.startsWith('custom:')) {
               const customId = section.slice(7)
-              const customSection = data.customSections?.find((cs) => cs.id === customId)
-              if (!customSection) return null
+              const customName = customSectionNames[customId]
+              if (customName === undefined) return null
               return (
                 <div key={section} ref={(el) => { sectionRefs.current[section] = el }}>
                   <SortableAccordionItem id={section}>
                     {(dragHandleProps) => (
                       <AccordionSection
-                        title={customSection.name}
-                        badge={getCustomBadge(customSection)}
+                        title={customName}
+                        badge={customSectionBadges[customId]}
                         isOpen={openSection === section}
                         onToggle={() => setOpenSection((prev) => (prev === section ? null : section))}
                         onRename={(name) => updateCustomSection(customId, { name })}
@@ -288,7 +311,7 @@ export function EditTab() {
                   {(dragHandleProps) => (
                     <AccordionSection
                       title={SECTION_LABELS[section] ?? section}
-                      badge={getBadge(section, data)}
+                      badge={sectionBadges[section]}
                       isOpen={openSection === section}
                       onToggle={() => setOpenSection((prev) => (prev === section ? null : section))}
                       onDelete={() => handleDeleteBuiltIn(section)}
