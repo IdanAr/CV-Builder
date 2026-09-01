@@ -74,4 +74,29 @@ describe('GET /api/jobsearch/scan/cron', () => {
 
     expect(body).toEqual({ queued: 1, failed: 1, total: 2 })
   })
+
+  it('publishes all profiles concurrently rather than one at a time', async () => {
+    mockListAllActive.mockResolvedValue([
+      { _id: 'p1', userId: 'u1' },
+      { _id: 'p2', userId: 'u2' },
+      { _id: 'p3', userId: 'u3' },
+    ])
+
+    let inFlight = 0
+    let maxInFlight = 0
+    mockPublishScanJob.mockImplementation(async () => {
+      inFlight++
+      maxInFlight = Math.max(maxInFlight, inFlight)
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      inFlight--
+    })
+
+    const res = await GET(req('Bearer test-secret'))
+    const body = await res.json()
+
+    // A sequential for-loop can never have more than 1 in flight at once;
+    // this only passes if all 3 publishScanJob calls were started together.
+    expect(maxInFlight).toBeGreaterThan(1)
+    expect(body).toEqual({ queued: 3, failed: 0, total: 3 })
+  })
 })

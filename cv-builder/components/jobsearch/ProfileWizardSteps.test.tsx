@@ -27,4 +27,13 @@ describe('ProfileWizardSteps', () => {
     await userEvent.click(screen.getAllByRole('tab')[1])
     expect(onStepClick).toHaveBeenCalledWith(2)
   })
+
+  it('gives each tab an id and aria-controls pointing at its panel', () => {
+    render(<ProfileWizardSteps current={1} maxUnlocked={2} labels={LABELS} onStepClick={() => {}} />)
+    const tabs = screen.getAllByRole('tab')
+    expect(tabs[0]).toHaveAttribute('id', 'wizard-tab-1')
+    expect(tabs[0]).toHaveAttribute('aria-controls', 'wizard-panel-1')
+    expect(tabs[1]).toHaveAttribute('id', 'wizard-tab-2')
+    expect(tabs[1]).toHaveAttribute('aria-controls', 'wizard-panel-2')
+  })
 })

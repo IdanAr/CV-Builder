@@ -181,6 +181,24 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
   })
 })
 
+describe('EditorShell — tab/tabpanel ARIA association', () => {
+  it('associates each tab with its panel via aria-controls/id, and marks panels role=tabpanel', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    const editTab = screen.getByRole('tab', { name: 'Edit' })
+    const designTab = screen.getByRole('tab', { name: 'Design' })
+
+    const editPanelId = editTab.getAttribute('aria-controls')
+    expect(editPanelId).toBeTruthy()
+    const editPanel = document.getElementById(editPanelId!)
+    expect(editPanel).toHaveAttribute('role', 'tabpanel')
+    expect(editPanel).toHaveAttribute('aria-labelledby', editTab.id)
+
+    const designPanelId = designTab.getAttribute('aria-controls')
+    expect(designPanelId).toBeTruthy()
+    expect(designPanelId).not.toBe(editPanelId)
+  })
+})
+
 describe('EditorShell — mobile layout (below breakpoint)', () => {
   beforeEach(() => setViewport(true))
 

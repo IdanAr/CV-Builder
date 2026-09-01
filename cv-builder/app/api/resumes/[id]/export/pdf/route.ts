@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { getResume } from '@/lib/api/resumes'
 import { selectPdfTemplate } from '@/lib/pdf/select-template'
 import { parseExportMode } from '@/lib/export-mode'
+import { checkRateLimit, EXPORT_RATE_LIMIT } from '@/lib/rate-limit'
 import { apiError, handleRouteError } from '@/lib/api/route-errors'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import type React from 'react'
@@ -10,6 +11,11 @@ import type React from 'react'
 export const POST = auth(async (req, ctx) => {
   if (!req.auth?.user?.id) {
     return apiError('UNAUTHORIZED', 'Unauthorized', 401)
+  }
+
+  const rate = checkRateLimit(`${req.auth.user.id}:export`, EXPORT_RATE_LIMIT)
+  if (!rate.allowed) {
+    return apiError('RATE_LIMITED', 'Too many export requests - please wait a moment.', 429, undefined, rate.retryAfterSeconds)
   }
 
   try {
@@ -29,7 +35,7 @@ export const POST = auth(async (req, ctx) => {
     const buffer = await renderToBuffer(element as React.ReactElement<never>)
 
     const baseName = resume.title.replace(/[^a-z0-9]/gi, '-')
-    const templateName = meta.templateId.charAt(0).toUpperCase() + meta.templateId.slice(1)
+    const templateName = (meta.templateId ?? 'classic').charAt(0).toUpperCase() + (meta.templateId ?? 'classic').slice(1)
     const modeSuffix = mode === 'ats' ? '-ATS' : ''
     return new Response(new Uint8Array(buffer), {
       status: 200,

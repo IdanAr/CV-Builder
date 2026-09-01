@@ -60,6 +60,7 @@ export default function UploadProgressModal({
   const swapTimerRef = useRef<number | null>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     function clearTimers() {
@@ -136,10 +137,37 @@ export default function UploadProgressModal({
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [open, dismissible, handleDismiss])
 
+  // Tab-trap: keeps focus cycling within the dialog's own focusable elements
+  // while it's open, independent of `dismissible` — without this, a keyboard
+  // user can Tab past the dialog into the (visually blurred/inert) dashboard
+  // behind it.
+  useEffect(() => {
+    if (!open) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Tab' || !dialogRef.current) return
+      const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open])
+
   if (!open) return null
 
   return createPortal(
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label="Uploading CV"

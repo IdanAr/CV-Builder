@@ -30,21 +30,30 @@ export async function GET(req: Request) {
       userId: string
     }>
 
+    // Promise.allSettled fans every profile's publish out concurrently —
+    // each is an independent QStash HTTP round-trip, and this endpoint runs
+    // inside a duration-budgeted Vercel Cron invocation, so a sequential
+    // for-loop wastes the whole budget waiting on N round-trips one at a
+    // time instead of overlapping them. Per-profile failure isolation is
+    // preserved: one rejected publish doesn't abort the others' results.
+    const results = await Promise.allSettled(
+      profiles.map((profile) => publishScanJob(profile.userId, String(profile._id)))
+    )
     let queued = 0
     let failed = 0
-    for (const profile of profiles) {
-      try {
-        await publishScanJob(profile.userId, String(profile._id))
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i]
+      if (result.status === 'fulfilled') {
         queued++
-      } catch (err) {
+      } else {
         // One profile's publish failure shouldn't abort the whole fan-out —
         // it simply misses this scheduled run and gets picked up next time.
         // Logged (not silently swallowed) so a systemic failure — bad
         // QSTASH_TOKEN, wrong region, etc. — is actually diagnosable from
         // Vercel's function logs instead of just an opaque failed count.
         console.error(
-          `[GET /api/jobsearch/scan/cron] publishScanJob failed for profile ${String(profile._id)}`,
-          err
+          `[GET /api/jobsearch/scan/cron] publishScanJob failed for profile ${String(profiles[i]._id)}`,
+          result.reason
         )
         failed++
       }

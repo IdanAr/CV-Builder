@@ -1,25 +1,56 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { _resetRateLimits } from '@/lib/rate-limit'
+
+let mockSession: { user: { id: string } } | null = { user: { id: 'user-1' } }
 
 vi.mock('@/lib/auth', () => ({
   auth: vi.fn((handler) => async (req: Request, ctx: unknown) => {
-    const session = null
-    return handler(Object.assign(req, { auth: session }), ctx)
+    return handler(Object.assign(req, { auth: mockSession }), ctx)
   }),
 }))
 
 vi.mock('@/lib/api/resumes', () => ({
-  getResume: vi.fn(),
+  getResume: vi.fn(async () => ({
+    title: 'My Resume',
+    data: { basics: { name: 'Jordan' } },
+    meta: { fontFamily: 'Arial' },
+  })),
 }))
 
 vi.mock('@react-pdf/renderer', () => ({
   renderToBuffer: vi.fn(() => Buffer.from('fake-pdf')),
 }))
 
+function req(content = 'Dear hiring manager,'): Request {
+  return new Request('http://localhost/api/resumes/abc/cover-letter/export/pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  })
+}
+
 describe('POST /api/resumes/[id]/cover-letter/export/pdf', () => {
+  beforeEach(() => {
+    _resetRateLimits()
+    mockSession = { user: { id: 'user-1' } }
+  })
+
   it('returns 401 when not authenticated', async () => {
+    mockSession = null
     const { POST } = await import('./route')
-    const req = new Request('http://localhost/api/resumes/abc/cover-letter/export/pdf', { method: 'POST' })
-    const res = await POST(req as never, { params: Promise.resolve({ id: 'abc' }) } as never) as Response
+    const res = await POST(req() as never, { params: Promise.resolve({ id: 'abc' }) } as never) as Response
     expect(res.status).toBe(401)
+  })
+
+  it('rate limits after the export budget is exhausted', async () => {
+    const { POST } = await import('./route')
+    const { EXPORT_RATE_LIMIT } = await import('@/lib/rate-limit')
+    for (let i = 0; i < EXPORT_RATE_LIMIT.limit; i++) {
+      const res = await POST(req() as never, { params: Promise.resolve({ id: 'abc' }) } as never) as Response
+      expect(res.status).toBe(200)
+    }
+    const res = await POST(req() as never, { params: Promise.resolve({ id: 'abc' }) } as never) as Response
+    expect(res.status).toBe(429)
+    expect(res.headers.get('Retry-After')).toBeTruthy()
   })
 })

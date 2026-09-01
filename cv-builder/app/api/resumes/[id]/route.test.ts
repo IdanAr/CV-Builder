@@ -43,3 +43,35 @@ describe('GET /api/resumes/[id]', () => {
     expect(spy).toHaveBeenCalled()
   })
 })
+
+describe('PATCH /api/resumes/[id]', () => {
+  afterEach(() => {
+    vi.resetModules()
+    vi.restoreAllMocks()
+  })
+
+  it('rejects an oversized payload with 400 before attempting to parse it', async () => {
+    const { PATCH } = await import('./route')
+    const oversized = JSON.stringify({ title: 'x'.repeat(1_100_000) })
+    const req = new Request('http://localhost/api/resumes/abc', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: oversized,
+    })
+    const res = await PATCH(req as never, { params: Promise.resolve({ id: 'abc' }) } as never) as Response
+    expect(res.status).toBe(400)
+  })
+
+  it('accepts a normal-sized payload', async () => {
+    const { patchResume } = await import('@/lib/api/resumes')
+    vi.mocked(patchResume).mockResolvedValueOnce({ _id: 'abc', title: 'New Title' } as never)
+    const { PATCH } = await import('./route')
+    const req = new Request('http://localhost/api/resumes/abc', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'New Title' }),
+    })
+    const res = await PATCH(req as never, { params: Promise.resolve({ id: 'abc' }) } as never) as Response
+    expect(res.status).toBe(200)
+  })
+})

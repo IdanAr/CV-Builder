@@ -234,12 +234,14 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
       </div>
 
       {/* Tab bar */}
-      <div className="flex border-b border-indigo-100 shrink-0 bg-white/50">
+      <div role="tablist" aria-label="Editor sections" className="flex border-b border-indigo-100 shrink-0 bg-white/50">
         {(['edit', 'design', 'ats', 'coverLetter'] as Tab[]).map((tab) => (
           <button
             key={tab}
             type="button"
             role="tab"
+            id={`editor-tab-${tab}`}
+            aria-controls={`editor-panel-${tab}`}
             aria-selected={activeTab === tab}
             onClick={() => setActiveTab(tab)}
             className={`relative flex items-center justify-center min-h-[44px] px-4 py-2 text-sm font-medium transition-colors ${
@@ -281,16 +283,16 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
 
       {/* Tab content */}
       <div className="flex-1 overflow-auto">
-        <div className={activeTab === 'edit' ? 'block' : 'hidden'}>
+        <div role="tabpanel" id="editor-panel-edit" aria-labelledby="editor-tab-edit" className={activeTab === 'edit' ? 'block' : 'hidden'}>
           <EditorErrorBoundary><EditTab /></EditorErrorBoundary>
         </div>
-        <div className={activeTab === 'design' ? 'block' : 'hidden'}>
+        <div role="tabpanel" id="editor-panel-design" aria-labelledby="editor-tab-design" className={activeTab === 'design' ? 'block' : 'hidden'}>
           <EditorErrorBoundary><DesignPanel /></EditorErrorBoundary>
         </div>
-        <div className={activeTab === 'ats' ? 'block' : 'hidden'}>
+        <div role="tabpanel" id="editor-panel-ats" aria-labelledby="editor-tab-ats" className={activeTab === 'ats' ? 'block' : 'hidden'}>
           <EditorErrorBoundary><AtsScorePanel /></EditorErrorBoundary>
         </div>
-        <div className={activeTab === 'coverLetter' ? 'block' : 'hidden'}>
+        <div role="tabpanel" id="editor-panel-coverLetter" aria-labelledby="editor-tab-coverLetter" className={activeTab === 'coverLetter' ? 'block' : 'hidden'}>
           <EditorErrorBoundary><CoverLetterPanel /></EditorErrorBoundary>
         </div>
       </div>

@@ -24,6 +24,7 @@ import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 import { FONT_SUBSTITUTES } from '@/lib/fonts/families'
+import { useShallow } from 'zustand/react/shallow'
 
 /**
  * Derived, not restated. A hardcoded list here was the last unguarded copy of
@@ -110,12 +111,12 @@ const SECTION_LABELS: Record<string, string> = {
   languages: 'Languages',
 }
 
-function getSectionLabel(sectionKey: string, data: ResumeData): string {
+function getSectionLabel(sectionKey: string, customSections: ResumeData['customSections']): string {
   if (!sectionKey.startsWith('custom:')) {
     return SECTION_LABELS[sectionKey] ?? sectionKey.charAt(0).toUpperCase() + sectionKey.slice(1)
   }
   const id = sectionKey.slice('custom:'.length)
-  const cs = data.customSections?.find((s) => s.id === id)
+  const cs = customSections?.find((s) => s.id === id)
   return cs?.name ?? sectionKey
 }
 
@@ -128,7 +129,7 @@ const sectionScreenReaderInstructions: ScreenReaderInstructions = {
     'To reorder a section: press space or enter to pick it up, use the arrow keys to move it up or down in the list, then press space or enter again to drop it. Press escape to cancel.',
 }
 
-function buildSectionAnnouncements(sectionOrder: string[], data: ResumeData): Announcements {
+function buildSectionAnnouncements(sectionOrder: string[], customSections: ResumeData['customSections']): Announcements {
   function describePosition(sectionKey: string): string {
     const index = sectionOrder.indexOf(sectionKey)
     return index === -1 ? '' : `position ${index + 1} of ${sectionOrder.length}`
@@ -136,22 +137,22 @@ function buildSectionAnnouncements(sectionOrder: string[], data: ResumeData): An
 
   return {
     onDragStart({ active }) {
-      return `Picked up ${getSectionLabel(String(active.id), data)} at ${describePosition(String(active.id))}.`
+      return `Picked up ${getSectionLabel(String(active.id), customSections)} at ${describePosition(String(active.id))}.`
     },
     onDragOver({ active, over }) {
-      const label = getSectionLabel(String(active.id), data)
+      const label = getSectionLabel(String(active.id), customSections)
       return over
         ? `${label} is over ${describePosition(String(over.id))}.`
         : `${label} is no longer over a droppable area.`
     },
     onDragEnd({ active, over }) {
-      const label = getSectionLabel(String(active.id), data)
+      const label = getSectionLabel(String(active.id), customSections)
       return over
         ? `${label} was moved to ${describePosition(String(over.id))}.`
         : `${label} was dropped.`
     },
     onDragCancel({ active }) {
-      return `Moving ${getSectionLabel(String(active.id), data)} was cancelled.`
+      return `Moving ${getSectionLabel(String(active.id), customSections)} was cancelled.`
     },
   }
 }
@@ -221,7 +222,7 @@ function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumn
 
 export function DesignPanel() {
   const meta = useResumeEditorStore((s) => s.meta)
-  const data = useResumeEditorStore((s) => s.data)
+  const customSections = useResumeEditorStore(useShallow((s) => s.data.customSections))
   const setMeta = useResumeEditorStore((s) => s.setMeta)
 
   // PointerSensor alone dropped keyboard support entirely — a keyboard-only
@@ -420,7 +421,7 @@ export function DesignPanel() {
               collisionDetection={closestCenter}
               onDragEnd={handleColumnDragEnd}
               accessibility={{
-                announcements: buildSectionAnnouncements(meta.sectionOrder, data),
+                announcements: buildSectionAnnouncements(meta.sectionOrder, customSections),
                 screenReaderInstructions: sectionScreenReaderInstructions,
               }}
             >
@@ -432,7 +433,7 @@ export function DesignPanel() {
                   <SortableColumnRow
                     key={sectionKey}
                     sectionKey={sectionKey}
-                    label={getSectionLabel(sectionKey, data)}
+                    label={getSectionLabel(sectionKey, customSections)}
                     side={getColumnSide(sectionKey, meta.columnAssignment ?? {}, colDefaults)}
                     onToggle={() => handleColumnToggle(sectionKey)}
                   />

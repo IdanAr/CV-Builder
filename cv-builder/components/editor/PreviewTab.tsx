@@ -207,6 +207,12 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
           {badgeText}
         </div>
 
+        {/* Screen-reader-only mirror of the badge above — the visible badge is
+            pointer-events:none/decorative and never announced on its own. */}
+        <span aria-live="polite" className="sr-only">
+          {badgeText}
+        </span>
+
         {/* Floating zoom toolbar — overlays the preview */}
         <div className="absolute bottom-4 right-4 z-30 flex items-center gap-1 rounded-full bg-white/85 backdrop-blur-md shadow-lg ring-1 ring-indigo-100 px-2 py-1.5">
           <button

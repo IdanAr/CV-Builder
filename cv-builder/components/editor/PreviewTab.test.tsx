@@ -156,6 +156,34 @@ describe('PreviewTab — zoom controls', () => {
   })
 })
 
+describe('PreviewTab — pagination status announcement', () => {
+  beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => okResponse({ pageCount: 2, anchors: [] }))
+    )
+    localStorage.clear()
+    useResumeEditorStore.setState({
+      data: {},
+      meta: ResumeMetaSchema.parse({}),
+    })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('exposes the page-count badge text in a visually-hidden aria-live region', async () => {
+    render(<PreviewTab />)
+    const liveRegion = await screen.findByText(/calculating pages…|page.*matches pdf/i, {
+      selector: '[aria-live]',
+    })
+    expect(liveRegion).toHaveAttribute('aria-live', 'polite')
+  })
+})
+
 describe('PreviewEditOverlay integration', () => {
   beforeEach(() => {
     vi.stubGlobal('ResizeObserver', ResizeObserverStub)
