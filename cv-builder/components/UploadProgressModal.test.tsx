@@ -375,3 +375,42 @@ describe('UploadProgressModal', () => {
     trigger.remove()
   })
 })
+
+describe('UploadProgressModal — focus trap', () => {
+  it('wraps Tab from the last focusable element back to the first (error state, 2 buttons)', () => {
+    render(
+      <UploadProgressModal
+        open
+        filename="cv.pdf"
+        stage="error"
+        errorMessage="Something went wrong"
+        onRetry={() => {}}
+        onClose={() => {}}
+      />
+    )
+    const closeBtn = screen.getByRole('button', { name: 'Close' })
+    const retryBtn = screen.getByRole('button', { name: 'Try another file' })
+    retryBtn.focus()
+    expect(document.activeElement).toBe(retryBtn)
+    fireEvent.keyDown(retryBtn, { key: 'Tab' })
+    expect(document.activeElement).toBe(closeBtn)
+  })
+
+  it('wraps Shift+Tab from the first focusable element back to the last', () => {
+    render(
+      <UploadProgressModal
+        open
+        filename="cv.pdf"
+        stage="error"
+        errorMessage="Something went wrong"
+        onRetry={() => {}}
+        onClose={() => {}}
+      />
+    )
+    const closeBtn = screen.getByRole('button', { name: 'Close' })
+    const retryBtn = screen.getByRole('button', { name: 'Try another file' })
+    closeBtn.focus()
+    fireEvent.keyDown(closeBtn, { key: 'Tab', shiftKey: true })
+    expect(document.activeElement).toBe(retryBtn)
+  })
+})
