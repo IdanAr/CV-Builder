@@ -109,6 +109,76 @@ describe('ListFieldManager reordering', () => {
   })
 })
 
+describe('ListFieldManager keyboard drag-and-drop', () => {
+  // Mirrors DesignPanel.test.tsx's keyboard-DnD test: dnd-kit's KeyboardSensor
+  // computes movement from each sortable row's getBoundingClientRect via
+  // sortableKeyboardCoordinates, and jsdom returns an all-zero rect for every
+  // element by default — this mock gives each row a distinct vertical
+  // position based on DOM order so the sensor can tell rows apart.
+  function mockRowRects() {
+    return vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement
+    ) {
+      const parent = this.parentElement
+      const siblings = parent ? Array.from(parent.children) : []
+      const index = siblings.indexOf(this)
+      const top = index >= 0 ? index * 60 : 0
+      return {
+        top, left: 0, right: 240, bottom: top + 56, width: 240, height: 56, x: 0, y: top,
+        toJSON() { return {} },
+      } as DOMRect
+    })
+  }
+
+  function KeyboardReorderHarness() {
+    const [items, setItems] = useState<Item[]>([
+      { id: 'a', value: 'first' },
+      { id: 'b', value: 'second' },
+      { id: 'c', value: 'third' },
+    ])
+    return (
+      <ListFieldManager<Item>
+        items={items}
+        onChange={setItems}
+        createEmpty={() => ({ id: 'new', value: '' })}
+        renderItem={(item, _, onUpdate) => (
+          <input aria-label={`item-${item.id}`} value={item.value} onChange={(e) => onUpdate({ ...item, value: e.target.value })} />
+        )}
+      />
+    )
+  }
+
+  it('reorders an entry via keyboard (Space to pick up, Arrow to move, Space to drop)', async () => {
+    const rectSpy = mockRowRects()
+    render(<KeyboardReorderHarness />)
+
+    const handles = screen.getAllByRole('button', { name: /drag to reorder/i })
+    expect(handles).toHaveLength(3)
+
+    handles[0].focus()
+    fireEvent.keyDown(handles[0], { key: ' ', code: 'Space' })
+    // KeyboardSensor attaches its keydown listener via setTimeout(0) after
+    // pickup, so the following keys must wait a tick to be picked up.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    fireEvent.keyDown(handles[0], { key: 'ArrowDown', code: 'ArrowDown' })
+    fireEvent.keyDown(handles[0], { key: ' ', code: 'Space' })
+
+    expect(screen.getByLabelText('item-b')).toBeTruthy()
+    // 'a' (originally first) should now render after 'b' — confirm via DOM order.
+    const values = screen.getAllByRole('textbox').map((el) => (el as HTMLInputElement).value)
+    expect(values).toEqual(['second', 'first', 'third'])
+
+    rectSpy.mockRestore()
+  })
+
+  it('pointer-based drag-and-drop still works (PointerSensor unaffected by the keyboard fix)', () => {
+    render(<KeyboardReorderHarness />)
+    const handles = screen.getAllByRole('button', { name: /drag to reorder/i })
+    expect(handles).toHaveLength(3)
+    expect(handles[0]).toHaveAttribute('role', 'button')
+  })
+})
+
 describe('ListFieldManager instance-unique drag-handle testids', () => {
   // Mirrors real nesting (e.g. WorkForm: work entries -> roles -> highlights):
   // two ListFieldManager instances mounted side by side, each with an item
