@@ -62,5 +62,12 @@ const ScrapedJobSchema = new Schema<IScrapedJob>(
 ScrapedJobSchema.index({ userId: 1, profileId: 1, source: 1, sourceId: 1 }, { unique: true })
 ScrapedJobSchema.index({ userId: 1, draftedAt: 1 })
 
+// Covers listScrapedJobs' {userId, profileId} query sorted by createdAt desc,
+// and listDraftQueueBacklog's/listNewScrapedJobs' status-filtered queries —
+// both fall back to an in-memory sort/filter over the (userId,profileId)
+// prefix without these as scraped-job history accumulates per profile.
+ScrapedJobSchema.index({ userId: 1, profileId: 1, createdAt: -1 })
+ScrapedJobSchema.index({ userId: 1, profileId: 1, status: 1 })
+
 const ScrapedJob = models.ScrapedJob ?? model<IScrapedJob>('ScrapedJob', ScrapedJobSchema)
 export default ScrapedJob
