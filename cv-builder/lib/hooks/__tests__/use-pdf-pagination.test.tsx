@@ -105,4 +105,27 @@ describe('usePdfPagination', () => {
     expect(result.current.status).toBe('error')
     expect(result.current.pageCount).toBe(2)
   })
+
+  it('does not re-serialize on every rapid data change, only once the debounce settles', async () => {
+    const stringifySpy = vi.spyOn(JSON, 'stringify')
+    const { rerender } = renderHook(({ d }) => usePdfPagination(d, meta), {
+      initialProps: { d: dataA },
+    })
+    const callsAfterMount = stringifySpy.mock.calls.length
+
+    // Three rapid "keystrokes" within the debounce window — none of these
+    // should trigger a fresh JSON.stringify of the (now-different) payload.
+    rerender({ d: dataB })
+    rerender({ d: dataA })
+    rerender({ d: dataB })
+    expect(stringifySpy.mock.calls.length).toBe(callsAfterMount)
+
+    // Only after the debounce window elapses does the settled value get serialized.
+    await act(async () => {
+      vi.advanceTimersByTime(1300)
+    })
+    expect(stringifySpy.mock.calls.length).toBeGreaterThan(callsAfterMount)
+
+    stringifySpy.mockRestore()
+  })
 })
