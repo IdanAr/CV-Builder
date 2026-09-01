@@ -6,11 +6,12 @@
 // anchors. Never fires on a keystroke — the debounce guarantees at most one
 // render per pause, per the project rule against per-keystroke PDF renders.
 //
-// `data`/`meta` are debounced *before* serialization (not just before the
-// fetch): the editor store hands this hook a new object reference on every
-// keystroke, and serializing the full résumé tree on each one is wasted
+// The résumé tree is only ever serialized inside the debounce timer's own
+// callback (once, when it actually fires) — not eagerly on every render.
+// The editor store hands this hook a new `data`/`meta` reference on every
+// keystroke, and JSON.stringify-ing the full tree on each one is wasted
 // work when only the value settled at the end of a pause is ever sent.
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
@@ -29,18 +30,15 @@ export function usePdfPagination(
   meta: ResumeMeta,
   delay: number = DEFAULT_DELAY_MS
 ): PdfPaginationState {
+  // Used only to detect staleness for the UI below — not to trigger the
+  // fetch (the effect's own setTimeout/cleanup below handles that debounce).
   const debouncedData = useDebounce(data, delay)
   const debouncedMeta = useDebounce(meta, delay)
-  const payload = useMemo(
-    () => JSON.stringify({ data: debouncedData, meta: debouncedMeta }),
-    [debouncedData, debouncedMeta]
-  )
   const [state, setState] = useState<PdfPaginationState>({
     status: 'syncing',
     pageCount: null,
     anchors: [],
   })
-  const isFirstRender = useRef(true)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -48,8 +46,13 @@ export function usePdfPagination(
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setState((s) => ({ ...s, status: 'syncing' }))
 
-    const doFetch = () => {
-      if (cancelled) return
+    // Debounce-via-effect-reset: this effect re-runs (cancelling the prior
+    // timer via cleanup) on every `data`/`meta` change, i.e. every
+    // keystroke — so only the LAST keystroke's timer ever survives long
+    // enough to fire. The tree is serialized here, lazily, only once the
+    // timer actually elapses.
+    const timer = setTimeout(() => {
+      const payload = JSON.stringify({ data, meta })
       fetch('/api/preview/pagination', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -65,26 +68,18 @@ export function usePdfPagination(
           if (err instanceof Error && err.name === 'AbortError') return
           if (!cancelled) setState((s) => ({ ...s, status: 'error' }))
         })
-    }
-
-    let timer: ReturnType<typeof setTimeout> | null = null
-    if (isFirstRender.current) {
-      isFirstRender.current = false
-      timer = setTimeout(doFetch, delay)
-    } else {
-      doFetch()
-    }
+    }, delay)
 
     return () => {
       cancelled = true
-      if (timer) clearTimeout(timer)
+      clearTimeout(timer)
       controller.abort()
     }
-  }, [payload, delay])
+  }, [data, meta, delay])
 
-  // Editor state newer than the debounced value that produced `payload` →
-  // anchors are stale (reference inequality is enough: the store hands out
-  // a fresh object on every mutation).
+  // Editor state newer than the debounced snapshot → anchors are stale
+  // (reference inequality is enough: the store hands out a fresh object on
+  // every mutation).
   const isStale = data !== debouncedData || meta !== debouncedMeta
   if (isStale && state.status === 'synced') {
     return { ...state, status: 'syncing' }
