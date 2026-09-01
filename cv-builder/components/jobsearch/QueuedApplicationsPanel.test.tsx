@@ -360,4 +360,20 @@ describe('QueuedApplicationsPanel', () => {
 
     expect(capturedSignal!.aborted).toBe(true)
   })
+
+  it('does not show an error banner when profileId changes while fetches are in flight', async () => {
+    const mockFetch = vi.fn((url: string) => {
+      if (String(url).includes('p1')) {
+        return new Promise<Response>(() => {}) // never resolves — simulates the stale in-flight requests
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ scrapedJobs: [], profile: { minAtsScore: 75 } }) } as Response)
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const { rerender } = render(<QueuedApplicationsPanel profileId="p1" />)
+    rerender(<QueuedApplicationsPanel profileId="p2" />)
+
+    await screen.findByText(/no queued drafts yet/i)
+    expect(screen.queryByText(/failed to load queued applications/i)).not.toBeInTheDocument()
+  })
 })

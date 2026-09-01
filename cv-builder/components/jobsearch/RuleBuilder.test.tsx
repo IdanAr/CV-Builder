@@ -195,4 +195,20 @@ describe('RuleBuilder', () => {
 
     expect(capturedSignal!.aborted).toBe(true)
   })
+
+  it('does not show an error banner when profileId changes while a fetch is in flight', async () => {
+    const mockFetch = vi.fn((url: string) => {
+      if (String(url).includes('profileId=p1')) {
+        return new Promise<Response>(() => {}) // never resolves — simulates the stale in-flight request
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ rules: [] }) } as Response)
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const { rerender } = render(<RuleBuilder profileId="p1" />)
+    rerender(<RuleBuilder profileId="p2" />)
+
+    await screen.findByRole('button', { name: /add rule/i })
+    expect(screen.queryByText(/failed to load rules/i)).not.toBeInTheDocument()
+  })
 })

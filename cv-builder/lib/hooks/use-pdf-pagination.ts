@@ -11,6 +11,13 @@
 // The editor store hands this hook a new `data`/`meta` reference on every
 // keystroke, and JSON.stringify-ing the full tree on each one is wasted
 // work when only the value settled at the end of a pause is ever sent.
+//
+// Callers must pass referentially stable `data`/`meta`: this hook's effect
+// is keyed on object identity (`[data, meta, delay]`), not on serialized
+// content, so a fresh object with identical content — which Zustand's
+// setters always produce — resets the debounce timer exactly like a real
+// edit would. The sole caller (PreviewTab.tsx) satisfies this by reading
+// straight from the store's selectors.
 import { useEffect, useState } from 'react'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
