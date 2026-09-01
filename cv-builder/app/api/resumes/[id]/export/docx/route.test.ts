@@ -57,4 +57,16 @@ describe('POST /api/resumes/[id]/export/docx', () => {
     expect(res.status).toBe(429)
     expect(res.headers.get('Retry-After')).toBeTruthy()
   })
+
+  it('does not crash when the stored resume has an empty meta (falls back to classic template naming)', async () => {
+    const { getResume } = await import('@/lib/api/resumes')
+    vi.mocked(getResume).mockResolvedValueOnce({
+      title: 'My Resume',
+      data: {},
+      meta: {},
+    } as never)
+    const { POST } = await import('./route')
+    const res = await POST(req() as never, { params: Promise.resolve({ id: 'abc' }) } as never) as Response
+    expect(res.status).toBe(200)
+  })
 })

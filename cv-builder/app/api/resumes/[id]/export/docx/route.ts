@@ -36,7 +36,7 @@ export const POST = auth(async (req, ctx) => {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="${resume.title.replace(/[^a-z0-9]/gi, '-')}-${meta.templateId.charAt(0).toUpperCase() + meta.templateId.slice(1)}${mode === 'ats' ? '-ATS' : ''}.docx"`,
+        'Content-Disposition': `attachment; filename="${resume.title.replace(/[^a-z0-9]/gi, '-')}-${(meta.templateId ?? 'classic').charAt(0).toUpperCase() + (meta.templateId ?? 'classic').slice(1)}${mode === 'ats' ? '-ATS' : ''}.docx"`,
         'Content-Length': String(buffer.byteLength),
       },
     })
