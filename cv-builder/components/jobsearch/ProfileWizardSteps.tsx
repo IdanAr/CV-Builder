@@ -33,6 +33,8 @@ export function ProfileWizardSteps({ current, maxUnlocked, labels, onStepClick }
             key={label}
             type="button"
             role="tab"
+            id={`wizard-tab-${step}`}
+            aria-controls={`wizard-panel-${step}`}
             aria-selected={isCurrent}
             aria-disabled={isLocked}
             disabled={isLocked}

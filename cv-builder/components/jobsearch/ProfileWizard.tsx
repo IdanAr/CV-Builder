@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ProfileWizardSteps } from './ProfileWizardSteps'
 import { COUNTRIES } from '@/lib/jobsearch/countries'
 import {
@@ -181,6 +181,25 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
     }
   }, [])
 
+  const panelRef = useRef<HTMLDivElement>(null)
+  // Move focus into the new step's panel on Back/Next/tab-click, mirroring
+  // the ARIA Tabs authoring pattern's focus-management requirement —
+  // without this, a screen-reader user's focus stays on the button they
+  // just pressed while the panel content silently swaps behind them.
+  // Compares against the previous step (not a one-shot "first render" flag)
+  // so it stays correct under React Strict Mode's dev-mode double-invoke of
+  // effects on mount — a one-shot flag flips on the first invocation and
+  // then fires on the second, stealing focus on load; this comparison
+  // produces the same no-op result both times since prevStep.current still
+  // equals step on the second invocation too.
+  const prevStep = useRef(step)
+  useEffect(() => {
+    if (prevStep.current !== step) {
+      panelRef.current?.focus()
+    }
+    prevStep.current = step
+  }, [step])
+
   function goNext() {
     const next = Math.min(step + 1, STEP_LABELS.length)
     setStep(next)
@@ -328,7 +347,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
             Want us to notify you whenever a match scores ≥ {state.minAtsScore}% against this profile?
           </p>
         </div>
-        {ruleError && <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{ruleError}</div>}
+        {ruleError && <div role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{ruleError}</div>}
         <div className="flex gap-2">
           <button
             type="button"
@@ -349,10 +368,10 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
   return (
     <div className="flex flex-col gap-4">
       <ProfileWizardSteps current={step} maxUnlocked={maxUnlocked} labels={STEP_LABELS} onStepClick={setStep} />
-      {error && <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {error && <div role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
       {step === 1 && (
-        <div className="flex flex-col gap-3">
+        <div ref={panelRef} role="tabpanel" id={`wizard-panel-${step}`} aria-labelledby={`wizard-tab-${step}`} tabIndex={-1} className="flex flex-col gap-3">
           <label className="text-sm font-medium">
             Target roles (comma-separated)
             <input
@@ -380,7 +399,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
       )}
 
       {step === 2 && (
-        <div className="flex flex-col gap-3">
+        <div ref={panelRef} role="tabpanel" id={`wizard-panel-${step}`} aria-labelledby={`wizard-tab-${step}`} tabIndex={-1} className="flex flex-col gap-3">
           <div className="flex gap-3">
             {WORK_MODES.map((mode) => (
               <label key={mode} className="flex items-center gap-1.5 text-sm">
@@ -426,7 +445,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
       )}
 
       {step === 3 && (
-        <div className="flex flex-col gap-3">
+        <div ref={panelRef} role="tabpanel" id={`wizard-panel-${step}`} aria-labelledby={`wizard-tab-${step}`} tabIndex={-1} className="flex flex-col gap-3">
           <label className="text-sm font-medium">
             Categories (comma-separated)
             <input
@@ -447,7 +466,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
       )}
 
       {step === 4 && (
-        <div className="flex flex-col gap-3">
+        <div ref={panelRef} role="tabpanel" id={`wizard-panel-${step}`} aria-labelledby={`wizard-tab-${step}`} tabIndex={-1} className="flex flex-col gap-3">
           <p className="text-sm text-gray-600">
             Optional: track specific companies that use Comeet for hiring (common among
             Israeli high-tech employers). Comeet has no keyword search across companies,
@@ -487,12 +506,12 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
               {comeetResolving ? 'Looking up…' : '+ Add company'}
             </button>
           </div>
-          {comeetResolveError && <p className="text-sm text-red-600">{comeetResolveError}</p>}
+          {comeetResolveError && <p role="alert" className="text-sm text-red-600">{comeetResolveError}</p>}
         </div>
       )}
 
       {step === 5 && (
-        <div className="flex flex-col gap-3">
+        <div ref={panelRef} role="tabpanel" id={`wizard-panel-${step}`} aria-labelledby={`wizard-tab-${step}`} tabIndex={-1} className="flex flex-col gap-3">
           <label className="text-sm font-medium">
             Only show postings from the last N days
             <input
@@ -537,7 +556,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
       )}
 
       {step === 6 && (
-        <div className="flex flex-col gap-3">
+        <div ref={panelRef} role="tabpanel" id={`wizard-panel-${step}`} aria-labelledby={`wizard-tab-${step}`} tabIndex={-1} className="flex flex-col gap-3">
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded border bg-gray-50 px-3 py-2 text-sm">
             <dt className="font-medium text-gray-600">Roles</dt>
             <dd>{formatList(toTags(draftText.roles))}</dd>

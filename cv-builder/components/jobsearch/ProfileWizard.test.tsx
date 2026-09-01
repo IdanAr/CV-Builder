@@ -438,4 +438,36 @@ describe('ProfileWizard', () => {
       expect(screen.queryByText('Acme Israel')).not.toBeInTheDocument()
     })
   })
+
+  it('marks the visible step content as a tabpanel wired to the current tab', async () => {
+    render(<ProfileWizard onCreated={() => {}} />)
+    const currentTab = screen.getByRole('tab', { selected: true })
+    const panel = document.getElementById('wizard-panel-1')
+    expect(panel).toHaveAttribute('role', 'tabpanel')
+    expect(panel).toHaveAttribute('aria-labelledby', currentTab.id)
+  })
+
+  it('moves focus into the new step panel after clicking Next', async () => {
+    render(<ProfileWizard onCreated={() => {}} />)
+    await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    const panel = document.getElementById('wizard-panel-2')
+    expect(panel).toBe(document.activeElement)
+  })
+
+  it('announces the wizard-level error banner to assistive tech', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ details: [] }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ProfileWizard onCreated={() => {}} />)
+    for (let i = 0; i < 5; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    }
+    await userEvent.type(screen.getByLabelText(/profile name/i), 'Test')
+    await userEvent.click(screen.getByRole('button', { name: /create profile/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/failed to create profile/i)
+  })
 })
