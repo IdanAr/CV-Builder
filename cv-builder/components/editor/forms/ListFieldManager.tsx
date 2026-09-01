@@ -1,8 +1,24 @@
 'use client'
 
 import React, { useCallback, useEffect, useId, useRef } from 'react'
-import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type Announcements,
+  type ScreenReaderInstructions,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 
@@ -53,6 +69,47 @@ function listItemPropsAreEqual<T>(prev: ListItemProps<T>, next: ListItemProps<T>
 
 const ListItem = React.memo(ListItemInner, listItemPropsAreEqual) as typeof ListItemInner
 
+// Mirrors DesignPanel's/ApplicationsBoard's screenReaderInstructions/
+// announcements pattern so a keyboard-only user reordering list entries
+// (work roles, bullet points, skills, etc.) gets the same spoken feedback a
+// mouse/touch user gets visually.
+const listScreenReaderInstructions: ScreenReaderInstructions = {
+  draggable:
+    'To reorder an entry: press space or enter to pick it up, use the arrow keys to move it up or down in the list, then press space or enter again to drop it. Press escape to cancel.',
+}
+
+// Ids in this component are plain positional indices (see the `ids` comment
+// below), so position-based announcements are all that's generically
+// available across every ListFieldManager<T> instance — unlike
+// DesignPanel/ApplicationsBoard, T's shape isn't known here, so there's no
+// generic way to announce a human-readable label for the item itself.
+function buildListAnnouncements(itemCount: number): Announcements {
+  function describePosition(id: string): string {
+    const index = Number(id)
+    return Number.isNaN(index) ? '' : `position ${index + 1} of ${itemCount}`
+  }
+  return {
+    onDragStart({ active }) {
+      return `Picked up entry at ${describePosition(String(active.id))}.`
+    },
+    onDragOver({ active, over }) {
+      void active
+      return over
+        ? `Entry is over ${describePosition(String(over.id))}.`
+        : 'Entry is no longer over a droppable area.'
+    },
+    onDragEnd({ active, over }) {
+      void active
+      return over
+        ? `Entry was moved to ${describePosition(String(over.id))}.`
+        : 'Entry was dropped.'
+    },
+    onDragCancel() {
+      return 'Reordering was cancelled.'
+    },
+  }
+}
+
 function SortableRow({
   id,
   children,
@@ -85,6 +142,14 @@ export function ListFieldManager<T>({
   // (e.g. WorkForm: work entries -> roles -> highlights, each its own
   // ListFieldManager) never collide on a bare positional index.
   const instanceId = useId()
+
+  // PointerSensor alone drops keyboard support entirely — a keyboard-only
+  // user could not reorder entries at all. KeyboardSensor restores it,
+  // mirroring DesignPanel.tsx's/ApplicationsBoard.tsx's setup.
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   const itemsRef = useRef(items)
   // Ref writes must happen outside render (React Compiler safety rule); the
@@ -138,7 +203,15 @@ export function ListFieldManager<T>({
 
   return (
     <div className="space-y-3">
-      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+        accessibility={{
+          announcements: buildListAnnouncements(items.length),
+          screenReaderInstructions: listScreenReaderInstructions,
+        }}
+      >
         <SortableContext items={ids} strategy={verticalListSortingStrategy}>
           {items.map((item, i) => (
             // React's reconciliation key must track item identity (stable

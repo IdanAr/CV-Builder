@@ -141,6 +141,23 @@ describe('AccordionSection', () => {
     expect(onToggle).not.toHaveBeenCalled()
   })
 
+  it('a custom (renamable) section can still be toggled via keyboard, through the trailing chevron button — not just the header click area', () => {
+    const onToggle = vi.fn()
+    render(
+      <AccordionSection title="Custom Section" isOpen={false} onToggle={onToggle} onRename={vi.fn()}>
+        {null}
+      </AccordionSection>
+    )
+    // The chevron toggle button is rendered unconditionally, as a sibling of
+    // the rename input — not gated behind `!onRename` — so it must exist and
+    // be keyboard-operable even when the section is renamable.
+    const toggleButton = screen.getByRole('button', { name: 'Toggle Custom Section' })
+    toggleButton.focus()
+    expect(document.activeElement).toBe(toggleButton)
+    fireEvent.click(toggleButton)
+    expect(onToggle).toHaveBeenCalledOnce()
+  })
+
   it('does not render delete button when onDelete is not provided', () => {
     render(
       <AccordionSection title="Section" isOpen={false} onToggle={vi.fn()}>
