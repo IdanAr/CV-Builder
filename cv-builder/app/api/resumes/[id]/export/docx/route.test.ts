@@ -12,8 +12,8 @@ vi.mock('@/lib/auth', () => ({
 vi.mock('@/lib/api/resumes', () => ({
   getResume: vi.fn(async () => ({
     title: 'My Resume',
-    data: { basics: { name: 'Jordan' } },
-    meta: { fontFamily: 'Arial' },
+    data: {},
+    meta: { templateId: 'classic' },
   })),
 }))
 
@@ -21,19 +21,19 @@ vi.mock('docx', () => ({
   Packer: { toBuffer: vi.fn(async () => Buffer.from('fake-docx')) },
 }))
 
-vi.mock('@/lib/docx/cover-letter-docx', () => ({
-  buildCoverLetterDocx: vi.fn(() => ({})),
+vi.mock('@/lib/docx/resume-docx', () => ({
+  buildDocx: vi.fn(() => ({})),
 }))
 
-function req(content = 'Dear hiring manager,'): Request {
-  return new Request('http://localhost/api/resumes/abc/cover-letter/export/docx', {
+function req(): Request {
+  return new Request('http://localhost/api/resumes/abc/export/docx', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({}),
   })
 }
 
-describe('POST /api/resumes/[id]/cover-letter/export/docx', () => {
+describe('POST /api/resumes/[id]/export/docx', () => {
   beforeEach(() => {
     _resetRateLimits()
     mockSession = { user: { id: 'user-1' } }
