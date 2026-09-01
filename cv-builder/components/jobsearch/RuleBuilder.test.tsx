@@ -175,4 +175,24 @@ describe('RuleBuilder', () => {
     expect(await screen.findByText(/failed to delete rule/i)).toBeInTheDocument()
     expect(screen.getByText('High fit')).toBeInTheDocument()
   })
+
+  it('aborts the mount-time fetch on unmount', async () => {
+    let capturedSignal: AbortSignal | undefined
+    const mockFetch = vi.fn((url: string, init?: RequestInit) => {
+      if (String(url).startsWith('/api/jobsearch/rules')) {
+        capturedSignal = init?.signal as AbortSignal | undefined
+        return new Promise<Response>(() => {}) // never resolves
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ rules: [] }) } as Response)
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const { unmount } = render(<RuleBuilder profileId="p1" />)
+    await waitFor(() => expect(capturedSignal).toBeDefined())
+    expect(capturedSignal!.aborted).toBe(false)
+
+    unmount()
+
+    expect(capturedSignal!.aborted).toBe(true)
+  })
 })

@@ -31,24 +31,29 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
   const [error, setError] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     try {
-      const res = await fetch(`/api/jobsearch/scraped-jobs?profileId=${profileId}`)
+      const res = await fetch(`/api/jobsearch/scraped-jobs?profileId=${profileId}`, { signal })
       if (!res.ok) {
         setError('Failed to load scraped jobs.')
         return
       }
       const body = await res.json()
       setJobs(body.scrapedJobs)
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
       setError('Failed to load scraped jobs.')
     }
   }, [profileId])
 
   useEffect(() => {
     // Initial fetch-on-mount, same pattern/suppression as ProfileList.tsx's load effect.
+    // Aborted on unmount/profileId-change so a stale response can't setState
+    // on a component that no longer cares.
+    const controller = new AbortController()
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    load()
+    load(controller.signal)
+    return () => controller.abort()
   }, [load])
 
   async function handleToggleDismissed(job: ScrapedJobSummary) {

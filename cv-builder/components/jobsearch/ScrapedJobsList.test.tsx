@@ -269,4 +269,24 @@ describe('ScrapedJobsList', () => {
     expect(mockFetch).not.toHaveBeenCalledWith('/api/jobsearch/scraped-jobs/j1', expect.objectContaining({ method: 'DELETE' }))
     expect(screen.getByText('Job A')).toBeInTheDocument()
   })
+
+  it('aborts the mount-time fetch on unmount', async () => {
+    let capturedSignal: AbortSignal | undefined
+    const mockFetch = vi.fn((url: string, init?: RequestInit) => {
+      if (String(url).startsWith('/api/jobsearch/scraped-jobs?')) {
+        capturedSignal = init?.signal as AbortSignal | undefined
+        return new Promise<Response>(() => {}) // never resolves
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ scrapedJobs: [] }) } as Response)
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const { unmount } = render(<ScrapedJobsList profileId="p1" />)
+    await waitFor(() => expect(capturedSignal).toBeDefined())
+    expect(capturedSignal!.aborted).toBe(false)
+
+    unmount()
+
+    expect(capturedSignal!.aborted).toBe(true)
+  })
 })

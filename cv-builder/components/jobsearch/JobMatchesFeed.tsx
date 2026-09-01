@@ -18,9 +18,9 @@ export function JobMatchesFeed() {
   const [error, setError] = useState<string | null>(null)
   const [dismissingId, setDismissingId] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     try {
-      const res = await fetch('/api/jobsearch/notifications')
+      const res = await fetch('/api/jobsearch/notifications', { signal })
       if (!res.ok) {
         setError('Failed to load your job matches.')
         return
@@ -28,17 +28,24 @@ export function JobMatchesFeed() {
       const body = await res.json()
       setMatches(body.matches)
       // Mark unread matches as seen once they've actually been loaded/shown
-      // — fire-and-forget, doesn't block rendering the list.
+      // — fire-and-forget, doesn't block rendering the list, and deliberately
+      // not tied to the load-abort signal since a real page-unread count
+      // shouldn't be undone just because the component unmounted.
       fetch('/api/jobsearch/notifications/mark-read', { method: 'POST' }).catch(() => {})
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
       setError('Failed to load your job matches.')
     }
   }, [])
 
   useEffect(() => {
     // Initial fetch-on-mount, same pattern/suppression as ScrapedJobsList.tsx's load effect.
+    // Aborted on unmount so a stale response can't setState on a component
+    // that no longer cares.
+    const controller = new AbortController()
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    load()
+    load(controller.signal)
+    return () => controller.abort()
   }, [load])
 
   async function handleDismiss(match: NotifyMatch) {

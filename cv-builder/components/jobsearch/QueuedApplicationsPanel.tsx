@@ -37,11 +37,11 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
   const [convertingId, setConvertingId] = useState<string | null>(null)
   const [actioningId, setActioningId] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     try {
       const [jobsRes, profileRes] = await Promise.all([
-        fetch(`/api/jobsearch/scraped-jobs?profileId=${profileId}`),
-        fetch(`/api/jobsearch/profiles/${profileId}`),
+        fetch(`/api/jobsearch/scraped-jobs?profileId=${profileId}`, { signal }),
+        fetch(`/api/jobsearch/profiles/${profileId}`, { signal }),
       ])
       if (!jobsRes.ok || !profileRes.ok) {
         setError('Failed to load queued applications.')
@@ -54,15 +54,20 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
       )
       setJobs(queued)
       setMinAtsScore(profileBody.profile?.minAtsScore ?? 75)
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
       setError('Failed to load queued applications.')
     }
   }, [profileId])
 
   useEffect(() => {
     // Initial fetch-on-mount, same pattern/suppression as ScrapedJobsList.tsx's load effect.
+    // Aborted on unmount/profileId-change so a stale response can't setState
+    // on a component that no longer cares.
+    const controller = new AbortController()
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    load()
+    load(controller.signal)
+    return () => controller.abort()
   }, [load])
 
   async function toggleExpand(job: QueuedJobSummary) {
