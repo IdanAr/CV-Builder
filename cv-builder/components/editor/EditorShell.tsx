@@ -234,7 +234,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
       </div>
 
       {/* Tab bar */}
-      <div className="flex border-b border-indigo-100 shrink-0 bg-white/50">
+      <div role="tablist" aria-label="Editor sections" className="flex border-b border-indigo-100 shrink-0 bg-white/50">
         {(['edit', 'design', 'ats', 'coverLetter'] as Tab[]).map((tab) => (
           <button
             key={tab}
