@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import React, { Profiler } from 'react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
@@ -188,6 +189,39 @@ describe('DesignPanel', () => {
       // covered elsewhere; this just confirms the sensor/attributes are
       // still wired for pointer interaction after adding KeyboardSensor.
       expect(handles[0]).toHaveAttribute('role', 'button')
+    })
+  })
+
+  describe('data subscription scope', () => {
+    it('does not re-render when an unrelated part of data changes (only customSections matters here)', () => {
+      const onRender = vi.fn()
+
+      useResumeEditorStore.setState({
+        resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+        data: { basics: { name: 'Jordan' } },
+        meta: { ...defaultMeta, layout: 'two-column', sectionOrder: ['work', 'skills'] },
+      })
+      render(
+        <Profiler id="design-panel-test" onRender={onRender}>
+          <DesignPanel />
+        </Profiler>
+      )
+      // Mount alone commits more than once here (dnd-kit's own effects inside
+      // DndContext/SortableContext — e.g. id generation, initial measurement —
+      // fire regardless of this fix), so the meaningful assertion is that the
+      // commit count doesn't grow further from an unrelated data change, not
+      // that mount itself produces exactly one commit.
+      const callsAfterMount = onRender.mock.calls.length
+
+      // Simulate a keystroke in an unrelated field (e.g. the summary editor) —
+      // this is the exact kind of store update that fires on every keystroke
+      // anywhere in the editor while DesignPanel is mounted but not visible.
+      act(() => {
+        useResumeEditorStore.setState((s) => ({
+          data: { ...s.data, basics: { ...s.data.basics, summary: 'x' } },
+        }))
+      })
+      expect(onRender.mock.calls.length).toBe(callsAfterMount)
     })
   })
 
