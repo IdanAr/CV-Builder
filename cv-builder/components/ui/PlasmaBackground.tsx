@@ -1,7 +1,16 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Plasma } from './Plasma'
+import dynamic from 'next/dynamic'
+
+// Code-split out of the initial bundle: `ogl` (the WebGL library Plasma
+// depends on) has no business being in the first JS chunk for every
+// /dashboard/* route — including the editor, the app's most
+// latency-sensitive page. This purely defers *when* the module loads;
+// Plasma's own runtime throttling (30fps cap, DPR 1 cap, intersection/
+// visibility pause, prefers-reduced-motion handling — see Plasma.tsx) is
+// unchanged by this.
+const Plasma = dynamic(() => import('./Plasma').then((mod) => mod.Plasma), { ssr: false })
 
 interface PlasmaBackgroundProps {
   children: ReactNode
