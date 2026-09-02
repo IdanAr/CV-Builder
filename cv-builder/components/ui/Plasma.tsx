@@ -124,39 +124,66 @@ export const Plasma: React.FC<PlasmaProps> = ({
 
     const directionMultiplier = direction === "reverse" ? -1.0 : 1.0;
 
-    const renderer = new Renderer({
-      webgl: 2,
-      alpha: true,
-      antialias: false,
-      dpr: Math.min(window.devicePixelRatio || 1, MAX_DPR),
-    });
+    // WebGL2 is missing in more places than it looks: older Safari, locked-down
+    // corporate GPU policies, VDI/remote-desktop sessions, some low-end Android.
+    // ogl throws synchronously out of the Renderer constructor there, and shader
+    // compilation can fail just as abruptly. This effect runs inside
+    // PlasmaBackground, which wraps *every* /dashboard/* route, and there is no
+    // error boundary above it — so an unguarded throw takes the whole
+    // authenticated app down rather than dropping one ambient decoration.
+    // On failure we bail out and leave PlasmaBackground's static gradient as the
+    // fallback, which is what the design degrades to anyway.
+    let scene: { renderer: Renderer; program: Program; mesh: Mesh; canvas: HTMLCanvasElement } | null = null;
+    let appendedCanvas: HTMLCanvasElement | null = null;
+    try {
+      const rendererInstance = new Renderer({
+        webgl: 2,
+        alpha: true,
+        antialias: false,
+        dpr: Math.min(window.devicePixelRatio || 1, MAX_DPR),
+      });
+      const glContext = rendererInstance.gl;
+      const rendererCanvas = glContext.canvas as HTMLCanvasElement;
+      rendererCanvas.style.display = "block";
+      rendererCanvas.style.width = "100%";
+      rendererCanvas.style.height = "100%";
+      containerRef.current.appendChild(rendererCanvas);
+      appendedCanvas = rendererCanvas;
+
+      const geometry = new Triangle(glContext);
+
+      const programInstance = new Program(glContext, {
+        vertex: vertex,
+        fragment: fragment,
+        uniforms: {
+          iTime: { value: 0 },
+          iResolution: { value: new Float32Array([1, 1]) },
+          uCustomColor: { value: new Float32Array(customColorRgb as number[]) },
+          uUseCustomColor: { value: useCustomColor },
+          uSpeed: { value: speed * 0.4 },
+          uDirection: { value: directionMultiplier },
+          uScale: { value: scale },
+          uOpacity: { value: opacity },
+          uMouse: { value: new Float32Array([0, 0]) },
+          uMouseInteractive: { value: mouseInteractive ? 1.0 : 0.0 },
+        },
+      });
+
+      scene = {
+        renderer: rendererInstance,
+        program: programInstance,
+        mesh: new Mesh(glContext, { geometry, program: programInstance }),
+        canvas: rendererCanvas,
+      };
+    } catch {
+      // Undo a canvas that was appended before a later step threw, so a failed
+      // init leaves the container exactly as it found it.
+      appendedCanvas?.remove();
+    }
+    if (!scene) return;
+
+    const { renderer, program, mesh, canvas } = scene;
     const gl = renderer.gl;
-    const canvas = gl.canvas as HTMLCanvasElement;
-    canvas.style.display = "block";
-    canvas.style.width = "100%";
-    canvas.style.height = "100%";
-    containerRef.current.appendChild(canvas);
-
-    const geometry = new Triangle(gl);
-
-    const program = new Program(gl, {
-      vertex: vertex,
-      fragment: fragment,
-      uniforms: {
-        iTime: { value: 0 },
-        iResolution: { value: new Float32Array([1, 1]) },
-        uCustomColor: { value: new Float32Array(customColorRgb as number[]) },
-        uUseCustomColor: { value: useCustomColor },
-        uSpeed: { value: speed * 0.4 },
-        uDirection: { value: directionMultiplier },
-        uScale: { value: scale },
-        uOpacity: { value: opacity },
-        uMouse: { value: new Float32Array([0, 0]) },
-        uMouseInteractive: { value: mouseInteractive ? 1.0 : 0.0 },
-      },
-    });
-
-    const mesh = new Mesh(gl, { geometry, program });
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!mouseInteractive || !containerRef.current) return;

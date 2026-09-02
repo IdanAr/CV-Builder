@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useMediaQuery } from '@/lib/hooks/use-media-query'
 import { useResumeEditorStore, initAutoSave, flushSave } from '@/lib/stores/resume-editor.store'
@@ -84,6 +85,9 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
 
   const storeTitle = useResumeEditorStore((s) => s.title)
   const isDirty = useResumeEditorStore((s) => s.isDirty)
+  const router = useRouter()
+  const [isExporting, setIsExporting] = useState(false)
+  const [isLeaving, setIsLeaving] = useState(false)
   const isSaving = useResumeEditorStore((s) => s.isSaving)
   const saveError = useResumeEditorStore((s) => s.saveError)
   const setTitle = useResumeEditorStore((s) => s.setTitle)
@@ -181,6 +185,20 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
   }
 
   async function handleExport(format: 'pdf' | 'docx', mode: ExportMode = 'designed') {
+    // A slow render (large résumé, cold PDF worker) previously left the trigger
+    // fully enabled with no spinner, so users reopened the menu and clicked
+    // again — duplicate downloads and duplicate server work, with no way to
+    // tell the first request was still running.
+    if (isExporting) return
+    setIsExporting(true)
+    try {
+      await runExport(format, mode)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  async function runExport(format: 'pdf' | 'docx', mode: ExportMode) {
     try {
       // The export routes always re-read the resume from the database rather
       // than trusting the client, so any edit still waiting on the debounced
@@ -212,6 +230,34 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
       toast.success(`${format.toUpperCase()} exported`)
     } catch {
       toast.error(`${format.toUpperCase()} export failed. Please try again.`)
+    }
+  }
+
+  /**
+   * Leaving the editor mid-edit used to discard work silently: the store wires
+   * only a `beforeunload` handler, which never fires for Next's client-side
+   * navigation, so clicking this link inside the 1s autosave debounce — or
+   * while a save was failing — dropped the pending edits.
+   *
+   * Rather than interrupt with a confirm, flush the save first and navigate
+   * once it lands. Only a genuine save failure asks the user anything.
+   */
+  async function handleLeaveEditor(e: React.MouseEvent<HTMLAnchorElement>) {
+    // Let the browser handle modifier-clicks (new tab/window) untouched.
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+    if (!isDirty && !saveError) return
+    e.preventDefault()
+    if (isLeaving) return
+    setIsLeaving(true)
+    try {
+      await flushSave()
+      router.push('/dashboard')
+    } catch {
+      if (window.confirm("Your latest changes couldn't be saved. Leave anyway and lose them?")) {
+        router.push('/dashboard')
+      }
+    } finally {
+      setIsLeaving(false)
     }
   }
 
@@ -336,6 +382,8 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
           <div className="flex items-center gap-3 flex-1">
             <Link
               href="/dashboard"
+              onClick={handleLeaveEditor}
+              aria-busy={isLeaving}
               className="mr-auto text-lg font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
             >
               ← My CVs
@@ -355,7 +403,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
             >
               JSON
             </button>
-            <ExportMenu onExport={handleExport} />
+            <ExportMenu onExport={handleExport} busy={isExporting} />
             {user && (
               <>
                 <div className="w-px h-4 bg-indigo-200" />

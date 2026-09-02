@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useEffect, useState } from 'react'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { arrayMove } from '@dnd-kit/sortable'
 import { ListFieldManager } from './ListFieldManager'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
+import { useToastStore } from '@/lib/stores/toast.store'
 
 // CSS.Transform.toString is from @dnd-kit/utilities; mock it for jsdom
 vi.mock('@dnd-kit/utilities', () => ({
@@ -205,6 +206,80 @@ describe('ListFieldManager instance-unique drag-handle testids', () => {
     expect(handles).toHaveLength(2)
     const testIds = handles.map((el) => el.getAttribute('data-testid'))
     expect(new Set(testIds).size).toBe(2)
+  })
+})
+
+describe('ListFieldManager undo-on-remove', () => {
+  // Removing an entry destroys a whole job/education record — dates, bullet
+  // points and all — from a button a few pixels from the drag handle. The
+  // delete stays instant, but it must be reversible.
+  function UndoHarness() {
+    const [items, setItems] = useState<Item[]>([
+      { id: 'a', value: 'first' },
+      { id: 'b', value: 'second' },
+      { id: 'c', value: 'third' },
+    ])
+    return (
+      <ListFieldManager<Item>
+        items={items}
+        onChange={setItems}
+        createEmpty={() => ({ id: 'new', value: '' })}
+        renderItem={(item, _, onUpdate, onRemove) => (
+          <div>
+            <input
+              aria-label={`item-${item.id}`}
+              value={item.value}
+              onChange={(e) => onUpdate({ ...item, value: e.target.value })}
+            />
+            <button aria-label={`remove-${item.id}`} onClick={onRemove}>
+              remove
+            </button>
+          </div>
+        )}
+      />
+    )
+  }
+
+  beforeEach(() => {
+    useToastStore.setState({ toasts: [] })
+  })
+
+  it('offers an undo action when an entry is removed', () => {
+    render(<UndoHarness />)
+
+    fireEvent.click(screen.getByLabelText('remove-b'))
+
+    expect(screen.queryByLabelText('item-b')).toBeNull()
+    const [t] = useToastStore.getState().toasts
+    expect(t.message).toBe('Entry removed')
+    expect(t.actionLabel).toBe('Undo')
+  })
+
+  it('restores the removed entry at its original position when undo is invoked', () => {
+    render(<UndoHarness />)
+
+    fireEvent.click(screen.getByLabelText('remove-b'))
+    act(() => {
+      useToastStore.getState().toasts[0].onAction?.()
+    })
+
+    const values = screen.getAllByRole('textbox').map((el) => (el as HTMLInputElement).value)
+    expect(values).toEqual(['first', 'second', 'third'])
+  })
+
+  it('does not discard a concurrent edit made while the undo toast was up', () => {
+    render(<UndoHarness />)
+
+    fireEvent.click(screen.getByLabelText('remove-b'))
+    // Edit a surviving entry before undoing — the restore must merge into the
+    // live array, not replay a snapshot captured at delete time.
+    fireEvent.change(screen.getByLabelText('item-c'), { target: { value: 'third edited' } })
+    act(() => {
+      useToastStore.getState().toasts[0].onAction?.()
+    })
+
+    const values = screen.getAllByRole('textbox').map((el) => (el as HTMLInputElement).value)
+    expect(values).toEqual(['first', 'second', 'third edited'])
   })
 })
 

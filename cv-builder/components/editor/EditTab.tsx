@@ -191,6 +191,25 @@ export function EditTab() {
     if (openSection === section) setOpenSection(null)
   }
 
+  /**
+   * Custom sections previously deleted straight through with no confirmation
+   * while built-in ones prompted — so the section type silently decided whether
+   * a misclick cost you the content, with nothing on screen signalling the
+   * difference. Same content-aware gate as handleDeleteBuiltIn: silent for an
+   * empty section, confirmed once it holds entries.
+   */
+  function handleDeleteCustom(customId: string, sectionKey: string, name: string) {
+    const custom = (useResumeEditorStore.getState().data.customSections ?? []).find((cs) => cs.id === customId)
+    const count = custom?.items.length ?? 0
+    if (count > 0) {
+      if (!window.confirm(`Delete ${name} and its ${count} ${count === 1 ? 'entry' : 'entries'}? This can't be undone.`)) {
+        return
+      }
+    }
+    removeCustomSection(customId)
+    if (openSection === sectionKey) setOpenSection(null)
+  }
+
   function handleAddSection() {
     const newSection: CustomSection = {
       id: crypto.randomUUID(),
@@ -292,7 +311,7 @@ export function EditTab() {
                         isOpen={openSection === section}
                         onToggle={() => setOpenSection((prev) => (prev === section ? null : section))}
                         onRename={(name) => updateCustomSection(customId, { name })}
-                        onDelete={() => removeCustomSection(customId)}
+                        onDelete={() => handleDeleteCustom(customId, section, customName)}
                         dragHandleProps={dragHandleProps}
                         icon={<SectionIcon section="custom" />}
                       >

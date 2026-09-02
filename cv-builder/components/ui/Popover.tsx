@@ -11,17 +11,40 @@ export interface PopoverProps {
   children: ReactNode
 }
 
+/** Keyboard-reachable elements, in DOM order, used to find the panel's entry point. */
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',')
+
 /**
  * Generic popover primitive: owns outside-click detection, Escape-to-close, and
  * focus-return to the trigger on close, plus fixed-position portal rendering anchored
  * below/right-aligned to the trigger. Callers own everything visual — the trigger
  * itself and the panel's contents/styling/ARIA role — via `trigger` and `children`.
+ *
+ * Focus is moved *into* the panel on open. The panel is portaled to
+ * `document.body`, so it lands at the end of the DOM and is therefore not in the
+ * trigger's tab sequence — without this, a keyboard user could open a popover and
+ * Escape out of it but never reach its contents (AiSuggestButton's "Use this" /
+ * "Dismiss" buttons were unreachable this way, so a suggestion could be dismissed
+ * but never accepted).
  */
 export function Popover({ trigger, open, onOpenChange, children }: PopoverProps) {
   const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null)
   const [mounted, setMounted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  /** Guards the focus-into-panel effect so it fires once per open cycle, not on every reposition. */
+  const focusEnteredRef = useRef(false)
+  /** Whether focus currently sits inside the panel; decides if closing should return it to the trigger. */
+  const focusInsidePanelRef = useRef(false)
+  /** Previous `open`, so the restore effect can detect the true→false transition. */
+  const prevOpenRef = useRef(open)
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true) }, [])
@@ -71,13 +94,23 @@ export function Popover({ trigger, open, onOpenChange, children }: PopoverProps)
     })
   }, [open, menuPosition])
 
+  // Declared before the focus-entry effect below so the `focusin` listener is
+  // already attached when that effect moves focus into the panel — otherwise the
+  // very first focusin (the one we cause) would be missed and closing wouldn't
+  // know focus had ever been inside.
   useEffect(() => {
     if (!open) return
     function onMouseDown(e: MouseEvent) {
       const target = e.target as Node
       const insideTrigger = containerRef.current?.contains(target) ?? false
       const insideMenu = panelRef.current?.contains(target) ?? false
-      if (!insideTrigger && !insideMenu) onOpenChange(false)
+      if (!insideTrigger && !insideMenu) {
+        // The user is clicking something else; that element is about to take
+        // focus as the click's default action. Forget that focus was in the
+        // panel so the close below doesn't yank it back to the trigger.
+        focusInsidePanelRef.current = false
+        onOpenChange(false)
+      }
     }
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
@@ -85,13 +118,47 @@ export function Popover({ trigger, open, onOpenChange, children }: PopoverProps)
         ;(containerRef.current?.firstElementChild as HTMLElement | null)?.focus()
       }
     }
+    function onFocusIn(e: FocusEvent) {
+      focusInsidePanelRef.current = panelRef.current?.contains(e.target as Node) ?? false
+    }
     document.addEventListener('mousedown', onMouseDown)
     document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('focusin', onFocusIn)
     return () => {
       document.removeEventListener('mousedown', onMouseDown)
       document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('focusin', onFocusIn)
     }
   }, [open, onOpenChange])
+
+  // Move focus into the panel once it exists. `menuPosition` is a dependency
+  // because the panel only renders after the first position is measured, so an
+  // effect keyed on `open` alone would run while panelRef is still null;
+  // `focusEnteredRef` keeps this to once per open cycle despite `menuPosition`
+  // also changing on scroll, resize and auto-flip.
+  useEffect(() => {
+    if (!open) {
+      focusEnteredRef.current = false
+      return
+    }
+    if (focusEnteredRef.current) return
+    const panel = panelRef.current
+    if (!panel) return
+    focusEnteredRef.current = true
+    panel.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus()
+  }, [open, menuPosition])
+
+  // Return focus to the trigger when the popover closes while focus was inside
+  // it — i.e. a programmatic close such as choosing a menu item. Escape restores
+  // focus itself (above), and an outside click clears the flag so the element the
+  // user clicked keeps focus.
+  useEffect(() => {
+    const wasOpen = prevOpenRef.current
+    prevOpenRef.current = open
+    if (!wasOpen || open || !focusInsidePanelRef.current) return
+    focusInsidePanelRef.current = false
+    ;(containerRef.current?.firstElementChild as HTMLElement | null)?.focus()
+  }, [open])
 
   return (
     <div ref={containerRef} className="relative inline-block">

@@ -299,6 +299,50 @@ describe('EditTab — deleting built-in sections', () => {
   })
 })
 
+describe('EditTab — deleting custom sections', () => {
+  // Custom sections used to delete straight through while built-in ones
+  // prompted, so the section type silently decided whether a misclick cost you
+  // the content. Both now use the same content-aware gate.
+  const populated: CustomSection = {
+    id: 'cs1',
+    name: 'My Certifications',
+    enabledFields: ['subtitle'] as CustomSectionFieldType[],
+    items: [{ id: 'i1' }, { id: 'i2' }],
+  }
+
+  it('deletes an empty custom section without confirming', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    setupStore({
+      sectionOrder: ['custom:cs1'],
+      customSections: [{ ...populated, items: [] }],
+    })
+    render(<EditTab />)
+    fireEvent.click(screen.getByRole('button', { name: /delete my certifications/i }))
+    expect(confirmSpy).not.toHaveBeenCalled()
+    expect(removeCustomSection).toHaveBeenCalledWith('cs1')
+    confirmSpy.mockRestore()
+  })
+
+  it('confirms before deleting a custom section that has entries, and honours a decline', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    setupStore({ sectionOrder: ['custom:cs1'], customSections: [populated] })
+    render(<EditTab />)
+    fireEvent.click(screen.getByRole('button', { name: /delete my certifications/i }))
+    expect(confirmSpy).toHaveBeenCalled()
+    expect(removeCustomSection).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
+  })
+
+  it('deletes a populated custom section once the confirmation is accepted', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    setupStore({ sectionOrder: ['custom:cs1'], customSections: [populated] })
+    render(<EditTab />)
+    fireEvent.click(screen.getByRole('button', { name: /delete my certifications/i }))
+    expect(removeCustomSection).toHaveBeenCalledWith('cs1')
+    confirmSpy.mockRestore()
+  })
+})
+
 // Note: this file fully mocks `useResumeEditorStore` (see the `vi.mock` at the
 // top) rather than exercising the real Zustand store, so — unlike the plan
 // brief's example, which drives the real store via `.setState`/`.getState()`

@@ -21,6 +21,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
+import { toast } from '@/lib/stores/toast.store'
 
 interface ListFieldManagerProps<T> {
   items: T[]
@@ -178,8 +179,26 @@ export function ListFieldManager<T>({
   }, [sectionKey, pendingFocus, pendingFocusEntryIndex, clearFocus])
 
   const add = useCallback(() => onChange([...itemsRef.current, createEmpty()]), [onChange, createEmpty])
+  // A single click here used to destroy a whole entry — a job with its dates
+  // and every bullet point — with no confirmation, no undo and no grace period,
+  // from a button sitting a few pixels from the drag handle. Rather than gate
+  // every removal behind a modal, the delete stays instant and is made
+  // reversible with the same undo-toast pattern ResumeCard already uses for
+  // résumé deletion.
   const remove = useCallback(
-    (i: number) => onChange(itemsRef.current.filter((_, idx) => idx !== i)),
+    (i: number) => {
+      const removed = itemsRef.current[i]
+      onChange(itemsRef.current.filter((_, idx) => idx !== i))
+      if (removed === undefined) return
+      toast.withAction('Entry removed', 'Undo', () => {
+        // Re-insert against the *live* array rather than a snapshot taken at
+        // delete time, so edits made elsewhere while the toast was up are not
+        // discarded. The index is clamped in case the list shrank since.
+        const current = itemsRef.current
+        const at = Math.min(i, current.length)
+        onChange([...current.slice(0, at), removed, ...current.slice(at)])
+      })
+    },
     [onChange]
   )
   const update = useCallback(

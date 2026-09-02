@@ -102,6 +102,7 @@ export function ProfileList() {
             setShowWizard(false)
             load()
           }}
+          onCancel={() => setShowWizard(false)}
         />
       </div>
     )

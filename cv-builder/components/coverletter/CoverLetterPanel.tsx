@@ -2,6 +2,7 @@
 
 import { useId, useState } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
+import { fetchWithTimeout, requestErrorMessage } from '@/lib/fetch-with-timeout'
 import { highlightApprovals } from '@/lib/ai/highlight-approvals'
 
 interface CoverLetterDraft {
@@ -31,7 +32,7 @@ export function CoverLetterPanel() {
     setError(null)
     setDraft(null)
     try {
-      const res = await fetch(`/api/resumes/${resumeId}/cover-letter`, {
+      const res = await fetchWithTimeout(`/api/resumes/${resumeId}/cover-letter`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -47,7 +48,7 @@ export function CoverLetterPanel() {
       const result: { content: string; pendingApprovals: string[] } = await res.json()
       setDraft({ content: result.content, pendingApprovals: result.pendingApprovals ?? [] })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not generate a cover letter. Please try again.')
+      setError(requestErrorMessage(err, 'Could not generate a cover letter. Please try again.'))
     } finally {
       setLoading(false)
     }

@@ -42,6 +42,68 @@ interface ProfileWizardProps {
   onCreated?: (profile: { _id: string; name: string }) => void
   onUpdated?: (profile: { _id: string; name: string }) => void
   existingProfile?: ExistingProfile
+  // Renders a Cancel control on every step. Without one, a user who opens the
+  // wizard and changes their mind can only leave by navigating away (losing
+  // everything) or clicking through all six steps to a submit they don't want.
+  onCancel?: () => void
+}
+
+const DRAFT_STORAGE_KEY = 'cv-builder:jobsearch-profile-wizard-draft'
+
+interface WizardDraft {
+  step: number
+  maxUnlocked: number
+  state: WizardState
+  draftText: DraftText
+}
+
+/**
+ * The six-step wizard previously held every answer — roles, seniority, work
+ * mode, locations, categories, industries, watched companies, thresholds — in
+ * component state alone, so a refresh, an accidental back gesture or a closed
+ * tab discarded the whole flow with no warning.
+ *
+ * Only create mode is persisted: editing an existing profile already has a
+ * server-side source of truth, and writing that into a shared draft key would
+ * leak one profile's values into the next new one.
+ */
+function readDraft(): WizardDraft | null {
+  try {
+    const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY)
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    const candidate = parsed as Partial<WizardDraft>
+    // A draft written by an older build may not match the current shape; treat
+    // anything unrecognisable as absent rather than crashing the wizard.
+    if (!candidate.state || !candidate.draftText) return null
+    const step = Math.min(Math.max(Number(candidate.step) || 1, 1), STEP_LABELS.length)
+    return {
+      step,
+      maxUnlocked: Math.min(Math.max(Number(candidate.maxUnlocked) || step, step), STEP_LABELS.length),
+      state: candidate.state as WizardState,
+      draftText: candidate.draftText as DraftText,
+    }
+  } catch {
+    // Private-mode denials, quota errors and malformed JSON all mean "no draft".
+    return null
+  }
+}
+
+function writeDraft(draft: WizardDraft): void {
+  try {
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft))
+  } catch {
+    // Persisting is a convenience; a storage failure must never block the flow.
+  }
+}
+
+export function clearProfileWizardDraft(): void {
+  try {
+    window.localStorage.removeItem(DRAFT_STORAGE_KEY)
+  } catch {
+    // Nothing to recover from — the draft is already unreachable.
+  }
 }
 
 interface ResumeOption {
@@ -142,7 +204,7 @@ function initialDraftText(existingProfile?: ExistingProfile): DraftText {
   }
 }
 
-export function ProfileWizard({ onCreated, onUpdated, existingProfile }: ProfileWizardProps) {
+export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel }: ProfileWizardProps) {
   const isEditing = !!existingProfile
   const [step, setStep] = useState(1)
   const [maxUnlocked, setMaxUnlocked] = useState(1)
@@ -157,6 +219,32 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
   const [comeetUrlInput, setComeetUrlInput] = useState('')
   const [comeetResolving, setComeetResolving] = useState(false)
   const [comeetResolveError, setComeetResolveError] = useState<string | null>(null)
+  // Gates the save effect below so it can't overwrite a stored draft with the
+  // component's blank initial state before that draft has been read back.
+  const [draftHydrated, setDraftHydrated] = useState(false)
+
+  useEffect(() => {
+    if (isEditing) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDraftHydrated(true)
+      return
+    }
+    const saved = readDraft()
+    if (saved) {
+      setState(saved.state)
+      setDraftText(saved.draftText)
+      setStep(saved.step)
+      setMaxUnlocked(saved.maxUnlocked)
+    }
+    setDraftHydrated(true)
+  }, [isEditing])
+
+  useEffect(() => {
+    // Stop persisting once the profile exists — the wizard has moved on to its
+    // post-creation screen and the draft has already been cleared.
+    if (!draftHydrated || isEditing || createdProfile) return
+    writeDraft({ step, maxUnlocked, state, draftText })
+  }, [draftHydrated, isEditing, createdProfile, step, maxUnlocked, state, draftText])
 
   useEffect(() => {
     let cancelled = false
@@ -291,6 +379,9 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
         if (isEditing) {
           onUpdated?.(body.profile)
         } else {
+          // The answers are now persisted server-side, so the local draft has
+          // done its job; leaving it would prefill the *next* new profile.
+          clearProfileWizardDraft()
           setCreatedProfile(body.profile)
         }
       } else {
@@ -593,13 +684,21 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile }: Profile
       )}
 
       <div className="flex justify-between gap-2">
-        {step > 1 ? (
-          <button type="button" className="rounded border px-4 py-2 text-sm" onClick={goBack}>
-            Back
-          </button>
-        ) : (
-          <span />
-        )}
+        <div className="flex gap-2">
+          {onCancel && (
+            // Leaves the saved draft in place deliberately: cancelling is a
+            // "not now", and reopening the wizard resumes where you left off.
+            // The draft is only discarded once the profile is actually created.
+            <button type="button" className="rounded border px-4 py-2 text-sm" onClick={onCancel}>
+              Cancel
+            </button>
+          )}
+          {step > 1 && (
+            <button type="button" className="rounded border px-4 py-2 text-sm" onClick={goBack}>
+              Back
+            </button>
+          )}
+        </div>
         <div className="flex gap-2">
           {step < STEP_LABELS.length && (
             <button type="button" className="rounded bg-indigo-600 px-4 py-2 text-sm text-white" onClick={goNext}>

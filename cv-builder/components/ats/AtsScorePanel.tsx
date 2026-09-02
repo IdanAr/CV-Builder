@@ -8,6 +8,7 @@ import { applyAtsFixToResumeData } from '@/lib/ai/apply-ats-fix'
 import type { KeywordPriority } from '@/lib/ai/jd-extraction-pipeline'
 import { AtsFixReviewPanel } from './AtsFixReviewPanel'
 import { Popover } from '@/components/ui/Popover'
+import { fetchWithTimeout, requestErrorMessage } from '@/lib/fetch-with-timeout'
 import { StepsBar, type WizardStep } from './StepsBar'
 
 // /ats-score merges keywordPriorities onto AtsScoreResult rather than
@@ -145,7 +146,7 @@ export function AtsScorePanel() {
     const cachedJdKeywords = jdKeywordsOverride ?? []
     const cachedKeywordPriorities = keywordPrioritiesOverride ?? {}
     try {
-      const res = await fetch(`/api/resumes/${resumeId}/ats-score`, {
+      const res = await fetchWithTimeout(`/api/resumes/${resumeId}/ats-score`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -169,7 +170,7 @@ export function AtsScorePanel() {
         return reached > prev ? reached : prev
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Analysis failed. Please try again.')
+      setError(requestErrorMessage(err, 'Analysis failed. Please try again.'))
     } finally {
       setLoading(false)
     }
@@ -191,7 +192,7 @@ export function AtsScorePanel() {
     setFixError(null)
     setDismissedIds(new Set())
     try {
-      const res = await fetch(`/api/resumes/${resumeId}/ats-fix`, {
+      const res = await fetchWithTimeout(`/api/resumes/${resumeId}/ats-fix`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ missingKeywords: result.missingKeywords }),
@@ -205,7 +206,7 @@ export function AtsScorePanel() {
       setFixStatus('ready')
       setMaxUnlockedStep((prev) => (prev < 3 ? 3 : prev))
     } catch (err) {
-      setFixError(err instanceof Error ? err.message : 'Could not generate fixes. Please try again.')
+      setFixError(requestErrorMessage(err, 'Could not generate fixes. Please try again.'))
       setFixStatus('error')
     }
   }
@@ -216,7 +217,7 @@ export function AtsScorePanel() {
     setSemanticError(null)
     setHasTriedSemanticThisAnalysis(true)
     try {
-      const res = await fetch(`/api/resumes/${resumeId}/ats-semantic-match`, {
+      const res = await fetchWithTimeout(`/api/resumes/${resumeId}/ats-semantic-match`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ missingKeywords: result.missingKeywords }),
@@ -229,7 +230,7 @@ export function AtsScorePanel() {
       await handleAnalyze(excludedKeywords, confirmedMatches, jdKeywords, keywordPriorities)
       setSemanticStatus('ready')
     } catch (err) {
-      setSemanticError(err instanceof Error ? err.message : 'Semantic match failed. Please try again.')
+      setSemanticError(requestErrorMessage(err, 'Semantic match failed. Please try again.'))
       setSemanticStatus('error')
     }
   }

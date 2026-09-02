@@ -6,6 +6,79 @@ import { ProfileWizard } from './ProfileWizard'
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn())
+  // The wizard persists an in-progress draft so a refresh or accidental
+  // navigation doesn't discard six steps of answers. Each test must start from
+  // a clean slate, or one case's draft rehydrates into the next.
+  window.localStorage.clear()
+})
+
+describe('ProfileWizard draft persistence', () => {
+  // Every answer used to live in component state alone, so a refresh, an
+  // accidental back gesture or a closed tab discarded all six steps silently.
+  it('restores the step and answers after a remount', async () => {
+    const { unmount } = render(<ProfileWizard onCreated={() => {}} />)
+    await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    await userEvent.click(screen.getByRole('button', { name: /next/i }))
+    unmount()
+
+    render(<ProfileWizard onCreated={() => {}} />)
+
+    expect(await screen.findByRole('tab', { selected: true })).toHaveTextContent('Focus')
+  })
+
+  it('starts fresh when there is no saved draft', async () => {
+    render(<ProfileWizard onCreated={() => {}} />)
+    expect(await screen.findByRole('tab', { selected: true })).toHaveTextContent('Roles')
+  })
+
+  it('ignores a malformed draft rather than failing to render', async () => {
+    window.localStorage.setItem('cv-builder:jobsearch-profile-wizard-draft', 'not json{')
+    render(<ProfileWizard onCreated={() => {}} />)
+    expect(await screen.findByRole('tab', { selected: true })).toHaveTextContent('Roles')
+  })
+
+  it('does not persist a draft while editing an existing profile', async () => {
+    const existing = {
+      _id: 'p1',
+      name: 'Existing',
+      roles: ['Engineer'],
+      seniority: [],
+      workModes: [],
+      locations: [],
+      categories: [],
+      industries: [],
+      recencyDays: 30,
+      minAtsScore: 60,
+    }
+    render(<ProfileWizard onUpdated={() => {}} existingProfile={existing} />)
+    await userEvent.click(screen.getByRole('button', { name: /next/i }))
+
+    expect(window.localStorage.getItem('cv-builder:jobsearch-profile-wizard-draft')).toBeNull()
+  })
+})
+
+describe('ProfileWizard cancellation', () => {
+  it('offers a Cancel control on the first step when onCancel is provided', () => {
+    const onCancel = vi.fn()
+    render(<ProfileWizard onCreated={() => {}} onCancel={onCancel} />)
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
+  })
+
+  it('invokes onCancel without submitting anything', async () => {
+    const onCancel = vi.fn()
+    const onCreated = vi.fn()
+    render(<ProfileWizard onCreated={onCreated} onCancel={onCancel} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /cancel/i }))
+
+    expect(onCancel).toHaveBeenCalledTimes(1)
+    expect(onCreated).not.toHaveBeenCalled()
+  })
+
+  it('renders no Cancel control when the caller provides no handler', () => {
+    render(<ProfileWizard onCreated={() => {}} />)
+    expect(screen.queryByRole('button', { name: /cancel/i })).toBeNull()
+  })
 })
 
 describe('ProfileWizard', () => {

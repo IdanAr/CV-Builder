@@ -10,7 +10,10 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Inter, system-ui, Arial, Helvetica, sans-serif;
+  /* 'Inter Variable' is the family name declared by @fontsource-variable/inter,
+     imported in app/layout.tsx. Plain "Inter" stays in the stack so a locally
+     installed static Inter is still preferred over the system default. */
+  font-family: 'Inter Variable', Inter, system-ui, Arial, Helvetica, sans-serif;
 }
 
 @layer utilities {

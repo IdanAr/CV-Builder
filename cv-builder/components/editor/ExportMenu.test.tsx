@@ -77,4 +77,44 @@ describe('ExportMenu', () => {
     fireEvent.keyDown(items[0], { key: 'ArrowUp' })
     expect(items[3]).toHaveFocus()
   })
+
+  describe('in-flight state', () => {
+    // A slow PDF render left the trigger enabled with no feedback, so users
+    // clicked again and queued duplicate downloads and duplicate server work.
+    it('disables the trigger and announces progress while busy', () => {
+      render(<ExportMenu onExport={vi.fn()} busy />)
+
+      const trigger = screen.getByRole('button', { name: /exporting, please wait/i })
+      expect(trigger).toBeDisabled()
+      expect(trigger).toHaveAttribute('aria-busy', 'true')
+      expect(trigger).toHaveTextContent(/exporting/i)
+    })
+
+    it('cannot open the menu while busy', () => {
+      render(<ExportMenu onExport={vi.fn()} busy />)
+
+      fireEvent.click(screen.getByRole('button', { name: /exporting, please wait/i }))
+
+      expect(screen.queryByRole('menu')).toBeNull()
+    })
+
+    it('keeps the menu closed if an export starts while it is open', () => {
+      const { rerender } = render(<ExportMenu onExport={vi.fn()} />)
+      fireEvent.click(screen.getByRole('button', { name: /export options/i }))
+      expect(screen.getByRole('menu')).toBeInTheDocument()
+
+      rerender(<ExportMenu onExport={vi.fn()} busy />)
+
+      expect(screen.queryByRole('menu')).toBeNull()
+    })
+
+    it('is enabled and openable when not busy', () => {
+      render(<ExportMenu onExport={vi.fn()} />)
+
+      const trigger = screen.getByRole('button', { name: /export options/i })
+      expect(trigger).not.toBeDisabled()
+      fireEvent.click(trigger)
+      expect(screen.getByRole('menu')).toBeInTheDocument()
+    })
+  })
 })
