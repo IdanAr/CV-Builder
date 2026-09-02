@@ -6,6 +6,8 @@ import { Popover } from '@/components/ui/Popover'
 
 export interface ExportMenuProps {
   onExport: (format: 'pdf' | 'docx', mode: ExportMode) => void
+  /** True while an export is in flight; disables the trigger to stop duplicate requests. */
+  busy?: boolean
 }
 
 function focusMenuItem(container: HTMLElement, direction: 1 | -1) {
@@ -19,8 +21,12 @@ function focusMenuItem(container: HTMLElement, direction: 1 | -1) {
   items[nextIndex]?.focus()
 }
 
-export function ExportMenu({ onExport }: ExportMenuProps) {
+export function ExportMenu({ onExport, busy = false }: ExportMenuProps) {
   const [open, setOpen] = useState(false)
+  // Derived rather than synced through an effect: while an export is running
+  // the menu stays shut, so the trigger's in-flight state is what the user
+  // sees instead of a live-looking list that would queue a second render.
+  const menuOpen = open && !busy
 
   const item = (label: string, sub: string, format: 'pdf' | 'docx', mode: ExportMode) => (
     <button
@@ -36,18 +42,20 @@ export function ExportMenu({ onExport }: ExportMenuProps) {
 
   return (
     <Popover
-      open={open}
+      open={menuOpen}
       onOpenChange={setOpen}
       trigger={
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
+          disabled={busy}
+          aria-expanded={menuOpen}
           aria-haspopup="menu"
-          aria-label="Export options"
-          className="text-xs bg-indigo-600 text-white rounded px-3 py-1.5 hover:bg-indigo-700 transition-colors"
+          aria-busy={busy}
+          aria-label={busy ? 'Exporting, please wait' : 'Export options'}
+          className="text-xs bg-indigo-600 text-white rounded px-3 py-1.5 hover:bg-indigo-700 transition-colors disabled:opacity-60 disabled:cursor-wait"
         >
-          Export ▾
+          {busy ? 'Exporting…' : 'Export ▾'}
         </button>
       }
     >

@@ -5,6 +5,20 @@ import { EditorShell } from './EditorShell'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import type { ResumeMeta } from '@/lib/schemas/resume.zod'
 
+// EditorShell navigates programmatically when leaving with unsaved edits, so
+// it needs an app-router context that jsdom doesn't provide.
+const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: routerMock.push,
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}))
+
 vi.mock('./EditTab', () => ({ EditTab: () => <div>EditTabContent</div> }))
 vi.mock('./PreviewTab', () => ({
   PreviewTab: ({ interactive }: { interactive?: boolean }) => (
@@ -279,6 +293,40 @@ describe('EditorShell export flushes pending changes first', () => {
     const patchBody = JSON.parse((patchCall![1] as RequestInit).body as string)
     expect(patchBody.meta.sidebarRailWidth).toBe(20)
     expect(useResumeEditorStore.getState().isDirty).toBe(false)
+  })
+
+  it('flushes pending edits before leaving the editor, then navigates', async () => {
+    // `beforeunload` never fires for client-side navigation, so clicking this
+    // link inside the autosave debounce used to drop the pending edits.
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ({
+      ok: true,
+      json: async () => ({}),
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+    routerMock.push.mockClear()
+
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    act(() => {
+      useResumeEditorStore.setState({ isDirty: true })
+    })
+
+    fireEvent.click(screen.getByRole('link', { name: /my cvs/i }))
+
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith('/dashboard'))
+    expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'PATCH')).toBe(true)
+  })
+
+  it('navigates normally without intercepting when there is nothing unsaved', async () => {
+    routerMock.push.mockClear()
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    act(() => {
+      useResumeEditorStore.setState({ isDirty: false })
+    })
+
+    fireEvent.click(screen.getByRole('link', { name: /my cvs/i }))
+
+    // The plain <Link> handles it; no programmatic push, no flush.
+    expect(routerMock.push).not.toHaveBeenCalled()
   })
 
   it('skips the PATCH and exports directly when there is nothing unsaved', async () => {
