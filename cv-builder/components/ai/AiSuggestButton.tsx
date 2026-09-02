@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { Sparkles, Loader2 } from 'lucide-react'
 import type { SuggestionField, PipelineResult } from '@/lib/ai/pipeline'
 import { Popover } from '@/components/ui/Popover'
+import { fetchWithTimeout, requestErrorMessage } from '@/lib/fetch-with-timeout'
 import { highlightApprovals } from '@/lib/ai/highlight-approvals'
 
 interface AiSuggestButtonProps {
@@ -25,7 +26,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
     setError(null)
     setResult(null)
     try {
-      const res = await fetch(`/api/resumes/${resumeId}/ai-suggest`, {
+      const res = await fetchWithTimeout(`/api/resumes/${resumeId}/ai-suggest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ input: currentValue, ...context }),
@@ -36,7 +37,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
       }
       setResult(await res.json())
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate suggestion. Please try again.')
+      setError(requestErrorMessage(err, 'Failed to generate suggestion. Please try again.'))
     } finally {
       setLoading(false)
     }
