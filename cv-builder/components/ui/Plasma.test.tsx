@@ -40,6 +40,15 @@ interface FakeRendererInstance {
   renderCallCount: number
 }
 
+/**
+ * Lets a test simulate the environments where WebGL2 genuinely isn't available
+ * (older Safari, locked-down corporate GPU policy, VDI sessions, low-end
+ * Android): 'renderer' throws from the constructor, 'program' throws only after
+ * the canvas has already been appended — the case that would otherwise strand a
+ * canvas in the DOM.
+ */
+const oglControl = vi.hoisted(() => ({ failMode: 'none' as 'none' | 'renderer' | 'program' }))
+
 vi.mock('ogl', () => {
   class FakeRenderer {
     static instances: FakeRenderer[] = []
@@ -51,6 +60,7 @@ vi.mock('ogl', () => {
     dpr: number
     renderCallCount = 0
     constructor(opts: { dpr: number }) {
+      if (oglControl.failMode === 'renderer') throw new Error('WebGL2 is not supported')
       this.dpr = opts.dpr
       this.gl = {
         canvas: document.createElement('canvas'),
@@ -67,6 +77,7 @@ vi.mock('ogl', () => {
   class FakeProgram {
     uniforms: Record<string, { value: unknown }>
     constructor(_gl: unknown, opts: { uniforms: Record<string, { value: unknown }> }) {
+      if (oglControl.failMode === 'program') throw new Error('shader failed to compile')
       this.uniforms = opts.uniforms
     }
   }
@@ -195,5 +206,39 @@ describe('Plasma — animation lifecycle', () => {
 
     fireFrame(1040) // 40ms after the first render — over budget, should render
     expect(renderer.renderCallCount).toBe(2)
+  })
+})
+
+describe('Plasma — WebGL unavailable', () => {
+  // PlasmaBackground wraps every /dashboard/* route and there is no error
+  // boundary above it, so an unguarded throw from ogl would take the whole
+  // authenticated app down rather than dropping one ambient decoration.
+  afterEach(() => {
+    oglControl.failMode = 'none'
+    cleanup()
+    vi.restoreAllMocks()
+  })
+
+  it('renders without throwing when the renderer cannot be created', () => {
+    oglControl.failMode = 'renderer'
+    expect(() => render(<Plasma />)).not.toThrow()
+  })
+
+  it('renders without throwing when shader setup fails', () => {
+    oglControl.failMode = 'program'
+    expect(() => render(<Plasma />)).not.toThrow()
+  })
+
+  it('leaves no canvas behind when setup fails after the canvas was appended', () => {
+    oglControl.failMode = 'program'
+    const { container } = render(<Plasma />)
+    expect(container.querySelector('canvas')).toBeNull()
+  })
+
+  it('never starts an animation loop when init fails', () => {
+    oglControl.failMode = 'renderer'
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 1)
+    render(<Plasma />)
+    expect(rafSpy).not.toHaveBeenCalled()
   })
 })
