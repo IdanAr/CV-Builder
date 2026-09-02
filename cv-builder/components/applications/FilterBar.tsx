@@ -10,6 +10,7 @@ import {
   filterTypeForColumn,
   type ColumnFilter,
 } from '@/lib/applications/filter'
+import { X } from 'lucide-react'
 
 function FilterEditor({
   column,
@@ -270,10 +271,8 @@ export function FilterBar({
               type="button"
               aria-label={`Remove filter on ${column.label}`}
               onClick={() => onChange(filters.filter((f) => f.columnId !== filter.columnId))}
-              className="rounded-full px-1 text-indigo-400 hover:bg-indigo-100 hover:text-indigo-700"
-            >
-              ✕
-            </button>
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full text-fg-muted transition-colors hover:bg-secondary hover:text-fg-body"
+            ><X aria-hidden="true" className="h-3 w-3" /></button>
           </span>
         )
       })}

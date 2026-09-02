@@ -8,6 +8,8 @@ import { RichTextField } from './RichTextField'
 import { inputClass } from './field-styles'
 import { createEmptyVolunteer as createEmpty } from '@/lib/schemas/resume-empty-entries'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
+import { X } from 'lucide-react'
+import { buttonClasses } from '@/components/ui/Button'
 
 type Item = NonNullable<ResumeData['volunteer']>[number]
 const EMPTY_VOLUNTEER: Item[] = []
@@ -29,7 +31,7 @@ function ItemForm({ item, resumeId, onUpdate, onRemove }: { item: Item; resumeId
             placeholder="Role" className={inputClass} />
         </div>
         <button type="button" onClick={onRemove} aria-label="Remove volunteer entry"
-          className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
+          className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-1 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <MonthYearPicker value={item.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
@@ -76,7 +78,7 @@ function ItemForm({ item, resumeId, onUpdate, onRemove }: { item: Item; resumeId
                 onAccept={onUpdateHighlight}
               />
               <button type="button" onClick={onRemoveHighlight} aria-label="Remove highlight"
-                className="text-gray-400 hover:text-red-500 text-xs px-1 mt-6">✕</button>
+                className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-6 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
             </div>
           )}
         />

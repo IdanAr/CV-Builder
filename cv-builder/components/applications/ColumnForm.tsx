@@ -6,6 +6,8 @@
 // idea as the resume editor's CustomSection.
 import { useState } from 'react'
 import type { BoardColumn, ColumnOption, ColumnType } from '@/lib/schemas/application.zod'
+import { X } from 'lucide-react'
+import { buttonClasses } from '@/components/ui/Button'
 
 const TYPE_LABELS: Record<ColumnType, string> = {
   text: 'Text',
@@ -161,10 +163,8 @@ export function ColumnForm({
                   aria-label={`Remove option ${i + 1}`}
                   onClick={() => setOptions((opts) => opts.filter((o) => o.id !== option.id))}
                   disabled={options.length === 1}
-                  className="shrink-0 rounded px-1 text-sm text-indigo-300 hover:text-red-500 disabled:opacity-40"
-                >
-                  ✕
-                </button>
+                  className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'h-6 w-6 shrink-0 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}
+                ><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
               </div>
               <div className="ml-1 flex flex-wrap gap-1">
                 {OPTION_COLOR_PRESETS.map((color) => (

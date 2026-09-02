@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useToastStore, type Toast } from '@/lib/stores/toast.store'
+import { X } from 'lucide-react'
 
 const VARIANT_STYLES: Record<Toast['variant'], string> = {
   success: 'border-green-200 bg-green-50/95 text-green-800',
@@ -93,9 +94,9 @@ function ToastItem({ toast: t }: { toast: Toast }) {
       <button
         aria-label="Dismiss notification"
         onClick={() => dismiss(t.id)}
-        className="text-xs opacity-60 hover:opacity-100"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-control opacity-60 transition-opacity hover:opacity-100"
       >
-        ✕
+        <X aria-hidden="true" className="h-3.5 w-3.5" />
       </button>
     </div>
   )

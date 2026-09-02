@@ -6,6 +6,8 @@ import type { Transform } from '@dnd-kit/utilities'
 import { CSS } from '@dnd-kit/utilities'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Collapsible } from '@/components/ui/motion/Collapsible'
+import { X } from 'lucide-react'
+import { buttonClasses } from '@/components/ui/Button'
 
 export interface DragHandleProps {
   listeners: DraggableSyntheticListeners
@@ -119,11 +121,9 @@ export function AccordionSection({
           <button
             type="button"
             onClick={onDelete}
-            className="p-1 text-gray-400 hover:text-red-500 rounded"
+            className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}
             aria-label={`Delete ${title}`}
-          >
-            ✕
-          </button>
+          ><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
         )}
         <button
           type="button"

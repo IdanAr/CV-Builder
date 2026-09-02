@@ -8,6 +8,8 @@ import { inputClass } from './field-styles'
 import { createEmptyEducation as createEmpty, createEmptyEducationRole } from '@/lib/schemas/resume-empty-entries'
 import { resolveEducationRoles } from '@/lib/roles'
 import type { ResumeData, EducationRole } from '@/lib/schemas/resume.zod'
+import { X } from 'lucide-react'
+import { buttonClasses } from '@/components/ui/Button'
 
 type EduItem = NonNullable<ResumeData['education']>[number]
 
@@ -28,7 +30,7 @@ function RoleForm({ role, onUpdate, onRemove }: { role: EducationRole; onUpdate:
             placeholder="Field of study" className={inputClass} />
         </div>
         <button type="button" onClick={onRemove} aria-label="Remove role"
-          className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
+          className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-1 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <MonthYearPicker value={role.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
@@ -60,7 +62,7 @@ function EduItemForm({ item, onUpdate, onRemove }: { item: EduItem; onUpdate: (v
         <input id={`${id}-institution`} type="text" value={item.institution ?? ''} onChange={(e) => set('institution', e.target.value)}
           placeholder="University / School" className={`${inputClass} flex-1`} />
         <button type="button" onClick={onRemove} aria-label="Remove education entry"
-          className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
+          className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-1 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
       </div>
       <div className="pl-3 border-l-2 border-indigo-100">
         <ListFieldManager<EducationRole>

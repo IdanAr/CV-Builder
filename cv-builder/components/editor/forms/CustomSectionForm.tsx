@@ -10,6 +10,8 @@ import { resolveCustomSectionRoles } from '@/lib/roles'
 import { CUSTOM_SECTION_FIELDS } from '@/lib/schemas/resume.zod'
 import { inputClass as sharedInputClass } from './field-styles'
 import type { CustomSection, CustomSectionItem, CustomSectionRole, CustomSectionFieldType } from '@/lib/schemas/resume.zod'
+import { X } from 'lucide-react'
+import { buttonClasses } from '@/components/ui/Button'
 
 const FIELD_LABELS: Record<CustomSectionFieldType, string> = {
   subtitle: 'Subtitle',
@@ -127,7 +129,7 @@ function ItemForm({ item, enabledFields, resumeId, onUpdate, onRemove }: ItemFor
                   onAccept={onUpdateHighlight}
                 />
                 <button type="button" onClick={onRemoveHighlight}
-                  className="text-gray-400 hover:text-red-500 text-sm mt-6">✕</button>
+                  className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-6 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
               </div>
             )}
           />
@@ -185,7 +187,7 @@ function ItemForm({ item, enabledFields, resumeId, onUpdate, onRemove }: ItemFor
         <input id={`${id}-title`} type="text" value={item.title ?? ''} onChange={(e) => set('title', e.target.value)}
           placeholder="Title" className={`${inputClass} flex-1`} />
         <button type="button" onClick={onRemove} aria-label="Remove item"
-          className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
+          className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-1 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
       </div>
 
       {hasRoles ? (
@@ -227,7 +229,7 @@ function RoleForm({
         <input id={`${id}-title`} type="text" value={role.title ?? ''} onChange={(e) => set('title', e.target.value)}
           placeholder="Title" className={`${inputClass} flex-1`} />
         <button type="button" onClick={onRemove} aria-label="Remove role"
-          className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
+          className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-1 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
       </div>
       {enabledFields.includes('subtitle') && (
         <input type="text" value={role.subtitle ?? ''} onChange={(e) => set('subtitle', e.target.value)}
@@ -277,7 +279,7 @@ function RoleForm({
                   onAccept={onUpdateHighlight}
                 />
                 <button type="button" onClick={onRemoveHighlight}
-                  className="text-gray-400 hover:text-red-500 text-sm mt-6">✕</button>
+                  className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-6 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
               </div>
             )}
           />
