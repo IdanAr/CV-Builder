@@ -120,6 +120,33 @@ function controlsVisibilityStyle(visible: boolean): React.CSSProperties {
   }
 }
 
+/**
+ * Whether the device has a genuinely hover-capable pointer.
+ *
+ * Every control in this overlay — section and entry drag handles, "+ add entry",
+ * "+ Add Section" — was gated on `hovered || dragActive || focused`. A touch
+ * device fires no `mouseenter`, and because the hidden state also sets
+ * `pointer-events: none`, a tap could neither reveal nor focus the controls:
+ * editing from the preview was not merely hard to discover on touch, it was
+ * unreachable. That covers the mobile Preview view and iPads in the desktop
+ * side-by-side layout. Where there is no hover, the controls stay visible.
+ */
+function useHasHover(): boolean {
+  // Assume hover for SSR and the first client render so server and client
+  // markup agree; the effect corrects it on touch devices immediately after.
+  const [hasHover, setHasHover] = useState(true)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const query = window.matchMedia('(hover: hover)')
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHasHover(query.matches)
+    const onChange = (e: MediaQueryListEvent) => setHasHover(e.matches)
+    query.addEventListener('change', onChange)
+    return () => query.removeEventListener('change', onChange)
+  }, [])
+  return hasHover
+}
+
 function useMeasuredRects(
   innerRef: React.RefObject<HTMLDivElement | null>,
   wrapperRef: React.RefObject<HTMLDivElement | null>,
@@ -272,7 +299,10 @@ function SectionOverlayGroup({
   // bubble (unlike native focus/blur), so handlers on this same wrapper
   // mirror onMouseEnter/onMouseLeave for the whole group.
   const [focused, setFocused] = useState(false)
-  const visible = hovered || dragActive || focused
+  const hasHover = useHasHover()
+  // Without a hover-capable pointer there is no way to reveal these, so they
+  // stay visible rather than being permanently hidden and untappable.
+  const visible = !hasHover || hovered || dragActive || focused
 
   const lastEntryRect = entryRects.reduce<EntryRectEntry | null>(
     (last, r) => (!last || r.top > last.top ? r : last),
@@ -439,6 +469,7 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
   // Keyboard-focus counterpart to `addSectionHovered` — see the matching
   // `focused` state in SectionOverlayGroup for the full rationale.
   const [addSectionFocused, setAddSectionFocused] = useState(false)
+  const hasHover = useHasHover()
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const requestFocus = useResumeEditorStore((s) => s.requestFocus)
   const addCustomSection = useResumeEditorStore((s) => s.addCustomSection)
@@ -509,7 +540,7 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
     }
   }
 
-  const addSectionVisible = addSectionHovered || addMenuOpen || addSectionFocused
+  const addSectionVisible = !hasHover || addSectionHovered || addMenuOpen || addSectionFocused
 
   return (
     <DndContext collisionDetection={sameKindClosestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>

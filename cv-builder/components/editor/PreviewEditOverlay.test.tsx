@@ -93,6 +93,51 @@ describe('PreviewEditOverlay measurement', () => {
   })
 })
 
+describe('PreviewEditOverlay pointer capability', () => {
+  // Controls were gated purely on hover, and their hidden state also sets
+  // `pointer-events: none` — so on a touch device a tap could neither reveal
+  // nor focus them, and editing from the preview was unreachable rather than
+  // merely undiscoverable.
+  function stubHover(hasHover: boolean) {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('hover: hover') ? hasHover : false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
+  }
+
+  /** Walks up to the ancestor carrying the fade/pointer-events style. */
+  function visibilityWrapperOf(el: HTMLElement): HTMLElement {
+    let node: HTMLElement | null = el
+    while (node && node.style.opacity === '') node = node.parentElement
+    if (!node) throw new Error('no ancestor carries a visibility style')
+    return node
+  }
+
+  it('keeps controls hidden until hover when the pointer supports hovering', async () => {
+    stubHover(true)
+    mockRects((el) => (el.dataset.pvEntry !== undefined ? TALL_ENOUGH : 200))
+    render(<Harness />)
+    await act(async () => {})
+
+    const wrapper = visibilityWrapperOf(screen.getByTestId('pv-handle-section|work'))
+    expect(wrapper.style.opacity).toBe('0')
+    expect(wrapper.style.pointerEvents).toBe('none')
+  })
+
+  it('shows controls without hover, and keeps them tappable, on a touch device', async () => {
+    stubHover(false)
+    mockRects((el) => (el.dataset.pvEntry !== undefined ? TALL_ENOUGH : 200))
+    render(<Harness />)
+    await act(async () => {})
+
+    const wrapper = visibilityWrapperOf(screen.getByTestId('pv-handle-section|work'))
+    expect(wrapper.style.opacity).toBe('1')
+    expect(wrapper.style.pointerEvents).toBe('auto')
+  })
+})
+
 describe('parseHandleId', () => {
   it('parses a section id', async () => {
     const { parseHandleId } = await import('./PreviewEditOverlay')
