@@ -28,6 +28,32 @@ export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivEl
 }
 
 /**
+ * Stand-in for `AppNavbar`, which every authenticated page renders itself
+ * rather than inheriting from the group layout. A `loading.tsx` therefore
+ * replaces the navbar too, and without this the bar would vanish and the page
+ * would jump 64-80px the moment content arrived.
+ *
+ * The geometry deliberately mirrors AppNavbar's own `min-h-[64px] py-2
+ * md:h-20`; if that changes, this has to change with it.
+ */
+export function NavbarSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      className="w-full border-b border-white/30 bg-surface/55 shadow-sm backdrop-blur-xl"
+    >
+      <div className="w-full px-4 sm:px-6 lg:px-8">
+        <div className="flex min-h-[64px] items-center gap-3 py-2 md:h-20 md:py-0">
+          <Skeleton className="h-8 w-28" />
+          <Skeleton className="h-8 w-28" />
+          <Skeleton className="ml-auto h-8 w-8 rounded-full" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
  * A run of stacked bars standing in for a paragraph. The last line is short,
  * which is what makes a block of bars read as text rather than as a table.
  */

@@ -1,9 +1,26 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
-import { Skeleton, SkeletonText } from './Skeleton'
+import { Skeleton, SkeletonText, NavbarSkeleton } from './Skeleton'
 
 afterEach(cleanup)
+
+describe('NavbarSkeleton', () => {
+  // Every authenticated page renders AppNavbar itself rather than inheriting
+  // it from the group layout, so a loading.tsx replaces the navbar too. If
+  // this placeholder loses its height the page jumps 64-80px when content
+  // arrives — the exact layout shift the skeleton exists to prevent.
+  it('reserves the same height AppNavbar occupies', () => {
+    const { container } = render(<NavbarSkeleton />)
+    expect(container.innerHTML).toContain('min-h-[64px]')
+    expect(container.innerHTML).toContain('md:h-20')
+  })
+
+  it('is hidden from assistive technology', () => {
+    const { container } = render(<NavbarSkeleton />)
+    expect((container.firstChild as HTMLElement).getAttribute('aria-hidden')).toBe('true')
+  })
+})
 
 describe('Skeleton', () => {
   // The bar is decoration standing in for content that has not arrived. A
