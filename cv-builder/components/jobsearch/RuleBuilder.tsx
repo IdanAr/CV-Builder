@@ -163,6 +163,11 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
   }
 
   async function deleteRule(rule: RuleSummary) {
+    // Every other destructive action in this subsystem confirms first
+    // (ProfileList, ScrapedJobsList, QueuedApplicationsPanel). Deleting a rule
+    // was the one exception, so a misclick silently discarded it — and the
+    // inconsistency itself misleads, since users learn "delete asks first".
+    if (!window.confirm(`Delete rule "${rule.name}"? This can't be undone.`)) return
     setError(null)
     try {
       const res = await fetch(`/api/jobsearch/rules/${rule._id}`, { method: 'DELETE' })

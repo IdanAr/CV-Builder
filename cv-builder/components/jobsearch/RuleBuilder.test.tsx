@@ -128,7 +128,8 @@ describe('RuleBuilder', () => {
     )
   })
 
-  it('deletes a rule', async () => {
+  it('deletes a rule after confirmation', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     const mockFetch = vi.fn()
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -141,9 +142,30 @@ describe('RuleBuilder', () => {
     render(<RuleBuilder profileId="p1" />)
     await userEvent.click(await screen.findByRole('button', { name: /delete/i }))
 
+    expect(confirmSpy).toHaveBeenCalled()
     await waitFor(() =>
       expect(mockFetch).toHaveBeenNthCalledWith(2, '/api/jobsearch/rules/r1', expect.objectContaining({ method: 'DELETE' }))
     )
+    confirmSpy.mockRestore()
+  })
+
+  it('does not delete when the confirmation is dismissed', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ rules: [{ _id: 'r1', name: 'High fit', isActive: true, action: 'notify', conditions: [] }] }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<RuleBuilder profileId="p1" />)
+    await userEvent.click(await screen.findByRole('button', { name: /delete/i }))
+
+    expect(confirmSpy).toHaveBeenCalled()
+    // Only the mount-time load ran: no DELETE was issued and the rule remains.
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('High fit')).toBeInTheDocument()
+    confirmSpy.mockRestore()
   })
 
   it('shows a full error view with a retry button when the initial load fails', async () => {
@@ -161,6 +183,7 @@ describe('RuleBuilder', () => {
   })
 
   it('shows an error banner without clearing the list when deleting fails', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     const mockFetch = vi.fn()
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -174,6 +197,7 @@ describe('RuleBuilder', () => {
 
     expect(await screen.findByText(/failed to delete rule/i)).toBeInTheDocument()
     expect(screen.getByText('High fit')).toBeInTheDocument()
+    confirmSpy.mockRestore()
   })
 
   it('aborts the mount-time fetch on unmount', async () => {
