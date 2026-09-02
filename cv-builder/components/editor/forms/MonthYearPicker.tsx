@@ -1,6 +1,8 @@
 'use client'
 
 import { useId, useState, useEffect } from 'react'
+import { inputClass } from './field-styles'
+import { cn } from '@/lib/utils'
 
 export interface MonthYearPickerProps {
   value: string          // "YYYY-MM", "" for empty, or "Present" (end dates only)
@@ -25,7 +27,7 @@ const MONTHS = [
 ]
 
 const fieldClass =
-  'border border-indigo-200 rounded-lg px-2 py-1 text-sm bg-white/70 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+  cn(inputClass, 'w-auto px-2 py-1 appearance-none')
 
 function parseValue(value: string): { year: string; month: string; isPresent: boolean } {
   if (value === 'Present') {

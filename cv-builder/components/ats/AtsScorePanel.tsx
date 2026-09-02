@@ -8,6 +8,8 @@ import { applyAtsFixToResumeData } from '@/lib/ai/apply-ats-fix'
 import type { KeywordPriority } from '@/lib/ai/jd-extraction-pipeline'
 import { AtsFixReviewPanel } from './AtsFixReviewPanel'
 import { Popover } from '@/components/ui/Popover'
+import { inputClass } from '@/components/editor/forms/field-styles'
+import { cn } from '@/lib/utils'
 import { fetchWithTimeout, requestErrorMessage } from '@/lib/fetch-with-timeout'
 import { StepsBar, type WizardStep } from './StepsBar'
 
@@ -277,7 +279,7 @@ export function AtsScorePanel() {
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
               placeholder="Paste the full job description here to see how well your CV matches…"
-              className="w-full h-[312px] rounded-lg border border-indigo-200 bg-white/70 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className={cn(inputClass, 'h-[312px] resize-none py-2')}
             />
             <button
               onClick={() => handleAnalyze()}

@@ -38,7 +38,7 @@ const VARIANT: Record<ButtonVariant, string> = {
   primary: 'bg-primary text-primary-fg shadow-sm hover:bg-primary-hover',
   /** Sits beside a primary without competing with it. */
   secondary:
-    'border border-border bg-surface/50 text-fg-body hover:bg-surface-subtle hover:border-border-input',
+    'border border-border bg-surface/50 text-fg-body hover:bg-surface-subtle hover:border-input',
   /** A filled but quiet action — toolbars, chips, segmented controls. */
   soft: 'bg-secondary text-secondary-fg hover:bg-accent-200',
   /** No chrome until you touch it. Icon buttons and tertiary actions. */

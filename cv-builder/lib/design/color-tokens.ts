@@ -13,7 +13,7 @@
  *   provably a no-op: `text-accent-700` renders the exact same pixels as the
  *   `text-indigo-700` it replaces. Migration cannot cause a visual regression.
  *
- *   SEMANTIC — what the colour *means*. `fg-body`, `border-input`,
+ *   SEMANTIC — what the colour *means*. `fg-body`, `input`,
  *   `surface-subtle`. Components should reach for these; the palette tier
  *   exists so the semantic tier has something to point at, and for the rare
  *   case that genuinely wants a specific step.
@@ -142,9 +142,14 @@ export const SEMANTIC = {
   /**
    * The visible edge of a control you must be able to locate — inputs,
    * selects, textareas. WCAG 2.2 SC 1.4.11 requires 3:1 here, so this is
-   * accent-500 (4.1:1) and not the accent-200 (1.4:1) currently in use.
+   * accent-500 (4.1:1) and not the accent-200 (1.4:1) previously in use.
+   *
+   * Named `input`, not `border-input`, because Tailwind builds the utility by
+   * prefixing the key: a key of `border-input` yields `.border-border-input`,
+   * and the natural-looking `.border-input` silently does not exist — it falls
+   * back to preflight's grey. This bit once; the test below now guards it.
    */
-  'border-input': PALETTE.accent[500],
+  input: PALETTE.accent[500],
 
   // --- Interactive ---
   /** Primary button and other filled accent affordances. */

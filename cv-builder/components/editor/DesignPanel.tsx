@@ -24,6 +24,8 @@ import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 import { FONT_SUBSTITUTES } from '@/lib/fonts/families'
+import { inputClass } from './forms/field-styles'
+import { cn } from '@/lib/utils'
 import { useShallow } from 'zustand/react/shallow'
 
 /**
@@ -314,7 +316,7 @@ export function DesignPanel() {
     setAccentColorTouched(false)
   }
 
-  const selectClass = 'w-full border border-indigo-200 rounded-lg px-2 py-1.5 text-sm bg-white/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+  const selectClass = cn(inputClass, 'px-2')
   const labelClass = 'block text-xs font-medium text-indigo-600 mb-1'
 
   // Sidebar always renders skills/languages in the rail regardless of any
@@ -497,7 +499,7 @@ export function DesignPanel() {
             <input type="text" value={primaryColorDraft}
               onChange={handlePrimaryColorTextChange}
               onBlur={handlePrimaryColorTextBlur}
-              placeholder="#000000" className="flex-1 border border-indigo-200 rounded px-2 py-1 text-xs font-mono bg-white/70 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+              placeholder="#000000" className={cn(inputClass, 'w-auto flex-1 px-2 py-1 text-xs font-mono focus:ring-1')} />
           </div>
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Primary color presets">
             {PRESET_COLORS.map(({ name, hex }) => {
@@ -533,7 +535,7 @@ export function DesignPanel() {
             <input type="text" value={accentColorDraft}
               onChange={handleAccentColorTextChange}
               onBlur={handleAccentColorTextBlur}
-              placeholder="#0066cc" className="flex-1 border border-indigo-200 rounded px-2 py-1 text-xs font-mono bg-white/70 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+              placeholder="#0066cc" className={cn(inputClass, 'w-auto flex-1 px-2 py-1 text-xs font-mono focus:ring-1')} />
           </div>
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Accent color presets">
             {PRESET_COLORS.map(({ name, hex }) => {

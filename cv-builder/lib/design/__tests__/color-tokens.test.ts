@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import colors from 'tailwindcss/colors'
 import {
@@ -98,7 +98,7 @@ describe('semantic tokens', () => {
     expect(contrast(SEMANTIC['secondary-fg'], SEMANTIC.secondary)).toBeGreaterThanOrEqual(4.5)
   })
 
-  it.each(['border-input', 'ring'] as SemanticToken[])(
+  it.each(['input', 'ring'] as SemanticToken[])(
     '%s clears the 3:1 floor SC 1.4.11 sets for control boundaries',
     (name) => {
       expect(contrast(SEMANTIC[name], PAGE)).toBeGreaterThanOrEqual(3)
@@ -110,6 +110,70 @@ describe('semantic tokens', () => {
     for (const [name, value] of Object.entries(SEMANTIC)) {
       expect(`${name}: ${value}`).toMatch(/^[\w-]+: \d{1,3} \d{1,3} \d{1,3}$/)
     }
+  })
+})
+
+describe('token utilities referenced in source', () => {
+  // Tailwind builds a utility by prefixing the colour key, so a key named
+  // `border-input` produces `.border-border-input` and the natural-looking
+  // `.border-input` silently does not exist — the element falls back to
+  // preflight's grey. Nothing catches that on its own: the class is a plain
+  // string, so TypeScript, ESLint, the production build and the component
+  // tests all pass while the control renders a 1.1:1 border.
+  //
+  // That bug shipped into this very branch and was found by reading computed
+  // styles in a browser. This test is the cheap version of that check: every
+  // token-namespaced utility written anywhere in the app must name a colour
+  // key that actually exists.
+
+  const NAMESPACES = new Set([
+    ...Object.keys(PALETTE),
+    ...Object.keys(SEMANTIC).map((name) => name.split('-')[0]),
+  ])
+
+  const validKeys = new Set<string>([
+    ...Object.keys(SEMANTIC),
+    ...(Object.keys(PALETTE) as PaletteFamily[]).flatMap((family) =>
+      Object.keys(PALETTE[family]).map((step) => `${family}-${step}`)
+    ),
+  ])
+
+  const COLOUR_UTILITY =
+    /(?:^|[\s"'`{])(?:[a-z-]+:)*(bg|text|border|ring|ring-offset|divide|placeholder|from|to|via|outline|fill|stroke|shadow|caret)-([a-z][a-z0-9-]*(?:\/\d+)?)/g
+
+  function sourceFiles(): string[] {
+    const base = join(__dirname, '..', '..', '..')
+    const out: string[] = []
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name)
+        if (entry.isDirectory()) walk(full)
+        else if (/\.tsx?$/.test(entry.name) && !entry.name.includes('.test.')) out.push(full)
+      }
+    }
+    walk(join(base, 'components'))
+    walk(join(base, 'app'))
+    return out
+  }
+
+  it('every token-namespaced colour utility names a key that exists', () => {
+    const unresolved: string[] = []
+
+    for (const file of sourceFiles()) {
+      const source = readFileSync(file, 'utf8')
+      for (const match of source.matchAll(COLOUR_UTILITY)) {
+        const colour = match[2].split('/')[0]
+        // Only judge utilities inside our own namespaces. Tailwind built-ins
+        // (`text-sm`, `bg-white`, `border-b`, `bg-gradient-to-br`) are not
+        // ours to validate.
+        if (!NAMESPACES.has(colour.split('-')[0])) continue
+        if (!validKeys.has(colour)) {
+          unresolved.push(`${file.split('/cv-builder/')[1] ?? file}: ${colour}`)
+        }
+      }
+    }
+
+    expect([...new Set(unresolved)].sort()).toEqual([])
   })
 })
 
@@ -137,7 +201,7 @@ describe('app/globals.css', () => {
 
   it('exposes the tokens components actually reach for', () => {
     const declared = rootCustomProperties()
-    for (const name of ['primary', 'surface', 'fg-muted', 'border-input', 'ring'] as SemanticToken[]) {
+    for (const name of ['primary', 'surface', 'fg-muted', 'input', 'ring'] as SemanticToken[]) {
       expect(declared.has(semanticVar(name))).toBe(true)
     }
     expect(declared.has(paletteVar('accent', 600))).toBe(true)
