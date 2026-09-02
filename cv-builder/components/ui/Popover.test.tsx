@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useState } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -54,6 +55,91 @@ describe('Popover', () => {
     fireEvent.mouseDown(screen.getByRole('button', { name: 'Open' }))
     fireEvent.mouseDown(screen.getByText('Content'))
     expect(onOpenChange).not.toHaveBeenCalled()
+  })
+
+  describe('focus management', () => {
+    // The panel is portaled to the end of document.body, so it is not in the
+    // trigger's tab sequence. Without moving focus in on open, a keyboard user
+    // can open a popover and Escape out of it but never reach its contents.
+    function Harness() {
+      const [open, setOpen] = useState(false)
+      return (
+        <>
+          <Popover
+            open={open}
+            onOpenChange={setOpen}
+            trigger={<button onClick={() => setOpen((o) => !o)}>Open</button>}
+          >
+            <div role="menu">
+              <button onClick={() => setOpen(false)}>Use this</button>
+              <button onClick={() => setOpen(false)}>Dismiss</button>
+            </div>
+          </Popover>
+          <button>Outside</button>
+        </>
+      )
+    }
+
+    it('moves focus to the first focusable element in the panel when opened', async () => {
+      render(<Harness />)
+
+      await userEvent.click(screen.getByRole('button', { name: 'Open' }))
+
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Use this' }))
+    })
+
+    it('returns focus to the trigger when an action inside the panel closes it', async () => {
+      render(<Harness />)
+
+      await userEvent.click(screen.getByRole('button', { name: 'Open' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Use this' }))
+
+      expect(screen.queryByRole('menu')).toBeNull()
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Open' }))
+    })
+
+    it('leaves focus alone when an outside click closes it', async () => {
+      render(<Harness />)
+
+      await userEvent.click(screen.getByRole('button', { name: 'Open' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Outside' }))
+
+      expect(screen.queryByRole('menu')).toBeNull()
+      // Focus belongs to whatever the user clicked, not yanked back to the trigger.
+      expect(document.activeElement).not.toBe(screen.getByRole('button', { name: 'Open' }))
+    })
+
+    it('does not steal focus when the panel has nothing focusable', async () => {
+      function TextOnly() {
+        const [open, setOpen] = useState(false)
+        return (
+          <Popover
+            open={open}
+            onOpenChange={setOpen}
+            trigger={<button onClick={() => setOpen((o) => !o)}>Open</button>}
+          >
+            <div>Just text</div>
+          </Popover>
+        )
+      }
+      render(<TextOnly />)
+
+      const trigger = screen.getByRole('button', { name: 'Open' })
+      await userEvent.click(trigger)
+
+      expect(screen.getByText('Just text')).toBeTruthy()
+      expect(document.activeElement).toBe(trigger)
+    })
+
+    it('re-enters focus on a second open after being closed', async () => {
+      render(<Harness />)
+
+      await userEvent.click(screen.getByRole('button', { name: 'Open' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Open' }))
+
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Use this' }))
+    })
   })
 
   describe('auto-flip placement', () => {
