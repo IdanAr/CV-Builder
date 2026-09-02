@@ -99,4 +99,26 @@ describe('GET /api/jobsearch/scan/cron', () => {
     expect(maxInFlight).toBeGreaterThan(1)
     expect(body).toEqual({ queued: 3, failed: 0, total: 3 })
   })
+
+  it('caps concurrent publishes at 20 in-flight even with many active profiles', async () => {
+    const profiles = Array.from({ length: 45 }, (_, i) => ({ _id: `p${i}`, userId: `u${i}` }))
+    mockListAllActive.mockResolvedValue(profiles)
+
+    let inFlight = 0
+    let maxInFlight = 0
+    mockPublishScanJob.mockImplementation(async () => {
+      inFlight++
+      maxInFlight = Math.max(maxInFlight, inFlight)
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      inFlight--
+    })
+
+    const res = await GET(req('Bearer test-secret'))
+    const body = await res.json()
+
+    // Unbounded fan-out would run all 45 at once; batching caps it at 20.
+    expect(maxInFlight).toBeLessThanOrEqual(20)
+    expect(maxInFlight).toBeGreaterThan(1)
+    expect(body).toEqual({ queued: 45, failed: 0, total: 45 })
+  })
 })

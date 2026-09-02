@@ -340,4 +340,40 @@ describe('QueuedApplicationsPanel', () => {
     expect(screen.queryByRole('button', { name: /^approve$/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^reject$/i })).not.toBeInTheDocument()
   })
+
+  it('aborts the mount-time fetches on unmount', async () => {
+    let capturedSignal: AbortSignal | undefined
+    const mockFetch = vi.fn((url: string, init?: RequestInit) => {
+      if (String(url).startsWith('/api/jobsearch/scraped-jobs?')) {
+        capturedSignal = init?.signal as AbortSignal | undefined
+        return new Promise<Response>(() => {}) // never resolves
+      }
+      return Promise.resolve(jsonResponse(profile))
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const { unmount } = render(<QueuedApplicationsPanel profileId="p1" />)
+    await waitFor(() => expect(capturedSignal).toBeDefined())
+    expect(capturedSignal!.aborted).toBe(false)
+
+    unmount()
+
+    expect(capturedSignal!.aborted).toBe(true)
+  })
+
+  it('does not show an error banner when profileId changes while fetches are in flight', async () => {
+    const mockFetch = vi.fn((url: string) => {
+      if (String(url).includes('p1')) {
+        return new Promise<Response>(() => {}) // never resolves — simulates the stale in-flight requests
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ scrapedJobs: [], profile: { minAtsScore: 75 } }) } as Response)
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const { rerender } = render(<QueuedApplicationsPanel profileId="p1" />)
+    rerender(<QueuedApplicationsPanel profileId="p2" />)
+
+    await screen.findByText(/no queued drafts yet/i)
+    expect(screen.queryByText(/failed to load queued applications/i)).not.toBeInTheDocument()
+  })
 })

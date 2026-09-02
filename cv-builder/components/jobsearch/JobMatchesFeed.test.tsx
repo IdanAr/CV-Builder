@@ -95,4 +95,24 @@ describe('JobMatchesFeed', () => {
 
     expect(await screen.findByText(/no job matches yet/i)).toBeInTheDocument()
   })
+
+  it('aborts the mount-time fetch on unmount', async () => {
+    let capturedSignal: AbortSignal | undefined
+    const mockFetch = vi.fn((url: string, init?: RequestInit) => {
+      if (url === '/api/jobsearch/notifications') {
+        capturedSignal = init?.signal as AbortSignal | undefined
+        return new Promise<Response>(() => {}) // never resolves
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ ok: true }) } as Response)
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const { unmount } = render(<JobMatchesFeed />)
+    await waitFor(() => expect(capturedSignal).toBeDefined())
+    expect(capturedSignal!.aborted).toBe(false)
+
+    unmount()
+
+    expect(capturedSignal!.aborted).toBe(true)
+  })
 })

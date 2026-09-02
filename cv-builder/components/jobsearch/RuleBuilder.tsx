@@ -118,25 +118,30 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
   const [draft, setDraft] = useState<ConditionDraft>(initialConditionDraft)
   const [submitting, setSubmitting] = useState(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     setError(null)
     try {
-      const res = await fetch(`/api/jobsearch/rules?profileId=${encodeURIComponent(profileId)}`)
+      const res = await fetch(`/api/jobsearch/rules?profileId=${encodeURIComponent(profileId)}`, { signal })
       if (!res.ok) {
         setError('Failed to load rules.')
         return
       }
       const body = await res.json()
       setRules(body.rules)
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
       setError('Failed to load rules.')
     }
   }, [profileId])
 
   useEffect(() => {
     // Initial fetch-on-mount, same pattern/suppression as ScrapedJobsList.tsx's load effect.
+    // Aborted on unmount/profileId-change so a stale response can't setState
+    // on a component that no longer cares.
+    const controller = new AbortController()
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    load()
+    load(controller.signal)
+    return () => controller.abort()
   }, [load])
 
   async function toggleActive(rule: RuleSummary) {
