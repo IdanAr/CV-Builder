@@ -190,3 +190,35 @@ describe('CustomSectionForm', () => {
     expect(screen.getByRole('button', { name: /^subtitle$/i })).toHaveAttribute('aria-pressed', 'false')
   })
 })
+
+describe('CustomSectionForm accessible names', () => {
+  // Three role-level controls shipped with no accessible name at all: two
+  // inputs whose only identifier was a placeholder, and a select whose first
+  // <option> is not a name. A screen reader announced them as bare "edit text"
+  // and "combo box", so the fields were unusable without sight of the form.
+  function renderRoleWithAllFields() {
+    mockStore({
+      id: 'sec1',
+      name: 'Military Service',
+      enabledFields: ['roles', 'subtitle', 'keywords', 'level'] as CustomSectionFieldType[],
+      items: [{ id: 'i1', title: 'IDF', roles: [{ id: 'r1', title: 'Commander' }] }],
+    })
+    render(<CustomSectionForm sectionId="sec1" />)
+  }
+
+  it.each([
+    ['Subtitle', 'textbox'],
+    ['Add keyword', 'textbox'],
+    ['Level', 'combobox'],
+  ])('names the %s control', (name, role) => {
+    renderRoleWithAllFields()
+    expect(screen.getByRole(role, { name })).toBeTruthy()
+  })
+
+  it('keeps the level select usable by its name rather than its first option', () => {
+    renderRoleWithAllFields()
+    const select = screen.getByRole('combobox', { name: 'Level' })
+    fireEvent.change(select, { target: { value: 'Expert' } })
+    expect(updateCustomSection).toHaveBeenCalled()
+  })
+})

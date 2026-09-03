@@ -13,6 +13,7 @@ import type { Metadata } from 'next'
 import '@fontsource-variable/inter'
 import './globals.css'
 import { Toaster } from '@/components/ui/Toaster'
+import { SkipLink } from '@/components/ui/SkipLink'
 import { fontFaceCss } from '@/lib/fonts/families'
 
 export const metadata: Metadata = {
@@ -27,6 +28,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <style dangerouslySetInnerHTML={{ __html: fontFaceCss() }} />
       </head>
       <body className="min-h-screen antialiased">
+        {/* WCAG 2.4.1 Bypass Blocks. Every page here renders the same navbar
+            ahead of its content — on the dashboard that is seven action items —
+            so a keyboard or screen-reader user had to walk the whole bar again
+            on every navigation. First element in the body, hidden until it
+            takes focus, pointing at the `main` landmark each route provides. */}
+        <SkipLink />
         {children}
         <Toaster />
       </body>

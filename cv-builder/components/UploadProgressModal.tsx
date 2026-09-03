@@ -203,12 +203,12 @@ export default function UploadProgressModal({
             <p className="mb-4 text-sm text-indigo-600">{label}</p>
             <Progress value={percent} className="bg-indigo-100" indicatorClassName="bg-indigo-600" />
             <div className="mt-2 flex items-center justify-between">
-              <p className="text-xs font-medium text-indigo-500">{Math.round(percent)}%</p>
+              <p className="text-xs font-medium text-fg-muted">{Math.round(percent)}%</p>
               {canCancel && (
                 <button
                   ref={closeButtonRef}
                   onClick={handleDismiss}
-                  className="text-xs font-medium text-indigo-500 hover:text-indigo-700 hover:underline"
+                  className="text-xs font-medium text-fg-muted hover:text-fg-body hover:underline"
                 >
                   Cancel
                 </button>

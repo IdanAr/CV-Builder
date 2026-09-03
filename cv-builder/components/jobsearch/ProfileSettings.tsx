@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { ProfileWizard } from './ProfileWizard'
 import { COUNTRIES } from '@/lib/jobsearch/countries'
 import type { WorkMode, Seniority, JobLocation, ComeetCompanyWatch } from '@/lib/schemas/jobsearch.zod'
+import { ErrorBanner } from '@/components/ui/ErrorBanner'
 
 interface FullProfile {
   _id: string
@@ -53,7 +54,7 @@ export function ProfileSettings({ profileId }: ProfileSettingsProps) {
   }, [load])
 
   if (error && profile === null) {
-    return <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+    return <ErrorBanner>{error}</ErrorBanner>
   }
 
   if (profile === null) return null

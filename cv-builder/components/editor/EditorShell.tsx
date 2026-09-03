@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, useReducedMotion } from 'framer-motion'
+import { handleTablistKeyDown, tabIndexFor } from '@/lib/tablist-keys'
 import { useMediaQuery } from '@/lib/hooks/use-media-query'
 import { useResumeEditorStore, initAutoSave, flushSave } from '@/lib/stores/resume-editor.store'
 import { EditTab } from './EditTab'
@@ -280,7 +281,12 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
       </div>
 
       {/* Tab bar */}
-      <div role="tablist" aria-label="Editor sections" className="flex border-b border-indigo-100 shrink-0 bg-white/50">
+      <div
+        role="tablist"
+        aria-label="Editor sections"
+        onKeyDown={handleTablistKeyDown}
+        className="flex border-b border-indigo-100 shrink-0 bg-white/50"
+      >
         {(['edit', 'design', 'ats', 'coverLetter'] as Tab[]).map((tab) => (
           <button
             key={tab}
@@ -289,9 +295,10 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
             id={`editor-tab-${tab}`}
             aria-controls={`editor-panel-${tab}`}
             aria-selected={activeTab === tab}
+            tabIndex={tabIndexFor(activeTab === tab)}
             onClick={() => setActiveTab(tab)}
             className={`relative flex items-center justify-center min-h-[44px] px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === tab ? 'text-indigo-600' : 'text-indigo-400 hover:text-indigo-600'
+              activeTab === tab ? 'text-indigo-600' : 'text-fg-muted hover:text-fg-body'
             }`}
           >
             {TAB_LABELS[tab]}
@@ -351,7 +358,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
     return (
       <>
         <div className="flex items-center gap-2 px-3 h-12 border-b border-indigo-100 bg-white/50 shrink-0">
-          <span className="text-xs font-medium text-indigo-500 flex-1">Live Preview</span>
+          <span className="text-xs font-medium text-fg-muted flex-1">Live Preview</span>
           {showExpandToggle && (
             <button
               onClick={() => setPreviewExpanded((v) => !v)}
@@ -360,7 +367,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
               className={`flex items-center justify-center min-h-[40px] min-w-[40px] text-sm border rounded px-2 py-1 transition-colors ${
                 previewExpanded
                   ? 'border-indigo-400 bg-indigo-50 text-indigo-600'
-                  : 'border-indigo-200 text-indigo-500 hover:bg-indigo-50'
+                  : 'border-indigo-200 text-fg-muted hover:bg-indigo-50'
               }`}
             >
               ⛶
@@ -376,10 +383,22 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-violet-50">
+      {/*
+        The editor was the only route in the app without an h1 — every other
+        page has one ("My CVs", "Applications", "Job Search Profiles") — so a
+        screen reader listing headings here found nothing to orient by.
+
+        Visually hidden rather than drawn, because the résumé's name is already
+        on screen as an editable input in the panel below, and rendering it
+        twice would be redundant to sighted users. The input keeps its own
+        `aria-label`; this names the page, not the field.
+      */}
+      <h1 className="sr-only">{storeTitle ? `Editing ${storeTitle}` : 'CV editor'}</h1>
+
       {/* Top navbar */}
       <AppNavbar
         actions={
-          <div className="flex items-center gap-3 flex-1">
+          <div className="flex flex-1 flex-wrap items-center gap-3">
             <Link
               href="/dashboard"
               onClick={handleLeaveEditor}
@@ -392,7 +411,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
             <span
               role="status"
               aria-live="polite"
-              className={`text-xs ${saveError ? 'text-red-500' : 'text-indigo-400'}`}
+              className={`text-xs ${saveError ? 'text-fg-danger' : 'text-fg-muted'}`}
             >
               {saveError ?? saveStatus}
             </span>
@@ -422,17 +441,19 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
             <div
               role="tablist"
               aria-label="View"
+              onKeyDown={handleTablistKeyDown}
               className="flex gap-1 p-1 border-b border-indigo-100 bg-white/50 shrink-0"
             >
               <button
                 type="button"
                 role="tab"
                 aria-selected={mobileView === 'edit'}
+                tabIndex={tabIndexFor(mobileView === 'edit')}
                 onClick={() => setMobileView('edit')}
                 className={`flex-1 min-h-[40px] rounded text-sm font-medium transition-colors ${
                   mobileView === 'edit'
                     ? 'bg-indigo-600 text-white'
-                    : 'text-indigo-500 hover:bg-indigo-50'
+                    : 'text-fg-muted hover:bg-indigo-50'
                 }`}
               >
                 Edit
@@ -441,11 +462,12 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
                 type="button"
                 role="tab"
                 aria-selected={mobileView === 'preview'}
+                tabIndex={tabIndexFor(mobileView === 'preview')}
                 onClick={() => setMobileView('preview')}
                 className={`flex-1 min-h-[40px] rounded text-sm font-medium transition-colors ${
                   mobileView === 'preview'
                     ? 'bg-indigo-600 text-white'
-                    : 'text-indigo-500 hover:bg-indigo-50'
+                    : 'text-fg-muted hover:bg-indigo-50'
                 }`}
               >
                 Preview
@@ -472,6 +494,12 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
                     key={tab}
                     type="button"
                     onClick={() => { setPreviewExpanded(false); setActiveTab(tab) }}
+                    // Deliberately still a raw indigo-300, not the fg-subtle
+                    // token every other muted label moved to. This rail is
+                    // bg-indigo-900, so this is light-on-dark: indigo-300
+                    // measures 5.73:1 here and already clears AA, while the
+                    // token (a dark grey tuned for light surfaces) would be
+                    // near-invisible. Do not "fix" it to match its siblings.
                     className="text-xs text-indigo-300 hover:text-white transition-colors"
                     style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
                   >

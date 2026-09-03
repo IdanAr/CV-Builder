@@ -217,7 +217,7 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
               <p className="truncate text-sm font-semibold text-indigo-900">
                 {user.name ?? 'User'}
               </p>
-              <p className="truncate text-xs text-indigo-400">{user.email ?? ''}</p>
+              <p className="truncate text-xs text-fg-muted">{user.email ?? ''}</p>
             </div>
           </div>
 
@@ -280,7 +280,7 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
               ><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
             </div>
             <div className="max-h-[60vh] overflow-y-auto px-6 py-5 text-sm">
-              <p className="mb-4 text-xs text-indigo-400">Effective date: June 2026</p>
+              <p className="mb-4 text-xs text-fg-muted">Effective date: June 2026</p>
 
               <h3 className="mb-1 font-semibold text-indigo-900">1. Acceptance of Terms</h3>
               <p className="mb-4 leading-relaxed text-indigo-700">

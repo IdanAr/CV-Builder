@@ -45,7 +45,7 @@ export function FaqSection() {
               >
                 <span className="text-sm font-semibold text-gray-900">{question}</span>
                 <ChevronDown
-                  className={`h-4 w-4 shrink-0 text-indigo-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                  className={`h-4 w-4 shrink-0 text-fg-muted transition-transform ${isOpen ? 'rotate-180' : ''}`}
                   aria-hidden="true"
                 />
               </button>

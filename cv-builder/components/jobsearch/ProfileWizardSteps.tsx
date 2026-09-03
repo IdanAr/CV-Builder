@@ -1,4 +1,5 @@
 'use client'
+import { handleTablistKeyDown, tabIndexFor } from '@/lib/tablist-keys'
 
 interface ProfileWizardStepsProps {
   current: number
@@ -9,7 +10,12 @@ interface ProfileWizardStepsProps {
 
 export function ProfileWizardSteps({ current, maxUnlocked, labels, onStepClick }: ProfileWizardStepsProps) {
   return (
-    <div className="flex bg-indigo-50 rounded-full p-1 gap-1" role="tablist" aria-label="Job search profile setup steps">
+    <div
+      className="flex bg-indigo-50 rounded-full p-1 gap-1"
+      role="tablist"
+      aria-label="Job search profile setup steps"
+      onKeyDown={handleTablistKeyDown}
+    >
       {labels.map((label, index) => {
         const step = index + 1
         const isCurrent = step === current
@@ -20,7 +26,7 @@ export function ProfileWizardSteps({ current, maxUnlocked, labels, onStepClick }
           ? 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium bg-indigo-600 text-white shadow-md transition-colors'
           : isDone
           ? 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-colors'
-          : 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium text-indigo-300 cursor-not-allowed'
+          : 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium text-fg-subtle cursor-not-allowed'
 
         const badgeClass = isCurrent
           ? 'flex items-center justify-center h-4 w-4 rounded-full bg-white/25 text-[10px]'
@@ -38,6 +44,7 @@ export function ProfileWizardSteps({ current, maxUnlocked, labels, onStepClick }
             aria-selected={isCurrent}
             aria-disabled={isLocked}
             disabled={isLocked}
+            tabIndex={tabIndexFor(isCurrent)}
             onClick={() => onStepClick(step)}
             className={buttonClass}
           >

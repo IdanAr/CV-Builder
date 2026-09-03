@@ -60,7 +60,7 @@ export function AccordionSection({
         {dragHandleProps ? (
           <button
             type="button"
-            className="w-5 shrink-0 py-3 text-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity cursor-grab text-indigo-300 hover:text-indigo-500 select-none"
+            className="w-5 shrink-0 py-3 text-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity cursor-grab text-fg-subtle hover:text-fg-body select-none"
             {...dragHandleProps.listeners}
             {...dragHandleProps.attributes}
             aria-label="Drag to reorder"
@@ -71,7 +71,7 @@ export function AccordionSection({
           <span className="w-5 shrink-0" aria-hidden="true" />
         )}
         {icon && (
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-fg-muted">
             {icon}
           </span>
         )}
@@ -113,7 +113,7 @@ export function AccordionSection({
           </button>
         )}
         {badge && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-500 shrink-0">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-fg-muted shrink-0">
             {badge}
           </span>
         )}
@@ -130,7 +130,7 @@ export function AccordionSection({
           onClick={onToggle}
           aria-expanded={isOpen}
           aria-label={`Toggle ${title}`}
-          className="text-indigo-300 text-xs px-3 py-3"
+          className="text-fg-subtle text-xs px-3 py-3"
         >
           <motion.span
             animate={{ rotate: isOpen ? 180 : 0 }}

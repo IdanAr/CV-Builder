@@ -187,7 +187,7 @@ function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumn
       <span
         {...attributes}
         {...listeners}
-        className="text-indigo-300 cursor-grab active:cursor-grabbing text-base select-none"
+        className="text-fg-subtle cursor-grab active:cursor-grabbing text-base select-none"
         aria-label="Drag to reorder"
       >
         ⠿
@@ -201,7 +201,7 @@ function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumn
           className={`px-3 py-1 rounded-[4px] transition-all duration-200 ${
             side === 'left'
               ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5'
-              : 'text-indigo-400 hover:text-indigo-600 hover:bg-indigo-100/50'
+              : 'text-fg-muted hover:text-fg-body hover:bg-indigo-100/50'
           }`}
         >
           Left
@@ -212,7 +212,7 @@ function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumn
           className={`px-3 py-1 rounded-[4px] transition-all duration-200 ${
             side === 'right'
               ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5'
-              : 'text-indigo-400 hover:text-indigo-600 hover:bg-indigo-100/50'
+              : 'text-fg-muted hover:text-fg-body hover:bg-indigo-100/50'
           }`}
         >
           Right
@@ -361,7 +361,7 @@ export function DesignPanel() {
               <TemplateThumb id={t.id} active={meta.templateId === t.id} />
               <div className="min-w-0">
                 <div className="font-medium text-sm">{t.label}</div>
-                <div className="text-xs text-indigo-400 mt-0.5">{t.desc}</div>
+                <div className="text-xs text-fg-muted mt-0.5">{t.desc}</div>
               </div>
             </button>
           ))}
@@ -373,7 +373,7 @@ export function DesignPanel() {
       <div>
         <p className={labelClass}>Layout</p>
         {meta.templateId === 'sidebar' ? (
-          <p className="text-xs text-indigo-300 mt-1.5">The Sidebar template always uses a rail + main column layout.</p>
+          <p className="text-xs text-fg-subtle mt-1.5">The Sidebar template always uses a rail + main column layout.</p>
         ) : (
           <>
             <div className="flex gap-2" role="group" aria-label="Layout">
@@ -389,7 +389,7 @@ export function DesignPanel() {
                   className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 text-sm rounded-xl border transition-all duration-200 ${
                     meta.layout === layout
                       ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-medium shadow-sm'
-                      : 'border-indigo-100 text-indigo-500 hover:border-indigo-300 hover:shadow-sm'
+                      : 'border-indigo-100 text-fg-muted hover:border-indigo-300 hover:shadow-sm'
                   }`}
                 >
                   <svg aria-hidden="true" viewBox="0 0 28 20" className="h-5 w-7">
@@ -405,7 +405,7 @@ export function DesignPanel() {
               ))}
             </div>
             {meta.templateId === 'minimal' && (
-              <p className="text-xs text-indigo-300 mt-1.5">The Minimal template supports a single column only.</p>
+              <p className="text-xs text-fg-subtle mt-1.5">The Minimal template supports a single column only.</p>
             )}
           </>
         )}
@@ -443,7 +443,7 @@ export function DesignPanel() {
               </SortableContext>
             </DndContext>
           </div>
-          <p className="text-xs text-indigo-300 mt-1.5 text-center">⠿ drag to reorder · click badge to switch column</p>
+          <p className="text-xs text-fg-subtle mt-1.5 text-center">⠿ drag to reorder · click badge to switch column</p>
         </div>
       )}
 
@@ -461,7 +461,7 @@ export function DesignPanel() {
             value={meta.sidebarRailWidth ?? 33}
             onChange={(e) => setMeta({ sidebarRailWidth: parseFloat(e.target.value) })}
             className="w-full accent-indigo-600" />
-          <div className="flex justify-between text-xs text-indigo-300 mt-0.5">
+          <div className="flex justify-between text-xs text-fg-subtle mt-0.5">
             <span>20% (min)</span><span>40%</span>
           </div>
         </div>
@@ -521,7 +521,7 @@ export function DesignPanel() {
             })}
           </div>
           {primaryColorTouched && !HEX_COLOR_RE.test(primaryColorDraft) && (
-            <p className="text-sm text-red-500 mt-1">Enter a valid hex color (e.g. #0066cc)</p>
+            <p className="text-sm text-fg-danger mt-1">Enter a valid hex color (e.g. #0066cc)</p>
           )}
         </div>
         <div>
@@ -557,7 +557,7 @@ export function DesignPanel() {
             })}
           </div>
           {accentColorTouched && !HEX_COLOR_RE.test(accentColorDraft) && (
-            <p className="text-sm text-red-500 mt-1">Enter a valid hex color (e.g. #0066cc)</p>
+            <p className="text-sm text-fg-danger mt-1">Enter a valid hex color (e.g. #0066cc)</p>
           )}
         </div>
       </div>
@@ -571,7 +571,7 @@ export function DesignPanel() {
           value={meta.pageMargins}
           onChange={(e) => setMeta({ pageMargins: parseFloat(e.target.value) })}
           className="w-full accent-indigo-600" />
-        <div className="flex justify-between text-xs text-indigo-300 mt-0.5">
+        <div className="flex justify-between text-xs text-fg-subtle mt-0.5">
           <span>0.5&quot; (min)</span><span>1.5&quot;</span>
         </div>
       </div>
@@ -585,7 +585,7 @@ export function DesignPanel() {
           value={meta.lineSpacing}
           onChange={(e) => setMeta({ lineSpacing: parseFloat(e.target.value) })}
           className="w-full accent-indigo-600" />
-        <div className="flex justify-between text-xs text-indigo-300 mt-0.5">
+        <div className="flex justify-between text-xs text-fg-subtle mt-0.5">
           <span>1.00</span><span>1.15</span>
         </div>
       </div>

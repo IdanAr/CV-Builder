@@ -34,7 +34,7 @@ export default async function DashboardPage() {
         actions={
           // CV actions sit on the left; ml-auto on the Applications link pushes
           // the navigation/profile cluster to the right edge.
-          <div className="flex items-center gap-3 flex-1">
+          <div className="flex flex-1 flex-wrap items-center gap-3">
             <NewResumeButton />
             <UploadCVButton />
             <Link

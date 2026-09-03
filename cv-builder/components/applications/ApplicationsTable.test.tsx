@@ -351,3 +351,44 @@ describe('ApplicationsTable', () => {
     })
   })
 })
+
+describe('aria-sort', () => {
+  // The sort *button* already announced direction in its aria-label, but that
+  // only reaches someone who has navigated onto the button. aria-sort belongs
+  // on the columnheader, which is where a screen reader's table mode reads how
+  // the grid is ordered.
+  it('reports every sortable column as unsorted when no sort is active', () => {
+    renderTable({ sort: [] })
+    const headers = screen.getAllByRole('columnheader')
+    const sortable = headers.filter((h) => h.hasAttribute('aria-sort'))
+    expect(sortable.length).toBeGreaterThan(0)
+    expect(sortable.every((h) => h.getAttribute('aria-sort') === 'none')).toBe(true)
+  })
+
+  it.each([
+    ['asc', 'ascending'],
+    ['desc', 'descending'],
+  ])('reports the %s sort direction on the sorted column', (direction, expected) => {
+    renderTable({ sort: [{ columnId: 'company', direction: direction as 'asc' | 'desc' }] })
+    const sorted = screen
+      .getAllByRole('columnheader')
+      .filter((h) => h.getAttribute('aria-sort') === expected)
+    expect(sorted).toHaveLength(1)
+  })
+
+  // ARIA asks that at most one header carry a direction at a time, so a
+  // multi-level sort exposes only its primary level.
+  it('exposes only the primary level of a multi-level sort', () => {
+    renderTable({
+      sort: [
+        { columnId: 'company', direction: 'asc' },
+        { columnId: 'role', direction: 'desc' },
+      ],
+    })
+    const directed = screen
+      .getAllByRole('columnheader')
+      .filter((h) => ['ascending', 'descending'].includes(h.getAttribute('aria-sort') ?? ''))
+    expect(directed).toHaveLength(1)
+    expect(directed[0].getAttribute('aria-sort')).toBe('ascending')
+  })
+})

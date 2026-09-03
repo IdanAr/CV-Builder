@@ -1,4 +1,5 @@
 'use client'
+import { handleTablistKeyDown, tabIndexFor } from '@/lib/tablist-keys'
 
 export type WizardStep = 1 | 2 | 3
 
@@ -18,7 +19,12 @@ const STEPS: WizardStep[] = [1, 2, 3]
 
 export function StepsBar({ current, maxUnlocked, onStepClick }: StepsBarProps) {
   return (
-    <div className="flex bg-indigo-50 rounded-full p-1 gap-1" role="tablist" aria-label="ATS analysis steps">
+    <div
+      className="flex bg-indigo-50 rounded-full p-1 gap-1"
+      role="tablist"
+      aria-label="ATS analysis steps"
+      onKeyDown={handleTablistKeyDown}
+    >
       {STEPS.map((step) => {
         const isCurrent = step === current
         const isLocked = step > maxUnlocked
@@ -28,7 +34,7 @@ export function StepsBar({ current, maxUnlocked, onStepClick }: StepsBarProps) {
           ? 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium bg-indigo-600 text-white shadow-md transition-colors'
           : isDone
           ? 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-colors'
-          : 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium text-indigo-300 cursor-not-allowed'
+          : 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium text-fg-subtle cursor-not-allowed'
 
         const badgeClass = isCurrent
           ? 'flex items-center justify-center h-4 w-4 rounded-full bg-white/25 text-[10px]'
@@ -43,6 +49,7 @@ export function StepsBar({ current, maxUnlocked, onStepClick }: StepsBarProps) {
             role="tab"
             aria-selected={isCurrent}
             aria-disabled={isLocked}
+            tabIndex={tabIndexFor(isCurrent)}
             disabled={isLocked}
             onClick={() => onStepClick(step)}
             className={buttonClass}

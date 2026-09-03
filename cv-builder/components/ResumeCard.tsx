@@ -211,13 +211,13 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
         {/* Added 'relative z-10' to text so it stays selectable above the link */}
         <div className="min-w-0 relative z-10 pointer-events-none">
           <p className="truncate font-semibold text-indigo-900">{resume.title}</p>
-          <p className="truncate text-sm text-indigo-400">
+          <p className="truncate text-sm text-fg-muted">
             {resume.data.basics?.label ?? 'No role set'} · {resume.meta.templateId ?? 'classic'} template
           </p>
           {resume.parentResumeId && resume.parentResumeTitle && (
             <Link
               href={`/dashboard/resumes/${resume.parentResumeId}`}
-              className="pointer-events-auto mt-0.5 inline-block truncate text-xs text-indigo-400 hover:text-indigo-600 hover:underline"
+              className="pointer-events-auto mt-0.5 inline-block truncate text-xs text-fg-muted hover:text-fg-body hover:underline"
             >
               Based on: {resume.parentResumeTitle}
             </Link>
@@ -317,7 +317,7 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
       {/* Metadata row - pointer-events-none allows clicking through to the main card link */}
       <div className="mt-3 flex flex-wrap gap-6 border-t border-indigo-100 pt-3 relative z-10 pointer-events-none">
         <div>
-          <p className="text-xs uppercase tracking-wide text-indigo-400">Status</p>
+          <p className="text-xs uppercase tracking-wide text-fg-muted">Status</p>
           <p className="mt-0.5">
             <span
               className="inline-flex max-w-full items-center truncate rounded-full px-2 py-0.5 text-xs font-medium text-white"
@@ -328,31 +328,31 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
           </p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wide text-indigo-400">Created</p>
+          <p className="text-xs uppercase tracking-wide text-fg-muted">Created</p>
           <p className="mt-0.5 text-sm text-indigo-900">{formatDate(resume.createdAt)}</p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wide text-indigo-400">Last Edited</p>
+          <p className="text-xs uppercase tracking-wide text-fg-muted">Last Edited</p>
           <p className="mt-0.5 text-sm text-indigo-900">{formatRelativeTime(resume.updatedAt)}</p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wide text-indigo-400">Sections</p>
+          <p className="text-xs uppercase tracking-wide text-fg-muted">Sections</p>
           <p className="mt-0.5 text-sm text-indigo-900">{resume.sectionsFilledCount} filled</p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wide text-indigo-400">Layout</p>
+          <p className="text-xs uppercase tracking-wide text-fg-muted">Layout</p>
           <p className="mt-0.5 text-sm capitalize text-indigo-900">
             {(resume.meta.layout ?? 'single-column').replace('-', ' ')}
           </p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wide text-indigo-400">Format Score</p>
+          <p className="text-xs uppercase tracking-wide text-fg-muted">Format Score</p>
           <p className={`mt-0.5 text-sm font-medium ${
             resume.formatScore >= 20
               ? 'text-green-600'
               : resume.formatScore >= 10
               ? 'text-yellow-600'
-              : 'text-red-500'
+              : 'text-fg-danger'
           }`}>
             {resume.formatScore}/25
           </p>

@@ -27,7 +27,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
 
   return (
     <PlasmaBackground>
-      <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-4">
+      <main id="main-content" className="flex min-h-screen flex-col items-center justify-center gap-4 px-4">
         <Link href="/" className="text-sm font-medium text-indigo-700 hover:text-indigo-900">
           ← Back to home
         </Link>
@@ -64,7 +64,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
               CV Builder
             </h1>
-            <p className="text-sm text-indigo-400">Sign in to continue</p>
+            <p className="text-sm text-fg-muted">Sign in to continue</p>
           </div>
 
           {errorMessage && (

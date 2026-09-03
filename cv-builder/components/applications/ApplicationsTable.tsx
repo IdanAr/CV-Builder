@@ -7,7 +7,13 @@
 // disabled while a column sort is active, since manual ordering and an
 // active sort are contradictory.
 import { memo } from 'react'
-import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
+import {
+  DndContext,
+  closestCenter,
+  type Announcements,
+  type DragEndEvent,
+  type ScreenReaderInstructions,
+} from '@dnd-kit/core'
 import {
   SortableContext,
   horizontalListSortingStrategy,
@@ -16,7 +22,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, X } from 'lucide-react'
-import type { BoardColumn, CustomFieldValue } from '@/lib/schemas/application.zod'
+import type { BoardColumn, CustomFieldValue, SortEntry } from '@/lib/schemas/application.zod'
 import type { ApplicationRow, ResumeOption } from '@/lib/applications/types'
 import { getCellValue, isColumnEditable } from '@/lib/applications/cells'
 import {
@@ -89,11 +95,92 @@ export function columnWidth(column: BoardColumn): number {
   return column.width ?? DEFAULT_COLUMN_WIDTH
 }
 
+// Mirrors ApplicationsBoard's screenReaderInstructions/announcements pattern
+// (also copied by DesignPanel and ListFieldManager). These were the last two
+// DndContexts in the app with neither: dnd-kit's silent default leaves a
+// keyboard user with no idea what they picked up, where it is, or whether the
+// drop landed — and the table has two independent reorderings, so "moved to
+// position 3" alone would be ambiguous between rows and columns.
+
+const columnDragInstructions: ScreenReaderInstructions = {
+  draggable:
+    'To reorder a column: press space or enter to pick it up, use the left and right arrow keys to move it, then press space or enter again to drop it. Press escape to cancel.',
+}
+
+const rowDragInstructions: ScreenReaderInstructions = {
+  draggable:
+    'To reorder an application: press space or enter to pick it up, use the up and down arrow keys to move it, then press space or enter again to drop it. Press escape to cancel.',
+}
+
+function buildColumnAnnouncements(columns: BoardColumn[]): Announcements {
+  const label = (id: string) => columns.find((c) => c.id === id)?.label ?? 'a column'
+  const position = (id: string) => {
+    const i = columns.findIndex((c) => c.id === id)
+    return i === -1 ? '' : ` (position ${i + 1} of ${columns.length})`
+  }
+  return {
+    onDragStart: ({ active }) => `Picked up the ${label(String(active.id))} column${position(String(active.id))}.`,
+    onDragOver: ({ active, over }) =>
+      over
+        ? `The ${label(String(active.id))} column is over the ${label(String(over.id))} column${position(String(over.id))}.`
+        : `The ${label(String(active.id))} column is no longer over a drop target.`,
+    onDragEnd: ({ active, over }) =>
+      over
+        ? `The ${label(String(active.id))} column was dropped at ${label(String(over.id))}'s place${position(String(over.id))}.`
+        : `The ${label(String(active.id))} column was dropped where it started.`,
+    onDragCancel: ({ active }) => `Reordering the ${label(String(active.id))} column was cancelled.`,
+  }
+}
+
+function buildRowAnnouncements(applications: ApplicationRow[]): Announcements {
+  const describe = (id: string) => {
+    const app = applications.find((a) => a._id === id)
+    if (!app) return 'the application'
+    return app.company ? `the application at ${app.company}` : 'the untitled application'
+  }
+  const position = (id: string) => {
+    const i = applications.findIndex((a) => a._id === id)
+    return i === -1 ? '' : ` (row ${i + 1} of ${applications.length})`
+  }
+  return {
+    onDragStart: ({ active }) => `Picked up ${describe(String(active.id))}${position(String(active.id))}.`,
+    onDragOver: ({ active, over }) =>
+      over
+        ? `${describe(String(active.id))} is over ${describe(String(over.id))}${position(String(over.id))}.`
+        : `${describe(String(active.id))} is no longer over a drop target.`,
+    onDragEnd: ({ active, over }) =>
+      over
+        ? `${describe(String(active.id))} was dropped at ${describe(String(over.id))}'s place${position(String(over.id))}.`
+        : `${describe(String(active.id))} was dropped where it started.`,
+    onDragCancel: ({ active }) => `Reordering ${describe(String(active.id))} was cancelled.`,
+  }
+}
+
+/**
+ * ARIA asks that at most one header carry a sort direction at a time, so a
+ * multi-level sort exposes only its primary level. Every other column reports
+ * "none", which is what tells assistive technology the column is sortable at
+ * all rather than merely unsorted.
+ */
+function ariaSortFor(columnId: string, sort: SortEntry[]): 'ascending' | 'descending' | 'none' {
+  const primary = sort[0]
+  if (!primary || primary.columnId !== columnId) return 'none'
+  return primary.direction === 'asc' ? 'ascending' : 'descending'
+}
+
 function SortableHeaderCell({
   column,
+  ariaSort,
   children,
 }: {
   column: BoardColumn
+  /**
+   * Read by a screen reader's table mode, which is where a blind user learns
+   * how the grid is ordered. The sort *button* already announced direction in
+   * its label, but that only helps someone who has navigated onto the button;
+   * aria-sort belongs on the columnheader itself.
+   */
+  ariaSort: 'ascending' | 'descending' | 'none'
   children: React.ReactNode
 }) {
   const { listeners, attributes, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -103,6 +190,7 @@ function SortableHeaderCell({
     <div
       ref={setNodeRef}
       role="columnheader"
+      aria-sort={ariaSort}
       style={{
         width: columnWidth(column),
         transform: CSS.Transform.toString(transform),
@@ -118,7 +206,7 @@ function SortableHeaderCell({
         title="Drag to reorder column"
         {...attributes}
         {...listeners}
-        className="shrink-0 cursor-grab touch-none rounded px-0.5 text-indigo-300 hover:text-indigo-500 active:cursor-grabbing"
+        className="shrink-0 cursor-grab touch-none rounded px-0.5 text-fg-subtle hover:text-fg-body active:cursor-grabbing"
       >
         <GripVertical className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -167,7 +255,7 @@ function SortableRow({
           className={`touch-none rounded px-0.5 text-sm ${
             dragDisabled
               ? 'cursor-not-allowed text-indigo-200'
-              : 'cursor-grab text-indigo-300 opacity-0 transition group-hover/row:opacity-100 hover:text-indigo-500 focus:opacity-100 active:cursor-grabbing'
+              : 'cursor-grab text-fg-subtle opacity-0 transition group-hover/row:opacity-100 hover:text-fg-body focus:opacity-100 active:cursor-grabbing'
           }`}
         >
           <GripVertical className="h-4 w-4" aria-hidden="true" />
@@ -189,6 +277,11 @@ export interface ApplicationsTableProps {
   onColumnMove?: (activeId: string, overId: string) => void
   /** False while a column sort is active — manual order and sorting conflict. */
   rowDragEnabled?: boolean
+  /**
+   * Current sort, purely so the header cells can expose `aria-sort`. The table
+   * receives already-sorted rows; it does not sort anything itself.
+   */
+  sort?: SortEntry[]
   /** Per-row trailing accessory (activity-log trigger etc.), rendered in the actions cell. */
   renderRowAccessory?: (app: ApplicationRow) => React.ReactNode
   /** Header decoration/behavior injection point (sort controls). */
@@ -206,6 +299,7 @@ export default function ApplicationsTable({
   onRowMove,
   onColumnMove,
   rowDragEnabled = false,
+  sort = [],
   renderRowAccessory,
   renderHeaderCell,
   headerAccessory,
@@ -226,16 +320,28 @@ export default function ApplicationsTable({
     <div className="min-h-[28rem] overflow-x-auto rounded-xl border border-white/30 bg-white/65 shadow-lg backdrop-blur-xl">
       <div role="table" aria-label="Applications" className="min-w-max">
         {/* Header (columns are drag-reorderable) */}
-        <DndContext id="applications-table-columns" collisionDetection={closestCenter} onDragEnd={handleColumnDragEnd}>
+        <DndContext
+          id="applications-table-columns"
+          collisionDetection={closestCenter}
+          onDragEnd={handleColumnDragEnd}
+          accessibility={{
+            announcements: buildColumnAnnouncements(ordered),
+            screenReaderInstructions: columnDragInstructions,
+          }}
+        >
           <SortableContext items={ordered.map((c) => c.id)} strategy={horizontalListSortingStrategy}>
             <div role="row" className="sticky top-0 z-10 flex border-b border-indigo-100 bg-white">
               <div role="columnheader" style={{ width: GRIP_COLUMN_WIDTH }} className="shrink-0" />
               {ordered.map((column) => (
-                <SortableHeaderCell key={column.id} column={column}>
+                <SortableHeaderCell
+                  key={column.id}
+                  column={column}
+                  ariaSort={ariaSortFor(column.id, sort)}
+                >
                   {renderHeaderCell ? (
                     renderHeaderCell(column)
                   ) : (
-                    <span className="text-xs font-semibold uppercase tracking-wide text-indigo-500">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
                       {column.label}
                     </span>
                   )}
@@ -249,7 +355,15 @@ export default function ApplicationsTable({
         </DndContext>
 
         {/* Rows (drag-reorderable while no column sort is active) */}
-        <DndContext id="applications-table-rows" collisionDetection={closestCenter} onDragEnd={handleRowDragEnd}>
+        <DndContext
+          id="applications-table-rows"
+          collisionDetection={closestCenter}
+          onDragEnd={handleRowDragEnd}
+          accessibility={{
+            announcements: buildRowAnnouncements(applications),
+            screenReaderInstructions: rowDragInstructions,
+          }}
+        >
           <SortableContext
             items={applications.map((a) => a._id)}
             strategy={verticalListSortingStrategy}

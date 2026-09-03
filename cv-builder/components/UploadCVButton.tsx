@@ -136,7 +136,7 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
               Upload CV
             </span>
           </button>
-          <span className="mt-1.5 block text-center text-xs text-indigo-400">{requirementsText}</span>
+          <span className="mt-1.5 block text-center text-xs text-fg-muted">{requirementsText}</span>
         </span>
       ) : (
         <>

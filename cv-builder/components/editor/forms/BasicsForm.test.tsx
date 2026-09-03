@@ -87,3 +87,53 @@ it('removes a URL row', () => {
   fireEvent.click(screen.getByLabelText('Remove URL'))
   expect(useResumeEditorStore.getState().data.basics?.profiles).toHaveLength(0)
 })
+
+// These are the user's own contact details, and the app declared no
+// autoComplete anywhere at all — so browsers and password managers could not
+// offer to fill in a single field, on the one form where that helps most.
+describe('autofill', () => {
+  it.each([
+    ['Jane Smith', 'name'],
+    ['Software Engineer', 'organization-title'],
+    ['jane@example.com', 'email'],
+    ['+1 555 123 4567', 'tel'],
+    ['San Francisco', 'address-level2'],
+    ['CA', 'address-level1'],
+    ['US', 'country'],
+  ])('offers autofill for the %s field', (placeholder, token) => {
+    render(<BasicsForm />)
+    expect(screen.getByPlaceholderText(placeholder).getAttribute('autocomplete')).toBe(token)
+  })
+})
+
+describe('link rows', () => {
+  // Both inputs carried a sibling `<label className="sr-only">` with no
+  // htmlFor, which does not wrap the control either — so it named nothing and
+  // the field's only identifier was its placeholder.
+  it('names both link fields, and numbers them so rows stay distinguishable', () => {
+    useResumeEditorStore.setState({
+      ...useResumeEditorStore.getState(),
+      data: {
+        basics: {
+          profiles: [
+            { id: 'p1', label: 'GitHub', url: 'https://github.com/x' },
+            { id: 'p2', label: 'Site', url: 'https://x.dev' },
+          ],
+        },
+      },
+    })
+    render(<BasicsForm />)
+    for (const name of ['Link 1 label', 'Link 1 URL', 'Link 2 label', 'Link 2 URL']) {
+      expect(screen.getByLabelText(name)).toBeTruthy()
+    }
+  })
+
+  it('offers URL autofill on the link field', () => {
+    useResumeEditorStore.setState({
+      ...useResumeEditorStore.getState(),
+      data: { basics: { profiles: [{ id: 'p1', label: '', url: '' }] } },
+    })
+    render(<BasicsForm />)
+    expect(screen.getByLabelText('Link 1 URL').getAttribute('autocomplete')).toBe('url')
+  })
+})

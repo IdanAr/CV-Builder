@@ -35,7 +35,7 @@ export function ColumnHeader({
           entry ? ` (currently ${entry.direction === 'asc' ? 'ascending' : 'descending'})` : ''
         }`}
         title="Click to sort · Shift-click to add a sort level"
-        className="flex min-w-0 flex-1 items-center gap-1 rounded px-0.5 text-left text-xs font-semibold uppercase tracking-wide text-indigo-500 hover:text-indigo-700"
+        className="flex min-w-0 flex-1 items-center gap-1 rounded px-0.5 text-left text-xs font-semibold uppercase tracking-wide text-fg-muted hover:text-fg-body"
       >
         <span className="truncate">{column.label}</span>
         {entry && (
@@ -53,7 +53,7 @@ export function ColumnHeader({
           aria-label={`Edit ${column.label} column`}
           title="Edit column"
           onClick={() => onEdit(column)}
-          className="shrink-0 rounded px-0.5 text-[11px] text-indigo-300 opacity-0 transition group-hover/header:opacity-100 hover:text-indigo-600 focus:opacity-100"
+          className="shrink-0 rounded px-0.5 text-[11px] text-fg-subtle opacity-0 transition group-hover/header:opacity-100 hover:text-fg-body focus:opacity-100"
         >
           <Pencil className="h-3 w-3" aria-hidden="true" />
         </button>
@@ -64,7 +64,7 @@ export function ColumnHeader({
           aria-label={`Delete ${column.label} column`}
           title="Delete column"
           onClick={() => onDelete(column)}
-          className="shrink-0 rounded px-0.5 text-[11px] text-indigo-300 opacity-0 transition group-hover/header:opacity-100 hover:text-red-500 focus:opacity-100"
+          className="shrink-0 rounded px-0.5 text-[11px] text-fg-subtle opacity-0 transition group-hover/header:opacity-100 hover:text-fg-danger focus:opacity-100"
         >
           <X className="h-3 w-3" aria-hidden="true" />
         </button>

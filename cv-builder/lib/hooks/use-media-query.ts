@@ -7,12 +7,19 @@ import { useEffect, useState } from 'react'
  * below a breakpoint instead of merely hiding it with CSS.
  */
 export function useMediaQuery(query: string): boolean {
-  const getMatches = () =>
-    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-      ? window.matchMedia(query).matches
-      : false
-
-  const [matches, setMatches] = useState<boolean>(getMatches)
+  // Always starts false, even though the real answer is available on the
+  // client, because the *first* client render is the hydration render and it
+  // has to reproduce what the server produced. Seeding from matchMedia looked
+  // like a free head start, but it meant the server said "not mobile" while
+  // the client's first pass said "mobile" — React then threw a hydration
+  // mismatch and rebuilt the tree. In the editor that is not cosmetic: the two
+  // branches are entirely different layouts, so the whole shell was discarded
+  // and re-rendered on every narrow-viewport load.
+  //
+  // The effect below publishes the true value immediately after mount, which
+  // costs one frame of the desktop layout and is the accepted trade for a tree
+  // that actually hydrates.
+  const [matches, setMatches] = useState<boolean>(false)
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
