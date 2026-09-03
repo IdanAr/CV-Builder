@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ProfileWizard } from './ProfileWizard'
+import { ErrorBanner } from '@/components/ui/ErrorBanner'
 
 interface ProfileSummary {
   _id: string
@@ -81,7 +82,7 @@ export function ProfileList() {
   if (error && profiles === null) {
     return (
       <div className="flex flex-col items-center gap-3 py-8">
-        <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        <ErrorBanner>{error}</ErrorBanner>
         <button type="button" className="rounded bg-indigo-600 px-4 py-2 text-sm text-white" onClick={() => load()}>
           Try again
         </button>
@@ -91,7 +92,7 @@ export function ProfileList() {
 
   if (profiles === null) return null
 
-  const errorBanner = error ? <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null
+  const errorBanner = error ? <ErrorBanner>{error}</ErrorBanner> : null
 
   if (showWizard) {
     return (

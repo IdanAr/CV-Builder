@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { ErrorBanner } from '@/components/ui/ErrorBanner'
 
 interface NotifyMatch {
   _id: string
@@ -71,7 +72,7 @@ export function JobMatchesFeed() {
   if (error && matches === null) {
     return (
       <div className="flex flex-col items-center gap-3 py-8">
-        <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        <ErrorBanner>{error}</ErrorBanner>
         <button
           type="button"
           className="rounded bg-indigo-600 px-4 py-2 text-sm text-white"
@@ -90,7 +91,7 @@ export function JobMatchesFeed() {
 
   return (
     <div className="flex flex-col gap-3">
-      {error && <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {error && <ErrorBanner>{error}</ErrorBanner>}
       {matches.length === 0 ? (
         <p className="text-sm text-gray-500">
           No job matches yet - they&apos;ll show up here once a scan finds one that matches one of your notify rules.

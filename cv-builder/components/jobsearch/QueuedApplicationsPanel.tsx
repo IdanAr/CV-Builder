@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { ErrorBanner } from '@/components/ui/ErrorBanner'
 
 interface QueuedJobSummary {
   _id: string
@@ -157,7 +158,7 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
   }
 
   if (jobs === null) {
-    return error ? <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null
+    return error ? <ErrorBanner>{error}</ErrorBanner> : null
   }
 
   if (jobs.length === 0) {
@@ -170,7 +171,7 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
 
   return (
     <div className="flex flex-col gap-3">
-      {error && <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {error && <ErrorBanner>{error}</ErrorBanner>}
       <ul className="flex flex-col gap-2">
         {jobs.map((job) => {
           const isExpanded = expandedId === job._id
