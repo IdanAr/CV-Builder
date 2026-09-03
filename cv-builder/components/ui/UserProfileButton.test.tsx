@@ -64,17 +64,27 @@ describe('UserProfileButton', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
+  // Written against the item count rather than a hard-coded two, because this
+  // menu grows: it was Terms and Sign Out, then Settings landed and the old
+  // assertion that a second ArrowDown wrapped to the top became false.
   it('moves focus into the menu on open and supports arrow-key navigation', async () => {
     render(<UserProfileButton user={user} />)
     await userEvent.click(screen.getByRole('button', { name: /open user menu/i }))
     const items = screen.getAllByRole('menuitem')
+    expect(items.length).toBeGreaterThan(1)
+
     expect(items[0]).toHaveFocus()
+
     await userEvent.keyboard('{ArrowDown}')
     expect(items[1]).toHaveFocus()
-    await userEvent.keyboard('{ArrowDown}')
+
+    // Down from the last item wraps to the first.
+    for (let i = 1; i < items.length; i++) await userEvent.keyboard('{ArrowDown}')
     expect(items[0]).toHaveFocus()
+
+    // Up from the first wraps to the last.
     await userEvent.keyboard('{ArrowUp}')
-    expect(items[1]).toHaveFocus()
+    expect(items[items.length - 1]).toHaveFocus()
   })
 
   it('returns focus to the trigger button when Escape closes the menu', async () => {
@@ -117,5 +127,17 @@ describe('UserProfileButton', () => {
     fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
     fireEvent.click(screen.getByRole('menuitem', { name: /terms/i }))
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  // The audit found the profile menu held exactly two items — Terms and Sign
+  // Out — while the privacy policy promised data access and deletion rights
+  // with nowhere to exercise them. This is the way in.
+  it('offers a way into account settings', () => {
+    render(<UserProfileButton user={user} />)
+    fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
+    expect(screen.getByRole('menuitem', { name: /settings/i })).toHaveAttribute(
+      'href',
+      '/dashboard/settings'
+    )
   })
 })

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { LegalPageShell } from '@/components/marketing/LegalPageShell'
+import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
@@ -111,12 +112,16 @@ export default function PrivacyPolicyPage() {
         <p className="mt-2">
           We retain your account, résumé, and application data for as long as your account exists, so that the
           Service remains available to you. You can permanently delete an individual résumé or job application at
-          any time from your dashboard; deleting a job application also deletes its associated activity log. To
-          request deletion of your entire account and all associated data, contact us at{' '}
+          any time from your dashboard; deleting a job application also deletes its associated activity log. You
+          can also delete your entire account and all associated data yourself, immediately, from{' '}
+          <Link href="/dashboard/settings" className="text-indigo-600 hover:text-indigo-800">
+            your account settings
+          </Link>
+          . If you would rather we did it for you, contact us at{' '}
           <a href="mailto:idan.rbel@gmail.com" className="text-indigo-600 hover:text-indigo-800">
             idan.rbel@gmail.com
-          </a>{' '}
-          - we will process such requests within a reasonable time.
+          </a>
+          .
         </p>
       </section>
 
@@ -125,8 +130,13 @@ export default function PrivacyPolicyPage() {
         <p className="mt-2">
           Subject to applicable law, you have the right to access the personal data we hold about you, request
           correction of inaccurate data, request deletion of your data, and object to certain processing. You can
-          exercise most of these rights directly within the Service (editing or deleting your résumés and
-          applications); for anything else, contact us at{' '}
+          exercise these rights directly within the Service: download a complete copy of your data, or delete
+          your account outright, from{' '}
+          <Link href="/dashboard/settings" className="text-indigo-600 hover:text-indigo-800">
+            your account settings
+          </Link>
+          , and edit or delete individual résumés and applications from your dashboard. For anything else,
+          contact us at{' '}
           <a href="mailto:idan.rbel@gmail.com" className="text-indigo-600 hover:text-indigo-800">
             idan.rbel@gmail.com
           </a>

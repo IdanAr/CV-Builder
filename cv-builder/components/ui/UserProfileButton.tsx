@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ChevronDown, FileText, LogOut } from 'lucide-react'
+import { ChevronDown, FileText, LogOut, Settings } from 'lucide-react'
 
 interface UserProfileButtonProps {
   user: {
@@ -189,6 +189,16 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
 
           {/* Menu items */}
           <div role="group" className="p-1.5">
+            <Link
+              href="/dashboard/settings"
+              role="menuitem"
+              tabIndex={-1}
+              onClick={() => setDropdownOpen(false)}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-indigo-900 transition hover:bg-indigo-50/70"
+            >
+              <Settings aria-hidden="true" strokeWidth={2} className="h-4 w-4 shrink-0 text-fg-muted" />
+              Settings
+            </Link>
             <Link
               href="/terms"
               role="menuitem"

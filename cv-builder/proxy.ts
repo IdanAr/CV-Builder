@@ -12,5 +12,6 @@ export const config = {
     '/api/applications/:path*',
     '/api/preview/:path*',
     '/api/jobsearch/:path*',
+    '/api/account/:path*',
   ],
 }

@@ -42,4 +42,17 @@ describe('Privacy Policy page', () => {
       expect(link).toHaveAttribute('href', 'mailto:idan.rbel@gmail.com')
     }
   })
+
+  // The gap this phase closed. The policy committed to access, correction and
+  // deletion rights while the product had no settings page, so the only route
+  // to any of them was an email and a wait. Both rights are now self-serve, and
+  // the policy has to say where.
+  it('points at the settings page where those rights can be exercised', () => {
+    render(<PrivacyPolicyPage />)
+    const links = screen.getAllByRole('link', { name: /your account settings/i })
+    expect(links.length).toBeGreaterThan(0)
+    for (const link of links) {
+      expect(link).toHaveAttribute('href', '/dashboard/settings')
+    }
+  })
 })

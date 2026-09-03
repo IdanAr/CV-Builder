@@ -13,7 +13,7 @@ vi.mock('next-auth/providers/github', () => ({ default: vi.fn() }))
 vi.mock('next-auth/providers/google', () => ({ default: vi.fn() }))
 
 describe('proxy matcher', () => {
-  it('covers /dashboard, /api/resumes, /api/applications, /api/preview, and /api/jobsearch', async () => {
+  it('covers /dashboard and every session-scoped API prefix', async () => {
     const { config } = await import('./proxy')
     expect(config.matcher).toEqual([
       '/dashboard/:path*',
@@ -21,7 +21,16 @@ describe('proxy matcher', () => {
       '/api/applications/:path*',
       '/api/preview/:path*',
       '/api/jobsearch/:path*',
+      '/api/account/:path*',
     ])
+  })
+
+  // /api/account carries data export and account deletion. Both routes check
+  // the session themselves, but a prefix that erases seven collections should
+  // not rely on a single layer getting it right.
+  it('protects /api/account, which exports and deletes everything a user has', async () => {
+    const { config } = await import('./proxy')
+    expect(config.matcher).toContain('/api/account/:path*')
   })
 
   it('protects /api/jobsearch routes', async () => {
