@@ -1,10 +1,14 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Popover } from './Popover'
 
+// These tests drive the popover with userEvent rather than fireEvent. That is
+// required, not stylistic: dismissal now listens for `pointerdown` (which is
+// what makes it work under touch), and fireEvent.mouseDown dispatches a mouse
+// event with no pointer event behind it, so it would not dismiss anything.
 describe('Popover', () => {
   it('renders the trigger and, when open, renders children via portal', () => {
     render(
@@ -27,24 +31,42 @@ describe('Popover', () => {
     expect(screen.queryByText('Content')).toBeNull()
   })
 
-  it('closes on outside click and Escape, returning focus to the trigger', async () => {
-    const onOpenChange = vi.fn()
+  // The panel is portaled to the end of document.body rather than nested in the
+  // trigger's subtree, because several triggers sit inside ancestors with
+  // backdrop-blur or overflow clipping, which would create a containing block
+  // and crop the panel. This is the structural half of that contract; the
+  // focus-entry tests below are the half that keeps it reachable.
+  it('renders the panel outside the trigger’s DOM subtree', () => {
     render(
-      <Popover trigger={<button>Open</button>} open onOpenChange={onOpenChange}>
+      <Popover trigger={<button>Open</button>} open onOpenChange={vi.fn()}>
         <div>Content</div>
       </Popover>
     )
 
-    fireEvent.mouseDown(document.body)
+    const trigger = screen.getByRole('button', { name: 'Open' })
+    expect(trigger.parentElement?.contains(screen.getByText('Content'))).toBe(false)
+  })
+
+  it('asks to close on an outside press and on Escape', async () => {
+    const onOpenChange = vi.fn()
+    render(
+      <>
+        <Popover trigger={<button>Open</button>} open onOpenChange={onOpenChange}>
+          <div>Content</div>
+        </Popover>
+        <button>Outside</button>
+      </>
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Outside' }))
     expect(onOpenChange).toHaveBeenCalledWith(false)
 
     onOpenChange.mockClear()
     await userEvent.keyboard('{Escape}')
     expect(onOpenChange).toHaveBeenCalledWith(false)
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Open' }))
   })
 
-  it('does not close when clicking inside the trigger or the popover content', () => {
+  it('does not close when clicking inside the popover content', async () => {
     const onOpenChange = vi.fn()
     render(
       <Popover trigger={<button>Open</button>} open onOpenChange={onOpenChange}>
@@ -52,9 +74,34 @@ describe('Popover', () => {
       </Popover>
     )
 
-    fireEvent.mouseDown(screen.getByRole('button', { name: 'Open' }))
-    fireEvent.mouseDown(screen.getByText('Content'))
+    await userEvent.click(screen.getByText('Content'))
     expect(onOpenChange).not.toHaveBeenCalled()
+  })
+
+  it('closes when the trigger is pressed again', async () => {
+    const onOpenChange = vi.fn()
+    render(
+      <Popover trigger={<button>Open</button>} open onOpenChange={onOpenChange}>
+        <div>Content</div>
+      </Popover>
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Open' }))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  // Consumers write their own ARIA on the trigger — "menu" for ExportMenu and
+  // ResumeCard, "listbox" for PreviewTab's zoom picker, "dialog" for
+  // AtsScorePanel's help panel. The primitive must not flatten those to the
+  // single value it would otherwise supply.
+  it('lets the caller’s own aria-haspopup win over the default', () => {
+    render(
+      <Popover trigger={<button aria-haspopup="listbox">Open</button>} open={false} onOpenChange={vi.fn()}>
+        <div>Content</div>
+      </Popover>
+    )
+
+    expect(screen.getByRole('button', { name: 'Open' })).toHaveAttribute('aria-haspopup', 'listbox')
   })
 
   describe('focus management', () => {
@@ -65,11 +112,7 @@ describe('Popover', () => {
       const [open, setOpen] = useState(false)
       return (
         <>
-          <Popover
-            open={open}
-            onOpenChange={setOpen}
-            trigger={<button onClick={() => setOpen((o) => !o)}>Open</button>}
-          >
+          <Popover open={open} onOpenChange={setOpen} trigger={<button>Open</button>}>
             <div role="menu">
               <button onClick={() => setOpen(false)}>Use this</button>
               <button onClick={() => setOpen(false)}>Dismiss</button>
@@ -98,6 +141,16 @@ describe('Popover', () => {
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Open' }))
     })
 
+    it('returns focus to the trigger when Escape closes it', async () => {
+      render(<Harness />)
+
+      await userEvent.click(screen.getByRole('button', { name: 'Open' }))
+      await userEvent.keyboard('{Escape}')
+
+      expect(screen.queryByRole('menu')).toBeNull()
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Open' }))
+    })
+
     it('leaves focus alone when an outside click closes it', async () => {
       render(<Harness />)
 
@@ -113,11 +166,7 @@ describe('Popover', () => {
       function TextOnly() {
         const [open, setOpen] = useState(false)
         return (
-          <Popover
-            open={open}
-            onOpenChange={setOpen}
-            trigger={<button onClick={() => setOpen((o) => !o)}>Open</button>}
-          >
+          <Popover open={open} onOpenChange={setOpen} trigger={<button>Open</button>}>
             <div>Just text</div>
           </Popover>
         )
@@ -142,88 +191,12 @@ describe('Popover', () => {
     })
   })
 
-  describe('auto-flip placement', () => {
-    // jsdom returns an all-zero rect for every element by default. Popover
-    // calls getBoundingClientRect() on two different divs — its trigger
-    // wrapper (`relative inline-block`) and the portaled panel wrapper
-    // (`fixed z-[100]`) — so this mock distinguishes them by className to
-    // simulate a trigger sitting near the bottom of a short viewport and a
-    // panel too tall to fit below it, matching the pattern used for
-    // DesignPanel's drag-and-drop rect mocking.
-    function mockRects({ triggerTop, triggerBottom, panelHeight }: { triggerTop: number; triggerBottom: number; panelHeight: number }) {
-      return vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
-        this: HTMLElement
-      ) {
-        if (this.className.includes('inline-block')) {
-          return {
-            top: triggerTop, bottom: triggerBottom, left: 0, right: 100, width: 100,
-            height: triggerBottom - triggerTop, x: 0, y: triggerTop, toJSON: () => ({}),
-          } as DOMRect
-        }
-        if (this.className.includes('fixed')) {
-          return {
-            top: 0, bottom: panelHeight, left: 0, right: 100, width: 100,
-            height: panelHeight, x: 0, y: 0, toJSON: () => ({}),
-          } as DOMRect
-        }
-        return { top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) } as DOMRect
-      })
-    }
-
-    it('opens below the trigger (default) when there is enough room', () => {
-      vi.stubGlobal('innerHeight', 800)
-      const rectSpy = mockRects({ triggerTop: 350, triggerBottom: 380, panelHeight: 200 })
-
-      render(
-        <Popover trigger={<button>Open</button>} open onOpenChange={vi.fn()}>
-          <div>Content</div>
-        </Popover>
-      )
-
-      const panel = screen.getByText('Content').parentElement as HTMLElement
-      expect(panel.style.top).toBe('388px') // triggerBottom(380) + 8
-
-      rectSpy.mockRestore()
-      vi.unstubAllGlobals()
-    })
-
-    it('flips above the trigger when the panel does not fit below but does fit above', () => {
-      vi.stubGlobal('innerHeight', 400)
-      const rectSpy = mockRects({ triggerTop: 350, triggerBottom: 380, panelHeight: 200 })
-
-      render(
-        <Popover trigger={<button>Open</button>} open onOpenChange={vi.fn()}>
-          <div>Content</div>
-        </Popover>
-      )
-
-      // below would be 380 + 8 + 200 = 588 > innerHeight(400) → doesn't fit
-      // above: triggerTop(350) - panelHeight(200) - 8 = 142, and
-      // triggerTop(350) > panelHeight(200) + 8 → fits
-      const panel = screen.getByText('Content').parentElement as HTMLElement
-      expect(panel.style.top).toBe('142px')
-
-      rectSpy.mockRestore()
-      vi.unstubAllGlobals()
-    })
-
-    it('falls back to the below position when neither side fits', () => {
-      vi.stubGlobal('innerHeight', 150)
-      // Trigger low in a very short viewport, panel taller than the room
-      // available on either side.
-      const rectSpy = mockRects({ triggerTop: 60, triggerBottom: 90, panelHeight: 200 })
-
-      render(
-        <Popover trigger={<button>Open</button>} open onOpenChange={vi.fn()}>
-          <div>Content</div>
-        </Popover>
-      )
-
-      const panel = screen.getByText('Content').parentElement as HTMLElement
-      expect(panel.style.top).toBe('98px') // triggerBottom(90) + 8 — unchanged fallback
-
-      rectSpy.mockRestore()
-      vi.unstubAllGlobals()
-    })
-  })
+  // The three auto-flip tests that used to sit here asserted the exact inline
+  // `top` the old implementation computed — 388px below, 142px flipped above —
+  // by mocking getBoundingClientRect per className. They went with the
+  // algorithm they were testing. Positioning is now Radix's collision
+  // detection, which corrects on both axes rather than only flipping
+  // vertically, and jsdom reports a zero rect for everything, so there is no
+  // honest way to assert it here. It was checked in a real browser at 375px
+  // instead; see the responsive pass that follows.
 })

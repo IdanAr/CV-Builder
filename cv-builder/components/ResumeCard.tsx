@@ -280,7 +280,6 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
             trigger={
               <button
                 type="button"
-                onClick={() => setMenuOpen((o) => !o)}
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"
                 aria-label={`More actions for "${resume.title}"`}

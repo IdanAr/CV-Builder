@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { PreviewTab } from './PreviewTab'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ResumeMetaSchema } from '@/lib/schemas/resume.zod'
@@ -135,22 +136,26 @@ describe('PreviewTab — zoom controls', () => {
     expect(localStorage.getItem(ZOOM_KEY)).toBe('fit')
   })
 
-  it('closes the zoom menu on outside click', () => {
+  // Driven with userEvent: dismissal listens for `pointerdown` (which is what
+  // makes it work under touch), and fireEvent.mouseDown dispatches a mouse
+  // event with no pointer event behind it, so it would dismiss nothing and the
+  // assertion would pass for the wrong reason.
+  it('closes the zoom menu on outside click', async () => {
     render(<PreviewTab />)
-    fireEvent.click(screen.getByTestId('zoom-percentage'))
+    await userEvent.click(screen.getByTestId('zoom-percentage'))
     expect(screen.getByTestId('zoom-menu')).toBeInTheDocument()
 
-    fireEvent.mouseDown(document.body)
+    await userEvent.click(document.body)
     expect(screen.queryByTestId('zoom-menu')).toBeNull()
   })
 
-  it('closes the zoom menu on Escape and returns focus to the trigger', () => {
+  it('closes the zoom menu on Escape and returns focus to the trigger', async () => {
     render(<PreviewTab />)
     const trigger = screen.getByTestId('zoom-percentage')
-    fireEvent.click(trigger)
+    await userEvent.click(trigger)
     expect(screen.getByTestId('zoom-menu')).toBeInTheDocument()
 
-    fireEvent.keyDown(document, { key: 'Escape' })
+    await userEvent.keyboard('{Escape}')
     expect(screen.queryByTestId('zoom-menu')).toBeNull()
     expect(document.activeElement).toBe(trigger)
   })

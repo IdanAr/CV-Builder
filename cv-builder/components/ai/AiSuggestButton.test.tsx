@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AiSuggestButton } from './AiSuggestButton'
 
 function jsonResponse(body: unknown) {
@@ -159,9 +160,11 @@ describe('AiSuggestButton', () => {
       // A stray outside click — e.g. the user clicking back into a nearby
       // textarea to compare the suggestion against their original text —
       // must not silently discard the generated (rate-limited, paid)
-      // suggestion. Popover detects outside clicks on `mousedown`.
-      fireEvent.mouseDown(document.body)
-      fireEvent.click(document.body)
+      // suggestion. Driven with userEvent because dismissal listens for
+      // `pointerdown`: a bare fireEvent.mouseDown reaches nothing, which would
+      // make this test pass without ever exercising the dismissal path it
+      // exists to guard.
+      await userEvent.click(document.body)
 
       expect(screen.getByText('A suggestion')).toBeInTheDocument()
       expect(screen.getByText('Use this')).toBeInTheDocument()
@@ -235,8 +238,7 @@ describe('AiSuggestButton', () => {
       fireEvent.click(screen.getByRole('button'))
       await screen.findByText('Rate limited')
 
-      fireEvent.mouseDown(document.body)
-      fireEvent.click(document.body)
+      await userEvent.click(document.body)
 
       expect(screen.queryByText('Rate limited')).not.toBeInTheDocument()
     })
