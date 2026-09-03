@@ -468,7 +468,9 @@ export function DesignPanel() {
       )}
 
       {/* Fonts */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Stacked below `sm`: two font selects share 335px on a phone, leaving
+          162px each — narrower than the longest family name they must show. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className={labelClass}>Body font</label>
           <select value={meta.fontFamily} onChange={(e) => setMeta({ fontFamily: e.target.value })}
