@@ -3,7 +3,7 @@ import { useId } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { AiSuggestButton } from '@/components/ai/AiSuggestButton'
-import { MonthYearPicker } from './MonthYearPicker'
+import { DateRangeFields } from './DateRangeFields'
 import { RichTextField } from './RichTextField'
 import { inputClass } from './field-styles'
 import { createEmptyProject as createEmpty } from '@/lib/schemas/resume-empty-entries'
@@ -42,10 +42,12 @@ function ItemForm({ item, resumeId, onUpdate, onRemove }: { item: Item; resumeId
         <button type="button" onClick={onRemove} aria-label="Remove project entry"
           className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-1 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <MonthYearPicker value={item.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
-        <MonthYearPicker value={item.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
-      </div>
+      <DateRangeFields
+        startValue={item.startDate ?? ''}
+        endValue={item.endDate ?? ''}
+        onStartChange={(v) => set('startDate', v)}
+        onEndChange={(v) => set('endDate', v)}
+      />
       <div className="flex items-start gap-1">
         <div className="flex-1">
           <label htmlFor={`${id}-description`} className="sr-only">Project description</label>

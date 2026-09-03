@@ -5,7 +5,7 @@ import { useId } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { AiSuggestButton } from '@/components/ai/AiSuggestButton'
-import { MonthYearPicker } from './MonthYearPicker'
+import { DateRangeFields } from './DateRangeFields'
 import { RichTextField } from './RichTextField'
 import { inputClass } from './field-styles'
 import { createEmptyWork as createEmpty, createEmptyWorkRole } from '@/lib/schemas/resume-empty-entries'
@@ -40,10 +40,12 @@ function RoleForm({
         <button type="button" onClick={onRemove} aria-label="Remove role"
           className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-1 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <MonthYearPicker value={role.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
-        <MonthYearPicker value={role.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
-      </div>
+      <DateRangeFields
+        startValue={role.startDate ?? ''}
+        endValue={role.endDate ?? ''}
+        onStartChange={(v) => set('startDate', v)}
+        onEndChange={(v) => set('endDate', v)}
+      />
       <label htmlFor={`${id}-summary`} className="sr-only">Role summary</label>
       <RichTextField
         id={`${id}-summary`}
