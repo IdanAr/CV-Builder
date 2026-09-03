@@ -40,4 +40,13 @@ describe('Terms of Use page', () => {
       expect(link).toHaveAttribute('href', 'mailto:idan.rbel@gmail.com')
     }
   })
+
+  // Carried over from the in-app Terms modal when that duplicate was deleted.
+  // Everything else the modal said was already covered here or stated more
+  // fully in the privacy policy; this clause was not, and for a résumé tool it
+  // is not a throwaway line.
+  it('prohibits generating false employment credentials', () => {
+    render(<TermsOfUsePage />)
+    expect(screen.getByText(/false or misleading employment credentials/i)).toBeInTheDocument()
+  })
 })

@@ -43,7 +43,7 @@ describe('UserProfileButton', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument()
   })
 
-  it('dropdown contains Terms & Conditions and Sign Out', () => {
+  it('dropdown contains Terms and Sign Out', () => {
     render(<UserProfileButton user={user} />)
     fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
     expect(screen.getByRole('menuitem', { name: /terms/i })).toBeInTheDocument()
@@ -93,58 +93,29 @@ describe('UserProfileButton', () => {
     expect(vi.mocked(signOut)).toHaveBeenCalledWith({ callbackUrl: '/signin' })
   })
 
-  it('opens Terms modal when Terms & Conditions is clicked', () => {
+  // The modal these replaced held ~120 lines of legal copy duplicating
+  // app/terms/page.tsx, and the two had diverged — 11 sections against 15, with
+  // Eligibility, Termination and Governing Law appearing only on the page. A
+  // signed-in user was reading a different agreement from a visitor.
+  it('links Terms to the canonical page instead of duplicating it', () => {
+    render(<UserProfileButton user={user} />)
+    fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
+    expect(screen.getByRole('menuitem', { name: /terms/i })).toHaveAttribute('href', '/terms')
+  })
+
+  // The guard against the duplicate coming back. Copy is easy to paste into a
+  // component again; a dialog appearing here is the signal that it has.
+  it('renders no dialog of its own', () => {
     render(<UserProfileButton user={user} />)
     fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
     fireEvent.click(screen.getByRole('menuitem', { name: /terms/i }))
-    expect(screen.getByRole('heading', { name: /terms & conditions/i })).toBeInTheDocument()
-    expect(screen.getByText(/acceptance of terms/i)).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('closes Terms modal on backdrop click', () => {
+  it('closes the menu when Terms is chosen', () => {
     render(<UserProfileButton user={user} />)
     fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
     fireEvent.click(screen.getByRole('menuitem', { name: /terms/i }))
-    fireEvent.click(screen.getByTestId('terms-backdrop'))
-    expect(screen.queryByRole('heading', { name: /terms & conditions/i })).not.toBeInTheDocument()
-  })
-
-  it('closes Terms modal on close button', () => {
-    render(<UserProfileButton user={user} />)
-    fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /terms/i }))
-    fireEvent.click(screen.getByRole('button', { name: /close terms/i }))
-    expect(screen.queryByRole('heading', { name: /terms & conditions/i })).not.toBeInTheDocument()
-  })
-
-  it('closes Terms modal on Escape key', () => {
-    render(<UserProfileButton user={user} />)
-    fireEvent.click(screen.getByRole('button', { name: /open user menu/i }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /terms/i }))
-    fireEvent.keyDown(document, { key: 'Escape' })
-    expect(screen.queryByRole('heading', { name: /terms & conditions/i })).not.toBeInTheDocument()
-  })
-
-  it('wraps focus from the last focusable element to the first on Tab', async () => {
-    render(<UserProfileButton user={user} />)
-    await userEvent.click(screen.getByRole('button', { name: /open user menu/i }))
-    await userEvent.click(screen.getByRole('menuitem', { name: /terms/i }))
-    const closeButton = screen.getByRole('button', { name: /close terms/i })
-    const mailLink = screen.getByRole('link', { name: /idan.rbel@gmail.com/i })
-    mailLink.focus()
-    expect(mailLink).toHaveFocus()
-    await userEvent.tab()
-    expect(closeButton).toHaveFocus()
-  })
-
-  it('wraps focus from the first focusable element to the last on Shift+Tab', async () => {
-    render(<UserProfileButton user={user} />)
-    await userEvent.click(screen.getByRole('button', { name: /open user menu/i }))
-    await userEvent.click(screen.getByRole('menuitem', { name: /terms/i }))
-    const closeButton = screen.getByRole('button', { name: /close terms/i })
-    const mailLink = screen.getByRole('link', { name: /idan.rbel@gmail.com/i })
-    expect(closeButton).toHaveFocus()
-    await userEvent.tab({ shift: true })
-    expect(mailLink).toHaveFocus()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 })

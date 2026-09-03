@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { LegalPageShell } from '@/components/marketing/LegalPageShell'
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | CV Builder',
+  title: 'Privacy Policy',
   description: 'How CV Builder collects, uses, and protects your personal data.',
 }
 

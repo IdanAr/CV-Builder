@@ -4,7 +4,8 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
-import { ChevronDown, FileText, LogOut, X } from 'lucide-react'
+import Link from 'next/link'
+import { ChevronDown, FileText, LogOut } from 'lucide-react'
 
 interface UserProfileButtonProps {
   user: {
@@ -56,18 +57,21 @@ function Avatar({
 
 export function UserProfileButton({ user }: UserProfileButtonProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [termsOpen, setTermsOpen] = useState(false)
   const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null)
   const [mounted, setMounted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const termsCloseRef = useRef<HTMLButtonElement>(null)
-  const termsDialogRef = useRef<HTMLDivElement>(null)
 
-  // Portals render the menu/modals into document.body so they always sit above
+  // The menu is portalled into document.body so it always sits above
   // ancestors (e.g. the navbar's backdrop-blur) which create their own stacking
   // context and containing block for fixed-position elements.
+  //
+  // The Terms & Conditions modal that used to be portalled here was ~120 lines
+  // of legal copy duplicating app/terms/page.tsx, and the two had diverged: the
+  // modal held 11 sections to the page's 15, so a signed-in user read a
+  // materially different agreement from a visitor. The menu now links to the
+  // page, which is the only copy.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true)
@@ -142,44 +146,6 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
     }
   }, [])
 
-  useEffect(() => {
-    if (!termsOpen) return
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        setTermsOpen(false)
-        return
-      }
-      if (e.key === 'Tab') {
-        const dialog = termsDialogRef.current
-        if (!dialog) return
-        const focusable = Array.from(
-          dialog.querySelectorAll<HTMLElement>(
-            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-          )
-        )
-        if (focusable.length === 0) return
-        const first = focusable[0]
-        const last = focusable[focusable.length - 1]
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault()
-          last.focus()
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault()
-          first.focus()
-        }
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [termsOpen])
-
-  useEffect(() => {
-    if (termsOpen) {
-      termsCloseRef.current?.focus()
-      return () => { triggerRef.current?.focus() }
-    }
-  }, [termsOpen])
-
   const firstName = user.name?.split(' ')[0] ?? 'Account'
 
   return (
@@ -223,18 +189,16 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
 
           {/* Menu items */}
           <div role="group" className="p-1.5">
-            <button
+            <Link
+              href="/terms"
               role="menuitem"
               tabIndex={-1}
-              onClick={() => {
-                setDropdownOpen(false)
-                setTermsOpen(true)
-              }}
+              onClick={() => setDropdownOpen(false)}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-indigo-900 transition hover:bg-indigo-50/70"
             >
               <FileText aria-hidden="true" strokeWidth={2} className="h-4 w-4 shrink-0 text-fg-muted" />
-              Terms &amp; Conditions
-            </button>
+              Terms of Use
+            </Link>
           </div>
 
           {/* Sign Out */}
@@ -253,125 +217,6 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
         document.body
       )}
 
-      {/* Terms & Conditions modal */}
-      {mounted && termsOpen && createPortal(
-        <div
-          data-testid="terms-backdrop"
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-indigo-900/10 px-4 backdrop-blur-sm"
-          onClick={() => setTermsOpen(false)}
-        >
-          <div
-            ref={termsDialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="terms-dialog-title"
-            className="w-full max-w-lg rounded-2xl border border-white/50 bg-white/90 shadow-2xl backdrop-blur-xl"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-indigo-50 px-6 py-4">
-              <h2 id="terms-dialog-title" className="text-base font-bold text-indigo-900">
-                Terms &amp; Conditions
-              </h2>
-              <button
-                ref={termsCloseRef}
-                aria-label="Close Terms"
-                onClick={() => setTermsOpen(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-control bg-surface-subtle text-fg-muted transition hover:bg-secondary"
-              ><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
-            </div>
-            <div className="max-h-[60vh] overflow-y-auto px-6 py-5 text-sm">
-              <p className="mb-4 text-xs text-fg-muted">Effective date: June 2026</p>
-
-              <h3 className="mb-1 font-semibold text-indigo-900">1. Acceptance of Terms</h3>
-              <p className="mb-4 leading-relaxed text-indigo-700">
-                By accessing or using CV Builder, you agree to be bound by these Terms and
-                Conditions. If you do not agree, you may not use the service.
-              </p>
-
-              <h3 className="mb-1 font-semibold text-indigo-900">2. Description of Service</h3>
-              <p className="mb-4 leading-relaxed text-indigo-700">
-                CV Builder is an AI-assisted platform for creating, editing, and exporting
-                professional CVs and résumés. Features include a live editor, AI content
-                suggestions, ATS scoring, and export to PDF and DOCX formats.
-              </p>
-
-              <h3 className="mb-1 font-semibold text-indigo-900">3. User Accounts</h3>
-              <p className="mb-4 leading-relaxed text-indigo-700">
-                You must authenticate via a supported OAuth provider (Google or GitHub) to use
-                the service. You are responsible for all activity that occurs under your
-                account. You agree not to share access credentials or use the service for any
-                unlawful purpose.
-              </p>
-
-              <h3 className="mb-1 font-semibold text-indigo-900">4. AI-Generated Content</h3>
-              <p className="mb-4 leading-relaxed text-indigo-700">
-                CV Builder uses AI models to generate and refine CV content. AI-generated
-                suggestions are provided as a starting point only. You are solely responsible
-                for reviewing, editing, and verifying the accuracy of all content before
-                submitting it to employers or third parties. CV Builder does not guarantee that
-                AI-generated content is accurate, complete, or appropriate for your specific
-                situation.
-              </p>
-
-              <h3 className="mb-1 font-semibold text-indigo-900">5. Your Content</h3>
-              <p className="mb-4 leading-relaxed text-indigo-700">
-                You retain ownership of all CV data and documents you create using the service.
-                By using the service, you grant CV Builder a limited licence to store and
-                process your data solely for the purpose of providing the service to you. We do
-                not sell or share your personal CV data with third parties.
-              </p>
-
-              <h3 className="mb-1 font-semibold text-indigo-900">6. Acceptable Use</h3>
-              <p className="mb-4 leading-relaxed text-indigo-700">
-                You agree not to: (a) upload content that is unlawful, harmful, or infringes
-                third-party rights; (b) attempt to reverse-engineer, scrape, or disrupt the
-                service; (c) use the service to generate false or misleading employment
-                credentials.
-              </p>
-
-              <h3 className="mb-1 font-semibold text-indigo-900">7. Intellectual Property</h3>
-              <p className="mb-4 leading-relaxed text-indigo-700">
-                The CV Builder application, including its design, code, and branding, is the
-                intellectual property of its creators. Nothing in these Terms grants you any
-                right to use CV Builder&apos;s trademarks or branding.
-              </p>
-
-              <h3 className="mb-1 font-semibold text-indigo-900">8. Disclaimer of Warranties</h3>
-              <p className="mb-4 leading-relaxed text-indigo-700">
-                The service is provided &quot;as is&quot; without warranties of any kind,
-                express or implied, including fitness for a particular purpose. We do not
-                warrant that the service will be uninterrupted or error-free.
-              </p>
-
-              <h3 className="mb-1 font-semibold text-indigo-900">9. Limitation of Liability</h3>
-              <p className="mb-4 leading-relaxed text-indigo-700">
-                To the fullest extent permitted by law, CV Builder and its creators shall not
-                be liable for any indirect, incidental, or consequential damages arising from
-                your use of the service, including any decisions made by employers or recruiters
-                based on CV content generated using this platform.
-              </p>
-
-              <h3 className="mb-1 font-semibold text-indigo-900">10. Changes to These Terms</h3>
-              <p className="mb-4 leading-relaxed text-indigo-700">
-                We may update these Terms from time to time. Continued use of the service after
-                changes are posted constitutes your acceptance of the revised Terms.
-              </p>
-
-              <h3 className="mb-1 font-semibold text-indigo-900">11. Contact</h3>
-              <p className="leading-relaxed text-indigo-700">
-                Questions about these Terms may be directed to:{' '}
-                <a
-                  href="mailto:idan.rbel@gmail.com"
-                  className="text-indigo-600 underline"
-                >
-                  idan.rbel@gmail.com
-                </a>
-              </p>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
     </div>
   )
 }
