@@ -10,6 +10,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "fonts:copy": "node scripts/copy-fonts.mjs",
+    "favicon:generate": "node scripts/generate-favicon.mjs",
     "prebuild": "node scripts/copy-fonts.mjs",
     "predev": "node scripts/copy-fonts.mjs",
     "pretest": "node scripts/copy-fonts.mjs",

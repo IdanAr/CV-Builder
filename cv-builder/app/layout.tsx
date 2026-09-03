@@ -15,10 +15,39 @@ import './globals.css'
 import { Toaster } from '@/components/ui/Toaster'
 import { SkipLink } from '@/components/ui/SkipLink'
 import { fontFaceCss } from '@/lib/fonts/families'
+import { resolveSiteUrl } from '@/lib/site-url'
 
+// Everything a link needs to render as something other than a bare URL.
+// `metadataBase` is the piece that unlocks the rest: without it Next emits the
+// Open Graph image as a root-relative path, which crawlers cannot resolve, so
+// `app/opengraph-image.tsx` would be generated and then never used.
 export const metadata: Metadata = {
-  title: 'CV Builder',
-  description: 'AI-powered CV builder with ATS optimization',
+  metadataBase: new URL(resolveSiteUrl()),
+  // `default` is what the marketing page and any route without its own title
+  // shows; `template` frames the rest, so the editor reads "My CV · CV Builder"
+  // in a tab strip rather than an unattributed document name.
+  title: {
+    default: 'CV Builder — AI-assisted résumé builder',
+    template: '%s · CV Builder',
+  },
+  description:
+    'Write a résumé that gets past the filter. AI drafting, ATS scoring against a real job description, and PDF or DOCX export.',
+  applicationName: 'CV Builder',
+  keywords: ['resume builder', 'CV builder', 'ATS', 'cover letter', 'job application tracker'],
+  openGraph: {
+    type: 'website',
+    siteName: 'CV Builder',
+    title: 'CV Builder — AI-assisted résumé builder',
+    description:
+      'AI drafting, ATS scoring against a real job description, and PDF or DOCX export.',
+    url: '/',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'CV Builder — AI-assisted résumé builder',
+    description:
+      'AI drafting, ATS scoring against a real job description, and PDF or DOCX export.',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
