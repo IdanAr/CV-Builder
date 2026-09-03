@@ -398,7 +398,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
       {/* Top navbar */}
       <AppNavbar
         actions={
-          <div className="flex items-center gap-3 flex-1">
+          <div className="flex flex-1 flex-wrap items-center gap-3">
             <Link
               href="/dashboard"
               onClick={handleLeaveEditor}
