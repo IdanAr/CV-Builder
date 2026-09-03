@@ -11,7 +11,14 @@ interface ProfileWizardStepsProps {
 export function ProfileWizardSteps({ current, maxUnlocked, labels, onStepClick }: ProfileWizardStepsProps) {
   return (
     <div
-      className="flex bg-indigo-50 rounded-full p-1 gap-1"
+      // Six steps of `flex-1` buttons overflow a phone: a flex item's default
+      // `min-width: auto` stops it shrinking below its own content, so the six
+      // badge-plus-label buttons demanded ~565px inside a 375px viewport and
+      // steps 5 (Threshold) and 6 (Review) sat entirely off-screen — the last
+      // two steps of the wizard, submit included, simply unreachable. Wrapping
+      // below `sm` lays them out 3-per-row with every label still readable;
+      // `sm:flex-nowrap` keeps the single row everywhere there is room for it.
+      className="flex flex-wrap sm:flex-nowrap bg-indigo-50 rounded-2xl sm:rounded-full p-1 gap-1"
       role="tablist"
       aria-label="Job search profile setup steps"
       onKeyDown={handleTablistKeyDown}

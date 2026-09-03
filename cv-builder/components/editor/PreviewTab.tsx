@@ -234,7 +234,6 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
                 aria-haspopup="listbox"
                 aria-expanded={zoomMenuOpen}
                 data-testid="zoom-percentage"
-                onClick={() => setZoomMenuOpen((v) => !v)}
                 className="flex items-center justify-center min-h-[28px] px-2 text-xs rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors tabular-nums"
               >
                 {zoomOverride === null ? 'Fit' : `${Math.round(zoomOverride * 100)}%`}

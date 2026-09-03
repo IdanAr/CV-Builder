@@ -382,7 +382,6 @@ export function AtsScorePanel() {
                     trigger={
                       <button
                         type="button"
-                        onClick={() => setHelpOpen((o) => !o)}
                         aria-expanded={helpOpen}
                         aria-haspopup="dialog"
                         aria-label="What do Semantic Match and Tailor with AI do?"

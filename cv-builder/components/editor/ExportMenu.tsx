@@ -47,7 +47,6 @@ export function ExportMenu({ onExport, busy = false }: ExportMenuProps) {
       trigger={
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
           disabled={busy}
           aria-expanded={menuOpen}
           aria-haspopup="menu"

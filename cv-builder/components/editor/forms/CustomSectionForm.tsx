@@ -76,7 +76,9 @@ function ItemForm({ item, enabledFields, resumeId, onUpdate, onRemove }: ItemFor
       )}
 
       {enabledFields.includes('dateRange') && (
-        <div className="grid grid-cols-2 gap-2">
+        // Two month+year pickers side by side get 125px each on a phone, which
+        // is narrower than the month select alone wants. Stacked below `sm`.
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <MonthYearPicker value={item.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
           <MonthYearPicker value={item.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
         </div>
@@ -236,7 +238,7 @@ function RoleForm({
           aria-label="Subtitle" placeholder="Subtitle" className={inputClass} />
       )}
       {enabledFields.includes('dateRange') && (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <MonthYearPicker value={role.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
           <MonthYearPicker value={role.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
         </div>
