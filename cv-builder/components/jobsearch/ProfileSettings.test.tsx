@@ -101,4 +101,87 @@ describe('ProfileSettings', () => {
     expect(await screen.findByText('Data Analyst')).toBeInTheDocument()
     expect(screen.getByText('Watched companies').nextSibling).toHaveTextContent('-')
   })
+
+  it('reads as a row of labelled indicators, work mode included', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        profile: {
+          _id: 'p1',
+          name: 'Frontend',
+          roles: ['React'],
+          workModes: ['remote'],
+          locations: [{ country: 'IL', city: 'Tel Aviv' }],
+          seniority: [],
+          categories: [],
+          industries: [],
+          comeetCompanies: [],
+          recencyDays: 14,
+          minAtsScore: 78,
+        },
+      }),
+    } as Response)
+
+    render(<ProfileSettings profileId="p1" />)
+
+    expect(await screen.findByText('Roles')).toBeInTheDocument()
+    expect(screen.getByText('Work mode')).toBeInTheDocument()
+    expect(screen.getByText('remote')).toBeInTheDocument()
+    expect(screen.getByText('Recency')).toBeInTheDocument()
+    expect(screen.getByText('14 days')).toBeInTheDocument()
+    expect(screen.getByText('Min fit')).toBeInTheDocument()
+    expect(screen.getByText('78%')).toBeInTheDocument()
+  })
+
+  it('says "Any" rather than "-" when no work mode is set, since that is what it means', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        profile: {
+          _id: 'p1',
+          name: 'Frontend',
+          roles: [],
+          workModes: [],
+          locations: [],
+          seniority: [],
+          categories: [],
+          industries: [],
+          comeetCompanies: [],
+          recencyDays: 14,
+          minAtsScore: 75,
+        },
+      }),
+    } as Response)
+
+    render(<ProfileSettings profileId="p1" />)
+
+    expect(await screen.findByText('Any')).toBeInTheDocument()
+  })
+
+  it('skips the mount fetch when the server already supplied the profile', async () => {
+    const mockFetch = vi.fn()
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(
+      <ProfileSettings
+        profileId="p1"
+        initialProfile={{
+          _id: 'p1',
+          name: 'Seeded',
+          roles: ['Seeded role'],
+          workModes: [],
+          locations: [],
+          seniority: [],
+          categories: [],
+          industries: [],
+          comeetCompanies: [],
+          recencyDays: 21,
+          minAtsScore: 80,
+        }}
+      />
+    )
+
+    expect(await screen.findByText('Seeded role')).toBeInTheDocument()
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
 })

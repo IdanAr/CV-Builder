@@ -35,8 +35,14 @@ vi.mock('@/lib/api/board-config', () => ({
   JOB_LOCATION_COLUMN_ID: 'jobLocation',
 }))
 
-const { mockGetJobSearchProfile } = vi.hoisted(() => ({ mockGetJobSearchProfile: vi.fn() }))
-vi.mock('@/lib/api/jobsearch-profiles', () => ({ getJobSearchProfile: mockGetJobSearchProfile }))
+const { mockGetJobSearchProfile, mockGetProfileNameMap } = vi.hoisted(() => ({
+  mockGetJobSearchProfile: vi.fn(),
+  mockGetProfileNameMap: vi.fn(),
+}))
+vi.mock('@/lib/api/jobsearch-profiles', () => ({
+  getJobSearchProfile: mockGetJobSearchProfile,
+  getProfileNameMap: mockGetProfileNameMap,
+}))
 
 import {
   listScrapedJobs,
@@ -67,6 +73,7 @@ function sortLimitLeanChain(resolved: unknown) {
 beforeEach(() => {
   vi.clearAllMocks()
   mockEnsureJobMetadataColumns.mockResolvedValue(undefined)
+  mockGetProfileNameMap.mockResolvedValue(new Map())
 })
 
 describe('listScrapedJobs', () => {
@@ -473,7 +480,70 @@ describe('listNotifyMatches', () => {
       expect.any(String)
     )
     expect(mockSort).toHaveBeenCalledWith({ createdAt: -1 })
-    expect(result).toEqual([{ _id: 'j1' }])
+    expect(result).toEqual([{ _id: 'j1', profileName: undefined }])
+  })
+
+  it('projects the fields a match card renders', async () => {
+    mockFind.mockReturnValue({
+      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }),
+    })
+
+    await listNotifyMatches('u1')
+
+    const projection = mockFind.mock.calls[0][1] as string
+    for (const field of ['workMode', 'matchedRules', 'postedAt', 'createdAt', 'atsScore']) {
+      expect(projection).toContain(field)
+    }
+  })
+
+  it('attributes each match to the profile that found it', async () => {
+    mockFind.mockReturnValue({
+      sort: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue([{ _id: 'j1', profileId: 'p1' }]),
+      }),
+    })
+    mockGetProfileNameMap.mockResolvedValue(new Map([['p1', 'Frontend, Remote EU']]))
+
+    const result = await listNotifyMatches('u1')
+
+    expect(result[0].profileName).toBe('Frontend, Remote EU')
+  })
+})
+
+describe('profile-scoped unread handling', () => {
+  it('marks only one profile\'s matches read when a profileId is given', async () => {
+    mockUpdateMany.mockResolvedValue({ modifiedCount: 1 })
+
+    await markNotifyMatchesRead('u1', 'p1')
+
+    expect(mockUpdateMany).toHaveBeenCalledWith(
+      { userId: 'u1', resolvedActions: 'notify', status: 'new', profileId: 'p1' },
+      { $set: { status: 'notified' } }
+    )
+  })
+
+  it('marks the whole account read when no profileId is given', async () => {
+    mockUpdateMany.mockResolvedValue({ modifiedCount: 2 })
+
+    await markNotifyMatchesRead('u1')
+
+    expect(mockUpdateMany).toHaveBeenCalledWith(
+      { userId: 'u1', resolvedActions: 'notify', status: 'new' },
+      { $set: { status: 'notified' } }
+    )
+  })
+
+  it('counts one profile\'s unread matches when scoped', async () => {
+    mockCountDocuments.mockResolvedValue(3)
+
+    await countUnreadNotifyMatches('u1', 'p1')
+
+    expect(mockCountDocuments).toHaveBeenCalledWith({
+      userId: 'u1',
+      resolvedActions: 'notify',
+      status: 'new',
+      profileId: 'p1',
+    })
   })
 })
 

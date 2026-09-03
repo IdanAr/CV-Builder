@@ -34,7 +34,30 @@ describe('POST /api/jobsearch/notifications/mark-read', () => {
     })
     const res = (await POST(req as never, undefined as never)) as Response
     const body = await res.json()
-    expect(mockMarkRead).toHaveBeenCalledWith('u1')
+    expect(mockMarkRead).toHaveBeenCalledWith('u1', undefined)
     expect(body.ok).toBe(true)
+  })
+
+  it('scopes the mark-read to one profile when the body carries a profileId', async () => {
+    const req = new Request('http://test/api/jobsearch/notifications/mark-read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profileId: 'p1' }),
+    })
+
+    await POST(req as never, undefined as never)
+
+    expect(mockMarkRead).toHaveBeenCalledWith('u1', 'p1')
+  })
+
+  it('still works with no body at all, from the cross-profile feed', async () => {
+    const req = new Request('http://test/api/jobsearch/notifications/mark-read', {
+      method: 'POST',
+    })
+
+    const res = (await POST(req as never, undefined as never)) as Response
+
+    expect(res.status).toBe(200)
+    expect(mockMarkRead).toHaveBeenCalledWith('u1', undefined)
   })
 })

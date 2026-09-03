@@ -1,7 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { ExternalLink } from 'lucide-react'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
+import { Card } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+import { Button, buttonClasses } from '@/components/ui/Button'
+import { toast } from '@/lib/stores/toast.store'
+import { FitMeter } from './FitMeter'
 
 interface QueuedJobSummary {
   _id: string
@@ -135,21 +141,35 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
     }
   }
 
+  async function setDismissed(job: QueuedJobSummary, dismissed: boolean) {
+    const res = await fetch(`/api/jobsearch/scraped-jobs/${job._id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dismissed }),
+    })
+    if (!res.ok) throw new Error('Reject failed')
+  }
+
+  // Rejecting used to open a window.confirm(). It now takes effect at once and
+  // offers an undo, matching how every other destructive action in the section
+  // behaves — a modal that interrupts every rejection is the wrong trade when
+  // the action is this reversible.
   async function handleReject(job: QueuedJobSummary) {
-    if (!window.confirm(`Reject "${job.title}"? It will be dismissed from your queue.`)) return
     setActioningId(job._id)
     setError(null)
     try {
-      const res = await fetch(`/api/jobsearch/scraped-jobs/${job._id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dismissed: true }),
-      })
-      if (!res.ok) {
-        setError('Failed to reject the posting. Please try again.')
-        return
-      }
+      await setDismissed(job, true)
       await load()
+      toast.withAction(`Rejected "${job.title}"`, 'Undo', () => {
+        void (async () => {
+          try {
+            await setDismissed(job, false)
+            await load()
+          } catch {
+            toast.error(`Could not restore "${job.title}".`)
+          }
+        })()
+      })
     } catch {
       setError('Failed to reject the posting. Please try again.')
     } finally {
@@ -163,16 +183,24 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
 
   if (jobs.length === 0) {
     return (
-      <p className="text-sm text-gray-500">
-        No queued drafts yet - postings matched to a &quot;Draft &amp; queue&quot; rule will appear here.
-      </p>
+      <Card
+        tone="outline"
+        padding="lg"
+        className="flex flex-col items-center gap-2 border-dashed py-10 text-center"
+      >
+        <p className="font-semibold text-fg-heading">No queued drafts yet</p>
+        <p className="max-w-sm text-sm text-fg-subtle">
+          Postings matched to a &quot;Draft &amp; queue&quot; rule land here with a tailored
+          résumé already written, ready for you to review.
+        </p>
+      </Card>
     )
   }
 
   return (
     <div className="flex flex-col gap-3">
       {error && <ErrorBanner>{error}</ErrorBanner>}
-      <ul className="flex flex-col gap-2">
+      <ul aria-live="polite" className="flex flex-col gap-2">
         {jobs.map((job) => {
           const isExpanded = expandedId === job._id
           const draft = drafts[job._id]
@@ -182,107 +210,137 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
                 ? `Needs your review - unverified: ${job.pendingApprovals.join(', ')}`
                 : `Below your ${minAtsScore}% threshold`
               : null
+          const isBlocked = job.pendingApprovals.length > 0
+          // The meter shows where the draft landed; the delta beneath says how
+          // far tailoring moved it.
+          const headlineScore = job.postTailorScore ?? job.atsScore
 
           return (
-            <li key={job._id} className="rounded border px-4 py-3">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <a href={job.url} target="_blank" rel="noreferrer" className="font-medium text-indigo-700 hover:underline">
-                    {job.title}
-                  </a>
-                  <div className="text-sm text-gray-600">
-                    {job.company}
-                    {job.location ? ` - ${job.location}` : ''}
+            <li key={job._id}>
+              <Card className="flex flex-col gap-2.5">
+                <div className="flex gap-3.5">
+                  {headlineScore !== undefined && <FitMeter score={headlineScore} />}
+
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <a
+                        href={job.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 font-semibold text-fg-body hover:underline"
+                      >
+                        {job.title}
+                        <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
+                      </a>
+                      <Badge tone={job.status === 'queued' ? 'success' : 'warning'}>
+                        {job.status === 'queued' ? 'Ready to submit' : 'Needs review'}
+                      </Badge>
+                    </div>
+
+                    <p className="text-xs text-fg-subtle">
+                      <span className="font-medium text-fg-body">{job.company}</span>
+                      {job.location && <span> · {job.location}</span>}
+                    </p>
+
+                    <p className="text-xs text-fg-subtle">
+                      <span className="font-medium tabular-nums text-fg-body">
+                        {job.atsScore ?? '-'}% → {job.postTailorScore ?? '-'}%
+                      </span>{' '}
+                      after tailoring
+                    </p>
+
+                    {reason && <p className="text-xs font-medium text-fg-warning">{reason}</p>}
+
+                    {(job.matchedRules.length > 0 || job.tailoredKeywords.length > 0) && (
+                      <div className="mt-0.5 flex flex-wrap gap-1">
+                        {job.matchedRules.map((rule) => (
+                          <Badge key={`rule-${rule}`}>Matched “{rule}”</Badge>
+                        ))}
+                        {job.tailoredKeywords.map((keyword) => (
+                          <Badge key={`kw-${keyword}`} tone="neutral">
+                            + {keyword}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <span
-                  className={`rounded px-2 py-1 text-xs font-medium ${
-                    job.status === 'queued' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
-                  }`}
-                >
-                  {job.status === 'queued' ? 'Ready to submit' : 'Needs review'}
-                </span>
-              </div>
 
-              <div className="mt-2 text-sm text-gray-600">
-                Fit score: {job.atsScore ?? '-'}% → {job.postTailorScore ?? '-'}%
-              </div>
-
-              {reason && <div className="mt-1 text-xs text-amber-700">{reason}</div>}
-
-              {(job.matchedRules.length > 0 || job.tailoredKeywords.length > 0) && (
-                <div className="mt-2 text-xs text-gray-500">
-                  {job.matchedRules.length > 0 && <div>Matched: {job.matchedRules.join(', ')}</div>}
-                  {job.tailoredKeywords.length > 0 && <div>Keywords added: {job.tailoredKeywords.join(', ')}</div>}
-                </div>
-              )}
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" className="rounded border px-3 py-1 text-sm" onClick={() => toggleExpand(job)}>
-                  {isExpanded ? 'Hide draft' : 'View draft'}
-                </button>
-                {job.draftResumeId && (
-                  <a
-                    href={`/dashboard/resumes/${job.draftResumeId}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded border px-3 py-1 text-sm text-indigo-700 hover:bg-indigo-50"
+                <div className="flex flex-wrap items-center gap-1.5 border-t border-border-subtle pt-2.5">
+                  <Button
+                    disabled={isBlocked || convertingId === job._id}
+                    title={
+                      isBlocked ? 'Resolve flagged claims before marking as applied' : undefined
+                    }
+                    onClick={() => handleConvert(job)}
                   >
-                    Open resume
-                  </a>
-                )}
-                <button
-                  type="button"
-                  disabled={job.pendingApprovals.length > 0 || convertingId === job._id}
-                  title={job.pendingApprovals.length > 0 ? 'Resolve flagged claims before marking as applied' : undefined}
-                  className="rounded bg-indigo-600 px-3 py-1 text-sm text-white disabled:opacity-40"
-                  onClick={() => handleConvert(job)}
-                >
-                  {convertingId === job._id ? 'Marking…' : 'Mark as applied'}
-                </button>
-                {job.status === 'needs_review' && (
-                  <>
-                    {job.pendingApprovals.length > 0 && (
-                      <button
-                        type="button"
-                        disabled={actioningId === job._id}
-                        title="Confirm the flagged claims are accurate (or that you've fixed them in the draft)"
-                        className="rounded border border-green-300 px-3 py-1 text-sm text-green-700 hover:bg-green-50 disabled:opacity-40"
-                        onClick={() => handleApprove(job)}
-                      >
-                        {actioningId === job._id ? 'Approving…' : 'Approve'}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      disabled={actioningId === job._id}
-                      className="rounded border border-red-300 px-3 py-1 text-sm text-red-700 hover:bg-red-50 disabled:opacity-40"
-                      onClick={() => handleReject(job)}
-                    >
-                      Reject
-                    </button>
-                  </>
-                )}
-              </div>
+                    {convertingId === job._id ? 'Marking…' : 'Mark as applied'}
+                  </Button>
 
-              {isExpanded && (
-                <div className="mt-3 rounded bg-gray-50 p-3 text-sm">
-                  {draftLoadError && <div className="text-red-700">{draftLoadError}</div>}
-                  {!draft && !draftLoadError && <div className="text-gray-500">Loading draft…</div>}
-                  {draft && (
+                  <Button variant="secondary" onClick={() => toggleExpand(job)}>
+                    {isExpanded ? 'Hide draft' : 'View draft'}
+                  </Button>
+
+                  {job.draftResumeId && (
+                    <a
+                      href={`/dashboard/resumes/${job.draftResumeId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={buttonClasses({ variant: 'secondary' })}
+                    >
+                      Open resume
+                    </a>
+                  )}
+
+                  {job.status === 'needs_review' && (
                     <>
-                      <div className="font-medium">{draft.title}</div>
-                      {draft.summary && <p className="mt-1 whitespace-pre-wrap text-gray-700">{draft.summary}</p>}
-                      {draft.coverLetter && (
-                        <>
-                          <div className="mt-2 font-medium">Cover letter</div>
-                          <p className="mt-1 whitespace-pre-wrap text-gray-700">{draft.coverLetter}</p>
-                        </>
+                      {isBlocked && (
+                        <Button
+                          variant="soft"
+                          disabled={actioningId === job._id}
+                          title="Confirm the flagged claims are accurate (or that you've fixed them in the draft)"
+                          onClick={() => handleApprove(job)}
+                        >
+                          {actioningId === job._id ? 'Approving…' : 'Approve'}
+                        </Button>
                       )}
+                      <Button
+                        variant="dangerGhost"
+                        className="ml-auto"
+                        disabled={actioningId === job._id}
+                        onClick={() => handleReject(job)}
+                      >
+                        Reject
+                      </Button>
                     </>
                   )}
                 </div>
-              )}
+
+                {isExpanded && (
+                  <div className="rounded-control bg-surface-subtle p-3 text-sm">
+                    {draftLoadError && <ErrorBanner>{draftLoadError}</ErrorBanner>}
+                    {!draft && !draftLoadError && (
+                      <p className="text-fg-subtle">Loading draft…</p>
+                    )}
+                    {draft && (
+                      <>
+                        <p className="font-semibold text-fg-heading">{draft.title}</p>
+                        {draft.summary && (
+                          <p className="mt-1 whitespace-pre-wrap text-fg-body">{draft.summary}</p>
+                        )}
+                        {draft.coverLetter && (
+                          <>
+                            <p className="mt-2 font-semibold text-fg-heading">Cover letter</p>
+                            <p className="mt-1 whitespace-pre-wrap text-fg-body">
+                              {draft.coverLetter}
+                            </p>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </Card>
             </li>
           )
         })}
