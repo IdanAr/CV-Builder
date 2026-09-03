@@ -7,6 +7,7 @@ import type { SuggestionField, PipelineResult } from '@/lib/ai/pipeline'
 import { Popover } from '@/components/ui/Popover'
 import { fetchWithTimeout, requestErrorMessage } from '@/lib/fetch-with-timeout'
 import { highlightApprovals } from '@/lib/ai/highlight-approvals'
+import { apiErrorMessage } from '@/lib/api/client-errors'
 
 interface AiSuggestButtonProps {
   resumeId: string
@@ -31,10 +32,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ input: currentValue, ...context }),
       })
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        throw new Error((json as { error?: string }).error ?? 'Failed to generate suggestion. Please try again.')
-      }
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Failed to generate suggestion. Please try again.'))
       setResult(await res.json())
     } catch (err) {
       setError(requestErrorMessage(err, 'Failed to generate suggestion. Please try again.'))

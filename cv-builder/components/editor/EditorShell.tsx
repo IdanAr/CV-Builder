@@ -19,6 +19,8 @@ import { ExportMenu } from './ExportMenu'
 import { toast } from '@/lib/stores/toast.store'
 import type { ExportMode } from '@/lib/export-mode'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
+import { apiErrorMessage } from '@/lib/api/client-errors'
+import { requestErrorMessage } from '@/lib/fetch-with-timeout'
 
 type Tab = 'edit' | 'design' | 'ats' | 'coverLetter'
 
@@ -218,7 +220,11 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode }),
       })
-      if (!res.ok) throw new Error(`Export failed: ${res.status}`)
+      // Exports share the 10 req/min limiter with the AI routes, and a user
+      // iterating on a résumé hits it easily. Discarding the body here meant the
+      // catch below reported "export failed" for throttling, a bad request and a
+      // crashed renderer alike.
+      if (!res.ok) throw new Error(await apiErrorMessage(res, `${format.toUpperCase()} export failed. Please try again.`))
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -229,8 +235,8 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
       a.click()
       URL.revokeObjectURL(url)
       toast.success(`${format.toUpperCase()} exported`)
-    } catch {
-      toast.error(`${format.toUpperCase()} export failed. Please try again.`)
+    } catch (err) {
+      toast.error(requestErrorMessage(err, `${format.toUpperCase()} export failed. Please try again.`))
     }
   }
 

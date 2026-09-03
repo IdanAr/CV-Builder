@@ -12,6 +12,7 @@ import { inputClass } from '@/components/editor/forms/field-styles'
 import { cn } from '@/lib/utils'
 import { fetchWithTimeout, requestErrorMessage } from '@/lib/fetch-with-timeout'
 import { StepsBar, type WizardStep } from './StepsBar'
+import { apiErrorMessage } from '@/lib/api/client-errors'
 
 // /ats-score merges keywordPriorities onto AtsScoreResult rather than
 // widening that interface (see the route) — this is the richer shape the
@@ -159,10 +160,7 @@ export function AtsScorePanel() {
           keywordPriorities: cachedKeywordPriorities,
         }),
       })
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        throw new Error((json as { error?: string }).error ?? 'Analysis failed. Please try again.')
-      }
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Analysis failed. Please try again.'))
       const json: AtsScoreResponse = await res.json()
       setResult(json)
       setJdKeywords(json.jdKeywords)
@@ -199,10 +197,7 @@ export function AtsScorePanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ missingKeywords: result.missingKeywords }),
       })
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        throw new Error((json as { error?: string }).error ?? 'Could not generate fixes. Please try again.')
-      }
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Could not generate fixes. Please try again.'))
       const fetchedFixes: AtsFix[] = await res.json()
       setFixes(fetchedFixes)
       setFixStatus('ready')
@@ -224,10 +219,7 @@ export function AtsScorePanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ missingKeywords: result.missingKeywords }),
       })
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        throw new Error((json as { error?: string }).error ?? 'Semantic match failed. Please try again.')
-      }
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Semantic match failed. Please try again.'))
       const { confirmedMatches } = await res.json()
       await handleAnalyze(excludedKeywords, confirmedMatches, jdKeywords, keywordPriorities)
       setSemanticStatus('ready')

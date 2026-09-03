@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Upload, Sparkles } from 'lucide-react'
+import { Upload, Sparkles, Check } from 'lucide-react'
 import { TemplateThumbnail } from './TemplateThumbnail'
 
 export function HeroSection() {
@@ -37,6 +37,17 @@ export function HeroSection() {
               Sign Up to Upload Your CV
             </Link>
           </div>
+          {/* Until this line, the only "Free" in the whole funnel was a word
+              inside a button label in the very last section, so a visitor could
+              not tell above the fold whether the product costs anything —
+              exactly the question a CTA has to answer before it is clicked.
+
+              Worded as "free to start" rather than "free forever": nothing here
+              should promise a pricing model that has not been decided. */}
+          <p className="mt-4 flex items-center gap-2 text-sm text-gray-600">
+            <Check className="h-4 w-4 shrink-0 text-green-600" aria-hidden="true" />
+            Free to start — no credit card required
+          </p>
         </div>
         <div className="relative mx-auto">
           <TemplateThumbnail
