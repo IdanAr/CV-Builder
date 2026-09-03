@@ -1,4 +1,5 @@
 'use client'
+import { handleTablistKeyDown, tabIndexFor } from '@/lib/tablist-keys'
 
 interface ProfileWizardStepsProps {
   current: number
@@ -9,7 +10,12 @@ interface ProfileWizardStepsProps {
 
 export function ProfileWizardSteps({ current, maxUnlocked, labels, onStepClick }: ProfileWizardStepsProps) {
   return (
-    <div className="flex bg-indigo-50 rounded-full p-1 gap-1" role="tablist" aria-label="Job search profile setup steps">
+    <div
+      className="flex bg-indigo-50 rounded-full p-1 gap-1"
+      role="tablist"
+      aria-label="Job search profile setup steps"
+      onKeyDown={handleTablistKeyDown}
+    >
       {labels.map((label, index) => {
         const step = index + 1
         const isCurrent = step === current
@@ -38,6 +44,7 @@ export function ProfileWizardSteps({ current, maxUnlocked, labels, onStepClick }
             aria-selected={isCurrent}
             aria-disabled={isLocked}
             disabled={isLocked}
+            tabIndex={tabIndexFor(isCurrent)}
             onClick={() => onStepClick(step)}
             className={buttonClass}
           >

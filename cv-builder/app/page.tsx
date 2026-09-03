@@ -28,7 +28,7 @@ export default async function Home() {
         containerClassName="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
         actions={<MarketingNavActions isSignedIn={!!session} />}
       />
-      <main>
+      <main id="main-content">
         <HeroSection />
         <FeaturesSection />
         <TemplatesShowcaseSection />

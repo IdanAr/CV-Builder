@@ -1,4 +1,5 @@
 'use client'
+import { handleTablistKeyDown, tabIndexFor } from '@/lib/tablist-keys'
 
 export type WizardStep = 1 | 2 | 3
 
@@ -18,7 +19,12 @@ const STEPS: WizardStep[] = [1, 2, 3]
 
 export function StepsBar({ current, maxUnlocked, onStepClick }: StepsBarProps) {
   return (
-    <div className="flex bg-indigo-50 rounded-full p-1 gap-1" role="tablist" aria-label="ATS analysis steps">
+    <div
+      className="flex bg-indigo-50 rounded-full p-1 gap-1"
+      role="tablist"
+      aria-label="ATS analysis steps"
+      onKeyDown={handleTablistKeyDown}
+    >
       {STEPS.map((step) => {
         const isCurrent = step === current
         const isLocked = step > maxUnlocked
@@ -43,6 +49,7 @@ export function StepsBar({ current, maxUnlocked, onStepClick }: StepsBarProps) {
             role="tab"
             aria-selected={isCurrent}
             aria-disabled={isLocked}
+            tabIndex={tabIndexFor(isCurrent)}
             disabled={isLocked}
             onClick={() => onStepClick(step)}
             className={buttonClass}

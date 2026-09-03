@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, useReducedMotion } from 'framer-motion'
+import { handleTablistKeyDown, tabIndexFor } from '@/lib/tablist-keys'
 import { useMediaQuery } from '@/lib/hooks/use-media-query'
 import { useResumeEditorStore, initAutoSave, flushSave } from '@/lib/stores/resume-editor.store'
 import { EditTab } from './EditTab'
@@ -280,7 +281,12 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
       </div>
 
       {/* Tab bar */}
-      <div role="tablist" aria-label="Editor sections" className="flex border-b border-indigo-100 shrink-0 bg-white/50">
+      <div
+        role="tablist"
+        aria-label="Editor sections"
+        onKeyDown={handleTablistKeyDown}
+        className="flex border-b border-indigo-100 shrink-0 bg-white/50"
+      >
         {(['edit', 'design', 'ats', 'coverLetter'] as Tab[]).map((tab) => (
           <button
             key={tab}
@@ -289,6 +295,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
             id={`editor-tab-${tab}`}
             aria-controls={`editor-panel-${tab}`}
             aria-selected={activeTab === tab}
+            tabIndex={tabIndexFor(activeTab === tab)}
             onClick={() => setActiveTab(tab)}
             className={`relative flex items-center justify-center min-h-[44px] px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === tab ? 'text-indigo-600' : 'text-fg-muted hover:text-fg-body'
@@ -376,6 +383,18 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-violet-50">
+      {/*
+        The editor was the only route in the app without an h1 — every other
+        page has one ("My CVs", "Applications", "Job Search Profiles") — so a
+        screen reader listing headings here found nothing to orient by.
+
+        Visually hidden rather than drawn, because the résumé's name is already
+        on screen as an editable input in the panel below, and rendering it
+        twice would be redundant to sighted users. The input keeps its own
+        `aria-label`; this names the page, not the field.
+      */}
+      <h1 className="sr-only">{storeTitle ? `Editing ${storeTitle}` : 'CV editor'}</h1>
+
       {/* Top navbar */}
       <AppNavbar
         actions={
@@ -422,12 +441,14 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
             <div
               role="tablist"
               aria-label="View"
+              onKeyDown={handleTablistKeyDown}
               className="flex gap-1 p-1 border-b border-indigo-100 bg-white/50 shrink-0"
             >
               <button
                 type="button"
                 role="tab"
                 aria-selected={mobileView === 'edit'}
+                tabIndex={tabIndexFor(mobileView === 'edit')}
                 onClick={() => setMobileView('edit')}
                 className={`flex-1 min-h-[40px] rounded text-sm font-medium transition-colors ${
                   mobileView === 'edit'
@@ -441,6 +462,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
                 type="button"
                 role="tab"
                 aria-selected={mobileView === 'preview'}
+                tabIndex={tabIndexFor(mobileView === 'preview')}
                 onClick={() => setMobileView('preview')}
                 className={`flex-1 min-h-[40px] rounded text-sm font-medium transition-colors ${
                   mobileView === 'preview'
