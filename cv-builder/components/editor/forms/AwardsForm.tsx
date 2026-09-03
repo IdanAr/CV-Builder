@@ -8,6 +8,8 @@ import { RichTextField } from './RichTextField'
 import { inputClass } from './field-styles'
 import { createEmptyAward as createEmpty } from '@/lib/schemas/resume-empty-entries'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
+import { X } from 'lucide-react'
+import { buttonClasses } from '@/components/ui/Button'
 
 type Item = NonNullable<ResumeData['awards']>[number]
 const EMPTY_ITEMS: Item[] = []
@@ -28,7 +30,7 @@ function ItemForm({ item, resumeId, onUpdate, onRemove }: { item: Item; resumeId
             placeholder="Awarder" className={inputClass} />
         </div>
         <button type="button" onClick={onRemove} aria-label="Remove award entry"
-          className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
+          className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-1 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
       </div>
       <MonthYearPicker value={item.date ?? ''} onChange={(v) => set('date', v)} placeholder="Date" />
       <div className="flex items-start gap-1">

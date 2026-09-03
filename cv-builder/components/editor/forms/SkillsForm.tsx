@@ -6,6 +6,8 @@ import { ListFieldManager } from './ListFieldManager'
 import { inputClass as sharedInputClass } from './field-styles'
 import { createEmptySkill as createEmpty } from '@/lib/schemas/resume-empty-entries'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
+import { X } from 'lucide-react'
+import { buttonClasses } from '@/components/ui/Button'
 
 type SkillItem = NonNullable<ResumeData['skills']>[number]
 
@@ -41,7 +43,7 @@ function SkillItemForm({ item, onUpdate, onRemove }: { item: SkillItem; onUpdate
           </select>
         </div>
         <button type="button" onClick={onRemove} aria-label="Remove skill"
-          className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
+          className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-1 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
       </div>
       <fieldset className="space-y-1 border-0 p-0 m-0">
         <legend className="block text-xs font-medium text-indigo-600 p-0">Keywords</legend>
@@ -50,7 +52,7 @@ function SkillItemForm({ item, onUpdate, onRemove }: { item: SkillItem; onUpdate
             <input type="text" value={k} onChange={(e) => updateKeyword(i, e.target.value)}
               placeholder="e.g. React" aria-label={`Keyword ${i + 1}`} className={`${inputClass} flex-1`} />
             <button type="button" onClick={() => removeKeyword(i)} aria-label="Remove keyword"
-              className="text-gray-400 hover:text-red-500 text-xs px-1">✕</button>
+              className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
           </div>
         ))}
         <button type="button" onClick={addKeyword}

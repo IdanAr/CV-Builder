@@ -8,6 +8,8 @@ import { ListFieldManager } from './ListFieldManager'
 import { inputClass, labelClass } from './field-styles'
 import { createEmptyProfile } from '@/lib/schemas/resume-empty-entries'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
+import { X } from 'lucide-react'
+import { buttonClasses } from '@/components/ui/Button'
 
 type Basics = NonNullable<ResumeData['basics']>
 type Profile = NonNullable<Basics['profiles']>[number]
@@ -95,7 +97,7 @@ export function BasicsForm() {
                 />
               </div>
               <button type="button" onClick={onRemove} aria-label="Remove URL"
-                className="text-gray-400 hover:text-red-500 text-sm mt-1.5">✕</button>
+                className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-1.5 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
             </div>
           )}
         />

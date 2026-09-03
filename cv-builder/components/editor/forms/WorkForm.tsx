@@ -11,6 +11,8 @@ import { inputClass } from './field-styles'
 import { createEmptyWork as createEmpty, createEmptyWorkRole } from '@/lib/schemas/resume-empty-entries'
 import { resolveWorkRoles } from '@/lib/roles'
 import type { ResumeData, WorkRole } from '@/lib/schemas/resume.zod'
+import { X } from 'lucide-react'
+import { buttonClasses } from '@/components/ui/Button'
 
 type WorkItem = NonNullable<ResumeData['work']>[number]
 
@@ -36,7 +38,7 @@ function RoleForm({
         <input id={`${id}-position`} type="text" value={role.position ?? ''} onChange={(e) => set('position', e.target.value)}
           placeholder="Job title" className={`${inputClass} flex-1`} />
         <button type="button" onClick={onRemove} aria-label="Remove role"
-          className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
+          className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-1 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <MonthYearPicker value={role.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
@@ -73,7 +75,7 @@ function RoleForm({
                 onAccept={onUpdateHighlight}
               />
               <button type="button" onClick={onRemoveHighlight} aria-label="Remove highlight"
-                className="text-gray-400 hover:text-red-500 text-xs px-1 mt-6">✕</button>
+                className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-6 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
             </div>
           )}
         />
@@ -110,7 +112,7 @@ function WorkItemForm({
         <input id={`${id}-name`} type="text" value={item.name ?? ''} onChange={(e) => set('name', e.target.value)}
           placeholder="Company name" className={`${inputClass} flex-1`} />
         <button type="button" onClick={onRemove} aria-label="Remove work entry"
-          className="text-gray-400 hover:text-red-500 text-sm mt-1">✕</button>
+          className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-1 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
       </div>
       <div className="pl-3 border-l-2 border-indigo-100">
         <ListFieldManager<WorkRole>

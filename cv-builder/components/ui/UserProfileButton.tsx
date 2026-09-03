@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
+import { ChevronDown, FileText, LogOut, X } from 'lucide-react'
 
 interface UserProfileButtonProps {
   user: {
@@ -194,18 +195,11 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
       >
         <Avatar image={user.image} name={user.name} size={26} />
         <span className="text-xs font-medium text-indigo-700">{firstName}</span>
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
+        <ChevronDown
           aria-hidden="true"
-          className={`text-indigo-400 transition-transform duration-150 ${dropdownOpen ? 'rotate-180' : ''}`}
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+          strokeWidth={2.5}
+          className={`h-3 w-3 text-fg-muted transition-transform duration-150 ${dropdownOpen ? 'rotate-180' : ''}`}
+        />
       </button>
 
       {/* Dropdown */}
@@ -238,21 +232,7 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
               }}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-indigo-900 transition hover:bg-indigo-50/70"
             >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="shrink-0 text-indigo-400"
-                aria-hidden="true"
-              >
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-              </svg>
+              <FileText aria-hidden="true" strokeWidth={2} className="h-4 w-4 shrink-0 text-fg-muted" />
               Terms &amp; Conditions
             </button>
           </div>
@@ -265,20 +245,7 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
               onClick={() => signOut({ callbackUrl: '/signin' })}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50/80"
             >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="shrink-0"
-                aria-hidden="true"
-              >
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
+              <LogOut aria-hidden="true" strokeWidth={2} className="h-4 w-4 shrink-0" />
               Sign Out
             </button>
           </div>
@@ -309,10 +276,8 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
                 ref={termsCloseRef}
                 aria-label="Close Terms"
                 onClick={() => setTermsOpen(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50/60 text-sm text-indigo-400 transition hover:bg-indigo-100/80"
-              >
-                ✕
-              </button>
+                className="flex h-7 w-7 items-center justify-center rounded-control bg-surface-subtle text-fg-muted transition hover:bg-secondary"
+              ><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
             </div>
             <div className="max-h-[60vh] overflow-y-auto px-6 py-5 text-sm">
               <p className="mb-4 text-xs text-indigo-400">Effective date: June 2026</p>

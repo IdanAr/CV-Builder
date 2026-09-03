@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
+import { ChevronDown } from 'lucide-react'
 
 // Combines "Profiles" (create/manage job search profiles) and "Job Matches"
 // (the notifications feed) behind a single trigger so the navbar gains a
@@ -98,18 +99,11 @@ export function JobSearchNav() {
         className="relative flex items-center gap-1.5 rounded-md border border-indigo-200 bg-white/50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50"
       >
         Job Search
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
+        <ChevronDown
           aria-hidden="true"
-          className={`text-indigo-400 transition-transform duration-150 ${dropdownOpen ? 'rotate-180' : ''}`}
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+          strokeWidth={2.5}
+          className={`h-3 w-3 text-fg-muted transition-transform duration-150 ${dropdownOpen ? 'rotate-180' : ''}`}
+        />
         {!!count && count > 0 && (
           <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-xs font-semibold text-white">
             {count > 99 ? '99+' : count}

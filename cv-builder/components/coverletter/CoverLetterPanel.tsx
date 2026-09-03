@@ -4,6 +4,8 @@ import { useId, useState } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { fetchWithTimeout, requestErrorMessage } from '@/lib/fetch-with-timeout'
 import { highlightApprovals } from '@/lib/ai/highlight-approvals'
+import { inputClass } from '@/components/editor/forms/field-styles'
+import { cn } from '@/lib/utils'
 
 interface CoverLetterDraft {
   content: string
@@ -110,7 +112,7 @@ export function CoverLetterPanel() {
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
           placeholder="Paste the job description here to generate a tailored cover letter…"
-          className="w-full h-40 rounded-lg border border-indigo-200 bg-white/70 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className={cn(inputClass, 'h-40 resize-none py-2')}
         />
 
         <div className="mt-2 flex gap-2">
@@ -121,7 +123,7 @@ export function CoverLetterPanel() {
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
             placeholder="Company name (optional)"
-            className="flex-1 rounded-lg border border-indigo-200 bg-white/70 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className={cn(inputClass, 'w-auto flex-1')}
           />
           <label htmlFor={`${id}-role`} className="sr-only">Role title</label>
           <input
@@ -130,7 +132,7 @@ export function CoverLetterPanel() {
             value={roleName}
             onChange={(e) => setRoleName(e.target.value)}
             placeholder="Role title (optional)"
-            className="flex-1 rounded-lg border border-indigo-200 bg-white/70 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className={cn(inputClass, 'w-auto flex-1')}
           />
         </div>
 
@@ -213,7 +215,7 @@ export function CoverLetterPanel() {
           value={data.coverLetter ?? ''}
           onChange={(e) => setData({ coverLetter: e.target.value })}
           placeholder="Your generated cover letter will appear here - feel free to edit it directly."
-          className="w-full h-80 rounded-lg border border-indigo-200 bg-white/70 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className={cn(inputClass, 'h-80 resize-none py-2')}
         />
       </div>
     </div>

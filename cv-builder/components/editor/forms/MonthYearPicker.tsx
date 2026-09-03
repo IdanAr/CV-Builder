@@ -1,6 +1,8 @@
 'use client'
 
 import { useId, useState, useEffect } from 'react'
+import { inputClass } from './field-styles'
+import { cn } from '@/lib/utils'
 
 export interface MonthYearPickerProps {
   value: string          // "YYYY-MM", "" for empty, or "Present" (end dates only)
@@ -24,8 +26,17 @@ const MONTHS = [
   { value: '12', label: 'Dec' },
 ]
 
-const fieldClass =
-  'border border-indigo-200 rounded-lg px-2 py-1 text-sm bg-white/70 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+/**
+ * Compose this with `cn()` at each call site, never with a template string.
+ *
+ * The shared `inputClass` carries `w-full`, and Tailwind emits `.w-full` after
+ * `.w-20`/`.w-16` in the stylesheet. Both are single-class selectors, so with
+ * plain interpolation the two widths would both survive into the class
+ * attribute and source order alone would decide — the field would stretch to
+ * fill its column and shove the "Present" toggle out of the row. `cn()` runs
+ * twMerge, which drops the losing width before it ever reaches the DOM.
+ */
+const fieldClass = cn(inputClass, 'px-2 py-1 appearance-none')
 
 function parseValue(value: string): { year: string; month: string; isPresent: boolean } {
   if (value === 'Present') {
@@ -121,7 +132,15 @@ export function MonthYearPicker({ value, onChange, allowPresent = false, placeho
   }
 
   return (
-    <div className="flex items-center gap-1.5">
+    // Wraps rather than overflows. The end-date variant needs roughly 224px
+    // (80 + 64 for the fields, plus gaps, the checkbox and its label), but the
+    // forms lay these out in a two-column grid inside an editor panel that is
+    // narrower than that per column. Without `flex-wrap` the "Present" toggle
+    // has nowhere to go — `whitespace-nowrap` keeps it from breaking, so it
+    // spills over the year field and out of the card. `min-w-0` lets this box
+    // actually shrink inside its grid track, whose default `min-width: auto`
+    // would otherwise refuse to go below the content width.
+    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
       <label htmlFor={monthId} className="sr-only">
         {placeholder ? `${placeholder} month` : 'Month'}
       </label>
@@ -129,7 +148,7 @@ export function MonthYearPicker({ value, onChange, allowPresent = false, placeho
         id={monthId}
         value={month}
         onChange={handleMonthChange}
-        className={`${fieldClass} w-20`}
+        className={cn(fieldClass, 'w-20')}
       >
         <option value="">Month</option>
         {MONTHS.map((m) => (
@@ -150,7 +169,7 @@ export function MonthYearPicker({ value, onChange, allowPresent = false, placeho
         onBlur={handleYearBlur}
         maxLength={4}
         placeholder="YYYY"
-        className={`${fieldClass} w-16`}
+        className={cn(fieldClass, 'w-16')}
       />
 
       {allowPresent && (
