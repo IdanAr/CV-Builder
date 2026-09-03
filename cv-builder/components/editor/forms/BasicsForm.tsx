@@ -46,24 +46,24 @@ export function BasicsForm() {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="basics-name" className={labelClass}>Full Name</label>
-          <input id="basics-name" type="text" value={basics.name ?? ''} onChange={(e) => set('name', e.target.value)}
+          <input id="basics-name" type="text" autoComplete="name" value={basics.name ?? ''} onChange={(e) => set('name', e.target.value)}
             placeholder="Jane Smith" className={inputClass} />
         </div>
         <div>
           <label htmlFor="basics-label" className={labelClass}>Job Title</label>
-          <input id="basics-label" type="text" value={basics.label ?? ''} onChange={(e) => set('label', e.target.value)}
+          <input id="basics-label" type="text" autoComplete="organization-title" value={basics.label ?? ''} onChange={(e) => set('label', e.target.value)}
             placeholder="Software Engineer" className={inputClass} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="basics-email" className={labelClass}>Email</label>
-          <input id="basics-email" type="email" value={basics.email ?? ''} onChange={(e) => set('email', e.target.value)}
+          <input id="basics-email" type="email" autoComplete="email" value={basics.email ?? ''} onChange={(e) => set('email', e.target.value)}
             placeholder="jane@example.com" className={inputClass} />
         </div>
         <div>
           <label htmlFor="basics-phone" className={labelClass}>Phone</label>
-          <input id="basics-phone" type="tel" value={basics.phone ?? ''} onChange={(e) => set('phone', e.target.value)}
+          <input id="basics-phone" type="tel" autoComplete="tel" value={basics.phone ?? ''} onChange={(e) => set('phone', e.target.value)}
             placeholder="+1 555 123 4567" className={inputClass} />
         </div>
       </div>
@@ -74,12 +74,12 @@ export function BasicsForm() {
           onChange={setProfiles}
           createEmpty={createEmptyProfile}
           addLabel="Add URL"
-          renderItem={(item, _, onUpdate, onRemove) => (
+          renderItem={(item, index, onUpdate, onRemove) => (
             <div className="flex gap-2 items-start">
               <div className="w-[30%]">
-                <label className="sr-only">Label</label>
                 <input
                   type="text"
+                  aria-label={`Link ${index + 1} label`}
                   value={item.label ?? ''}
                   onChange={(e) => onUpdate({ ...item, label: e.target.value })}
                   placeholder="Label - Optional"
@@ -87,9 +87,10 @@ export function BasicsForm() {
                 />
               </div>
               <div className="w-[70%]">
-                <label className="sr-only">URL</label>
                 <input
                   type="url"
+                  aria-label={`Link ${index + 1} URL`}
+                  autoComplete="url"
                   value={item.url ?? ''}
                   onChange={(e) => onUpdate({ ...item, url: e.target.value })}
                   placeholder="https://..."
@@ -105,19 +106,19 @@ export function BasicsForm() {
       <div className="grid grid-cols-3 gap-3">
         <div>
           <label htmlFor="basics-city" className={labelClass}>City</label>
-          <input id="basics-city" type="text" value={basics.location?.city ?? ''}
+          <input id="basics-city" type="text" autoComplete="address-level2" value={basics.location?.city ?? ''}
             onChange={(e) => setLocation('city', e.target.value)}
             placeholder="San Francisco" className={inputClass} />
         </div>
         <div>
           <label htmlFor="basics-region" className={labelClass}>Region</label>
-          <input id="basics-region" type="text" value={basics.location?.region ?? ''}
+          <input id="basics-region" type="text" autoComplete="address-level1" value={basics.location?.region ?? ''}
             onChange={(e) => setLocation('region', e.target.value)}
             placeholder="CA" className={inputClass} />
         </div>
         <div>
           <label htmlFor="basics-country" className={labelClass}>Country</label>
-          <input id="basics-country" type="text" value={basics.location?.countryCode ?? ''}
+          <input id="basics-country" type="text" autoComplete="country" value={basics.location?.countryCode ?? ''}
             onChange={(e) => setLocation('countryCode', e.target.value)}
             placeholder="US" className={inputClass} />
         </div>

@@ -233,7 +233,7 @@ function RoleForm({
       </div>
       {enabledFields.includes('subtitle') && (
         <input type="text" value={role.subtitle ?? ''} onChange={(e) => set('subtitle', e.target.value)}
-          placeholder="Subtitle" className={inputClass} />
+          aria-label="Subtitle" placeholder="Subtitle" className={inputClass} />
       )}
       {enabledFields.includes('dateRange') && (
         <div className="grid grid-cols-2 gap-2">
@@ -298,7 +298,7 @@ function RoleForm({
               </span>
             ))}
           </div>
-          <input type="text" placeholder="Add keyword, press Enter" className={inputClass}
+          <input type="text" aria-label="Add keyword" placeholder="Add keyword, press Enter" className={inputClass}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault()
@@ -312,7 +312,7 @@ function RoleForm({
         </div>
       )}
       {enabledFields.includes('level') && (
-        <select value={role.level ?? ''} onChange={(e) => set('level', e.target.value)} className={inputClass}>
+        <select value={role.level ?? ''} onChange={(e) => set('level', e.target.value)} aria-label="Level" className={inputClass}>
           <option value="">Select level…</option>
           <option value="Expert">Expert</option>
           <option value="Advanced">Advanced</option>
