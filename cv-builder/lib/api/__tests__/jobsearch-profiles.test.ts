@@ -9,6 +9,7 @@ const {
   mockFindOneAndUpdate,
   mockDeleteOne,
   mockResumeFindOne,
+  mockScrapedJobAggregate,
 } = vi.hoisted(() => ({
   mockFind: vi.fn(),
   mockCreate: vi.fn(),
@@ -16,6 +17,7 @@ const {
   mockFindOneAndUpdate: vi.fn(),
   mockDeleteOne: vi.fn(),
   mockResumeFindOne: vi.fn(),
+  mockScrapedJobAggregate: vi.fn(),
 }))
 
 vi.mock('@/models/JobSearchProfile', () => ({
@@ -34,6 +36,13 @@ vi.mock('@/models/Resume', () => ({
   },
 }))
 
+// listJobSearchProfiles folds per-profile match counts onto each row.
+vi.mock('@/models/ScrapedJob', () => ({
+  default: {
+    aggregate: mockScrapedJobAggregate,
+  },
+}))
+
 import {
   listJobSearchProfiles,
   createJobSearchProfile,
@@ -41,6 +50,7 @@ import {
   updateJobSearchProfile,
   deleteJobSearchProfile,
   listAllActiveJobSearchProfiles,
+  getProfileNameMap,
 } from '../jobsearch-profiles'
 
 function sortLeanChain(resolved: unknown) {
@@ -52,6 +62,7 @@ function leanChain(resolved: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockScrapedJobAggregate.mockResolvedValue([])
 })
 
 describe('listJobSearchProfiles', () => {
@@ -62,7 +73,54 @@ describe('listJobSearchProfiles', () => {
     const result = await listJobSearchProfiles('u1')
 
     expect(mockFind).toHaveBeenCalledWith({ userId: 'u1' })
-    expect(result).toEqual(profiles)
+    expect(result).toEqual([{ ...profiles[0], newMatchCount: 0, queuedCount: 0 }])
+  })
+
+  it('folds new-match and queued counts onto the matching profile', async () => {
+    mockFind.mockReturnValue(
+      sortLeanChain([
+        { _id: 'p1', userId: 'u1', name: 'Frontend' },
+        { _id: 'p2', userId: 'u1', name: 'Backend' },
+      ])
+    )
+    mockScrapedJobAggregate.mockResolvedValue([
+      { _id: { profileId: 'p1', status: 'new' }, n: 4 },
+      { _id: { profileId: 'p1', status: 'queued' }, n: 2 },
+    ])
+
+    const result = await listJobSearchProfiles('u1')
+
+    expect(result[0]).toMatchObject({ _id: 'p1', newMatchCount: 4, queuedCount: 2 })
+    // A profile with nothing scraped still reports zeroes rather than
+    // undefined, so the card never renders a blank metric.
+    expect(result[1]).toMatchObject({ _id: 'p2', newMatchCount: 0, queuedCount: 0 })
+  })
+
+  it('scopes "new" to notify matches, matching the navbar unread badge', async () => {
+    mockFind.mockReturnValue(sortLeanChain([]))
+
+    await listJobSearchProfiles('u1')
+
+    expect(mockScrapedJobAggregate).toHaveBeenCalledWith([
+      {
+        $match: {
+          userId: 'u1',
+          $or: [{ status: 'new', resolvedActions: 'notify' }, { status: 'queued' }],
+        },
+      },
+      { $group: { _id: { profileId: '$profileId', status: '$status' }, n: { $sum: 1 } } },
+    ])
+  })
+})
+
+describe('getProfileNameMap', () => {
+  it('maps profile id to name for the requesting user', async () => {
+    mockFind.mockReturnValue(leanChain([{ _id: 'p1', name: 'Frontend' }]))
+
+    const result = await getProfileNameMap('u1')
+
+    expect(mockFind).toHaveBeenCalledWith({ userId: 'u1' }, 'name')
+    expect(result.get('p1')).toBe('Frontend')
   })
 })
 

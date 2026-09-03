@@ -54,7 +54,7 @@ export function JobSearchNav() {
             className={`h-3 w-3 text-fg-muted transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
           />
           {badge && (
-            <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-xs font-semibold text-white">
+            <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger-600 px-1 text-xs font-semibold text-white">
               {badge}
             </span>
           )}
@@ -69,7 +69,7 @@ export function JobSearchNav() {
           <Link href="/dashboard/jobsearch/notifications" className="justify-between">
             Job Matches
             {badge && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-xs font-semibold text-white">
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-danger-600 px-1 text-xs font-semibold text-white">
                 {badge}
               </span>
             )}

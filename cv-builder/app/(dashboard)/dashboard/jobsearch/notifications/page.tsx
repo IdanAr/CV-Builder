@@ -1,43 +1,29 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { auth } from '@/lib/auth'
+import { countUnreadNotifyMatches } from '@/lib/api/scraped-jobs'
 import { JobMatchesFeed } from '@/components/jobsearch/JobMatchesFeed'
+import { JobSearchShell, topLevelSegments } from '@/components/jobsearch/JobSearchShell'
 import { AppNavbar } from '@/components/ui/AppNavbar'
-import { UserProfileButton } from '@/components/ui/UserProfileButton'
-import { JobSearchNav } from '@/components/jobsearch/JobSearchNav'
+import { DashboardNavActions } from '@/components/ui/DashboardNavActions'
 
 export default async function JobMatchesPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/signin')
 
+  const unreadCount = await countUnreadNotifyMatches(session.user.id)
+
   return (
     <>
-      <AppNavbar
-        actions={
-          <div className="ml-auto flex flex-wrap items-center gap-3">
-            <Link
-              href="/dashboard"
-              className="rounded-md border border-indigo-200 bg-white/50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50"
-            >
-              My CVs
-            </Link>
-            <Link
-              href="/dashboard/applications"
-              className="rounded-md border border-indigo-200 bg-white/50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50"
-            >
-              Applications
-            </Link>
-            <div className="h-4 w-px bg-indigo-200" />
-            <JobSearchNav />
-            <UserProfileButton user={session.user} />
-          </div>
-        }
-      />
+      <AppNavbar actions={<DashboardNavActions user={session.user} current="jobsearch" />} />
 
-      <div className="mx-auto max-w-3xl px-4 py-8">
-        <h1 className="mb-6 text-xl font-semibold">Job Matches</h1>
+      <JobSearchShell
+        segments={topLevelSegments(unreadCount)}
+        active="matches"
+        title="Job Matches"
+        description="Every posting your notify rules flagged, across all profiles."
+      >
         <JobMatchesFeed />
-      </div>
+      </JobSearchShell>
     </>
   )
 }

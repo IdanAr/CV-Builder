@@ -4,8 +4,13 @@ import dbConnect from '@/lib/db'
 import ScrapedJob from '@/models/ScrapedJob'
 import { createApplication } from '@/lib/api/applications'
 import { ensureJobMetadataColumns, JOB_URL_COLUMN_ID, JOB_LOCATION_COLUMN_ID } from '@/lib/api/board-config'
-import { getJobSearchProfile } from '@/lib/api/jobsearch-profiles'
-import type { CreateScrapedJobInput, ScrapeSource, ScrapedJobStatus } from '@/lib/schemas/jobsearch.zod'
+import { getJobSearchProfile, getProfileNameMap } from '@/lib/api/jobsearch-profiles'
+import type {
+  CreateScrapedJobInput,
+  ScrapeSource,
+  ScrapedJobStatus,
+  WorkMode,
+} from '@/lib/schemas/jobsearch.zod'
 import type { CustomFieldValue } from '@/lib/schemas/application.zod'
 
 export async function listScrapedJobs(userId: string, profileId: string) {
@@ -252,11 +257,19 @@ export async function deleteScrapedJobsByIds(userId: string, ids: string[]): Pro
 export interface NotifyMatchSummary {
   _id: unknown
   profileId: string
+  /** Resolved from the profile, not stored on the job — the feed is
+   *  cross-profile, so a card has to say which profile found it. */
+  profileName?: string
   title: string
   company: string
   location?: string
   url: string
   atsScore?: number
+  workMode?: WorkMode
+  /** Names, not ids — lib/jobsearch/rules.ts stores `rule.name`, so these
+   *  render as-is. */
+  matchedRules: string[]
+  postedAt?: Date
   status: string
   createdAt: Date
 }
@@ -267,26 +280,46 @@ export interface NotifyMatchSummary {
 // in this file uses.
 export async function listNotifyMatches(userId: string): Promise<NotifyMatchSummary[]> {
   await dbConnect()
-  return (await ScrapedJob.find(
-    { userId, resolvedActions: 'notify', status: { $in: ['new', 'notified'] } },
-    'profileId title company location url atsScore status createdAt'
-  )
-    .sort({ createdAt: -1 })
-    .lean()) as unknown as NotifyMatchSummary[]
+  const [matches, names] = await Promise.all([
+    ScrapedJob.find(
+      { userId, resolvedActions: 'notify', status: { $in: ['new', 'notified'] } },
+      'profileId title company location url atsScore workMode matchedRules postedAt status createdAt'
+    )
+      .sort({ createdAt: -1 })
+      .lean() as unknown as Promise<NotifyMatchSummary[]>,
+    getProfileNameMap(userId),
+  ])
+  return matches.map((match) => ({ ...match, profileName: names.get(match.profileId) }))
 }
 
-export async function countUnreadNotifyMatches(userId: string): Promise<number> {
+export async function countUnreadNotifyMatches(
+  userId: string,
+  profileId?: string
+): Promise<number> {
   await dbConnect()
-  return ScrapedJob.countDocuments({ userId, resolvedActions: 'notify', status: 'new' })
+  return ScrapedJob.countDocuments({
+    userId,
+    resolvedActions: 'notify',
+    status: 'new',
+    ...(profileId ? { profileId } : {}),
+  })
 }
 
-// Marks every currently-unread notify match as seen (status 'new' ->
-// 'notified') — called once JobMatchesFeed has actually loaded the list, so
-// the AppNavbar badge count drops without requiring a per-item action.
-export async function markNotifyMatchesRead(userId: string): Promise<void> {
+// Marks currently-unread notify matches as seen (status 'new' -> 'notified')
+// — called once JobMatchesFeed has actually loaded the list, so the AppNavbar
+// badge count drops without requiring a per-item action.
+//
+// `profileId` scopes it to one profile's matches. The feed inside a profile
+// record shows only that profile, and marking the whole account read from
+// there would silently clear unread counts for profiles the user never
+// opened.
+export async function markNotifyMatchesRead(
+  userId: string,
+  profileId?: string
+): Promise<void> {
   await dbConnect()
   await ScrapedJob.updateMany(
-    { userId, resolvedActions: 'notify', status: 'new' },
+    { userId, resolvedActions: 'notify', status: 'new', ...(profileId ? { profileId } : {}) },
     { $set: { status: 'notified' } }
   )
 }

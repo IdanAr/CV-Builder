@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueuedApplicationsPanel } from './QueuedApplicationsPanel'
+import { useToastStore } from '@/lib/stores/toast.store'
 
 const profile = { profile: { _id: 'p1', minAtsScore: 75 } }
 
@@ -11,6 +12,7 @@ function jsonResponse(body: unknown, ok = true) {
 }
 
 beforeEach(() => {
+  useToastStore.setState({ toasts: [] })
   vi.stubGlobal('fetch', vi.fn())
 })
 
@@ -283,7 +285,7 @@ describe('QueuedApplicationsPanel', () => {
     expect(screen.queryByRole('button', { name: /^approve$/i })).not.toBeInTheDocument()
   })
 
-  it('rejects a needs_review job by dismissing it, after confirmation', async () => {
+  it('rejects a needs_review job by dismissing it, offering an undo instead of a confirm dialog', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     const mockFetch = vi.fn()
     mockFetch.mockResolvedValueOnce(
@@ -314,6 +316,10 @@ describe('QueuedApplicationsPanel', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dismissed: true }),
       })
+    )
+    // Nothing interrupted the rejection, and it is reversible from the toast.
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts.at(-1)).toMatchObject({ actionLabel: 'Undo' })
     )
   })
 

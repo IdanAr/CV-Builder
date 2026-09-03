@@ -3,9 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ScrapedJobsList } from './ScrapedJobsList'
+import { useToastStore } from '@/lib/stores/toast.store'
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn())
+  useToastStore.setState({ toasts: [] })
 })
 
 describe('ScrapedJobsList', () => {
@@ -23,7 +25,8 @@ describe('ScrapedJobsList', () => {
 
     expect(await screen.findByText('Backend Engineer')).toBeInTheDocument()
     expect(screen.getByText('Acme')).toBeInTheDocument()
-    expect(screen.getByText(/82/)).toBeInTheDocument()
+    expect(screen.getByText('82')).toBeInTheDocument()
+    expect(screen.getByText('82% match')).toBeInTheDocument()
   })
 
   it('shows an empty state with a Scan now button when there are no jobs yet', async () => {
@@ -165,16 +168,16 @@ describe('ScrapedJobsList', () => {
     expect(screen.getByText('Existing Job')).toBeInTheDocument()
   })
 
-  it('dismisses a listing and reloads the list', async () => {
+  it('dismisses a listing, moving it out of the default Active filter with an undo', async () => {
     const mockFetch = vi.fn()
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: 'https://x/a1', status: 'new' }] }),
+      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: '', status: 'new' }] }),
     })
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) })
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: 'https://x/a1', status: 'dismissed' }] }),
+      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: '', status: 'dismissed' }] }),
     })
     vi.stubGlobal('fetch', mockFetch)
 
@@ -188,26 +191,44 @@ describe('ScrapedJobsList', () => {
         expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ dismissed: true }) })
       )
     )
-    expect(await screen.findByText('Non-Active')).toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: /^restore$/i })).toBeInTheDocument()
+
+    // It leaves the Active view rather than sitting there greyed out, so the
+    // toast is what tells you it happened.
+    await waitFor(() => expect(screen.queryByText('Job A')).not.toBeInTheDocument())
+    expect(useToastStore.getState().toasts.at(-1)).toMatchObject({ actionLabel: 'Undo' })
+  })
+
+  it('shows dismissed listings, badged and restorable, under the Dismissed filter', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: '', status: 'dismissed' }] }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ScrapedJobsList profileId="p1" />)
+    await userEvent.click(await screen.findByRole('button', { name: /^dismissed/i }))
+
+    expect(await screen.findByText('Job A')).toBeInTheDocument()
+    expect(screen.getByText('Non-Active')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^restore$/i })).toBeInTheDocument()
   })
 
   it('restores a dismissed listing', async () => {
     const mockFetch = vi.fn()
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: 'https://x/a1', status: 'dismissed' }] }),
+      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: '', status: 'dismissed' }] }),
     })
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) })
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: 'https://x/a1', status: 'new' }] }),
+      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: '', status: 'new' }] }),
     })
     vi.stubGlobal('fetch', mockFetch)
 
     render(<ScrapedJobsList profileId="p1" />)
-    await screen.findByRole('button', { name: /^restore$/i })
-    await userEvent.click(screen.getByRole('button', { name: /^restore$/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /^dismissed/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /^restore$/i }))
 
     await waitFor(() =>
       expect(mockFetch).toHaveBeenCalledWith(
@@ -215,7 +236,8 @@ describe('ScrapedJobsList', () => {
         expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ dismissed: false }) })
       )
     )
-    expect(await screen.findByRole('button', { name: /^dismiss$/i })).toBeInTheDocument()
+    // Restoring is not itself undoable — nothing was lost.
+    expect(useToastStore.getState().toasts).toHaveLength(0)
   })
 
   it('hides the dismiss/restore control for a submitted listing', async () => {
@@ -233,32 +255,11 @@ describe('ScrapedJobsList', () => {
     expect(screen.queryByRole('button', { name: /^restore$/i })).not.toBeInTheDocument()
   })
 
-  it('deletes a listing after confirmation and reloads the list', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-    const mockFetch = vi.fn()
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: 'https://x/a1', status: 'new' }] }),
-    })
-    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) })
-    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ scrapedJobs: [] }) })
-    vi.stubGlobal('fetch', mockFetch)
-
-    render(<ScrapedJobsList profileId="p1" />)
-    await screen.findByText('Job A')
-    await userEvent.click(screen.getByRole('button', { name: /^delete$/i }))
-
-    await waitFor(() =>
-      expect(mockFetch).toHaveBeenCalledWith('/api/jobsearch/scraped-jobs/j1', expect.objectContaining({ method: 'DELETE' }))
-    )
-    expect(await screen.findByText(/no scraped jobs yet/i)).toBeInTheDocument()
-  })
-
-  it('does not delete when the user cancels the confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
+  it('removes a listing immediately and offers an undo instead of a confirm dialog', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm')
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: 'https://x/a1', status: 'new' }] }),
+      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: '', status: 'new' }] }),
     })
     vi.stubGlobal('fetch', mockFetch)
 
@@ -266,8 +267,56 @@ describe('ScrapedJobsList', () => {
     await screen.findByText('Job A')
     await userEvent.click(screen.getByRole('button', { name: /^delete$/i }))
 
-    expect(mockFetch).not.toHaveBeenCalledWith('/api/jobsearch/scraped-jobs/j1', expect.objectContaining({ method: 'DELETE' }))
-    expect(screen.getByText('Job A')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText('Job A')).not.toBeInTheDocument())
+    expect(confirmSpy).not.toHaveBeenCalled()
+    expect(useToastStore.getState().toasts.at(-1)).toMatchObject({ actionLabel: 'Undo' })
+    // Still only the initial GET — the DELETE waits out the undo window.
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    confirmSpy.mockRestore()
+  })
+
+  it('commits the pending DELETE when the list unmounts before the undo window closes', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: '', status: 'new' }] }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const { unmount } = render(<ScrapedJobsList profileId="p1" />)
+    await screen.findByText('Job A')
+    await userEvent.click(screen.getByRole('button', { name: /^delete$/i }))
+    await waitFor(() => expect(screen.queryByText('Job A')).not.toBeInTheDocument())
+
+    unmount()
+
+    await waitFor(() =>
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/jobsearch/scraped-jobs/j1',
+        expect.objectContaining({ method: 'DELETE' })
+      )
+    )
+  })
+
+  it('cancels the deletion when the undo action is taken', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: '', status: 'new' }] }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const { unmount } = render(<ScrapedJobsList profileId="p1" />)
+    await screen.findByText('Job A')
+    await userEvent.click(screen.getByRole('button', { name: /^delete$/i }))
+    await waitFor(() => expect(screen.queryByText('Job A')).not.toBeInTheDocument())
+
+    useToastStore.getState().toasts.at(-1)!.onAction!()
+
+    expect(await screen.findByText('Job A')).toBeInTheDocument()
+    unmount()
+    expect(mockFetch).not.toHaveBeenCalledWith(
+      '/api/jobsearch/scraped-jobs/j1',
+      expect.objectContaining({ method: 'DELETE' })
+    )
   })
 
   it('aborts the mount-time fetch on unmount', async () => {

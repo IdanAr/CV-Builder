@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { listApplications } from '@/lib/api/applications'
@@ -6,8 +5,7 @@ import { getOrCreateBoardConfig } from '@/lib/api/board-config'
 import { listResumeOptions } from '@/lib/api/resumes'
 import ApplicationsView from '@/components/applications/ApplicationsView'
 import { AppNavbar } from '@/components/ui/AppNavbar'
-import { UserProfileButton } from '@/components/ui/UserProfileButton'
-import { JobSearchNav } from '@/components/jobsearch/JobSearchNav'
+import { DashboardNavActions } from '@/components/ui/DashboardNavActions'
 import type { ApplicationRow, BoardConfigData } from '@/lib/applications/types'
 
 export default async function ApplicationsPage() {
@@ -24,19 +22,7 @@ export default async function ApplicationsPage() {
     <>
       <AppNavbar
         containerClassName="mx-auto w-full max-w-7xl px-4"
-        actions={
-          <div className="ml-auto flex flex-wrap items-center gap-3">
-            <Link
-              href="/dashboard"
-              className="rounded-md border border-indigo-200 bg-white/50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50"
-            >
-              My CVs
-            </Link>
-            <div className="h-4 w-px bg-indigo-200" />
-            <JobSearchNav />
-            <UserProfileButton user={session.user} />
-          </div>
-        }
+        actions={<DashboardNavActions user={session.user} current="applications" />}
       />
 
 <div className="mx-auto max-w-7xl px-4 py-8">

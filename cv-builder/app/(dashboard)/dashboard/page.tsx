@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { listResumes } from '@/lib/api/resumes'
@@ -11,8 +10,7 @@ import NewResumeButton from '@/components/NewResumeButton'
 import UploadCVButton from '@/components/UploadCVButton'
 import { EmptyDashboardState } from '@/components/EmptyDashboardState'
 import { AppNavbar } from '@/components/ui/AppNavbar'
-import { UserProfileButton } from '@/components/ui/UserProfileButton'
-import { JobSearchNav } from '@/components/jobsearch/JobSearchNav'
+import { DashboardNavActions } from '@/components/ui/DashboardNavActions'
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -32,27 +30,17 @@ export default async function DashboardPage() {
     <>
  <AppNavbar
         actions={
-          // CV actions sit on the left; ml-auto on the Applications link pushes
-          // the navigation/profile cluster to the right edge.
-          <div className="flex flex-1 flex-wrap items-center gap-3">
-            <NewResumeButton />
-            <UploadCVButton />
-            <Link
-              href="/"
-              className="ml-auto rounded-md border border-indigo-200 bg-white/50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50"
-            >
-              Homepage
-            </Link>
-            <Link
-              href="/dashboard/applications"
-              className="rounded-md border border-indigo-200 bg-white/50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50"
-            >
-              Applications
-            </Link>
-            <div className="w-px h-4 bg-indigo-200" />
-            <JobSearchNav />
-            <UserProfileButton user={session.user} />
-          </div>
+          <DashboardNavActions
+            user={session.user}
+            current="resumes"
+            showHomepage
+            leading={
+              <>
+                <NewResumeButton />
+                <UploadCVButton />
+              </>
+            }
+          />
         }
       />
 

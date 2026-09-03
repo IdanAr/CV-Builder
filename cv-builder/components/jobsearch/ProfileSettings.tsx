@@ -1,10 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { Pencil } from 'lucide-react'
 import { ProfileWizard } from './ProfileWizard'
 import { COUNTRIES } from '@/lib/jobsearch/countries'
 import type { WorkMode, Seniority, JobLocation, ComeetCompanyWatch } from '@/lib/schemas/jobsearch.zod'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { fitBand } from './FitMeter'
 
 interface FullProfile {
   _id: string
@@ -26,10 +30,49 @@ interface FullProfile {
 
 interface ProfileSettingsProps {
   profileId: string
+  /**
+   * Server-rendered profile, so the page header and this bar come from one
+   * query. Omitted in tests, where it falls back to fetching on mount.
+   */
+  initialProfile?: FullProfile
 }
 
-export function ProfileSettings({ profileId }: ProfileSettingsProps) {
-  const [profile, setProfile] = useState<FullProfile | null>(null)
+/**
+ * One reading on the preferences bar: a small uppercase label over its value.
+ *
+ * `accent` is for the two numbers that decide what actually reaches you — the
+ * recency window and the score floor — so the settings that do the filtering
+ * read differently from the ones that describe the search.
+ */
+function Indicator({
+  label,
+  value,
+  tone = 'default',
+}: {
+  label: string
+  value: string
+  tone?: 'default' | 'accent' | 'success' | 'warning'
+}) {
+  const valueTone =
+    tone === 'success'
+      ? 'text-fg-success'
+      : tone === 'warning'
+      ? 'text-fg-warning'
+      : tone === 'accent'
+      ? 'text-fg-body'
+      : 'text-fg-heading'
+  return (
+    <div className="flex min-w-0 flex-col gap-0.5 border-r border-border-subtle pr-4 last:border-r-0 last:pr-0">
+      <dt className="text-[10px] font-medium uppercase tracking-wider text-fg-subtle">{label}</dt>
+      <dd className={`truncate text-sm font-semibold tabular-nums ${valueTone}`} title={value}>
+        {value}
+      </dd>
+    </div>
+  )
+}
+
+export function ProfileSettings({ profileId, initialProfile }: ProfileSettingsProps) {
+  const [profile, setProfile] = useState<FullProfile | null>(initialProfile ?? null)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
 
@@ -49,9 +92,11 @@ export function ProfileSettings({ profileId }: ProfileSettingsProps) {
 
   useEffect(() => {
     // Initial fetch-on-mount, same pattern/suppression as ScrapedJobsList.tsx's load effect.
+    // Skipped when the server already handed us the profile.
+    if (initialProfile) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load()
-  }, [load])
+  }, [load, initialProfile])
 
   if (error && profile === null) {
     return <ErrorBanner>{error}</ErrorBanner>
@@ -61,7 +106,7 @@ export function ProfileSettings({ profileId }: ProfileSettingsProps) {
 
   if (editing) {
     return (
-      <div className="rounded border p-4">
+      <Card padding="lg">
         <ProfileWizard
           existingProfile={profile}
           onUpdated={() => {
@@ -69,47 +114,37 @@ export function ProfileSettings({ profileId }: ProfileSettingsProps) {
             load()
           }}
         />
-        <button type="button" className="mt-3 text-sm text-gray-500 hover:underline" onClick={() => setEditing(false)}>
+        <Button variant="ghost" className="mt-3" onClick={() => setEditing(false)}>
           Cancel
-        </button>
-      </div>
+        </Button>
+      </Card>
     )
   }
 
   const countryName = COUNTRIES.find((c) => c.code === profile.locations[0]?.country)?.name
+  const companies = profile.comeetCompanies ?? []
+  const location = [countryName, profile.locations[0]?.city].filter(Boolean).join(', ')
 
   return (
-    <div className="flex flex-col gap-2 rounded border px-4 py-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Search preferences</h3>
-        <button
-          type="button"
-          className="rounded border px-3 py-1 text-sm"
-          onClick={() => setEditing(true)}
-        >
-          Edit preferences
-        </button>
-      </div>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-        <dt className="font-medium text-gray-600">Roles</dt>
-        <dd>{profile.roles.length > 0 ? profile.roles.join(', ') : '-'}</dd>
-        <dt className="font-medium text-gray-600">Location</dt>
-        <dd>{[countryName, profile.locations[0]?.city].filter(Boolean).join(', ') || '-'}</dd>
-        <dt className="font-medium text-gray-600">Watched companies</dt>
-        <dd>
-          {/* A profile saved before this field existed comes back from a .lean()
-              read without comeetCompanies at all (Mongoose doesn't backfill schema
-              defaults onto pre-existing documents) — fall back to an empty list. */}
-          {(() => {
-            const companies = profile.comeetCompanies ?? []
-            return companies.length > 0 ? companies.map((c) => c.name).join(', ') : '-'
-          })()}
-        </dd>
-        <dt className="font-medium text-gray-600">Recency / threshold</dt>
-        <dd>
-          {profile.recencyDays} days · {profile.minAtsScore}%
-        </dd>
+    <Card padding="none" className="flex flex-wrap items-center gap-4 px-4 py-3">
+      <dl className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
+        <Indicator label="Roles" value={profile.roles.length > 0 ? profile.roles.join(', ') : '-'} />
+        <Indicator label="Work mode" value={profile.workModes.length > 0 ? profile.workModes.join(', ') : 'Any'} />
+        <Indicator label="Location" value={location || '-'} />
+        <Indicator label="Watched companies" value={companies.length > 0 ? companies.map((c) => c.name).join(', ') : '-'} />
+        <Indicator label="Recency" value={`${profile.recencyDays} days`} tone="accent" />
+        <Indicator
+          label="Min fit"
+          value={`${profile.minAtsScore}%`}
+          // The threshold is coloured by the same bands the fit meter uses, so
+          // a demanding floor and a lenient one are told apart at a glance.
+          tone={fitBand(profile.minAtsScore).text === 'text-fg-success' ? 'success' : fitBand(profile.minAtsScore).text === 'text-fg-warning' ? 'warning' : 'accent'}
+        />
       </dl>
-    </div>
+      <Button variant="secondary" size="xs" className="shrink-0" onClick={() => setEditing(true)}>
+        <Pencil aria-hidden="true" className="h-3 w-3" />
+        Edit preferences
+      </Button>
+    </Card>
   )
 }
