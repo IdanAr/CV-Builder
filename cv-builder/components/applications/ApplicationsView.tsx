@@ -479,7 +479,7 @@ export default function ApplicationsView({
         </div>
         <div className="flex items-center gap-3">
           {filters.length > 0 && (
-            <p className="text-xs text-indigo-400">
+            <p className="text-xs text-fg-muted">
               Showing {filteredApplications.length} of {visibleApplications.length} applications
             </p>
           )}
@@ -497,7 +497,7 @@ export default function ApplicationsView({
                 className={`rounded-md px-2.5 py-1 text-xs font-medium capitalize transition ${
                   view === mode
                     ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-indigo-500 hover:text-indigo-700'
+                    : 'text-fg-muted hover:text-fg-body'
                 }`}
               >
                 {mode === 'table' ? 'Table' : 'Board'}
@@ -534,7 +534,7 @@ export default function ApplicationsView({
               type="button"
               onClick={() => openColumnModal({ mode: 'add' })}
               title="Add a custom column"
-              className="whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium text-indigo-500 hover:bg-indigo-50 hover:text-indigo-700"
+              className="whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium text-fg-muted hover:bg-indigo-50 hover:text-fg-body"
             >
               + Column
             </button>

@@ -150,7 +150,7 @@ export function AtsFixReviewPanel({
                   return (
                     <div className="space-y-1 text-sm">
                       <div className="rounded bg-red-50 border border-red-100 px-3 py-2">
-                        <p className="text-xs text-red-500 font-medium mb-0.5">Before</p>
+                        <p className="text-xs text-fg-danger font-medium mb-0.5">Before</p>
                         <p className="text-gray-700 leading-relaxed">
                           {before.map((seg, i) =>
                             seg.changed ? (
@@ -205,7 +205,7 @@ export function AtsFixReviewPanel({
                 </button>
                 <button
                   onClick={() => onDismiss(fix.id)}
-                  className="px-3 py-1 text-xs text-indigo-400 hover:text-indigo-600 transition-colors"
+                  className="px-3 py-1 text-xs text-fg-muted hover:text-fg-body transition-colors"
                 >
                   Dismiss
                 </button>

@@ -203,7 +203,7 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
                   {job.company}
                   {job.location ? ` - ${job.location}` : ''}
                 </div>
-                {postedAtLabel && <div className="text-xs text-gray-400">{postedAtLabel}</div>}
+                {postedAtLabel && <div className="text-xs text-fg-subtle">{postedAtLabel}</div>}
               </li>
             )
           })}

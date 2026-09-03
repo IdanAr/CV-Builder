@@ -96,7 +96,7 @@ function EditableCell({
       onClick={() => setEditing(true)}
       className="block w-full truncate rounded px-1.5 py-0.5 text-left text-sm text-indigo-900 hover:bg-indigo-50"
     >
-      {display ?? <span className="text-indigo-300">-</span>}
+      {display ?? <span className="text-fg-subtle">-</span>}
     </button>
   )
 }
@@ -142,7 +142,7 @@ export function DateCell(props: CellProps & { readOnly?: boolean }) {
   if (props.readOnly) {
     return (
       <span className="block truncate px-1.5 py-0.5 text-sm text-indigo-900" aria-label={props.ariaLabel}>
-        {display || <span className="text-indigo-300">-</span>}
+        {display || <span className="text-fg-subtle">-</span>}
       </span>
     )
   }
@@ -199,13 +199,13 @@ export function UrlCell(props: CellProps) {
           {displayUrl}
         </a>
       ) : (
-        <span className="min-w-0 flex-1 truncate text-sm text-indigo-300">-</span>
+        <span className="min-w-0 flex-1 truncate text-sm text-fg-subtle">-</span>
       )}
       <button
         type="button"
         aria-label={`Edit ${props.ariaLabel}`}
         onClick={() => setEditing(true)}
-        className="shrink-0 rounded px-1 text-xs text-indigo-400 opacity-0 transition group-hover/cell:opacity-100 hover:bg-indigo-50 hover:text-indigo-700 focus:opacity-100"
+        className="shrink-0 rounded px-1 text-xs text-fg-muted opacity-0 transition group-hover/cell:opacity-100 hover:bg-indigo-50 hover:text-fg-body focus:opacity-100"
       >
         <Pencil className="h-3 w-3" aria-hidden="true" />
       </button>
@@ -287,7 +287,7 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
             {selected.label}
           </span>
         ) : (
-          <span className="text-sm text-indigo-300">-</span>
+          <span className="text-sm text-fg-subtle">-</span>
         )}
       </button>
       {open && (
@@ -314,7 +314,7 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
             >
               <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: option.color }} />
               <span className="truncate text-indigo-900">{option.label}</span>
-              {option.id === props.value && <span className="ml-auto text-indigo-500">✓</span>}
+              {option.id === props.value && <span className="ml-auto text-fg-muted">✓</span>}
             </button>
           ))}
           <button
@@ -324,7 +324,7 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
               if (props.value !== null && props.value !== '') props.onCommit(null)
               ;(ref.current?.firstElementChild as HTMLElement | null)?.focus()
             }}
-            className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm text-indigo-400 hover:bg-indigo-50"
+            className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm text-fg-muted hover:bg-indigo-50"
           >
             Clear
           </button>

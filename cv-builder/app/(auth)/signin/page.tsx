@@ -64,7 +64,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
               CV Builder
             </h1>
-            <p className="text-sm text-indigo-400">Sign in to continue</p>
+            <p className="text-sm text-fg-muted">Sign in to continue</p>
           </div>
 
           {errorMessage && (

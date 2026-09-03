@@ -28,7 +28,7 @@ export function StepsBar({ current, maxUnlocked, onStepClick }: StepsBarProps) {
           ? 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium bg-indigo-600 text-white shadow-md transition-colors'
           : isDone
           ? 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-colors'
-          : 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium text-indigo-300 cursor-not-allowed'
+          : 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium text-fg-subtle cursor-not-allowed'
 
         const badgeClass = isCurrent
           ? 'flex items-center justify-center h-4 w-4 rounded-full bg-white/25 text-[10px]'

@@ -82,7 +82,7 @@ export function ColumnForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex w-72 flex-col gap-3 text-left">
-      <label className="flex flex-col gap-1 text-xs font-medium text-indigo-500">
+      <label className="flex flex-col gap-1 text-xs font-medium text-fg-muted">
         Column name
         <input
           autoFocus
@@ -94,7 +94,7 @@ export function ColumnForm({
       </label>
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-indigo-500">
+        <label className="text-xs font-medium text-fg-muted">
           Type
           <select
             value={type}
@@ -109,12 +109,12 @@ export function ColumnForm({
             ))}
           </select>
         </label>
-        {isEdit && <p className="text-xs text-indigo-400">Type can&apos;t be changed after creation.</p>}
+        {isEdit && <p className="text-xs text-fg-muted">Type can&apos;t be changed after creation.</p>}
       </div>
 
       {needsOptions && (
         <fieldset className="flex flex-col gap-1.5">
-          <legend className="mb-1 text-xs font-medium text-indigo-500">Options</legend>
+          <legend className="mb-1 text-xs font-medium text-fg-muted">Options</legend>
           {options.map((option, i) => (
             <div key={option.id} className="flex flex-col gap-1">
               <div className="flex items-center gap-1.5">
@@ -145,7 +145,7 @@ export function ColumnForm({
                   aria-label={`Move option ${i + 1} up`}
                   onClick={() => reorderOption(i, 'up')}
                   disabled={i === 0}
-                  className="shrink-0 rounded px-1 text-sm text-indigo-300 hover:text-indigo-600 disabled:opacity-40"
+                  className="shrink-0 rounded px-1 text-sm text-fg-subtle hover:text-fg-body disabled:opacity-40"
                 >
                   ↑
                 </button>
@@ -154,7 +154,7 @@ export function ColumnForm({
                   aria-label={`Move option ${i + 1} down`}
                   onClick={() => reorderOption(i, 'down')}
                   disabled={i === options.length - 1}
-                  className="shrink-0 rounded px-1 text-sm text-indigo-300 hover:text-indigo-600 disabled:opacity-40"
+                  className="shrink-0 rounded px-1 text-sm text-fg-subtle hover:text-fg-body disabled:opacity-40"
                 >
                   ↓
                 </button>
@@ -187,7 +187,7 @@ export function ColumnForm({
           <button
             type="button"
             onClick={() => setOptions((opts) => [...opts, newOption(opts.length)])}
-            className="self-start rounded px-1 py-0.5 text-xs font-medium text-indigo-500 hover:text-indigo-700"
+            className="self-start rounded px-1 py-0.5 text-xs font-medium text-fg-muted hover:text-fg-body"
           >
             + Add option
           </button>

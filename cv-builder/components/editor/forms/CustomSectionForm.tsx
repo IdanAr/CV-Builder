@@ -106,7 +106,7 @@ function ItemForm({ item, enabledFields, resumeId, onUpdate, onRemove }: ItemFor
 
       {enabledFields.includes('highlights') && (
         <fieldset className="space-y-1 border-0 p-0 m-0">
-          <legend className="text-xs text-indigo-500 font-medium p-0">Bullets</legend>
+          <legend className="text-xs text-fg-muted font-medium p-0">Bullets</legend>
           <ListFieldManager<string>
             items={item.highlights ?? []}
             onChange={(v) => setArr('highlights', v)}
@@ -138,7 +138,7 @@ function ItemForm({ item, enabledFields, resumeId, onUpdate, onRemove }: ItemFor
 
       {enabledFields.includes('keywords') && (
         <div className="space-y-1">
-          <div className="text-xs text-indigo-500 font-medium">Keywords</div>
+          <div className="text-xs text-fg-muted font-medium">Keywords</div>
           <div className="flex flex-wrap gap-1">
             {(item.keywords ?? []).map((kw, i) => (
               <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs">
@@ -256,7 +256,7 @@ function RoleForm({
       )}
       {enabledFields.includes('highlights') && (
         <fieldset className="space-y-1 border-0 p-0 m-0">
-          <legend className="text-xs text-indigo-500 font-medium p-0">Bullets</legend>
+          <legend className="text-xs text-fg-muted font-medium p-0">Bullets</legend>
           <ListFieldManager<string>
             items={role.highlights ?? []}
             onChange={(v) => setArr('highlights', v)}
@@ -287,7 +287,7 @@ function RoleForm({
       )}
       {enabledFields.includes('keywords') && (
         <div className="space-y-1">
-          <div className="text-xs text-indigo-500 font-medium">Keywords</div>
+          <div className="text-xs text-fg-muted font-medium">Keywords</div>
           <div className="flex flex-wrap gap-1">
             {(role.keywords ?? []).map((kw, i) => (
               <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs">
@@ -360,7 +360,7 @@ export function CustomSectionForm({ sectionId }: { sectionId: string }) {
               className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
                 active
                   ? 'bg-indigo-500 border-indigo-500 text-white'
-                  : 'bg-white border-indigo-200 text-indigo-400 hover:border-indigo-400'
+                  : 'bg-white border-indigo-200 text-fg-muted hover:border-indigo-400'
               }`}
             >
               {FIELD_LABELS[field]}

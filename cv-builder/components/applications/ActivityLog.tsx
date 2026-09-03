@@ -84,7 +84,7 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
         aria-expanded={open}
         title="Activity log"
         onClick={() => setOpen((o) => !o)}
-        className="rounded px-1 py-0.5 text-xs text-indigo-400 hover:bg-indigo-50 hover:text-indigo-600"
+        className="rounded px-1 py-0.5 text-xs text-fg-muted hover:bg-indigo-50 hover:text-fg-body"
       >
         <History className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -97,17 +97,17 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
             openUpward ? 'bottom-full mb-1' : 'top-full mt-1'
           }`}
         >
-          <p className="px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-indigo-400">
+          <p className="px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-fg-muted">
             Activity
           </p>
           {error && (
-            <p className="px-1 py-2 text-sm text-red-500">Could not load the activity log.</p>
+            <p className="px-1 py-2 text-sm text-fg-danger">Could not load the activity log.</p>
           )}
           {!error && entries === null && (
-            <p className="px-1 py-2 text-sm text-indigo-300">Loading…</p>
+            <p className="px-1 py-2 text-sm text-fg-subtle">Loading…</p>
           )}
           {entries !== null && entries.length === 0 && (
-            <p className="px-1 py-2 text-sm text-indigo-400">
+            <p className="px-1 py-2 text-sm text-fg-muted">
               No changes yet - edits to this application will appear here.
             </p>
           )}
@@ -115,7 +115,7 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
             entries.map((entry) => (
               <div key={entry._id} className="border-t border-indigo-50 px-1 py-1.5 first:border-t-0">
                 <p className="text-sm text-indigo-900">{formatActivityLine(entry)}</p>
-                <p className="mt-0.5 text-xs text-indigo-400">
+                <p className="mt-0.5 text-xs text-fg-muted">
                   {formatRelativeTime(entry.changedAt)}
                 </p>
               </div>

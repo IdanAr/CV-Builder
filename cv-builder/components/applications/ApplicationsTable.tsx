@@ -118,7 +118,7 @@ function SortableHeaderCell({
         title="Drag to reorder column"
         {...attributes}
         {...listeners}
-        className="shrink-0 cursor-grab touch-none rounded px-0.5 text-indigo-300 hover:text-indigo-500 active:cursor-grabbing"
+        className="shrink-0 cursor-grab touch-none rounded px-0.5 text-fg-subtle hover:text-fg-body active:cursor-grabbing"
       >
         <GripVertical className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -167,7 +167,7 @@ function SortableRow({
           className={`touch-none rounded px-0.5 text-sm ${
             dragDisabled
               ? 'cursor-not-allowed text-indigo-200'
-              : 'cursor-grab text-indigo-300 opacity-0 transition group-hover/row:opacity-100 hover:text-indigo-500 focus:opacity-100 active:cursor-grabbing'
+              : 'cursor-grab text-fg-subtle opacity-0 transition group-hover/row:opacity-100 hover:text-fg-body focus:opacity-100 active:cursor-grabbing'
           }`}
         >
           <GripVertical className="h-4 w-4" aria-hidden="true" />
@@ -235,7 +235,7 @@ export default function ApplicationsTable({
                   {renderHeaderCell ? (
                     renderHeaderCell(column)
                   ) : (
-                    <span className="text-xs font-semibold uppercase tracking-wide text-indigo-500">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
                       {column.label}
                     </span>
                   )}

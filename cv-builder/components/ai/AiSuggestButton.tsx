@@ -96,7 +96,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
             disabled={loading || !currentValue.trim() || !resumeId}
             title={loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'}
             aria-label={loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'}
-            className="px-1.5 py-1 text-sm text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded transition-colors disabled:opacity-30"
+            className="px-1.5 py-1 text-sm text-fg-muted hover:text-fg-body hover:bg-indigo-50 rounded transition-colors disabled:opacity-30"
           >
             {loading ? (
               <Loader2 aria-hidden="true" data-testid="ai-suggest-loading-icon" className="h-4 w-4 animate-spin" strokeWidth={1.75} />
@@ -145,7 +145,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
               </button>
               <button
                 onClick={() => setResult(null)}
-                className="rounded px-3 py-1 text-xs text-indigo-500 transition-colors hover:text-indigo-700"
+                className="rounded px-3 py-1 text-xs text-fg-muted transition-colors hover:text-fg-body"
               >
                 Dismiss
               </button>

@@ -42,10 +42,10 @@ export default async function ApplicationsPage() {
 <div className="mx-auto max-w-7xl px-4 py-8">
   <div className="mb-6">
     <h1 className="text-3xl font-bold text-indigo-700">Applications</h1>
-    <p className="mt-1 text-base text-indigo-500">
+    <p className="mt-1 text-base text-fg-muted">
       Every application you&apos;re tracking, in one customizable table.
     </p>
-    <p className="mt-1 text-xs text-indigo-500">
+    <p className="mt-1 text-xs text-fg-muted">
       Create, edit, and manage your applications to keep your job search focused.
     </p>
   </div>

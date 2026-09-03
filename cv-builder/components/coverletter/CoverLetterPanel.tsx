@@ -143,7 +143,7 @@ export function CoverLetterPanel() {
         >
           {loading ? 'Generating…' : 'Generate'}
         </button>
-        {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+        {error && <p className="mt-2 text-sm text-fg-danger">{error}</p>}
       </div>
 
       {draft && (
@@ -169,7 +169,7 @@ export function CoverLetterPanel() {
             </button>
             <button
               onClick={() => setDraft(null)}
-              className="rounded px-3 py-1.5 text-xs text-indigo-500 transition-colors hover:text-indigo-700"
+              className="rounded px-3 py-1.5 text-xs text-fg-muted transition-colors hover:text-fg-body"
             >
               Discard
             </button>
@@ -209,7 +209,7 @@ export function CoverLetterPanel() {
             </button>
           </div>
         </div>
-        {exportError && <p className="mb-1 text-xs text-red-500">{exportError}</p>}
+        {exportError && <p className="mb-1 text-xs text-fg-danger">{exportError}</p>}
         <textarea
           id={`${id}-output`}
           value={data.coverLetter ?? ''}
