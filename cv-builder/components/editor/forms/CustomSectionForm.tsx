@@ -4,7 +4,7 @@ import { useId } from 'react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ListFieldManager } from './ListFieldManager'
 import { AiSuggestButton } from '@/components/ai/AiSuggestButton'
-import { MonthYearPicker } from './MonthYearPicker'
+import { DateRangeFields } from './DateRangeFields'
 import { RichTextField } from './RichTextField'
 import { resolveCustomSectionRoles } from '@/lib/roles'
 import { CUSTOM_SECTION_FIELDS } from '@/lib/schemas/resume.zod'
@@ -76,12 +76,12 @@ function ItemForm({ item, enabledFields, resumeId, onUpdate, onRemove }: ItemFor
       )}
 
       {enabledFields.includes('dateRange') && (
-        // Two month+year pickers side by side get 125px each on a phone, which
-        // is narrower than the month select alone wants. Stacked below `sm`.
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <MonthYearPicker value={item.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
-          <MonthYearPicker value={item.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
-        </div>
+        <DateRangeFields
+          startValue={item.startDate ?? ''}
+          endValue={item.endDate ?? ''}
+          onStartChange={(v) => set('startDate', v)}
+          onEndChange={(v) => set('endDate', v)}
+        />
       )}
 
       {urlField}
@@ -238,10 +238,12 @@ function RoleForm({
           aria-label="Subtitle" placeholder="Subtitle" className={inputClass} />
       )}
       {enabledFields.includes('dateRange') && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <MonthYearPicker value={role.startDate ?? ''} onChange={(v) => set('startDate', v)} placeholder="Start date" />
-          <MonthYearPicker value={role.endDate ?? ''} onChange={(v) => set('endDate', v)} allowPresent placeholder="End date" />
-        </div>
+        <DateRangeFields
+          startValue={role.startDate ?? ''}
+          endValue={role.endDate ?? ''}
+          onStartChange={(v) => set('startDate', v)}
+          onEndChange={(v) => set('endDate', v)}
+        />
       )}
       {enabledFields.includes('summary') && (
         <div className="flex items-start gap-1">
