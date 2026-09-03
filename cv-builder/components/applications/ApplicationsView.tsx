@@ -517,6 +517,7 @@ export default function ApplicationsView({
           onRowMove={handleRowMove}
           onColumnMove={handleColumnMove}
           rowDragEnabled={boardConfig.sort.length === 0}
+          sort={boardConfig.sort}
           renderRowAccessory={(app) => (
             <ActivityLog applicationId={app._id} company={app.company} />
           )}

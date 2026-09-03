@@ -22,7 +22,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, X } from 'lucide-react'
-import type { BoardColumn, CustomFieldValue } from '@/lib/schemas/application.zod'
+import type { BoardColumn, CustomFieldValue, SortEntry } from '@/lib/schemas/application.zod'
 import type { ApplicationRow, ResumeOption } from '@/lib/applications/types'
 import { getCellValue, isColumnEditable } from '@/lib/applications/cells'
 import {
@@ -156,11 +156,31 @@ function buildRowAnnouncements(applications: ApplicationRow[]): Announcements {
   }
 }
 
+/**
+ * ARIA asks that at most one header carry a sort direction at a time, so a
+ * multi-level sort exposes only its primary level. Every other column reports
+ * "none", which is what tells assistive technology the column is sortable at
+ * all rather than merely unsorted.
+ */
+function ariaSortFor(columnId: string, sort: SortEntry[]): 'ascending' | 'descending' | 'none' {
+  const primary = sort[0]
+  if (!primary || primary.columnId !== columnId) return 'none'
+  return primary.direction === 'asc' ? 'ascending' : 'descending'
+}
+
 function SortableHeaderCell({
   column,
+  ariaSort,
   children,
 }: {
   column: BoardColumn
+  /**
+   * Read by a screen reader's table mode, which is where a blind user learns
+   * how the grid is ordered. The sort *button* already announced direction in
+   * its label, but that only helps someone who has navigated onto the button;
+   * aria-sort belongs on the columnheader itself.
+   */
+  ariaSort: 'ascending' | 'descending' | 'none'
   children: React.ReactNode
 }) {
   const { listeners, attributes, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -170,6 +190,7 @@ function SortableHeaderCell({
     <div
       ref={setNodeRef}
       role="columnheader"
+      aria-sort={ariaSort}
       style={{
         width: columnWidth(column),
         transform: CSS.Transform.toString(transform),
@@ -256,6 +277,11 @@ export interface ApplicationsTableProps {
   onColumnMove?: (activeId: string, overId: string) => void
   /** False while a column sort is active — manual order and sorting conflict. */
   rowDragEnabled?: boolean
+  /**
+   * Current sort, purely so the header cells can expose `aria-sort`. The table
+   * receives already-sorted rows; it does not sort anything itself.
+   */
+  sort?: SortEntry[]
   /** Per-row trailing accessory (activity-log trigger etc.), rendered in the actions cell. */
   renderRowAccessory?: (app: ApplicationRow) => React.ReactNode
   /** Header decoration/behavior injection point (sort controls). */
@@ -273,6 +299,7 @@ export default function ApplicationsTable({
   onRowMove,
   onColumnMove,
   rowDragEnabled = false,
+  sort = [],
   renderRowAccessory,
   renderHeaderCell,
   headerAccessory,
@@ -306,7 +333,11 @@ export default function ApplicationsTable({
             <div role="row" className="sticky top-0 z-10 flex border-b border-indigo-100 bg-white">
               <div role="columnheader" style={{ width: GRIP_COLUMN_WIDTH }} className="shrink-0" />
               {ordered.map((column) => (
-                <SortableHeaderCell key={column.id} column={column}>
+                <SortableHeaderCell
+                  key={column.id}
+                  column={column}
+                  ariaSort={ariaSortFor(column.id, sort)}
+                >
                   {renderHeaderCell ? (
                     renderHeaderCell(column)
                   ) : (
