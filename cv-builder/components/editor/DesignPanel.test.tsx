@@ -396,6 +396,31 @@ describe('DesignPanel', () => {
       expect(screen.queryByText('Two columns')).toBeNull()
     })
 
+    // Added because the answer to "which section can go in the rail?" used to be
+    // silently "not Work, Education, Volunteer or a custom one" — those vanished
+    // rather than moving. They all render in either column now, so the panel
+    // says so, and says which ones actually suit a rail that narrow.
+    it('tells the user both columns accept any section, and what the rail suits', () => {
+      useResumeEditorStore.setState({
+        resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+        data: {},
+        meta: { ...defaultMeta, templateId: 'sidebar', sidebarRailWidth: 33 },
+      })
+      render(<DesignPanel />)
+      expect(screen.getByText(/Every section can go in either column/i)).toBeTruthy()
+      expect(screen.getByText(/33% of the page width/i)).toBeTruthy()
+    })
+
+    it('does not show that note on templates without a rail', () => {
+      useResumeEditorStore.setState({
+        resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+        data: {},
+        meta: { ...defaultMeta, templateId: 'classic' },
+      })
+      render(<DesignPanel />)
+      expect(screen.queryByText(/Every section can go in either column/i)).toBeNull()
+    })
+
     it('shows the Section columns editor for the sidebar template regardless of layout', () => {
       useResumeEditorStore.setState({
         resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
@@ -403,7 +428,9 @@ describe('DesignPanel', () => {
         meta: { ...defaultMeta, templateId: 'sidebar', layout: 'single-column', sectionOrder: ['work', 'skills', 'languages'] },
       })
       render(<DesignPanel />)
-      expect(screen.getByText('Section columns')).toBeTruthy()
+      // Scoped to the section's own label: the sidebar guidance note below the
+      // layout toggle names the same control, so a bare getByText now matches twice.
+      expect(screen.getByText('Section columns', { selector: 'p' })).toBeTruthy()
     })
 
     it('shows skills on the rail (left) side by sidebar defaults', () => {

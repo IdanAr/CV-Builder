@@ -98,6 +98,39 @@ describe('preview / export parity', () => {
     expect(pdf).toBe(web)
   })
 
+  // The pair test above runs with `columnAssignment: {}`, so it only ever
+  // exercised each template's *default* column split. That is how a real
+  // divergence survived it: the Sidebar preview's rail could not draw work,
+  // education, volunteer or custom sections and silently dropped them, while
+  // the PDF's rail drew all four — and neither main column could draw skills
+  // or languages, so sending those right deleted them from the exported file
+  // outright. Swapping the assignment away from the defaults is what catches
+  // it.
+  it('sidebar keeps parity when the columns are swapped away from their defaults', async () => {
+    const meta: ResumeMeta = {
+      ...metaFor('sidebar'),
+      columnAssignment: { work: 'left', education: 'left', skills: 'right', languages: 'right' },
+    }
+    const { container } = render(<SidebarTemplate data={data} meta={meta} />)
+    const runs = await renderToGlyphRuns(SidebarPdfTemplate({ data, meta, title: 'CV' }))
+
+    // A fourth incomparable, on top of the three above, and only reachable
+    // once long-form sections can sit in the rail: at the rail's width a line
+    // that has to break emits a literal "-" glyph into the PDF that the DOM
+    // never contains. It is not hyphenationCallback-avoidable — see the
+    // comment atop SidebarPdfTemplate.tsx, which records that textkit's
+    // `applyBestFit` fallback forces the same hyphen-inserting path even with
+    // a no-op callback. Hyphens are therefore dropped from BOTH sides here,
+    // which costs the ability to notice a missing literal hyphen and keeps
+    // everything this test is actually for: every word present, in order.
+    const withoutHyphens = (t: string) => comparable(t).replace(/-/g, '')
+    const web = withoutHyphens(container.textContent ?? '')
+    const pdf = withoutHyphens(runs.map((r) => r.str).join(''))
+
+    expect(web.length).toBeGreaterThan(200)
+    expect(pdf).toBe(web)
+  })
+
   /*
    * NOT COVERED HERE: word spacing — the original "IdanSolutions" defect,
    * where two adjacent Text elements render with no gap and separate words
