@@ -247,7 +247,7 @@ export function EditTab() {
           onClick={() => setAddMenuOpen((o) => !o)}
           aria-haspopup="menu"
           aria-expanded={addMenuOpen}
-          className="w-full py-2.5 border-2 border-dashed border-indigo-300 rounded-xl text-sm font-semibold text-indigo-500 bg-indigo-50/50 shadow-[0_0_14px_-2px_rgba(99,102,241,0.45)] hover:border-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 hover:shadow-[0_0_20px_-2px_rgba(99,102,241,0.6)] transition-all"
+          className="w-full py-2.5 border-2 border-dashed border-indigo-300 rounded-xl text-sm font-semibold text-fg-muted bg-indigo-50/50 shadow-[0_0_14px_-2px_rgba(99,102,241,0.45)] hover:border-indigo-500 hover:text-fg-body hover:bg-indigo-50 hover:shadow-[0_0_20px_-2px_rgba(99,102,241,0.6)] transition-all"
         >
           + Add Section
         </button>
@@ -269,7 +269,7 @@ export function EditTab() {
               </button>
               {removedBuiltIns.length > 0 && (
                 <div className="border-t border-indigo-50">
-                  <p className="px-4 pt-2 pb-1 text-[11px] uppercase tracking-wide text-indigo-300">Add built-in sections</p>
+                  <p className="px-4 pt-2 pb-1 text-[11px] uppercase tracking-wide text-fg-subtle">Add built-in sections</p>
                   {removedBuiltIns.map((section) => (
                     <button
                       key={section}

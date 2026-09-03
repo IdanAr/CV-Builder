@@ -120,7 +120,7 @@ function FilterEditor({
             onChange={(e) => setMin(e.target.value)}
             className={`w-24 ${inputClass}`}
           />
-          <span className="text-indigo-300">–</span>
+          <span className="text-fg-subtle">–</span>
           <input
             type="number"
             aria-label={`Maximum ${column.label}`}
@@ -140,7 +140,7 @@ function FilterEditor({
             onChange={(e) => setFrom(e.target.value)}
             className={inputClass}
           />
-          <span className="text-indigo-300">–</span>
+          <span className="text-fg-subtle">–</span>
           <input
             type="date"
             aria-label={`${column.label} until`}
@@ -221,7 +221,7 @@ export function FilterBar({
         </button>
         {open && (
           <div className="absolute left-0 top-full z-30 mt-1 w-72 rounded-lg border border-indigo-100 bg-white p-3 shadow-xl">
-            <label className="flex flex-col gap-1 text-xs font-medium text-indigo-500">
+            <label className="flex flex-col gap-1 text-xs font-medium text-fg-muted">
               Filter by
               <select
                 autoFocus
@@ -280,7 +280,7 @@ export function FilterBar({
         <button
           type="button"
           onClick={() => onChange([])}
-          className="rounded px-1.5 py-0.5 text-xs text-indigo-400 hover:text-indigo-600"
+          className="rounded px-1.5 py-0.5 text-xs text-fg-muted hover:text-fg-body"
         >
           Clear all
         </button>

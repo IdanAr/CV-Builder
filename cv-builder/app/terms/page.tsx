@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { LegalPageShell } from '@/components/marketing/LegalPageShell'
 
 export const metadata: Metadata = {
-  title: 'Terms of Use | CV Builder',
+  title: 'Terms of Use',
   description: 'The terms that govern your use of the CV Builder service.',
 }
 
@@ -80,7 +80,8 @@ export default function TermsOfUsePage() {
           <li>Upload or submit content you do not have the right to share, or that infringes another person&apos;s rights;</li>
           <li>Attempt to circumvent rate limits, reverse-engineer, or interfere with the operation of the Service or its AI features;</li>
           <li>Use automated means to scrape, extract, or access the Service outside of its intended interface; or</li>
-          <li>Impersonate any person or misrepresent your affiliation with any person or entity.</li>
+          <li>Impersonate any person or misrepresent your affiliation with any person or entity; or</li>
+          <li>Use the Service to generate false or misleading employment credentials.</li>
         </ul>
       </section>
 

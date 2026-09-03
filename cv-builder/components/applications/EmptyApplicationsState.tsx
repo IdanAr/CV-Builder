@@ -9,7 +9,7 @@ export function EmptyApplicationsState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="rounded-xl border border-indigo-100 bg-white/50 py-12 px-6 text-center backdrop-blur-sm">
       <h2 className="text-lg font-semibold text-indigo-900">Track your job applications</h2>
-      <p className="mx-auto mt-1 max-w-md text-sm text-indigo-400">
+      <p className="mx-auto mt-1 max-w-md text-sm text-fg-muted">
         One row per application - status, resume used, notes, and any custom columns you add. Every
         change is logged with a timestamp.
       </p>
@@ -17,7 +17,7 @@ export function EmptyApplicationsState({ onCreate }: { onCreate: () => void }) {
         <div className="flex flex-col rounded-xl border border-indigo-200 bg-white/70 p-6 text-left shadow-sm">
           <ClipboardList className="h-6 w-6 text-indigo-600" aria-hidden="true" />
           <h3 className="mt-3 font-semibold text-indigo-900">Start tracking</h3>
-          <p className="mb-4 mt-1 flex-1 text-sm text-indigo-400">
+          <p className="mb-4 mt-1 flex-1 text-sm text-fg-muted">
             Add your first application and fill it in right in the table.
           </p>
           <button
@@ -32,7 +32,7 @@ export function EmptyApplicationsState({ onCreate }: { onCreate: () => void }) {
         <div className="flex flex-col rounded-xl border border-indigo-100 bg-white/70 p-6 text-left shadow-sm">
           <FileText className="h-6 w-6 text-indigo-600" aria-hidden="true" />
           <h3 className="mt-3 font-semibold text-indigo-900">Track from a CV</h3>
-          <p className="mb-4 mt-1 flex-1 text-sm text-indigo-400">
+          <p className="mb-4 mt-1 flex-1 text-sm text-fg-muted">
             Use &ldquo;Track&rdquo; on any CV card to create a pre-filled row linked to
             that resume.
           </p>

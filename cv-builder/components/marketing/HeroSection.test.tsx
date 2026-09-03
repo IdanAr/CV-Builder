@@ -49,4 +49,19 @@ describe('HeroSection', () => {
     const badge = screen.getByText(/ats score/i).closest('div')
     expect(badge).toHaveAttribute('aria-hidden', 'true')
   })
+
+  // The audit's F9: "Free" appeared exactly once in the visible funnel — inside
+  // a button label in the final section — so nobody could tell above the fold
+  // whether the product costs money.
+  it('states the price above the fold, beside the CTAs', () => {
+    render(<HeroSection />)
+    expect(screen.getByText(/free to start/i)).toBeInTheDocument()
+  })
+
+  // "Free to start", not "free forever": the pricing model is undecided, and
+  // marketing copy should not commit the product to one.
+  it('does not promise the product will always be free', () => {
+    render(<HeroSection />)
+    expect(screen.queryByText(/free forever|always free|100% free/i)).not.toBeInTheDocument()
+  })
 })

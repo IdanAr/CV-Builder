@@ -12,6 +12,7 @@ import { inputClass } from '@/components/editor/forms/field-styles'
 import { cn } from '@/lib/utils'
 import { fetchWithTimeout, requestErrorMessage } from '@/lib/fetch-with-timeout'
 import { StepsBar, type WizardStep } from './StepsBar'
+import { apiErrorMessage } from '@/lib/api/client-errors'
 
 // /ats-score merges keywordPriorities onto AtsScoreResult rather than
 // widening that interface (see the route) — this is the richer shape the
@@ -31,7 +32,7 @@ function getScoreStatusLabel(score: number): { colorClass: string; pillClass: st
   } else if (score >= 40) {
     return { colorClass: 'text-yellow-500', pillClass: 'bg-yellow-100 text-yellow-800', label: 'Needs work' }
   } else {
-    return { colorClass: 'text-red-500', pillClass: 'bg-red-100 text-red-700', label: 'Poor match' }
+    return { colorClass: 'text-fg-danger', pillClass: 'bg-red-100 text-red-700', label: 'Poor match' }
   }
 }
 
@@ -159,10 +160,7 @@ export function AtsScorePanel() {
           keywordPriorities: cachedKeywordPriorities,
         }),
       })
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        throw new Error((json as { error?: string }).error ?? 'Analysis failed. Please try again.')
-      }
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Analysis failed. Please try again.'))
       const json: AtsScoreResponse = await res.json()
       setResult(json)
       setJdKeywords(json.jdKeywords)
@@ -199,10 +197,7 @@ export function AtsScorePanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ missingKeywords: result.missingKeywords }),
       })
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        throw new Error((json as { error?: string }).error ?? 'Could not generate fixes. Please try again.')
-      }
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Could not generate fixes. Please try again.'))
       const fetchedFixes: AtsFix[] = await res.json()
       setFixes(fetchedFixes)
       setFixStatus('ready')
@@ -224,10 +219,7 @@ export function AtsScorePanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ missingKeywords: result.missingKeywords }),
       })
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        throw new Error((json as { error?: string }).error ?? 'Semantic match failed. Please try again.')
-      }
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Semantic match failed. Please try again.'))
       const { confirmedMatches } = await res.json()
       await handleAnalyze(excludedKeywords, confirmedMatches, jdKeywords, keywordPriorities)
       setSemanticStatus('ready')
@@ -288,7 +280,7 @@ export function AtsScorePanel() {
             >
               {loading ? 'Analyzing…' : 'Analyze'}
             </button>
-            {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+            {error && <p className="mt-2 text-sm text-fg-danger">{error}</p>}
           </div>
 
           {result && (
@@ -301,7 +293,7 @@ export function AtsScorePanel() {
                     <div className="flex items-baseline justify-center gap-3">
                       <p className={`text-6xl font-bold ${colorClass}`}>
                         {result.total}
-                        <span className="text-2xl font-medium text-indigo-300">/100</span>
+                        <span className="text-2xl font-medium text-fg-subtle">/100</span>
                       </p>
                       <span className={`text-xs font-semibold px-3 py-1 rounded-full ${pillClass}`}>
                         {label}
@@ -340,7 +332,7 @@ export function AtsScorePanel() {
 
       {currentStep === 2 && result && (
         <div className="space-y-4">
-          <p className="text-xs font-medium text-indigo-500">
+          <p className="text-xs font-medium text-fg-muted">
             ✅ {result.matchedKeywords.length + result.excludedMatchedKeywords.length} matched
             &nbsp;·&nbsp; ⚠️ {result.missingKeywords.length} missing
           </p>
@@ -466,7 +458,7 @@ export function AtsScorePanel() {
                     }
                     className={
                       excluded
-                        ? 'inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-400 line-through hover:bg-gray-200 transition-colors'
+                        ? 'inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-fg-subtle line-through hover:bg-gray-200 transition-colors'
                         : isNiceToHave
                         ? 'inline-block rounded bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800 hover:bg-yellow-200 transition-colors'
                         : 'inline-block rounded bg-red-100 px-2 py-0.5 text-xs text-red-700 hover:bg-red-200 transition-colors'
@@ -507,7 +499,7 @@ export function AtsScorePanel() {
                     title={semantic ? 'Matched via AI semantic analysis (not an exact keyword match)' : undefined}
                     className={
                       excluded
-                        ? 'inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-400 line-through hover:bg-gray-200 transition-colors'
+                        ? 'inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-fg-subtle line-through hover:bg-gray-200 transition-colors'
                         : semantic
                         ? 'inline-block rounded bg-teal-100 px-2 py-0.5 text-xs text-teal-700 hover:bg-teal-200 transition-colors'
                         : 'inline-block rounded bg-green-100 px-2 py-0.5 text-xs text-green-700 hover:bg-green-200 transition-colors'

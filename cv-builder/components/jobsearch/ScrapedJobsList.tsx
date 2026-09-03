@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { ErrorBanner } from '@/components/ui/ErrorBanner'
 
 interface ScrapedJobSummary {
   _id: string
@@ -125,7 +126,7 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
   if (error && jobs === null) {
     return (
       <div className="flex flex-col items-center gap-3 py-8">
-        <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        <ErrorBanner>{error}</ErrorBanner>
         <button
           type="button"
           className="rounded bg-indigo-600 px-4 py-2 text-sm text-white"
@@ -154,7 +155,7 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
           {scanning ? 'Scanning…' : 'Scan now'}
         </button>
       </div>
-      {error && <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {error && <ErrorBanner>{error}</ErrorBanner>}
       {jobs.length === 0 ? (
         <p className="text-sm text-gray-500">No scraped jobs yet - run a scan to find matches.</p>
       ) : (
@@ -203,7 +204,7 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
                   {job.company}
                   {job.location ? ` - ${job.location}` : ''}
                 </div>
-                {postedAtLabel && <div className="text-xs text-gray-400">{postedAtLabel}</div>}
+                {postedAtLabel && <div className="text-xs text-fg-subtle">{postedAtLabel}</div>}
               </li>
             )
           })}

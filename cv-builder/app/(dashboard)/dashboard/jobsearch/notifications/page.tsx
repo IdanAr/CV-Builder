@@ -14,7 +14,7 @@ export default async function JobMatchesPage() {
     <>
       <AppNavbar
         actions={
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex flex-wrap items-center gap-3">
             <Link
               href="/dashboard"
               className="rounded-md border border-indigo-200 bg-white/50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50"

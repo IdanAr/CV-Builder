@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Upload } from 'lucide-react'
 import UploadProgressModal, { type UploadStage } from './UploadProgressModal'
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB_LABEL } from '@/lib/upload/limits'
+import { apiErrorMessage } from '@/lib/api/client-errors'
 
 type Stage = 'idle' | UploadStage
 
@@ -80,10 +81,7 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
         body: formData,
         signal: controller.signal,
       })
-      if (!parseRes.ok) {
-        const json = await parseRes.json().catch(() => ({}))
-        throw new Error((json as { error?: string }).error ?? 'Could not read the file.')
-      }
+      if (!parseRes.ok) throw new Error(await apiErrorMessage(parseRes, 'Could not read the file.'))
       const { text } = (await parseRes.json()) as { text: string }
 
       // The user may have canceled while the parse response was in flight;
@@ -97,12 +95,7 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
         body: JSON.stringify({ text }),
         signal: controller.signal,
       })
-      if (!extractRes.ok) {
-        const json = await extractRes.json().catch(() => ({}))
-        throw new Error(
-          (json as { error?: string }).error ?? 'Could not extract information from this CV.'
-        )
-      }
+      if (!extractRes.ok) throw new Error(await apiErrorMessage(extractRes, 'Could not extract information from this CV.'))
       const { resumeId } = (await extractRes.json()) as { resumeId: string }
 
       // The user may have canceled while the extract response was in flight;
@@ -136,7 +129,7 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
               Upload CV
             </span>
           </button>
-          <span className="mt-1.5 block text-center text-xs text-indigo-400">{requirementsText}</span>
+          <span className="mt-1.5 block text-center text-xs text-fg-muted">{requirementsText}</span>
         </span>
       ) : (
         <>

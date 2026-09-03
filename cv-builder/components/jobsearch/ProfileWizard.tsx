@@ -13,6 +13,7 @@ import {
   type JobLocation,
   type ComeetCompanyWatch,
 } from '@/lib/schemas/jobsearch.zod'
+import { ErrorBanner } from '@/components/ui/ErrorBanner'
 
 const STEP_LABELS = ['Roles', 'Location', 'Focus', 'Sources', 'Threshold', 'Review']
 
@@ -438,7 +439,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
             Want us to notify you whenever a match scores ≥ {state.minAtsScore}% against this profile?
           </p>
         </div>
-        {ruleError && <div role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{ruleError}</div>}
+        {ruleError && <ErrorBanner>{ruleError}</ErrorBanner>}
         <div className="flex gap-2">
           <button
             type="button"
@@ -459,7 +460,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
   return (
     <div className="flex flex-col gap-4">
       <ProfileWizardSteps current={step} maxUnlocked={maxUnlocked} labels={STEP_LABELS} onStepClick={setStep} />
-      {error && <div role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {error && <ErrorBanner>{error}</ErrorBanner>}
 
       {step === 1 && (
         <div ref={panelRef} role="tabpanel" id={`wizard-panel-${step}`} aria-labelledby={`wizard-tab-${step}`} tabIndex={-1} className="flex flex-col gap-3">

@@ -80,11 +80,11 @@ function CardContent({ app, customChips }: { app: ApplicationRow; customChips: s
   return (
     <>
       <p className="truncate text-sm font-semibold text-indigo-900">
-        {app.company || <span className="text-indigo-300">No company</span>}
+        {app.company || <span className="text-fg-subtle">No company</span>}
       </p>
-      {app.role && <p className="mt-0.5 truncate text-xs text-indigo-500">{app.role}</p>}
+      {app.role && <p className="mt-0.5 truncate text-xs text-fg-muted">{app.role}</p>}
       {app.resumeTitle && (
-        <p className="mt-1 truncate text-xs text-indigo-400">📄 {app.resumeTitle}</p>
+        <p className="mt-1 truncate text-xs text-fg-muted">📄 {app.resumeTitle}</p>
       )}
       {customChips.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1">
@@ -153,10 +153,10 @@ function BoardColumnLane({
     <div className="flex w-64 shrink-0 flex-col" role="group" aria-label={`${option.label} column`}>
       <div className="mb-2 flex items-center gap-2 px-1">
         <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: option.color }} />
-        <span className="text-xs font-semibold uppercase tracking-wide text-indigo-500">
+        <span className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
           {option.label}
         </span>
-        <span className="text-xs text-indigo-300">{cards.length}</span>
+        <span className="text-xs text-fg-subtle">{cards.length}</span>
       </div>
       <SortableContext items={cards.map((c) => c._id)} strategy={verticalListSortingStrategy}>
         <div
@@ -235,7 +235,7 @@ export default function ApplicationsBoard({
 
   if (!statusColumn || options.length === 0) {
     return (
-      <p className="rounded-xl border border-indigo-100 bg-white/50 p-6 text-sm text-indigo-400">
+      <p className="rounded-xl border border-indigo-100 bg-white/50 p-6 text-sm text-fg-muted">
         The board view needs a status column with at least one option.
       </p>
     )

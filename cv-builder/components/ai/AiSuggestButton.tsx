@@ -7,6 +7,7 @@ import type { SuggestionField, PipelineResult } from '@/lib/ai/pipeline'
 import { Popover } from '@/components/ui/Popover'
 import { fetchWithTimeout, requestErrorMessage } from '@/lib/fetch-with-timeout'
 import { highlightApprovals } from '@/lib/ai/highlight-approvals'
+import { apiErrorMessage } from '@/lib/api/client-errors'
 
 interface AiSuggestButtonProps {
   resumeId: string
@@ -31,10 +32,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ input: currentValue, ...context }),
       })
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        throw new Error((json as { error?: string }).error ?? 'Failed to generate suggestion. Please try again.')
-      }
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Failed to generate suggestion. Please try again.'))
       setResult(await res.json())
     } catch (err) {
       setError(requestErrorMessage(err, 'Failed to generate suggestion. Please try again.'))
@@ -96,7 +94,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
             disabled={loading || !currentValue.trim() || !resumeId}
             title={loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'}
             aria-label={loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'}
-            className="px-1.5 py-1 text-sm text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded transition-colors disabled:opacity-30"
+            className="px-1.5 py-1 text-sm text-fg-muted hover:text-fg-body hover:bg-indigo-50 rounded transition-colors disabled:opacity-30"
           >
             {loading ? (
               <Loader2 aria-hidden="true" data-testid="ai-suggest-loading-icon" className="h-4 w-4 animate-spin" strokeWidth={1.75} />
@@ -145,7 +143,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
               </button>
               <button
                 onClick={() => setResult(null)}
-                className="rounded px-3 py-1 text-xs text-indigo-500 transition-colors hover:text-indigo-700"
+                className="rounded px-3 py-1 text-xs text-fg-muted transition-colors hover:text-fg-body"
               >
                 Dismiss
               </button>

@@ -8,6 +8,7 @@ import {
   type RuleAction,
   type RuleCondition,
 } from '@/lib/schemas/jobsearch.zod'
+import { ErrorBanner } from '@/components/ui/ErrorBanner'
 
 type RuleField = RuleCondition['field']
 const RULE_FIELDS: RuleField[] = ['atsScore', 'company', 'workMode', 'postedWithinDays', 'title']
@@ -221,7 +222,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
   if (error && rules === null) {
     return (
       <div className="flex flex-col items-center gap-3 py-8">
-        <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        <ErrorBanner>{error}</ErrorBanner>
         <button type="button" className="rounded bg-indigo-600 px-4 py-2 text-sm text-white" onClick={() => load()}>
           Try again
         </button>
@@ -243,7 +244,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
           </button>
         )}
       </div>
-      {error && <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {error && <ErrorBanner>{error}</ErrorBanner>}
 
       {rules.length === 0 && !showForm && (
         <p className="text-sm text-gray-500">No rules yet - postings will be stored but won&apos;t trigger notifications.</p>

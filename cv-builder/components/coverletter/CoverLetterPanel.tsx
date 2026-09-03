@@ -6,6 +6,7 @@ import { fetchWithTimeout, requestErrorMessage } from '@/lib/fetch-with-timeout'
 import { highlightApprovals } from '@/lib/ai/highlight-approvals'
 import { inputClass } from '@/components/editor/forms/field-styles'
 import { cn } from '@/lib/utils'
+import { apiErrorMessage } from '@/lib/api/client-errors'
 
 interface CoverLetterDraft {
   content: string
@@ -43,10 +44,7 @@ export function CoverLetterPanel() {
           roleName: roleName.trim() || undefined,
         }),
       })
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        throw new Error((json as { error?: string }).error ?? 'Could not generate a cover letter. Please try again.')
-      }
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Could not generate a cover letter. Please try again.'))
       const result: { content: string; pendingApprovals: string[] } = await res.json()
       setDraft({ content: result.content, pendingApprovals: result.pendingApprovals ?? [] })
     } catch (err) {
@@ -81,10 +79,7 @@ export function CoverLetterPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: text }),
       })
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        throw new Error((json as { error?: string }).error ?? 'Export failed. Please try again.')
-      }
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Export failed. Please try again.'))
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -143,7 +138,7 @@ export function CoverLetterPanel() {
         >
           {loading ? 'Generating…' : 'Generate'}
         </button>
-        {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+        {error && <p className="mt-2 text-sm text-fg-danger">{error}</p>}
       </div>
 
       {draft && (
@@ -169,7 +164,7 @@ export function CoverLetterPanel() {
             </button>
             <button
               onClick={() => setDraft(null)}
-              className="rounded px-3 py-1.5 text-xs text-indigo-500 transition-colors hover:text-indigo-700"
+              className="rounded px-3 py-1.5 text-xs text-fg-muted transition-colors hover:text-fg-body"
             >
               Discard
             </button>
@@ -209,7 +204,7 @@ export function CoverLetterPanel() {
             </button>
           </div>
         </div>
-        {exportError && <p className="mb-1 text-xs text-red-500">{exportError}</p>}
+        {exportError && <p className="mb-1 text-xs text-fg-danger">{exportError}</p>}
         <textarea
           id={`${id}-output`}
           value={data.coverLetter ?? ''}
