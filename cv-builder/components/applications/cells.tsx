@@ -8,6 +8,38 @@ import { Pencil } from 'lucide-react'
 import type { ColumnOption, CustomFieldValue } from '@/lib/schemas/application.zod'
 import type { ResumeOption } from '@/lib/applications/types'
 
+/**
+ * Returns focus to the cell's trigger after an inline edit closes.
+ *
+ * These cells swap the trigger button for an input while editing, so
+ * committing unmounts the input and focus falls to <body>. In a grid that
+ * means every single cell edit dumps a keyboard user back to the top of the
+ * document, and they have to tab all the way in again for the next cell.
+ *
+ * The trigger does not exist while editing, so its ref is null at the moment
+ * the edit ends — the focus call has to wait for the re-render that brings the
+ * button back. `SelectCell` already solved this locally; this is the same idea,
+ * shared by the two cells that had not.
+ */
+function useRestoreFocusOnClose(editing: boolean) {
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const shouldRestore = useRef(false)
+
+  useEffect(() => {
+    if (editing || !shouldRestore.current) return
+    shouldRestore.current = false
+    triggerRef.current?.focus()
+  }, [editing])
+
+  /** Call instead of `setEditing(false)` so the trigger gets focus back. */
+  const closeAndRestore = (setEditing: (v: false) => void) => {
+    shouldRestore.current = true
+    setEditing(false)
+  }
+
+  return { triggerRef, closeAndRestore }
+}
+
 export interface CellProps {
   value: CustomFieldValue
   onCommit: (next: CustomFieldValue) => void
@@ -72,6 +104,7 @@ function EditableCell({
   toValue: (draft: string) => CustomFieldValue
 }) {
   const [editing, setEditing] = useState(false)
+  const { triggerRef, closeAndRestore } = useRestoreFocusOnClose(editing)
   if (editing) {
     return (
       <InlineTextInput
@@ -79,7 +112,7 @@ function EditableCell({
         type={inputType}
         ariaLabel={ariaLabel}
         onDone={(draft) => {
-          setEditing(false)
+          closeAndRestore(setEditing)
           if (draft === null) return
           const next = toValue(draft)
           if (next !== value && !(next === null && (value === null || value === ''))) {
@@ -91,6 +124,7 @@ function EditableCell({
   }
   return (
     <button
+      ref={triggerRef}
       type="button"
       aria-label={`Edit ${ariaLabel}`}
       onClick={() => setEditing(true)}
@@ -162,6 +196,7 @@ export function DateCell(props: CellProps & { readOnly?: boolean }) {
 export function UrlCell(props: CellProps) {
   const url = typeof props.value === 'string' ? props.value : ''
   const [editing, setEditing] = useState(false)
+  const { triggerRef, closeAndRestore } = useRestoreFocusOnClose(editing)
   if (editing) {
     return (
       <InlineTextInput
@@ -169,7 +204,7 @@ export function UrlCell(props: CellProps) {
         type="url"
         ariaLabel={props.ariaLabel}
         onDone={(draft) => {
-          setEditing(false)
+          closeAndRestore(setEditing)
           if (draft === null) return
           const next = draft.trim() === '' ? null : draft.trim()
           if (next !== (url || null)) props.onCommit(next)
@@ -202,6 +237,7 @@ export function UrlCell(props: CellProps) {
         <span className="min-w-0 flex-1 truncate text-sm text-fg-subtle">-</span>
       )}
       <button
+        ref={triggerRef}
         type="button"
         aria-label={`Edit ${props.ariaLabel}`}
         onClick={() => setEditing(true)}

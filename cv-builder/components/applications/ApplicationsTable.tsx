@@ -7,7 +7,13 @@
 // disabled while a column sort is active, since manual ordering and an
 // active sort are contradictory.
 import { memo } from 'react'
-import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
+import {
+  DndContext,
+  closestCenter,
+  type Announcements,
+  type DragEndEvent,
+  type ScreenReaderInstructions,
+} from '@dnd-kit/core'
 import {
   SortableContext,
   horizontalListSortingStrategy,
@@ -87,6 +93,67 @@ export const ApplicationCell = memo(function ApplicationCell({
 
 export function columnWidth(column: BoardColumn): number {
   return column.width ?? DEFAULT_COLUMN_WIDTH
+}
+
+// Mirrors ApplicationsBoard's screenReaderInstructions/announcements pattern
+// (also copied by DesignPanel and ListFieldManager). These were the last two
+// DndContexts in the app with neither: dnd-kit's silent default leaves a
+// keyboard user with no idea what they picked up, where it is, or whether the
+// drop landed — and the table has two independent reorderings, so "moved to
+// position 3" alone would be ambiguous between rows and columns.
+
+const columnDragInstructions: ScreenReaderInstructions = {
+  draggable:
+    'To reorder a column: press space or enter to pick it up, use the left and right arrow keys to move it, then press space or enter again to drop it. Press escape to cancel.',
+}
+
+const rowDragInstructions: ScreenReaderInstructions = {
+  draggable:
+    'To reorder an application: press space or enter to pick it up, use the up and down arrow keys to move it, then press space or enter again to drop it. Press escape to cancel.',
+}
+
+function buildColumnAnnouncements(columns: BoardColumn[]): Announcements {
+  const label = (id: string) => columns.find((c) => c.id === id)?.label ?? 'a column'
+  const position = (id: string) => {
+    const i = columns.findIndex((c) => c.id === id)
+    return i === -1 ? '' : ` (position ${i + 1} of ${columns.length})`
+  }
+  return {
+    onDragStart: ({ active }) => `Picked up the ${label(String(active.id))} column${position(String(active.id))}.`,
+    onDragOver: ({ active, over }) =>
+      over
+        ? `The ${label(String(active.id))} column is over the ${label(String(over.id))} column${position(String(over.id))}.`
+        : `The ${label(String(active.id))} column is no longer over a drop target.`,
+    onDragEnd: ({ active, over }) =>
+      over
+        ? `The ${label(String(active.id))} column was dropped at ${label(String(over.id))}'s place${position(String(over.id))}.`
+        : `The ${label(String(active.id))} column was dropped where it started.`,
+    onDragCancel: ({ active }) => `Reordering the ${label(String(active.id))} column was cancelled.`,
+  }
+}
+
+function buildRowAnnouncements(applications: ApplicationRow[]): Announcements {
+  const describe = (id: string) => {
+    const app = applications.find((a) => a._id === id)
+    if (!app) return 'the application'
+    return app.company ? `the application at ${app.company}` : 'the untitled application'
+  }
+  const position = (id: string) => {
+    const i = applications.findIndex((a) => a._id === id)
+    return i === -1 ? '' : ` (row ${i + 1} of ${applications.length})`
+  }
+  return {
+    onDragStart: ({ active }) => `Picked up ${describe(String(active.id))}${position(String(active.id))}.`,
+    onDragOver: ({ active, over }) =>
+      over
+        ? `${describe(String(active.id))} is over ${describe(String(over.id))}${position(String(over.id))}.`
+        : `${describe(String(active.id))} is no longer over a drop target.`,
+    onDragEnd: ({ active, over }) =>
+      over
+        ? `${describe(String(active.id))} was dropped at ${describe(String(over.id))}'s place${position(String(over.id))}.`
+        : `${describe(String(active.id))} was dropped where it started.`,
+    onDragCancel: ({ active }) => `Reordering ${describe(String(active.id))} was cancelled.`,
+  }
 }
 
 function SortableHeaderCell({
@@ -226,7 +293,15 @@ export default function ApplicationsTable({
     <div className="min-h-[28rem] overflow-x-auto rounded-xl border border-white/30 bg-white/65 shadow-lg backdrop-blur-xl">
       <div role="table" aria-label="Applications" className="min-w-max">
         {/* Header (columns are drag-reorderable) */}
-        <DndContext id="applications-table-columns" collisionDetection={closestCenter} onDragEnd={handleColumnDragEnd}>
+        <DndContext
+          id="applications-table-columns"
+          collisionDetection={closestCenter}
+          onDragEnd={handleColumnDragEnd}
+          accessibility={{
+            announcements: buildColumnAnnouncements(ordered),
+            screenReaderInstructions: columnDragInstructions,
+          }}
+        >
           <SortableContext items={ordered.map((c) => c.id)} strategy={horizontalListSortingStrategy}>
             <div role="row" className="sticky top-0 z-10 flex border-b border-indigo-100 bg-white">
               <div role="columnheader" style={{ width: GRIP_COLUMN_WIDTH }} className="shrink-0" />
@@ -249,7 +324,15 @@ export default function ApplicationsTable({
         </DndContext>
 
         {/* Rows (drag-reorderable while no column sort is active) */}
-        <DndContext id="applications-table-rows" collisionDetection={closestCenter} onDragEnd={handleRowDragEnd}>
+        <DndContext
+          id="applications-table-rows"
+          collisionDetection={closestCenter}
+          onDragEnd={handleRowDragEnd}
+          accessibility={{
+            announcements: buildRowAnnouncements(applications),
+            screenReaderInstructions: rowDragInstructions,
+          }}
+        >
           <SortableContext
             items={applications.map((a) => a._id)}
             strategy={verticalListSortingStrategy}
