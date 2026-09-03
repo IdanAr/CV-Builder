@@ -373,7 +373,21 @@ export function DesignPanel() {
       <div>
         <p className={labelClass}>Layout</p>
         {meta.templateId === 'sidebar' ? (
-          <p className="text-xs text-fg-subtle mt-1.5">The Sidebar template always uses a rail + main column layout.</p>
+          <>
+            <p className="text-xs text-fg-subtle mt-1.5">The Sidebar template always uses a rail + main column layout.</p>
+            {/* Every section really does render in either column now. Until this
+                note existed, four of them (Work, Education, Volunteer and any
+                custom section) silently vanished from the preview when moved to
+                the rail, and Skills or Languages moved to the main column
+                vanished from the exported PDF — so the guidance below is
+                preference, not a constraint. */}
+            <p className="text-xs text-fg-subtle mt-1">
+              Every section can go in either column — set them under{' '}
+              <span className="font-medium">Section columns</span> below. Skills and Languages start in
+              the rail. The rail is only {meta.sidebarRailWidth ?? 33}% of the page width, so short
+              sections suit it best; longer ones like Work Experience read better in the main column.
+            </p>
+          </>
         ) : (
           <>
             <div className="flex gap-2" role="group" aria-label="Layout">

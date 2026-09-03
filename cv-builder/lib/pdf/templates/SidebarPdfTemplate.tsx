@@ -671,6 +671,43 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
             })}
           </View>
         )
+      case 'skills':
+        if (!skills.length) return null
+        return (
+          <View key="skills">
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Skills</Text>
+            </View>
+            {skills.map((s, i) => (
+              <Text key={i} style={{ marginBottom: 2 }}>
+                <Text style={styles.bold}>
+                  {s.name ?? ''}
+                  {s.level ? <Text style={styles.small}> · {s.level}</Text> : null}
+                </Text>
+                {(s.keywords ?? []).length > 0 ? (
+                  <Text style={styles.small}>{'  '}{(s.keywords ?? []).join(', ')}</Text>
+                ) : null}
+              </Text>
+            ))}
+          </View>
+        )
+
+      case 'languages':
+        if (!languages.length) return null
+        return (
+          <View key="languages">
+            <View wrap={false} minPresenceAhead={SECTION_RESERVE}>
+              <Text style={styles.sectionTitle}>Languages</Text>
+            </View>
+            {languages.map((l, i) => (
+              <Text key={i} style={{ marginBottom: 2 }}>
+                <Text style={styles.bold}>{l.language ?? ''}</Text>
+                {l.fluency ? <Text style={styles.small}> - {l.fluency}</Text> : null}
+              </Text>
+            ))}
+          </View>
+        )
+
       default:
         return null
     }

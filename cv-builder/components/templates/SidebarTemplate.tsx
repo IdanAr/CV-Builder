@@ -69,6 +69,259 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
   const railSections = sectionOrder.filter((s) => getColumnSide(s, ca, SIDEBAR_COLUMN_DEFAULTS) === 'left')
   const mainSections = sectionOrder.filter((s) => getColumnSide(s, ca, SIDEBAR_COLUMN_DEFAULTS) === 'right')
 
+  // Every section the rail can render, keyed the same way as renderMainSection
+  // so the two are exhaustive over the same set. Before this, the rail was a
+  // fixed run of `railSections.includes('skills') && ...` blocks covering seven
+  // sections, which had two consequences: assigning work, education, volunteer
+  // or a custom section to the rail made it vanish from the document entirely
+  // (the rail could not draw it and the main column had already filtered it
+  // out), and the rail ignored sectionOrder, drawing in source order however
+  // the user had dragged things. The PDF's rail has always handled all eleven
+  // and mapped over sectionOrder, so the preview was also lying about the
+  // export. Rail copy is white-on-primaryColor, so muted text uses opacity
+  // rather than the grey and accent colours the main column uses.
+  function renderRailSection(section: string): React.ReactNode {
+    if (section.startsWith('custom:')) {
+      const id = section.slice(7)
+      const cs = data.customSections?.find((s) => s.id === id)
+      if (!cs || !cs.items.length) return null
+      return (
+        <div key={section} data-pv-section={section}>
+          <div style={railTitleStyle}>{cs.name}</div>
+          <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
+            {cs.items.map((item, i) => (
+              <div key={item.id ?? i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
+                {item.title && <div style={{ fontWeight: 600 }}>{item.title}</div>}
+                {cs.enabledFields.includes('subtitle') && item.subtitle && (
+                  <div style={{ opacity: 0.9 }}>{item.subtitle}</div>
+                )}
+                {cs.enabledFields.includes('dateRange') && formatDateRange(item.startDate, item.endDate) && (
+                  <div style={{ opacity: 0.85 }}>{formatDateRange(item.startDate, item.endDate)}</div>
+                )}
+                {cs.enabledFields.includes('summary') && item.summary && (
+                  <div style={{ opacity: 0.9, marginTop: '2px' }}>{rt(item.summary)}</div>
+                )}
+                {cs.enabledFields.includes('highlights') && (item.highlights ?? []).map((h, hi) => (
+                  <div key={hi} style={{ opacity: 0.9 }}>• {rt(h)}</div>
+                ))}
+                {cs.enabledFields.includes('keywords') && (item.keywords ?? []).length > 0 && (
+                  <div style={{ opacity: 0.85 }}>{(item.keywords ?? []).join(', ')}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+    switch (section) {
+      case 'work': {
+        const work = data.work ?? []
+        if (!work.length) return null
+        return (
+          <div key="work" data-pv-section="work">
+            <div style={railTitleStyle}>Work Experience</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
+              {work.map((job, i) => (
+                <div key={i} data-pv-entry={i} style={{ marginBottom: '8px' }}>
+                  <div style={{ fontWeight: 600 }}>{job.name}</div>
+                  {resolveWorkRoles(job).map((role, ri) => (
+                    <div key={role.id ?? ri} style={{ marginTop: ri === 0 ? '2px' : '5px' }}>
+                      <div style={{ fontWeight: 600, opacity: 0.95 }}>
+                        {role.position}
+                        {formatDateRange(role.startDate, role.endDate) && (
+                          <span style={{ fontWeight: 400, opacity: 0.8 }}> · {formatDateRange(role.startDate, role.endDate)}</span>
+                        )}
+                      </div>
+                      {role.summary && <div style={{ opacity: 0.9, marginTop: '2px' }}>{rt(role.summary)}</div>}
+                      {(role.highlights ?? []).map((h, hi) => (
+                        <div key={hi} style={{ opacity: 0.9 }}>• {rt(h)}</div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      case 'education': {
+        const education = data.education ?? []
+        if (!education.length) return null
+        return (
+          <div key="education" data-pv-section="education">
+            <div style={railTitleStyle}>Education</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
+              {education.map((edu, i) => (
+                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 600 }}>{edu.institution}</div>
+                  {resolveEducationRoles(edu).map((role, ri) => (
+                    <div key={role.id ?? ri} style={{ opacity: 0.9 }}>
+                      {[role.studyType, role.area].filter(Boolean).join(' in ')}
+                      {formatDateRange(role.startDate, role.endDate) && (
+                        <span style={{ opacity: 0.85 }}> · {formatDateRange(role.startDate, role.endDate)}</span>
+                      )}
+                      {role.score && <div style={{ opacity: 0.85 }}>Score: {role.score}</div>}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      case 'volunteer': {
+        const vol = data.volunteer ?? []
+        if (!vol.length) return null
+        return (
+          <div key="volunteer" data-pv-section="volunteer">
+            <div style={railTitleStyle}>Volunteer</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
+              {vol.map((v, i) => (
+                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 600 }}>{v.organization}</div>
+                  {v.position && <div style={{ opacity: 0.9 }}>{v.position}</div>}
+                  {formatDateRange(v.startDate, v.endDate) && (
+                    <div style={{ opacity: 0.85 }}>{formatDateRange(v.startDate, v.endDate)}</div>
+                  )}
+                  {v.summary && <div style={{ opacity: 0.9, marginTop: '2px' }}>{rt(v.summary)}</div>}
+                  {(v.highlights ?? []).map((h, hi) => (
+                    <div key={hi} style={{ opacity: 0.9 }}>• {rt(h)}</div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      case 'skills': {
+        if ((data.skills ?? []).length === 0) return null
+        return (
+          <div key="skills" data-pv-section="skills">
+            <div style={railTitleStyle}>Skills</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
+              {(data.skills ?? []).map((s, i) => (
+                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 600 }}>
+                    {s.name}
+                    {s.level && <span style={{ fontWeight: 400, opacity: 0.8 }}> · {s.level}</span>}
+                  </div>
+                  {(s.keywords ?? []).length > 0 && (
+                    <div style={{ opacity: 0.85 }}>{(s.keywords ?? []).join(', ')}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      case 'languages': {
+        if ((data.languages ?? []).length === 0) return null
+        return (
+          <div key="languages" data-pv-section="languages">
+            <div style={railTitleStyle}>Languages</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.7 }}>
+              {(data.languages ?? []).map((l, i) => (
+                <div key={i} data-pv-entry={i}>
+                  <strong>{l.language}</strong>
+                  {l.fluency && <span style={{ opacity: 0.85 }}> - {l.fluency}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      case 'certificates': {
+        if ((data.certificates ?? []).length === 0) return null
+        return (
+          <div key="certificates" data-pv-section="certificates">
+            <div style={railTitleStyle}>Certifications</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
+              {(data.certificates ?? []).map((c, i) => (
+                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
+                  <strong>{c.name}</strong>
+                  {c.issuer && <span style={{ opacity: 0.85 }}> - {c.issuer}</span>}
+                  {c.date && <span style={{ opacity: 0.8 }}>  ·  {c.date}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      case 'awards': {
+        if ((data.awards ?? []).length === 0) return null
+        return (
+          <div key="awards" data-pv-section="awards">
+            <div style={railTitleStyle}>Awards</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
+              {(data.awards ?? []).map((a, i) => (
+                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
+                  <strong>{a.title}</strong>
+                  {a.date && <span style={{ opacity: 0.8 }}>  ·  {a.date}</span>}
+                  {a.awarder && <div style={{ opacity: 0.85 }}>{a.awarder}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      case 'publications': {
+        if ((data.publications ?? []).length === 0) return null
+        return (
+          <div key="publications" data-pv-section="publications">
+            <div style={railTitleStyle}>Publications</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
+              {(data.publications ?? []).map((p, i) => (
+                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
+                  <strong>{p.name}</strong>
+                  {p.releaseDate && <span style={{ opacity: 0.8 }}>  ·  {p.releaseDate}</span>}
+                  {p.publisher && <div style={{ opacity: 0.85 }}>{p.publisher}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      case 'interests': {
+        if ((data.interests ?? []).length === 0) return null
+        return (
+          <div key="interests" data-pv-section="interests">
+            <div style={railTitleStyle}>Interests</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
+              {(data.interests ?? []).map((int, i) => (
+                <div key={i} data-pv-entry={i}>
+                  <strong>{int.name}</strong>
+                  {(int.keywords ?? []).length > 0 && <span style={{ opacity: 0.85 }}>: {(int.keywords ?? []).join(', ')}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      case 'projects': {
+        if ((data.projects ?? []).length === 0) return null
+        return (
+          <div key="projects" data-pv-section="projects">
+            <div style={railTitleStyle}>Projects</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
+              {(data.projects ?? []).map((p, i) => (
+                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
+                  <strong>{p.name}</strong>
+                  {formatDateRange(p.startDate, p.endDate) && (
+                    <span style={{ opacity: 0.8 }}>  ·  {formatDateRange(p.startDate, p.endDate)}</span>
+                  )}
+                  {p.description && <div style={{ opacity: 0.9 }}>{p.description}</div>}
+                  {(p.highlights ?? []).map((h, hi) => <div key={hi} style={{ opacity: 0.9 }}>• {h}</div>)}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      default:
+        return null
+    }
+  }
+
   function renderMainSection(section: string): React.ReactNode {
     if (section.startsWith('custom:')) {
       const id = section.slice(7)
@@ -264,6 +517,45 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
           </div>
         )
       }
+      case 'skills': {
+        const skills = data.skills ?? []
+        if (!skills.length) return null
+        return (
+          <div key="skills" data-pv-section="skills">
+            <div style={mainTitleStyle}>Skills</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.7 }}>
+              {skills.map((s, i) => (
+                <div key={i} data-pv-entry={i} style={{ display: 'flex', gap: '16px', marginBottom: '2px' }}>
+                  <div style={{ minWidth: '130px', fontWeight: 600 }}>
+                    {s.name}
+                    {s.level && <span style={{ fontWeight: 400, color: '#666' }}> · {s.level}</span>}
+                  </div>
+                  {(s.keywords ?? []).length > 0 && (
+                    <div style={{ color: '#444', flex: 1 }}>{(s.keywords ?? []).join(', ')}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      case 'languages': {
+        const langs = data.languages ?? []
+        if (!langs.length) return null
+        return (
+          <div key="languages" data-pv-section="languages">
+            <div style={mainTitleStyle}>Languages</div>
+            <div style={{ fontSize: '10pt', lineHeight: 1.8 }}>
+              {langs.map((l, i) => (
+                <div key={i} data-pv-entry={i}>
+                  <strong>{l.language}</strong>
+                  {l.fluency && <span style={{ color: '#666' }}> - {l.fluency}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
       default:
         return null
     }
@@ -308,122 +600,9 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
           )}
         </div>
 
-        {/* Rail: skills */}
-        {railSections.includes('skills') && (data.skills ?? []).length > 0 && (
-          <div data-pv-section="skills">
-            <div style={railTitleStyle}>Skills</div>
-            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
-              {(data.skills ?? []).map((s, i) => (
-                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
-                  <div style={{ fontWeight: 600 }}>
-                    {s.name}
-                    {s.level && <span style={{ fontWeight: 400, opacity: 0.8 }}> · {s.level}</span>}
-                  </div>
-                  {(s.keywords ?? []).length > 0 && (
-                    <div style={{ opacity: 0.85 }}>{(s.keywords ?? []).join(', ')}</div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Rail: languages */}
-        {railSections.includes('languages') && (data.languages ?? []).length > 0 && (
-          <div data-pv-section="languages">
-            <div style={railTitleStyle}>Languages</div>
-            <div style={{ fontSize: '10pt', lineHeight: 1.7 }}>
-              {(data.languages ?? []).map((l, i) => (
-                <div key={i} data-pv-entry={i}>
-                  <strong>{l.language}</strong>
-                  {l.fluency && <span style={{ opacity: 0.85 }}> - {l.fluency}</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Rail: certificates */}
-        {railSections.includes('certificates') && (data.certificates ?? []).length > 0 && (
-          <div data-pv-section="certificates">
-            <div style={railTitleStyle}>Certifications</div>
-            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
-              {(data.certificates ?? []).map((c, i) => (
-                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
-                  <strong>{c.name}</strong>
-                  {c.issuer && <span style={{ opacity: 0.85 }}> - {c.issuer}</span>}
-                  {c.date && <span style={{ opacity: 0.8 }}>  ·  {c.date}</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Rail: awards */}
-        {railSections.includes('awards') && (data.awards ?? []).length > 0 && (
-          <div data-pv-section="awards">
-            <div style={railTitleStyle}>Awards</div>
-            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
-              {(data.awards ?? []).map((a, i) => (
-                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
-                  <strong>{a.title}</strong>
-                  {a.date && <span style={{ opacity: 0.8 }}>  ·  {a.date}</span>}
-                  {a.awarder && <div style={{ opacity: 0.85 }}>{a.awarder}</div>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Rail: publications */}
-        {railSections.includes('publications') && (data.publications ?? []).length > 0 && (
-          <div data-pv-section="publications">
-            <div style={railTitleStyle}>Publications</div>
-            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
-              {(data.publications ?? []).map((p, i) => (
-                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
-                  <strong>{p.name}</strong>
-                  {p.releaseDate && <span style={{ opacity: 0.8 }}>  ·  {p.releaseDate}</span>}
-                  {p.publisher && <div style={{ opacity: 0.85 }}>{p.publisher}</div>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Rail: interests */}
-        {railSections.includes('interests') && (data.interests ?? []).length > 0 && (
-          <div data-pv-section="interests">
-            <div style={railTitleStyle}>Interests</div>
-            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
-              {(data.interests ?? []).map((int, i) => (
-                <div key={i} data-pv-entry={i}>
-                  <strong>{int.name}</strong>
-                  {(int.keywords ?? []).length > 0 && <span style={{ opacity: 0.85 }}>: {(int.keywords ?? []).join(', ')}</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Rail: projects */}
-        {railSections.includes('projects') && (data.projects ?? []).length > 0 && (
-          <div data-pv-section="projects">
-            <div style={railTitleStyle}>Projects</div>
-            <div style={{ fontSize: '10pt', lineHeight: 1.6 }}>
-              {(data.projects ?? []).map((p, i) => (
-                <div key={i} data-pv-entry={i} style={{ marginBottom: '6px' }}>
-                  <strong>{p.name}</strong>
-                  {formatDateRange(p.startDate, p.endDate) && (
-                    <span style={{ opacity: 0.8 }}>  ·  {formatDateRange(p.startDate, p.endDate)}</span>
-                  )}
-                  {p.description && <div style={{ opacity: 0.9 }}>{p.description}</div>}
-                  {(p.highlights ?? []).map((h, hi) => <div key={hi} style={{ opacity: 0.9 }}>• {h}</div>)}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {railSections.map((s) => (
+          <React.Fragment key={s}>{renderRailSection(s)}</React.Fragment>
+        ))}
       </div>
 
       {/* Main column */}
