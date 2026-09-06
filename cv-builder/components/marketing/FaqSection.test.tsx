@@ -5,10 +5,10 @@ import userEvent from '@testing-library/user-event'
 import { FaqSection } from './FaqSection'
 
 describe('FaqSection', () => {
-  it('renders all four questions collapsed by default', () => {
+  it('renders all six questions collapsed by default', () => {
     render(<FaqSection />)
     const buttons = screen.getAllByRole('button')
-    expect(buttons).toHaveLength(4)
+    expect(buttons).toHaveLength(6)
     for (const button of buttons) {
       expect(button).toHaveAttribute('aria-expanded', 'false')
     }

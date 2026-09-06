@@ -4,11 +4,12 @@ import { render, screen } from '@testing-library/react'
 import { FeaturesSection } from './FeaturesSection'
 
 describe('FeaturesSection', () => {
-  it('renders all three feature titles', () => {
+  it('renders all four feature titles', () => {
     render(<FeaturesSection />)
     expect(screen.getByRole('heading', { name: /write with ai/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /ats optimization & scoring/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /track your success/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /automated job matching/i })).toBeInTheDocument()
   })
 
   it('renders a section heading above the feature grid', () => {

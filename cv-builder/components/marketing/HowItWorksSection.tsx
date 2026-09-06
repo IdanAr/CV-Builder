@@ -2,7 +2,11 @@ const STEPS = [
   { title: 'Start or Upload', description: 'Choose a template or upload your current PDF/DOCX to let our parser do the heavy lifting.' },
   { title: 'Edit & Enhance', description: 'Use the drag-and-drop editor and AI suggestions to refine your experience.' },
   { title: 'ATS Check', description: 'Run the ATS Semantic Match to fix missing keywords.' },
-  { title: 'Export & Apply', description: 'Download as PDF or DOCX and track your application on the dashboard.' },
+  {
+    title: 'Export & Apply',
+    description:
+      'Download as PDF or DOCX, track your application on the dashboard, or let Job Search find and tailor the next one for you.',
+  },
 ] as const
 
 export function HowItWorksSection() {
