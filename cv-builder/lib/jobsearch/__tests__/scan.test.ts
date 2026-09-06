@@ -356,7 +356,7 @@ describe('runScanForProfile', () => {
     const result = await runScanForProfile('u1', 'p1')
 
     expect(mockRunApplyPipeline).toHaveBeenCalledWith(
-      'u1', expect.anything(), expect.objectContaining({ title: 'Backend Engineer', company: 'Acme' }), ['Node'], 75, 'r-default'
+      'u1', expect.anything(), expect.objectContaining({ title: 'Backend Engineer', company: 'Acme' }), ['Node'], 75, 'r-default', expect.anything()
     )
     expect(mockCreateScrapedJobs.mock.calls[0][2][0]).toEqual(
       expect.objectContaining({
@@ -364,6 +364,37 @@ describe('runScanForProfile', () => {
       })
     )
     expect(result.drafted).toBe(1)
+  })
+
+  it("forwards the source resume's own meta (not schema defaults) into the apply pipeline", async () => {
+    const customMeta = { templateId: 'sidebar', sectionOrder: ['work', 'custom:proj-1'] }
+    mockResumeFindOne.mockReturnValue(
+      sortLeanChain({ _id: 'r-default', data: { basics: { name: 'Test' } }, meta: customMeta })
+    )
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [{ source: 'freehire', sourceId: 'a1', title: 'Backend Engineer', company: 'Acme', url: 'https://x/a1', description: 'JD' }],
+    })
+    mockScoreResume.mockReturnValue({ total: 80, missingKeywords: ['Node'] })
+    mockListRulesForProfile.mockResolvedValue([
+      { name: 'Draft it', isActive: true, action: 'draft_and_queue', conditions: [{ field: 'atsScore', op: 'gte', value: 75 }] },
+    ])
+    mockRunApplyPipeline.mockResolvedValue({
+      draftResumeId: 'draft1', postTailorScore: 91, pendingApprovals: [], tailoredKeywords: ['Node'], status: 'queued',
+    })
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockRunApplyPipeline).toHaveBeenCalledWith(
+      'u1',
+      expect.anything(),
+      expect.objectContaining({ title: 'Backend Engineer' }),
+      ['Node'],
+      75,
+      'r-default',
+      expect.objectContaining({ templateId: 'sidebar', sectionOrder: ['work', 'custom:proj-1'] })
+    )
   })
 
   it('does not run the apply pipeline for a draft_and_queue match when the user has no resume', async () => {
@@ -435,7 +466,7 @@ describe('runScanForProfile', () => {
     const result = await runScanForProfile('u1', 'p1')
 
     expect(mockRunApplyPipeline).toHaveBeenCalledWith(
-      'u1', expect.anything(), expect.objectContaining({ title: 'Old Match' }), ['Node'], 75, 'r-default'
+      'u1', expect.anything(), expect.objectContaining({ title: 'Old Match' }), ['Node'], 75, 'r-default', expect.anything()
     )
     expect(mockMarkScrapedJobDrafted).toHaveBeenCalledWith('u1', 'backlog1', {
       draftResumeId: 'draft2', postTailorScore: 92, pendingApprovals: [], tailoredKeywords: ['Node'], status: 'queued',

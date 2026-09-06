@@ -17,6 +17,23 @@ import { runApplyPipeline, PER_PROFILE_DAILY_DRAFT_CAP, PER_USER_DAILY_DRAFT_CAP
 
 const baseResumeData = { basics: { name: 'Jane Doe', summary: 'Engineer.' } }
 const posting = { title: 'Backend Engineer', company: 'Acme', description: 'Build things with Node.' }
+// A non-default meta (sidebar template + a custom-section sectionOrder entry)
+// so tests can tell "passed through from the source resume" apart from
+// "happens to match the schema default".
+const sourceMeta = {
+  templateId: 'sidebar',
+  fontFamily: 'Georgia',
+  headerFontFamily: 'Georgia',
+  primaryColor: '#123456',
+  accentColor: '#abcdef',
+  pageMargins: 0.75,
+  lineSpacing: 1.1,
+  sidebarRailWidth: 30,
+  sectionOrder: ['work', 'education', 'custom:proj-1'],
+  layout: 'two-column' as const,
+  columnAssignment: { work: 'left' as const },
+  excludedAtsKeywords: [],
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -33,7 +50,7 @@ describe('runApplyPipeline', () => {
   })
 
   it('returns status "queued" when there are no pending approvals and the score clears the threshold', async () => {
-    const result = await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1')
+    const result = await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1', sourceMeta)
     expect(result.status).toBe('queued')
     expect(result.draftResumeId).toBe('r1')
     expect(result.postTailorScore).toBe(90)
@@ -41,7 +58,7 @@ describe('runApplyPipeline', () => {
 
   it('returns status "needs_review" when the post-tailor score is below minAtsScore', async () => {
     mockScoreResume.mockReturnValue({ total: 60, missingKeywords: [] })
-    const result = await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1')
+    const result = await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1', sourceMeta)
     expect(result.status).toBe('needs_review')
   })
 
@@ -50,7 +67,7 @@ describe('runApplyPipeline', () => {
       { id: 'fix-summary', section: 'summary', original: '', suggested: 'Grew revenue 40%.', targetKeywords: ['revenue'], pendingApprovals: ['40%'] },
     ])
     mockScoreResume.mockReturnValue({ total: 95, missingKeywords: [] })
-    const result = await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1')
+    const result = await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1', sourceMeta)
     expect(result.status).toBe('needs_review')
     expect(result.pendingApprovals).toEqual(['40%'])
   })
@@ -60,7 +77,7 @@ describe('runApplyPipeline', () => {
       { id: 'fix-summary', section: 'summary', original: 'Engineer.', suggested: 'Backend engineer with Node experience.', targetKeywords: ['Node'], pendingApprovals: [] },
     ])
 
-    await runApplyPipeline('u1', baseResumeData as never, posting, ['Node'], 75, 'source-r1')
+    await runApplyPipeline('u1', baseResumeData as never, posting, ['Node'], 75, 'source-r1', sourceMeta)
 
     expect(mockRunAtsFixPipeline).toHaveBeenCalledWith(baseResumeData, ['Node'])
     expect(mockScoreResume).toHaveBeenCalledWith(
@@ -83,9 +100,19 @@ describe('runApplyPipeline', () => {
   })
 
   it('passes sourceResumeId through as parentResumeId so the draft records lineage', async () => {
-    await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1')
+    await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1', sourceMeta)
 
     expect(mockCreateResume).toHaveBeenCalledWith('u1', expect.anything(), { parentResumeId: 'source-r1' })
+  })
+
+  it('carries the source resume meta through verbatim instead of falling back to schema defaults', async () => {
+    await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1', sourceMeta)
+
+    expect(mockCreateResume).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({ meta: sourceMeta }),
+      expect.anything()
+    )
   })
 
   it('deduplicates tailoredKeywords across multiple fixes', async () => {
@@ -99,7 +126,8 @@ describe('runApplyPipeline', () => {
       posting,
       [],
       75,
-      'source-r1'
+      'source-r1',
+      sourceMeta
     )
     expect(result.tailoredKeywords.sort()).toEqual(['API', 'Node'])
   })
@@ -113,7 +141,8 @@ describe('runApplyPipeline', () => {
       { ...posting, title: longTitle, company: longCompany },
       [],
       75,
-      'source-r1'
+      'source-r1',
+      sourceMeta
     )
 
     const call = mockCreateResume.mock.calls[0][1]
