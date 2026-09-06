@@ -7,8 +7,7 @@ import { generateCoverLetter } from '@/lib/ai/cover-letter-pipeline'
 import { applyAtsFixToResumeData } from '@/lib/ai/apply-ats-fix'
 import { scoreResume } from '@/lib/ats/scorer'
 import { createResume } from '@/lib/api/resumes'
-import { ResumeMetaSchema } from '@/lib/schemas/resume.zod'
-import type { ResumeData } from '@/lib/schemas/resume.zod'
+import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import type { ScrapedJobStatus } from '@/lib/schemas/jobsearch.zod'
 
 /** Max draft_and_queue runs per profile per rolling 24h window (design spec §7). */
@@ -44,7 +43,8 @@ export async function runApplyPipeline(
   posting: ApplyPostingInput,
   missingKeywords: string[],
   minAtsScore: number,
-  sourceResumeId: string
+  sourceResumeId: string,
+  sourceMeta: ResumeMeta
 ): Promise<ApplyResult> {
   const fixes = await runAtsFixPipeline(resumeData, missingKeywords)
 
@@ -75,14 +75,15 @@ export async function runApplyPipeline(
   const resume = await createResume(userId, {
     title: truncate(`${posting.title} at ${posting.company} (tailored)`, 200),
     data: { ...tailoredData, coverLetter: coverLetter.content },
-    // CreateResumeInput's inferred type requires `meta` (CreateResumeSchema
-    // applies a default via .default(), which makes the output type
-    // non-optional) even though callers going through the schema (e.g.
-    // POST /api/resumes) get it filled in automatically. Since this call
-    // builds the input object directly rather than parsing through the
-    // schema, supply the same default design metadata explicitly — matching
-    // the pattern in app/api/resumes/upload/extract/route.ts.
-    meta: ResumeMetaSchema.parse({}),
+    // Carry over the source resume's own design metadata verbatim —
+    // template, colors, spacing, and (critically) sectionOrder, which is
+    // the only thing that makes a custom section render at all. Falling
+    // back to schema defaults here previously reset every tailored draft to
+    // the classic single-column template with a sectionOrder that only
+    // lists built-in section keys, silently hiding any custom section
+    // (e.g. a user-added "Projects" section) even though its data survived
+    // untouched in data.customSections.
+    meta: sourceMeta,
     applicationStatus: 'draft',
     targetCompany: truncate(posting.company, 200),
     targetRole: truncate(posting.title, 200),

@@ -22,7 +22,7 @@ import { runApplyPipeline, PER_PROFILE_DAILY_DRAFT_CAP, PER_USER_DAILY_DRAFT_CAP
 import Resume from '@/models/Resume'
 import type { CreateScrapedJobInput, ScrapeSource } from '@/lib/schemas/jobsearch.zod'
 import type { JobPosting, SourceSearchResult } from './sources/types'
-import type { ResumeData } from '@/lib/schemas/resume.zod'
+import { ResumeMetaSchema, type ResumeData, type ResumeMeta } from '@/lib/schemas/resume.zod'
 
 export interface ScanResult {
   fetched: number
@@ -60,22 +60,34 @@ interface DraftQueueBacklogItem {
 interface ResolvedResume {
   id: string
   data: ResumeData
+  meta: ResumeMeta
 }
 
-// Returns the source resume's id alongside its data so tailored drafts can
-// record lineage (Resume.parentResumeId) back to the resume they were built
-// from — the same field duplicateResume() sets for manual copies.
+// Returns the source resume's id and design meta alongside its data so
+// tailored drafts can record lineage (Resume.parentResumeId) back to the
+// resume they were built from — the same field duplicateResume() sets for
+// manual copies — and so runApplyPipeline can carry over the source's
+// template/colors/spacing/sectionOrder instead of falling back to schema
+// defaults (which drops any custom sections, since they only render when
+// their `custom:<id>` key is present in sectionOrder).
 async function resolveResumeData(userId: string, resumeId?: string): Promise<ResolvedResume | null> {
   await dbConnect()
   if (resumeId) {
-    const resume = (await Resume.findOne({ _id: resumeId, userId }).lean()) as { _id: unknown; data: ResumeData } | null
-    if (resume) return { id: String(resume._id), data: resume.data }
+    const resume = (await Resume.findOne({ _id: resumeId, userId }).lean()) as {
+      _id: unknown
+      data: ResumeData
+      meta?: ResumeMeta
+    } | null
+    if (resume) return { id: String(resume._id), data: resume.data, meta: ResumeMetaSchema.parse(resume.meta ?? {}) }
   }
   const fallback = (await Resume.findOne({ userId }).sort({ updatedAt: -1 }).lean()) as {
     _id: unknown
     data: ResumeData
+    meta?: ResumeMeta
   } | null
-  return fallback ? { id: String(fallback._id), data: fallback.data } : null
+  return fallback
+    ? { id: String(fallback._id), data: fallback.data, meta: ResumeMetaSchema.parse(fallback.meta ?? {}) }
+    : null
 }
 
 // Narrower than JobPosting so this is reusable against both a freshly
@@ -263,7 +275,8 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
               { title: item.title, company: item.company, description: item.description },
               missingKeywords,
               profile.minAtsScore,
-              resumeData.id
+              resumeData.id,
+              resumeData.meta
             )
             await markScrapedJobDrafted(userId, String(item._id), {
               draftResumeId: applyResult.draftResumeId,
@@ -407,7 +420,8 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
             { title: posting.title, company: posting.company, description: posting.description },
             scoreResult.missingKeywords,
             profile.minAtsScore,
-            resumeData.id
+            resumeData.id,
+            resumeData.meta
           )
           draftFields = {
             draftResumeId: applyResult.draftResumeId,
