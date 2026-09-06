@@ -24,6 +24,16 @@ const FAQS = [
     answer:
       'Your resume data is tied to your signed-in account and never shared with third parties. You can edit or delete your data at any time from your dashboard.',
   },
+  {
+    question: 'Can CV Builder find job openings for me?',
+    answer:
+      "Yes - Job Search scans job boards and any companies you choose to watch, based on the roles, locations, and seniority you set, and scores every match against your résumé.",
+  },
+  {
+    question: 'Does it apply to jobs automatically?',
+    answer:
+      "It can auto-draft a tailored résumé and cover letter for matches that fit your rules, but nothing is ever sent to an employer on its own. Every draft waits in your review queue until you approve it.",
+  },
 ] as const
 
 export function FaqSection() {

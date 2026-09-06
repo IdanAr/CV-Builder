@@ -4,6 +4,7 @@ import { AppNavbar } from '@/components/ui/AppNavbar'
 import { PlasmaBackground } from '@/components/ui/PlasmaBackground'
 import { HeroSection } from '@/components/marketing/HeroSection'
 import { FeaturesSection } from '@/components/marketing/FeaturesSection'
+import { JobSearchSection } from '@/components/marketing/JobSearchSection'
 import { TemplatesShowcaseSection } from '@/components/marketing/TemplatesShowcaseSection'
 import { HowItWorksSection } from '@/components/marketing/HowItWorksSection'
 import { TestimonialsSection } from '@/components/marketing/TestimonialsSection'
@@ -31,6 +32,7 @@ export default async function Home() {
       <main id="main-content">
         <HeroSection />
         <FeaturesSection />
+        <JobSearchSection />
         <TemplatesShowcaseSection />
         <HowItWorksSection />
         <TestimonialsSection />

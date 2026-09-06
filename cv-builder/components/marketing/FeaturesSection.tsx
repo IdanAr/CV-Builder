@@ -1,4 +1,4 @@
-import { Sparkles, Target, KanbanSquare } from 'lucide-react'
+import { Sparkles, Target, KanbanSquare, Radar } from 'lucide-react'
 
 const FEATURES = [
   {
@@ -19,13 +19,19 @@ const FEATURES = [
     description:
       "Manage your job hunt in one place. Move applications from 'Applied' to 'Interviewing' with our built-in tracker.",
   },
+  {
+    icon: Radar,
+    title: 'Automated Job Matching',
+    description:
+      'Set your criteria once and Job Search scans job boards and companies you watch, scoring and tailoring matches for you to review.',
+  },
 ] as const
 
 export function FeaturesSection() {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
       <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">Everything You Need to Get Hired</h2>
-      <div className="mt-10 grid gap-8 sm:grid-cols-3">
+      <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
         {FEATURES.map(({ icon: Icon, title, description }) => (
           <div
             key={title}
