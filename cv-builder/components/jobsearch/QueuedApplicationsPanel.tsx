@@ -1,13 +1,16 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { ExternalLink } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ExternalLink, EyeOff, MoreVertical, Trash2 } from 'lucide-react'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button, buttonClasses } from '@/components/ui/Button'
-import { toast } from '@/lib/stores/toast.store'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/Menu'
+import { toast, useToastStore } from '@/lib/stores/toast.store'
 import { FitMeter } from './FitMeter'
+
+const UNDO_DELETE_DURATION = 6000
 
 interface QueuedJobSummary {
   _id: string
@@ -43,6 +46,11 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
   const [draftLoadError, setDraftLoadError] = useState<string | null>(null)
   const [convertingId, setConvertingId] = useState<string | null>(null)
   const [actioningId, setActioningId] = useState<string | null>(null)
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
+  // id -> pending DELETE timer. A job in here is off the list but not yet
+  // deleted server-side, so the undo toast can still call it back — and the
+  // draft resume it takes with it is untouched until the timer fires.
+  const deleteTimersRef = useRef(new Map<string, number>())
 
   const load = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -76,6 +84,19 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
     load(controller.signal)
     return () => controller.abort()
   }, [load])
+
+  // A pending deletion must still happen if the user navigates away before the
+  // undo window closes — otherwise the card reappears on the next visit.
+  useEffect(() => {
+    const timers = deleteTimersRef.current
+    return () => {
+      for (const [id, timer] of timers) {
+        window.clearTimeout(timer)
+        void fetch(`/api/jobsearch/scraped-jobs/${id}`, { method: 'DELETE' })
+      }
+      timers.clear()
+    }
+  }, [])
 
   async function toggleExpand(job: QueuedJobSummary) {
     if (expandedId === job._id) {
@@ -150,17 +171,18 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
     if (!res.ok) throw new Error('Reject failed')
   }
 
-  // Rejecting used to open a window.confirm(). It now takes effect at once and
-  // offers an undo, matching how every other destructive action in the section
-  // behaves — a modal that interrupts every rejection is the wrong trade when
-  // the action is this reversible.
-  async function handleReject(job: QueuedJobSummary) {
+  // Dismissing takes effect at once and offers an undo, rather than opening the
+  // window.confirm() this used to — a modal interrupting every dismissal is the
+  // wrong trade when the action is this reversible. It keeps the draft resume:
+  // the posting drops out of the queue but the work done on it survives, which
+  // is what separates this from Delete below.
+  async function handleDismiss(job: QueuedJobSummary) {
     setActioningId(job._id)
     setError(null)
     try {
       await setDismissed(job, true)
       await load()
-      toast.withAction(`Rejected "${job.title}"`, 'Undo', () => {
+      toast.withAction(`Dismissed "${job.title}"`, 'Undo', () => {
         void (async () => {
           try {
             await setDismissed(job, false)
@@ -171,10 +193,52 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
         })()
       })
     } catch {
-      setError('Failed to reject the posting. Please try again.')
+      setError('Failed to dismiss the posting. Please try again.')
     } finally {
       setActioningId(null)
     }
+  }
+
+  // Delete removes the posting *and* the resume that was drafted for it, so the
+  // library isn't left holding a tailored copy for a job the user has thrown
+  // away. The request is deferred for the length of the undo window, so undoing
+  // costs nothing: nothing has been deleted yet when the toast is still up.
+  function handleDelete(job: QueuedJobSummary) {
+    setError(null)
+    setJobs((prev) => (prev ? prev.filter((j) => j._id !== job._id) : prev))
+
+    const commit = () => {
+      deleteTimersRef.current.delete(job._id)
+      void (async () => {
+        try {
+          const res = await fetch(`/api/jobsearch/scraped-jobs/${job._id}`, { method: 'DELETE' })
+          if (!res.ok) throw new Error('Delete failed')
+        } catch {
+          toast.error(`Could not delete "${job.title}". It has been restored.`)
+          await load()
+        }
+      })()
+    }
+
+    const timer = window.setTimeout(commit, UNDO_DELETE_DURATION)
+    deleteTimersRef.current.set(job._id, timer)
+
+    const toastId = toast.withAction(
+      job.draftResumeId
+        ? `Deleted "${job.title}" and its tailored résumé`
+        : `Deleted "${job.title}"`,
+      'Undo',
+      () => {
+        const pending = deleteTimersRef.current.get(job._id)
+        if (pending !== undefined) {
+          window.clearTimeout(pending)
+          deleteTimersRef.current.delete(job._id)
+        }
+        void load()
+      }
+    )
+    // Keep the toast alive no longer than the window it describes.
+    window.setTimeout(() => useToastStore.getState().dismiss(toastId), UNDO_DELETE_DURATION)
   }
 
   if (jobs === null) {
@@ -292,28 +356,49 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
                     </a>
                   )}
 
-                  {job.status === 'needs_review' && (
-                    <>
-                      {isBlocked && (
-                        <Button
-                          variant="soft"
-                          disabled={actioningId === job._id}
-                          title="Confirm the flagged claims are accurate (or that you've fixed them in the draft)"
-                          onClick={() => handleApprove(job)}
-                        >
-                          {actioningId === job._id ? 'Approving…' : 'Approve'}
-                        </Button>
-                      )}
+                  {job.status === 'needs_review' && isBlocked && (
+                    <Button
+                      variant="soft"
+                      disabled={actioningId === job._id}
+                      title="Confirm the flagged claims are accurate (or that you've fixed them in the draft)"
+                      onClick={() => handleApprove(job)}
+                    >
+                      {actioningId === job._id ? 'Approving…' : 'Approve'}
+                    </Button>
+                  )}
+
+                  {/* Dismiss and Delete apply to every card here, not just the
+                      flagged ones: a "Ready to submit" draft for a job you
+                      don't want still needs a way out of the queue. */}
+                  <Menu
+                    open={menuOpenId === job._id}
+                    onOpenChange={(open) => setMenuOpenId(open ? job._id : null)}
+                  >
+                    <MenuTrigger asChild>
                       <Button
-                        variant="dangerGhost"
+                        variant="ghost"
+                        size="icon"
                         className="ml-auto"
                         disabled={actioningId === job._id}
-                        onClick={() => handleReject(job)}
+                        aria-label={`More actions for ${job.title}`}
                       >
-                        Reject
+                        <MoreVertical aria-hidden="true" className="h-3.5 w-3.5" />
                       </Button>
-                    </>
-                  )}
+                    </MenuTrigger>
+                    <MenuContent className="w-56 p-1.5">
+                      <MenuItem onSelect={() => handleDismiss(job)}>
+                        <EyeOff aria-hidden="true" className="h-3.5 w-3.5" />
+                        Dismiss, keep the draft
+                      </MenuItem>
+                      <MenuItem
+                        className="text-fg-danger hover:bg-surface-danger data-[highlighted]:bg-surface-danger"
+                        onSelect={() => handleDelete(job)}
+                      >
+                        <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
+                        {job.draftResumeId ? 'Delete with its résumé' : 'Delete posting'}
+                      </MenuItem>
+                    </MenuContent>
+                  </Menu>
                 </div>
 
                 {isExpanded && (

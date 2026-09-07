@@ -2,6 +2,8 @@
 // requesting userId, matching every other service in lib/api/.
 import dbConnect from '@/lib/db'
 import ScrapedJob from '@/models/ScrapedJob'
+import Resume from '@/models/Resume'
+import Application from '@/models/Application'
 import { createApplication } from '@/lib/api/applications'
 import { ensureJobMetadataColumns, JOB_URL_COLUMN_ID, JOB_LOCATION_COLUMN_ID } from '@/lib/api/board-config'
 import { getJobSearchProfile, getProfileNameMap } from '@/lib/api/jobsearch-profiles'
@@ -220,10 +222,44 @@ export async function setScrapedJobDismissed(userId: string, id: string, dismiss
   return result.matchedCount === 1
 }
 
-export async function deleteScrapedJob(userId: string, id: string): Promise<boolean> {
+export interface DeleteScrapedJobResult {
+  deleted: boolean
+  /** Whether the posting's tailored draft resume went with it, so the caller
+   *  can say so rather than making the user discover it in their library. */
+  deletedDraftResume: boolean
+}
+
+// Deleting a posting also deletes the resume a draft_and_queue rule wrote for
+// it: that draft exists only to be submitted to this one posting, and leaving
+// it behind drops an untitled copy into the resume library that the user never
+// asked for and has no way to trace back.
+//
+// The exception is a draft already attached to an application row — once
+// "Mark as applied" has run, that resume is the record of something the user
+// actually sent, and it outlives the posting it came from.
+export async function deleteScrapedJob(
+  userId: string,
+  id: string
+): Promise<DeleteScrapedJobResult> {
   await dbConnect()
+  const job = (await ScrapedJob.findOne({ _id: id, userId }, 'draftResumeId').lean()) as {
+    draftResumeId?: string
+  } | null
+  if (!job) return { deleted: false, deletedDraftResume: false }
+
   const result = await ScrapedJob.deleteOne({ _id: id, userId })
-  return result.deletedCount === 1
+  if (result.deletedCount !== 1) return { deleted: false, deletedDraftResume: false }
+
+  if (!job.draftResumeId) return { deleted: true, deletedDraftResume: false }
+
+  const linkedApplications = await Application.countDocuments({
+    userId,
+    resumeId: job.draftResumeId,
+  })
+  if (linkedApplications > 0) return { deleted: true, deletedDraftResume: false }
+
+  const removed = await Resume.deleteOne({ _id: job.draftResumeId, userId })
+  return { deleted: true, deletedDraftResume: removed.deletedCount === 1 }
 }
 
 export interface NewScrapedJobSummary {

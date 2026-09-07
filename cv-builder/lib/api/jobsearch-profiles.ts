@@ -10,6 +10,9 @@ import type {
 } from '@/lib/schemas/jobsearch.zod'
 
 export interface JobSearchProfileCounts {
+  /** Every posting this profile has ever turned up, whatever became of it —
+   *  the same total the profile's own page reports as "found". */
+  foundCount: number
   /** Notify matches this profile found that the user has not seen yet. Scoped
    *  identically to countUnreadNotifyMatches so a profile card and the navbar
    *  badge can never disagree about what "new" means. */
@@ -18,30 +21,57 @@ export interface JobSearchProfileCounts {
   queuedCount: number
 }
 
+export const EMPTY_PROFILE_COUNTS: JobSearchProfileCounts = {
+  foundCount: 0,
+  newMatchCount: 0,
+  queuedCount: 0,
+}
+
 /**
  * One aggregate for every profile rather than a count query per card — the
- * list is small but the queries would be N+1, and both counts come off the
- * same {userId} scan.
+ * list is small but the queries would be N+1, and all three counts come off
+ * the same {userId} scan.
+ *
+ * The counts are conditional sums rather than a group-by-status, because
+ * `foundCount` spans every status while the other two are narrow slices of it,
+ * and a status key can't express both shapes at once.
  */
 async function countsByProfile(userId: string): Promise<Map<string, JobSearchProfileCounts>> {
   const rows = (await ScrapedJob.aggregate([
+    { $match: { userId } },
     {
-      $match: {
-        userId,
-        $or: [{ status: 'new', resolvedActions: 'notify' }, { status: 'queued' }],
+      $group: {
+        _id: '$profileId',
+        foundCount: { $sum: 1 },
+        newMatchCount: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ['$status', 'new'] },
+                  { $in: ['notify', { $ifNull: ['$resolvedActions', []] }] },
+                ],
+              },
+              1,
+              0,
+            ],
+          },
+        },
+        queuedCount: { $sum: { $cond: [{ $eq: ['$status', 'queued'] }, 1, 0] } },
       },
     },
-    { $group: { _id: { profileId: '$profileId', status: '$status' }, n: { $sum: 1 } } },
-  ])) as Array<{ _id: { profileId: string; status: string }; n: number }>
+  ])) as Array<{ _id: string } & JobSearchProfileCounts>
 
-  const counts = new Map<string, JobSearchProfileCounts>()
-  for (const row of rows) {
-    const entry = counts.get(row._id.profileId) ?? { newMatchCount: 0, queuedCount: 0 }
-    if (row._id.status === 'queued') entry.queuedCount = row.n
-    else entry.newMatchCount = row.n
-    counts.set(row._id.profileId, entry)
-  }
-  return counts
+  return new Map(
+    rows.map((row) => [
+      String(row._id),
+      {
+        foundCount: row.foundCount,
+        newMatchCount: row.newMatchCount,
+        queuedCount: row.queuedCount,
+      },
+    ])
+  )
 }
 
 export async function listJobSearchProfiles(userId: string) {
@@ -55,7 +85,7 @@ export async function listJobSearchProfiles(userId: string) {
   // separate request would only give the card two arrival times.
   return profiles.map((profile) => ({
     ...profile,
-    ...(counts.get(String(profile._id)) ?? { newMatchCount: 0, queuedCount: 0 }),
+    ...(counts.get(String(profile._id)) ?? EMPTY_PROFILE_COUNTS),
   }))
 }
 

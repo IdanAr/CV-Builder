@@ -75,7 +75,7 @@ describe('DELETE /api/jobsearch/scraped-jobs/[id]', () => {
 
   it('deletes and returns ok on success', async () => {
     const { deleteScrapedJob } = await import('@/lib/api/scraped-jobs')
-    vi.mocked(deleteScrapedJob).mockResolvedValueOnce(true)
+    vi.mocked(deleteScrapedJob).mockResolvedValueOnce({ deleted: true, deletedDraftResume: false })
 
     const { DELETE } = await import('./route')
     const res = (await DELETE(req(undefined, 'DELETE'), { params: Promise.resolve({ id: 'j1' }) } as never)) as Response
@@ -85,9 +85,20 @@ describe('DELETE /api/jobsearch/scraped-jobs/[id]', () => {
     expect(deleteScrapedJob).toHaveBeenCalledWith('u1', 'j1')
   })
 
+  it('reports back when the tailored draft resume was deleted too', async () => {
+    const { deleteScrapedJob } = await import('@/lib/api/scraped-jobs')
+    vi.mocked(deleteScrapedJob).mockResolvedValueOnce({ deleted: true, deletedDraftResume: true })
+
+    const { DELETE } = await import('./route')
+    const res = (await DELETE(req(undefined, 'DELETE'), { params: Promise.resolve({ id: 'j1' }) } as never)) as Response
+
+    expect(res.status).toBe(200)
+    expect((await res.json()).deletedDraftResume).toBe(true)
+  })
+
   it('returns 404 when nothing was deleted', async () => {
     const { deleteScrapedJob } = await import('@/lib/api/scraped-jobs')
-    vi.mocked(deleteScrapedJob).mockResolvedValueOnce(false)
+    vi.mocked(deleteScrapedJob).mockResolvedValueOnce({ deleted: false, deletedDraftResume: false })
 
     const { DELETE } = await import('./route')
     const res = (await DELETE(req(undefined, 'DELETE'), { params: Promise.resolve({ id: 'missing' }) } as never)) as Response

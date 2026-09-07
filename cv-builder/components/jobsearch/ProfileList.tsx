@@ -27,6 +27,7 @@ interface ProfileSummary {
   minAtsScore?: number
   recencyDays?: number
   updatedAt?: string
+  foundCount?: number
   newMatchCount?: number
   queuedCount?: number
 }
@@ -320,6 +321,12 @@ export function ProfileList({ initialProfiles }: ProfileListProps = {}) {
                   </div>
 
                   <div className="flex items-center gap-3.5">
+                    {/* "found" is the profile's running total and stays on the
+                        card whether or not it is still polling — a paused
+                        profile that turned up 40 postings should not read as
+                        having turned up nothing. "new" and "queued" describe
+                        live work, so they go with the polling. */}
+                    <Metric value={profile.foundCount ?? 0} label="found" />
                     {profile.isActive && (
                       <>
                         <Metric value={profile.newMatchCount ?? 0} label="new" />

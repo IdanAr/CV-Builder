@@ -275,6 +275,28 @@ describe('ScrapedJobsList', () => {
     confirmSpy.mockRestore()
   })
 
+  it('names the tailored résumé in the delete toast, because the DELETE takes it too', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        scrapedJobs: [
+          { _id: 'j1', title: 'Job A', company: 'Acme', url: '', status: 'queued', draftResumeId: 'r1' },
+        ],
+      }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ScrapedJobsList profileId="p1" />)
+    await screen.findByText('Job A')
+    await userEvent.click(screen.getByRole('button', { name: /^delete$/i }))
+
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts.at(-1)).toMatchObject({
+        message: 'Deleted "Job A" and its tailored résumé',
+      })
+    )
+  })
+
   it('commits the pending DELETE when the list unmounts before the undo window closes', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,

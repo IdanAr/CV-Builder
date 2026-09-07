@@ -31,9 +31,11 @@ export const DELETE = auth(async function DELETE(req, { params }: { params: Prom
   }
   try {
     const { id } = await params
-    const deleted = await deleteScrapedJob(req.auth.user.id, id)
+    const { deleted, deletedDraftResume } = await deleteScrapedJob(req.auth.user.id, id)
     if (!deleted) return apiError('NOT_FOUND', 'Not found', 404)
-    return NextResponse.json({ ok: true })
+    // Reported back so the client can tell the user its tailored resume went
+    // too, instead of it quietly vanishing from their library.
+    return NextResponse.json({ ok: true, deletedDraftResume })
   } catch (err) {
     return handleRouteError(err, 'DELETE /api/jobsearch/scraped-jobs/[id]')
   }
