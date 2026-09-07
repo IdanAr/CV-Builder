@@ -25,6 +25,15 @@ vi.mock('@/models/ScrapedJob', () => ({
   },
 }))
 
+const { mockResumeDeleteOne, mockApplicationCountDocuments } = vi.hoisted(() => ({
+  mockResumeDeleteOne: vi.fn(),
+  mockApplicationCountDocuments: vi.fn(),
+}))
+vi.mock('@/models/Resume', () => ({ default: { deleteOne: mockResumeDeleteOne } }))
+vi.mock('@/models/Application', () => ({
+  default: { countDocuments: mockApplicationCountDocuments },
+}))
+
 const { mockCreateApplication } = vi.hoisted(() => ({ mockCreateApplication: vi.fn() }))
 vi.mock('@/lib/api/applications', () => ({ createApplication: mockCreateApplication }))
 
@@ -450,21 +459,60 @@ describe('setScrapedJobDismissed', () => {
 })
 
 describe('deleteScrapedJob', () => {
-  it('scopes the delete to userId and returns true on success', async () => {
+  it('scopes the delete to userId and reports success', async () => {
+    mockFindOne.mockReturnValue(leanChain({}))
     mockDeleteOne.mockResolvedValue({ deletedCount: 1 })
 
     const result = await deleteScrapedJob('u1', 'j1')
 
     expect(mockDeleteOne).toHaveBeenCalledWith({ _id: 'j1', userId: 'u1' })
-    expect(result).toBe(true)
+    expect(result).toEqual({ deleted: true, deletedDraftResume: false })
   })
 
-  it('returns false when nothing matched', async () => {
-    mockDeleteOne.mockResolvedValue({ deletedCount: 0 })
+  it('reports failure without touching resumes when nothing matched', async () => {
+    mockFindOne.mockReturnValue(leanChain(null))
 
     const result = await deleteScrapedJob('u1', 'missing')
 
-    expect(result).toBe(false)
+    expect(mockDeleteOne).not.toHaveBeenCalled()
+    expect(mockResumeDeleteOne).not.toHaveBeenCalled()
+    expect(result).toEqual({ deleted: false, deletedDraftResume: false })
+  })
+
+  it('deletes the tailored draft resume along with the posting', async () => {
+    mockFindOne.mockReturnValue(leanChain({ draftResumeId: 'r1' }))
+    mockDeleteOne.mockResolvedValue({ deletedCount: 1 })
+    mockApplicationCountDocuments.mockResolvedValue(0)
+    mockResumeDeleteOne.mockResolvedValue({ deletedCount: 1 })
+
+    const result = await deleteScrapedJob('u1', 'j1')
+
+    expect(mockResumeDeleteOne).toHaveBeenCalledWith({ _id: 'r1', userId: 'u1' })
+    expect(result).toEqual({ deleted: true, deletedDraftResume: true })
+  })
+
+  it('keeps a draft resume that an application row already points at', async () => {
+    mockFindOne.mockReturnValue(leanChain({ draftResumeId: 'r1' }))
+    mockDeleteOne.mockResolvedValue({ deletedCount: 1 })
+    mockApplicationCountDocuments.mockResolvedValue(1)
+
+    const result = await deleteScrapedJob('u1', 'j1')
+
+    expect(mockApplicationCountDocuments).toHaveBeenCalledWith({ userId: 'u1', resumeId: 'r1' })
+    expect(mockResumeDeleteOne).not.toHaveBeenCalled()
+    expect(result).toEqual({ deleted: true, deletedDraftResume: false })
+  })
+
+  it('scopes the resume delete to the same user, so an id alone cannot reach another library', async () => {
+    mockFindOne.mockReturnValue(leanChain({ draftResumeId: 'r1' }))
+    mockDeleteOne.mockResolvedValue({ deletedCount: 1 })
+    mockApplicationCountDocuments.mockResolvedValue(0)
+    mockResumeDeleteOne.mockResolvedValue({ deletedCount: 0 })
+
+    const result = await deleteScrapedJob('u2', 'j1')
+
+    expect(mockResumeDeleteOne).toHaveBeenCalledWith({ _id: 'r1', userId: 'u2' })
+    expect(result).toEqual({ deleted: true, deletedDraftResume: false })
   })
 })
 

@@ -20,6 +20,10 @@ interface ScrapedJobSummary {
   location?: string
   atsScore?: number
   status: string
+  /** Present once a draft_and_queue rule has tailored a resume for this
+   *  posting. Deleting the posting deletes that resume too, so the toast has
+   *  to say so. */
+  draftResumeId?: string
   /** The posting's original publish date (first time it was seen live), not when we scraped it. */
   postedAt?: string
 }
@@ -126,6 +130,9 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
 
   // Optimistic delete with a 6s undo window, replacing the window.confirm()
   // this used to open — the same treatment a résumé or a profile already gets.
+  // The DELETE also removes any résumé drafted for this posting (see
+  // deleteScrapedJob), which is why it waits out the undo window rather than
+  // firing straight away.
   function handleDelete(job: ScrapedJobSummary) {
     setError(null)
     setJobs((prev) => (prev ? prev.filter((j) => j._id !== job._id) : prev))
@@ -146,14 +153,20 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
     const timer = window.setTimeout(commit, UNDO_DELETE_DURATION)
     deleteTimersRef.current.set(job._id, timer)
 
-    const toastId = toast.withAction(`Deleted "${job.title}"`, 'Undo', () => {
-      const pending = deleteTimersRef.current.get(job._id)
-      if (pending !== undefined) {
-        window.clearTimeout(pending)
-        deleteTimersRef.current.delete(job._id)
+    const toastId = toast.withAction(
+      job.draftResumeId
+        ? `Deleted "${job.title}" and its tailored résumé`
+        : `Deleted "${job.title}"`,
+      'Undo',
+      () => {
+        const pending = deleteTimersRef.current.get(job._id)
+        if (pending !== undefined) {
+          window.clearTimeout(pending)
+          deleteTimersRef.current.delete(job._id)
+        }
+        void load()
       }
-      void load()
-    })
+    )
     window.setTimeout(() => useToastStore.getState().dismiss(toastId), UNDO_DELETE_DURATION)
   }
 

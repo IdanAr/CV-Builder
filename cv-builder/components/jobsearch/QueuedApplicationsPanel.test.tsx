@@ -7,6 +7,13 @@ import { useToastStore } from '@/lib/stores/toast.store'
 
 const profile = { profile: { _id: 'p1', minAtsScore: 75 } }
 
+const queuedJob = {
+  _id: 'j1', title: 'Backend Engineer', company: 'Acme', url: 'https://x/j1',
+  atsScore: 60, postTailorScore: 90, status: 'queued',
+  matchedRules: [], resolvedActions: ['draft_and_queue'],
+  tailoredKeywords: [], pendingApprovals: [], draftResumeId: 'r1',
+}
+
 function jsonResponse(body: unknown, ok = true) {
   return { ok, json: async () => body } as Response
 }
@@ -232,7 +239,7 @@ describe('QueuedApplicationsPanel', () => {
     expect(link).toHaveAttribute('target', '_blank')
   })
 
-  it('shows Approve and Reject for a needs_review job with pending approvals, and approving clears them', async () => {
+  it('shows Approve for a needs_review job with pending approvals, and approving clears them', async () => {
     const mockFetch = vi.fn()
     mockFetch.mockResolvedValueOnce(
       jsonResponse({
@@ -254,7 +261,6 @@ describe('QueuedApplicationsPanel', () => {
 
     render(<QueuedApplicationsPanel profileId="p1" />)
 
-    expect(await screen.findByRole('button', { name: /^reject$/i })).toBeInTheDocument()
     await userEvent.click(await screen.findByRole('button', { name: /^approve$/i }))
 
     await waitFor(() =>
@@ -281,11 +287,11 @@ describe('QueuedApplicationsPanel', () => {
 
     render(<QueuedApplicationsPanel profileId="p1" />)
 
-    expect(await screen.findByRole('button', { name: /^reject$/i })).toBeInTheDocument()
+    await screen.findByText('Backend Engineer')
     expect(screen.queryByRole('button', { name: /^approve$/i })).not.toBeInTheDocument()
   })
 
-  it('rejects a needs_review job by dismissing it, offering an undo instead of a confirm dialog', async () => {
+  it('dismisses a job without touching its draft, offering an undo instead of a confirm dialog', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     const mockFetch = vi.fn()
     mockFetch.mockResolvedValueOnce(
@@ -308,7 +314,8 @@ describe('QueuedApplicationsPanel', () => {
 
     render(<QueuedApplicationsPanel profileId="p1" />)
 
-    await userEvent.click(await screen.findByRole('button', { name: /^reject$/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /more actions for backend engineer/i }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /dismiss, keep the draft/i }))
 
     await waitFor(() =>
       expect(mockFetch).toHaveBeenCalledWith('/api/jobsearch/scraped-jobs/j1', {
@@ -317,13 +324,15 @@ describe('QueuedApplicationsPanel', () => {
         body: JSON.stringify({ dismissed: true }),
       })
     )
-    // Nothing interrupted the rejection, and it is reversible from the toast.
+    // Nothing was DELETEd: the tailored resume survives a dismissal.
+    expect(mockFetch).not.toHaveBeenCalledWith('/api/jobsearch/scraped-jobs/j1', { method: 'DELETE' })
+    // Nothing interrupted the dismissal, and it is reversible from the toast.
     await waitFor(() =>
       expect(useToastStore.getState().toasts.at(-1)).toMatchObject({ actionLabel: 'Undo' })
     )
   })
 
-  it('never shows Approve/Reject for a "queued" job', async () => {
+  it('offers dismiss and delete on a "queued" job too, but never Approve', async () => {
     const mockFetch = vi.fn()
     mockFetch.mockResolvedValueOnce(
       jsonResponse({
@@ -344,7 +353,79 @@ describe('QueuedApplicationsPanel', () => {
 
     await screen.findByText('Backend Engineer')
     expect(screen.queryByRole('button', { name: /^approve$/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^reject$/i })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /more actions for backend engineer/i }))
+    expect(await screen.findByRole('menuitem', { name: /dismiss, keep the draft/i })).toBeInTheDocument()
+    // The label says what goes with it, so the resume never disappears unannounced.
+    expect(screen.getByRole('menuitem', { name: /delete with its résumé/i })).toBeInTheDocument()
+  })
+
+  it('removes the card at once and defers the delete for the length of the undo window', async () => {
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce(jsonResponse({ scrapedJobs: [queuedJob] }))
+    mockFetch.mockResolvedValueOnce(jsonResponse(profile))
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<QueuedApplicationsPanel profileId="p1" />)
+
+    await userEvent.click(await screen.findByRole('button', { name: /more actions for backend engineer/i }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /delete with its résumé/i }))
+
+    await waitFor(() => expect(screen.queryByText('Backend Engineer')).not.toBeInTheDocument())
+    // Still only the two mount GETs — nothing is deleted while the undo stands,
+    // which is what keeps the résumé recoverable.
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    // The toast says the résumé goes too, so it never disappears unannounced.
+    expect(useToastStore.getState().toasts.at(-1)).toMatchObject({
+      message: 'Deleted "Backend Engineer" and its tailored résumé',
+      actionLabel: 'Undo',
+    })
+  })
+
+  it('commits the pending DELETE when the panel unmounts before the undo window closes', async () => {
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce(jsonResponse({ scrapedJobs: [queuedJob] }))
+    mockFetch.mockResolvedValueOnce(jsonResponse(profile))
+    mockFetch.mockResolvedValue(jsonResponse({ ok: true, deletedDraftResume: true }))
+    vi.stubGlobal('fetch', mockFetch)
+
+    const { unmount } = render(<QueuedApplicationsPanel profileId="p1" />)
+
+    await userEvent.click(await screen.findByRole('button', { name: /more actions for backend engineer/i }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /delete with its résumé/i }))
+    await waitFor(() => expect(screen.queryByText('Backend Engineer')).not.toBeInTheDocument())
+
+    unmount()
+
+    await waitFor(() =>
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/jobsearch/scraped-jobs/j1',
+        expect.objectContaining({ method: 'DELETE' })
+      )
+    )
+  })
+
+  it('cancels the delete — and so spares the résumé — when the undo is taken', async () => {
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce(jsonResponse({ scrapedJobs: [queuedJob] }))
+    mockFetch.mockResolvedValueOnce(jsonResponse(profile))
+    mockFetch.mockResolvedValue(jsonResponse({ scrapedJobs: [queuedJob] }))
+    vi.stubGlobal('fetch', mockFetch)
+
+    const { unmount } = render(<QueuedApplicationsPanel profileId="p1" />)
+
+    await userEvent.click(await screen.findByRole('button', { name: /more actions for backend engineer/i }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /delete with its résumé/i }))
+    await waitFor(() => expect(screen.queryByText('Backend Engineer')).not.toBeInTheDocument())
+
+    useToastStore.getState().toasts.at(-1)!.onAction!()
+
+    expect(await screen.findByText('Backend Engineer')).toBeInTheDocument()
+    unmount()
+    expect(mockFetch).not.toHaveBeenCalledWith(
+      '/api/jobsearch/scraped-jobs/j1',
+      expect.objectContaining({ method: 'DELETE' })
+    )
   })
 
   it('aborts the mount-time fetches on unmount', async () => {

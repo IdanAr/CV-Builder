@@ -73,10 +73,10 @@ describe('listJobSearchProfiles', () => {
     const result = await listJobSearchProfiles('u1')
 
     expect(mockFind).toHaveBeenCalledWith({ userId: 'u1' })
-    expect(result).toEqual([{ ...profiles[0], newMatchCount: 0, queuedCount: 0 }])
+    expect(result).toEqual([{ ...profiles[0], foundCount: 0, newMatchCount: 0, queuedCount: 0 }])
   })
 
-  it('folds new-match and queued counts onto the matching profile', async () => {
+  it('folds found, new-match and queued counts onto the matching profile', async () => {
     mockFind.mockReturnValue(
       sortLeanChain([
         { _id: 'p1', userId: 'u1', name: 'Frontend' },
@@ -84,32 +84,32 @@ describe('listJobSearchProfiles', () => {
       ])
     )
     mockScrapedJobAggregate.mockResolvedValue([
-      { _id: { profileId: 'p1', status: 'new' }, n: 4 },
-      { _id: { profileId: 'p1', status: 'queued' }, n: 2 },
+      { _id: 'p1', foundCount: 11, newMatchCount: 4, queuedCount: 2 },
     ])
 
     const result = await listJobSearchProfiles('u1')
 
-    expect(result[0]).toMatchObject({ _id: 'p1', newMatchCount: 4, queuedCount: 2 })
+    expect(result[0]).toMatchObject({ _id: 'p1', foundCount: 11, newMatchCount: 4, queuedCount: 2 })
     // A profile with nothing scraped still reports zeroes rather than
     // undefined, so the card never renders a blank metric.
-    expect(result[1]).toMatchObject({ _id: 'p2', newMatchCount: 0, queuedCount: 0 })
+    expect(result[1]).toMatchObject({ _id: 'p2', foundCount: 0, newMatchCount: 0, queuedCount: 0 })
   })
 
-  it('scopes "new" to notify matches, matching the navbar unread badge', async () => {
+  it('counts every posting as "found" while keeping "new" scoped to unread notify matches', async () => {
     mockFind.mockReturnValue(sortLeanChain([]))
 
     await listJobSearchProfiles('u1')
 
-    expect(mockScrapedJobAggregate).toHaveBeenCalledWith([
-      {
-        $match: {
-          userId: 'u1',
-          $or: [{ status: 'new', resolvedActions: 'notify' }, { status: 'queued' }],
-        },
-      },
-      { $group: { _id: { profileId: '$profileId', status: '$status' }, n: { $sum: 1 } } },
-    ])
+    const [pipeline] = mockScrapedJobAggregate.mock.calls[0]
+    // Nothing narrows the scan but the user: "found" is every posting this
+    // profile ever turned up, whatever became of it.
+    expect(pipeline[0]).toEqual({ $match: { userId: 'u1' } })
+    expect(pipeline[1].$group._id).toBe('$profileId')
+    expect(pipeline[1].$group.foundCount).toEqual({ $sum: 1 })
+    // ...while "new" stays the same slice countUnreadNotifyMatches uses for
+    // the navbar badge, so the two can never disagree.
+    expect(JSON.stringify(pipeline[1].$group.newMatchCount)).toContain('notify')
+    expect(JSON.stringify(pipeline[1].$group.newMatchCount)).toContain('new')
   })
 })
 

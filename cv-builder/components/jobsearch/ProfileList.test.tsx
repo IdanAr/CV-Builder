@@ -240,12 +240,28 @@ describe('ProfileList', () => {
     expect(mockFetch).not.toHaveBeenCalled()
   })
 
-  it('hides the metric cluster on a paused profile', async () => {
+  it('shows how many postings a profile has found', async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       json: async () => ({
         profiles: [
-          { _id: 'p1', name: 'Frontend', isActive: false, newMatchCount: 4, queuedCount: 2 },
+          { _id: 'p1', name: 'Frontend', isActive: true, foundCount: 11, newMatchCount: 4, queuedCount: 2 },
+        ],
+      }),
+    } as Response)
+
+    render(<ProfileList />)
+
+    expect(await screen.findByText('found')).toBeInTheDocument()
+    expect(screen.getByText('11')).toBeInTheDocument()
+  })
+
+  it('keeps "found" on a paused profile but drops the live-work metrics', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        profiles: [
+          { _id: 'p1', name: 'Frontend', isActive: false, foundCount: 11, newMatchCount: 4, queuedCount: 2 },
         ],
       }),
     } as Response)
@@ -253,6 +269,9 @@ describe('ProfileList', () => {
     render(<ProfileList />)
 
     expect(await screen.findByText('Paused')).toBeInTheDocument()
+    // A pause stops the polling, not the history.
+    expect(screen.getByText('found')).toBeInTheDocument()
+    expect(screen.getByText('11')).toBeInTheDocument()
     expect(screen.queryByText('new')).not.toBeInTheDocument()
     expect(screen.queryByText('queued')).not.toBeInTheDocument()
   })
