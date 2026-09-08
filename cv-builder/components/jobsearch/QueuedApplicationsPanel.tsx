@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button, buttonClasses } from '@/components/ui/Button'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/Menu'
 import { toast, useToastStore } from '@/lib/stores/toast.store'
+import { useScrapedJobsSync, notifyScrapedJobsChanged } from '@/lib/stores/scraped-jobs.store'
 import { FitMeter } from './FitMeter'
 
 const UNDO_DELETE_DURATION = 6000
@@ -51,6 +52,10 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
   // deleted server-side, so the undo toast can still call it back — and the
   // draft resume it takes with it is untouched until the timer fires.
   const deleteTimersRef = useRef(new Map<string, number>())
+  // Shared with ScrapedJobsList below: acting on a queued draft changes what
+  // that list should show, and the two hold no state in common.
+  const revision = useScrapedJobsSync((state) => state.revision)
+  const lastRevisionRef = useRef(revision)
 
   const load = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -126,6 +131,13 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
     }
   }
 
+  useEffect(() => {
+    // Seeded from the revision at mount, so this never duplicates the mount fetch.
+    if (revision === lastRevisionRef.current) return
+    lastRevisionRef.current = revision
+    void load()
+  }, [revision, load])
+
   async function handleConvert(job: QueuedJobSummary) {
     setConvertingId(job._id)
     setError(null)
@@ -136,7 +148,9 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
         setError((body as { error?: string }).error ?? 'Failed to mark as applied.')
         return
       }
-      await load()
+      // The posting becomes 'submitted', which the scraped-jobs list badges
+      // differently — announce rather than reloading only this panel.
+      notifyScrapedJobsChanged()
     } catch {
       setError('Failed to mark as applied.')
     } finally {
@@ -154,7 +168,7 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
         setError((body as { error?: string }).error ?? 'Failed to approve the flagged claims.')
         return
       }
-      await load()
+      notifyScrapedJobsChanged()
     } catch {
       setError('Failed to approve the flagged claims.')
     } finally {
@@ -181,12 +195,12 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
     setError(null)
     try {
       await setDismissed(job, true)
-      await load()
+      notifyScrapedJobsChanged()
       toast.withAction(`Dismissed "${job.title}"`, 'Undo', () => {
         void (async () => {
           try {
             await setDismissed(job, false)
-            await load()
+            notifyScrapedJobsChanged()
           } catch {
             toast.error(`Could not restore "${job.title}".`)
           }
@@ -213,6 +227,9 @@ export function QueuedApplicationsPanel({ profileId }: QueuedApplicationsPanelPr
         try {
           const res = await fetch(`/api/jobsearch/scraped-jobs/${job._id}`, { method: 'DELETE' })
           if (!res.ok) throw new Error('Delete failed')
+          // The posting is now a tombstone the scraped-jobs list has never seen;
+          // without this its Deleted filter stays absent until a page reload.
+          notifyScrapedJobsChanged()
         } catch {
           toast.error(`Could not delete "${job.title}". It has been restored.`)
           await load()

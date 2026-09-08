@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ScrapedJobsList } from './ScrapedJobsList'
+import { useScrapedJobsSync, notifyScrapedJobsChanged } from '@/lib/stores/scraped-jobs.store'
 import { useToastStore } from '@/lib/stores/toast.store'
 
 beforeEach(() => {
+  useScrapedJobsSync.setState({ revision: 0 })
   vi.stubGlobal('fetch', vi.fn())
   useToastStore.setState({ toasts: [] })
 })
@@ -471,6 +473,85 @@ describe('ScrapedJobsList', () => {
         expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ deleted: false }) })
       )
     )
+  })
+
+
+  // The queued panel is a sibling component with no state in common with this
+  // list. Deleting there leaves a tombstone this list has never fetched, so
+  // without the shared signal the Deleted tab only showed up after a refresh.
+  it('reloads when a sibling reports a change, so a delete elsewhere shows up without a refresh', async () => {
+    const mockFetch = vi.fn()
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        scrapedJobs: [{ _id: 'j1', title: 'Live Job', company: 'Acme', url: 'https://x/a1', status: 'new' }],
+      }),
+    })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        scrapedJobs: [
+          { _id: 'j1', title: 'Live Job', company: 'Acme', url: 'https://x/a1', status: 'new' },
+          {
+            _id: 'j2',
+            title: 'Dead Job',
+            company: 'Acme',
+            url: 'https://x/a2',
+            status: 'queued',
+            deletedAt: '2026-09-01T00:00:00.000Z',
+          },
+        ],
+      }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ScrapedJobsList profileId="p1" />)
+    await screen.findByText('Live Job')
+    expect(screen.queryByRole('button', { name: /^deleted/i })).not.toBeInTheDocument()
+
+    act(() => notifyScrapedJobsChanged())
+
+    expect(await screen.findByRole('button', { name: /^deleted/i })).toBeInTheDocument()
+  })
+
+  it('does not re-fetch on mount just because an earlier mutation left the counter set', async () => {
+    useScrapedJobsSync.setState({ revision: 7 })
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ scrapedJobs: [] }) })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ScrapedJobsList profileId="p1" />)
+
+    await screen.findByRole('button', { name: /scan now/i })
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('announces the change once its own delete commits, so the Deleted tab appears', async () => {
+    vi.useFakeTimers()
+    try {
+      // fireEvent rather than userEvent: userEvent's own timer coordination
+      // deadlocks against vi's fake clock, and this only needs a plain click.
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ scrapedJobs: [{ _id: 'j1', title: 'Job A', company: 'Acme', url: '', status: 'new' }] }),
+      })
+      vi.stubGlobal('fetch', mockFetch)
+
+      render(<ScrapedJobsList profileId="p1" />)
+      await act(async () => {})
+
+      fireEvent.click(screen.getByRole('button', { name: /^delete$/i }))
+
+      // Nothing sent yet - the undo window is still open.
+      expect(useScrapedJobsSync.getState().revision).toBe(0)
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(6000)
+      })
+
+      expect(useScrapedJobsSync.getState().revision).toBeGreaterThan(0)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
 })

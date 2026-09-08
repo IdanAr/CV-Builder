@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { toast, useToastStore } from '@/lib/stores/toast.store'
+import { useScrapedJobsSync, notifyScrapedJobsChanged } from '@/lib/stores/scraped-jobs.store'
 import { FitMeter } from './FitMeter'
 import { cn } from '@/lib/utils'
 
@@ -53,6 +54,10 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
   // id -> pending DELETE timer. A job in here is hidden but not yet deleted
   // server-side, so the undo toast can still call it back.
   const deleteTimersRef = useRef(new Map<string, number>())
+  // Reload whenever anything mutates a scraped job — including the queued panel
+  // next to this list, which shares the collection but not this component's state.
+  const revision = useScrapedJobsSync((state) => state.revision)
+  const lastRevisionRef = useRef(revision)
 
   const load = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -107,19 +112,29 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
   // greying it in place, which is what let the list grow unreadable over
   // successive scans. Because the row leaves the view, the toast is the
   // feedback — and the way back.
+  useEffect(() => {
+    // Seeded from the revision at mount, so this never duplicates the mount fetch
+    // (and never fires just because an earlier mutation left the counter non-zero).
+    if (revision === lastRevisionRef.current) return
+    lastRevisionRef.current = revision
+    void load()
+  }, [revision, load])
+
   async function handleToggleDismissed(job: ScrapedJobSummary) {
     const dismissing = job.status !== 'dismissed'
     setUpdatingId(job._id)
     setError(null)
     try {
       await setDismissed(job, dismissing)
-      await load()
+      // Announce rather than reload directly: the effect above re-reads this
+      // list, and the queued panel re-reads its own.
+      notifyScrapedJobsChanged()
       if (dismissing) {
         toast.withAction(`Dismissed "${job.title}"`, 'Undo', () => {
           void (async () => {
             try {
               await setDismissed(job, false)
-              await load()
+              notifyScrapedJobsChanged()
             } catch {
               toast.error(`Could not restore "${job.title}".`)
             }
@@ -146,7 +161,7 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
         body: JSON.stringify({ deleted: false }),
       })
       if (!res.ok) throw new Error('Restore failed')
-      await load()
+      notifyScrapedJobsChanged()
       toast.success(`"${job.title}" will be picked up by the next scan.`)
     } catch {
       setError('Could not restore the listing. Please try again.')
@@ -170,6 +185,10 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
         try {
           const res = await fetch(`/api/jobsearch/scraped-jobs/${job._id}`, { method: 'DELETE' })
           if (!res.ok) throw new Error('Delete failed')
+          // The row was dropped optimistically, but the server kept a tombstone
+          // this list has never seen. Without this the Deleted filter stays
+          // absent until the page is reloaded.
+          notifyScrapedJobsChanged()
         } catch {
           toast.error(`Could not delete "${job.title}". It has been restored.`)
           await load()
