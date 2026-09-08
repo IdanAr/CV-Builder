@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueuedApplicationsPanel } from './QueuedApplicationsPanel'
 import { useToastStore } from '@/lib/stores/toast.store'
+import { useScrapedJobsSync } from '@/lib/stores/scraped-jobs.store'
 
 const profile = { profile: { _id: 'p1', minAtsScore: 75 } }
 
@@ -19,6 +20,7 @@ function jsonResponse(body: unknown, ok = true) {
 }
 
 beforeEach(() => {
+  useScrapedJobsSync.setState({ revision: 0 })
   useToastStore.setState({ toasts: [] })
   vi.stubGlobal('fetch', vi.fn())
 })
@@ -463,4 +465,42 @@ describe('QueuedApplicationsPanel', () => {
     await screen.findByText(/no queued drafts yet/i)
     expect(screen.queryByText(/failed to load queued applications/i)).not.toBeInTheDocument()
   })
+
+  // ScrapedJobsList renders the same collection beside this panel and holds no
+  // state in common with it, so a delete here has to announce itself or that
+  // list keeps showing what it fetched on mount until the page is reloaded.
+  it('announces the change once the delete commits, so the list beside it re-reads', async () => {
+    vi.useFakeTimers()
+    try {
+      // fireEvent rather than userEvent: userEvent's timer coordination deadlocks
+      // against vi's fake clock. Radix opens the menu on pointerdown.
+      const mockFetch = vi.fn()
+      mockFetch.mockResolvedValueOnce(jsonResponse({ scrapedJobs: [queuedJob] }))
+      mockFetch.mockResolvedValueOnce(jsonResponse(profile))
+      mockFetch.mockResolvedValue(jsonResponse({ ok: true, deletedDraftResume: true }))
+      vi.stubGlobal('fetch', mockFetch)
+
+      render(<QueuedApplicationsPanel profileId="p1" />)
+      await act(async () => {})
+
+      fireEvent.pointerDown(
+        screen.getByRole('button', { name: /more actions for backend engineer/i }),
+        { button: 0, ctrlKey: false, pointerType: 'mouse' }
+      )
+      await act(async () => {})
+      fireEvent.click(screen.getByRole('menuitem', { name: /delete with its résumé/i }))
+      await act(async () => {})
+
+      expect(useScrapedJobsSync.getState().revision).toBe(0)
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(6000)
+      })
+
+      expect(useScrapedJobsSync.getState().revision).toBeGreaterThan(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
 })
