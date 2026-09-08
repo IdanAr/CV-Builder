@@ -15,11 +15,24 @@ import type {
 } from '@/lib/schemas/jobsearch.zod'
 import type { CustomFieldValue } from '@/lib/schemas/application.zod'
 
-export async function listScrapedJobs(userId: string, profileId: string) {
+// Tombstoned postings are excluded by default; the list's "Deleted" filter
+// passes includeDeleted so it can show and restore them.
+export async function listScrapedJobs(
+  userId: string,
+  profileId: string,
+  options: { includeDeleted?: boolean } = {}
+) {
   await dbConnect()
-  return ScrapedJob.find({ userId, profileId }).sort({ createdAt: -1 }).lean()
+  const query: Record<string, unknown> = { userId, profileId }
+  if (!options.includeDeleted) query.deletedAt = { $exists: false }
+  return ScrapedJob.find(query).sort({ createdAt: -1 }).lean()
 }
 
+// Deliberately does NOT exclude tombstones. This is the dedup gate scan.ts
+// consults before creating — and therefore before tailoring — anything, so a
+// posting the user already actioned must keep matching here forever. Filtering
+// tombstones out would let every deleted posting be re-scraped and re-run
+// through runApplyPipeline at full token cost on the next scan.
 export async function findExistingSourceIds(
   userId: string,
   profileId: string,
@@ -71,6 +84,8 @@ export async function countDraftedInWindow(
 ): Promise<number> {
   await dbConnect()
   const since = new Date(Date.now() - windowMs)
+  // Tombstones still count: the drafting tokens were already spent, so deleting
+  // a posting must not hand back daily-cap headroom.
   const query: Record<string, unknown> = { userId, draftedAt: { $gte: since } }
   if (profileId) query.profileId = profileId
   return ScrapedJob.countDocuments(query)
@@ -91,6 +106,9 @@ export async function listDraftQueueBacklog(userId: string, profileId: string, l
     // a posting doesn't silently fall out of the backlog. Currently
     // unreachable: nothing in this repo transitions status this way yet.
     status: 'new',
+    // A deleted posting must never be drafted out of the backlog — that is the
+    // exact cost the tombstone exists to prevent.
+    deletedAt: { $exists: false },
   })
     .sort({ firstSeenAt: 1 })
     .limit(limit)
@@ -237,18 +255,44 @@ export interface DeleteScrapedJobResult {
 // The exception is a draft already attached to an application row — once
 // "Mark as applied" has run, that resume is the record of something the user
 // actually sent, and it outlives the posting it came from.
+//
+// The posting row itself is NOT removed. It is stripped down to its dedup key
+// and tombstoned with `deletedAt`, because findExistingSourceIds is what stops
+// the next scan re-fetching this posting and paying to tailor it all over
+// again. Hard-deleting the row would hand it straight back to the scanner.
+// Everything heavy or now-dangling is cleared, so what survives is a few
+// hundred bytes: the source key, enough to name the posting in the "Deleted"
+// list, and draftedAt (which the daily draft cap still has to count).
 export async function deleteScrapedJob(
   userId: string,
   id: string
 ): Promise<DeleteScrapedJobResult> {
   await dbConnect()
-  const job = (await ScrapedJob.findOne({ _id: id, userId }, 'draftResumeId').lean()) as {
+  const job = (await ScrapedJob.findOne(
+    { _id: id, userId, deletedAt: { $exists: false } },
+    'draftResumeId'
+  ).lean()) as {
     draftResumeId?: string
   } | null
   if (!job) return { deleted: false, deletedDraftResume: false }
 
-  const result = await ScrapedJob.deleteOne({ _id: id, userId })
-  if (result.deletedCount !== 1) return { deleted: false, deletedDraftResume: false }
+  const result = await ScrapedJob.updateOne(
+    { _id: id, userId, deletedAt: { $exists: false } },
+    {
+      $set: {
+        deletedAt: new Date(),
+        description: '',
+        pendingApprovals: [],
+        tailoredKeywords: [],
+      },
+      // The resume it pointed at is about to be deleted below; leaving the id
+      // behind would dangle.
+      $unset: { draftResumeId: 1 },
+    }
+  )
+  // matchedCount 0 means another request tombstoned it between the read and
+  // this write — treat it as already gone rather than deleting its resume twice.
+  if (result.matchedCount !== 1) return { deleted: false, deletedDraftResume: false }
 
   if (!job.draftResumeId) return { deleted: true, deletedDraftResume: false }
 
@@ -260,6 +304,20 @@ export async function deleteScrapedJob(
 
   const removed = await Resume.deleteOne({ _id: job.draftResumeId, userId })
   return { deleted: true, deletedDraftResume: removed.deletedCount === 1 }
+}
+
+// Restore drops the tombstone entirely, which lets the next scan rediscover the
+// posting and tailor it fresh. It cannot put back what was deleted — the
+// description and the drafted resume are gone — so this is "let this be found
+// again", not an undo. (The undo the user reaches for immediately after
+// deleting is the toast's, which cancels the request before it is ever sent.)
+//
+// Scoped to rows that actually carry a tombstone, so this endpoint can never
+// hard-delete a live posting.
+export async function restoreScrapedJob(userId: string, id: string): Promise<boolean> {
+  await dbConnect()
+  const result = await ScrapedJob.deleteOne({ _id: id, userId, deletedAt: { $exists: true } })
+  return result.deletedCount === 1
 }
 
 export interface NewScrapedJobSummary {
@@ -278,7 +336,7 @@ export interface NewScrapedJobSummary {
 export async function listNewScrapedJobs(userId: string, profileId: string): Promise<NewScrapedJobSummary[]> {
   await dbConnect()
   return (await ScrapedJob.find(
-    { userId, profileId, status: 'new' },
+    { userId, profileId, status: 'new', deletedAt: { $exists: false } },
     'title company description atsScore'
   ).lean()) as unknown as NewScrapedJobSummary[]
 }
@@ -318,7 +376,12 @@ export async function listNotifyMatches(userId: string): Promise<NotifyMatchSumm
   await dbConnect()
   const [matches, names] = await Promise.all([
     ScrapedJob.find(
-      { userId, resolvedActions: 'notify', status: { $in: ['new', 'notified'] } },
+      {
+        userId,
+        resolvedActions: 'notify',
+        status: { $in: ['new', 'notified'] },
+        deletedAt: { $exists: false },
+      },
       'profileId title company location url atsScore workMode matchedRules postedAt status createdAt'
     )
       .sort({ createdAt: -1 })
@@ -337,6 +400,7 @@ export async function countUnreadNotifyMatches(
     userId,
     resolvedActions: 'notify',
     status: 'new',
+    deletedAt: { $exists: false },
     ...(profileId ? { profileId } : {}),
   })
 }
@@ -355,7 +419,13 @@ export async function markNotifyMatchesRead(
 ): Promise<void> {
   await dbConnect()
   await ScrapedJob.updateMany(
-    { userId, resolvedActions: 'notify', status: 'new', ...(profileId ? { profileId } : {}) },
+    {
+      userId,
+      resolvedActions: 'notify',
+      status: 'new',
+      deletedAt: { $exists: false },
+      ...(profileId ? { profileId } : {}),
+    },
     { $set: { status: 'notified' } }
   )
 }

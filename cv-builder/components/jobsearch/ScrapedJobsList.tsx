@@ -26,9 +26,12 @@ interface ScrapedJobSummary {
   draftResumeId?: string
   /** The posting's original publish date (first time it was seen live), not when we scraped it. */
   postedAt?: string
+  /** Present once the posting has been deleted. The row survives only as a dedup
+   *  key so scans stop re-finding it; it never appears outside the Deleted filter. */
+  deletedAt?: string
 }
 
-type Filter = 'active' | 'dismissed' | 'all'
+type Filter = 'active' | 'dismissed' | 'all' | 'deleted'
 
 function formatPostedAt(postedAt: string | undefined): string | null {
   if (!postedAt) return null
@@ -53,7 +56,9 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
 
   const load = useCallback(async (signal?: AbortSignal) => {
     try {
-      const res = await fetch(`/api/jobsearch/scraped-jobs?profileId=${profileId}`, { signal })
+      // includeDeleted so the Deleted filter can count and list tombstones
+      // without a second round trip; they are partitioned out below.
+      const res = await fetch(`/api/jobsearch/scraped-jobs?profileId=${profileId}&includeDeleted=1`, { signal })
       if (!res.ok) {
         setError('Failed to load scraped jobs.')
         return
@@ -128,6 +133,28 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
     }
   }
 
+  // Drops the tombstone so the scanner can pick the posting up again. It cannot
+  // bring back the description or the deleted draft résumé, so the Deleted view
+  // says as much rather than calling this an undo.
+  async function handleFindAgain(job: ScrapedJobSummary) {
+    setUpdatingId(job._id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/jobsearch/scraped-jobs/${job._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deleted: false }),
+      })
+      if (!res.ok) throw new Error('Restore failed')
+      await load()
+      toast.success(`"${job.title}" will be picked up by the next scan.`)
+    } catch {
+      setError('Could not restore the listing. Please try again.')
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
   // Optimistic delete with a 6s undo window, replacing the window.confirm()
   // this used to open — the same treatment a résumé or a profile already gets.
   // The DELETE also removes any résumé drafted for this posting (see
@@ -195,15 +222,25 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
 
   const counts = useMemo(() => {
     const all = jobs ?? []
-    const dismissed = all.filter((j) => j.status === 'dismissed').length
-    return { all: all.length, dismissed, active: all.length - dismissed }
+    // Tombstones are excluded from every live count — they are a dedup record,
+    // not something the user still has in this profile.
+    const live = all.filter((j) => !j.deletedAt)
+    const dismissed = live.filter((j) => j.status === 'dismissed').length
+    return {
+      all: live.length,
+      dismissed,
+      active: live.length - dismissed,
+      deleted: all.length - live.length,
+    }
   }, [jobs])
 
   const visible = useMemo(() => {
     if (!jobs) return []
-    if (filter === 'dismissed') return jobs.filter((j) => j.status === 'dismissed')
-    if (filter === 'active') return jobs.filter((j) => j.status !== 'dismissed')
-    return jobs
+    if (filter === 'deleted') return jobs.filter((j) => j.deletedAt)
+    const live = jobs.filter((j) => !j.deletedAt)
+    if (filter === 'dismissed') return live.filter((j) => j.status === 'dismissed')
+    if (filter === 'active') return live.filter((j) => j.status !== 'dismissed')
+    return live
   }, [jobs, filter])
 
   // Only fully replace the view with an error screen when the very first
@@ -233,6 +270,11 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
     { key: 'active', label: 'Active', count: counts.active },
     { key: 'dismissed', label: 'Dismissed', count: counts.dismissed },
     { key: 'all', label: 'All', count: counts.all },
+    // Only offered once something has actually been deleted — an always-present
+    // empty tab would be noise in the common case.
+    ...(counts.deleted > 0
+      ? [{ key: 'deleted' as Filter, label: 'Deleted', count: counts.deleted }]
+      : []),
   ]
 
   return (
@@ -288,18 +330,26 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
       ) : visible.length === 0 ? (
         <p className="py-6 text-center text-sm text-fg-subtle">No jobs under this filter.</p>
       ) : (
+        <>
+          {filter === 'deleted' && (
+            <p className="text-xs text-fg-subtle">
+              Scans skip these, so they are never tailored again. &quot;Find again&quot; lets the next
+              scan pick one back up and draft it from scratch — the old draft is gone.
+            </p>
+          )}
         <ul aria-live="polite" className="flex flex-col gap-2">
           {visible.map((job) => {
             const postedAtLabel = formatPostedAt(job.postedAt)
             const isDismissed = job.status === 'dismissed'
             const isSubmitted = job.status === 'submitted'
+            const isDeleted = Boolean(job.deletedAt)
             const isUpdating = updatingId === job._id
             return (
               <li key={job._id}>
                 <Card
                   className={cn(
                     'flex flex-col gap-2.5 transition',
-                    isDismissed ? 'opacity-60' : 'hover:border-input'
+                    isDismissed || isDeleted ? 'opacity-60' : 'hover:border-input'
                   )}
                 >
                   <div className="flex gap-3.5">
@@ -320,8 +370,9 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
                         ) : (
                           <span className="font-semibold text-fg-heading">{job.title}</span>
                         )}
-                        {isDismissed && <Badge tone="neutral">Non-Active</Badge>}
-                        {isSubmitted && <Badge tone="success">Submitted</Badge>}
+                        {isDeleted && <Badge tone="neutral">Deleted</Badge>}
+                        {isDismissed && !isDeleted && <Badge tone="neutral">Non-Active</Badge>}
+                        {isSubmitted && !isDeleted && <Badge tone="success">Submitted</Badge>}
                       </div>
 
                       <p className="text-xs text-fg-subtle">
@@ -333,31 +384,45 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1.5 border-t border-border-subtle pt-2.5">
-                    {!isSubmitted && (
+                    {isDeleted ? (
                       <Button
                         variant="secondary"
                         size="xs"
                         disabled={isUpdating}
-                        onClick={() => handleToggleDismissed(job)}
+                        onClick={() => handleFindAgain(job)}
                       >
-                        {isDismissed ? 'Restore' : 'Dismiss'}
+                        Find again
                       </Button>
+                    ) : (
+                      <>
+                        {!isSubmitted && (
+                          <Button
+                            variant="secondary"
+                            size="xs"
+                            disabled={isUpdating}
+                            onClick={() => handleToggleDismissed(job)}
+                          >
+                            {isDismissed ? 'Restore' : 'Dismiss'}
+                          </Button>
+                        )}
+                        <Button
+                          variant="dangerGhost"
+                          size="xs"
+                          className="ml-auto"
+                          disabled={isUpdating}
+                          onClick={() => handleDelete(job)}
+                        >
+                          Delete
+                        </Button>
+                      </>
                     )}
-                    <Button
-                      variant="dangerGhost"
-                      size="xs"
-                      className="ml-auto"
-                      disabled={isUpdating}
-                      onClick={() => handleDelete(job)}
-                    >
-                      Delete
-                    </Button>
                   </div>
                 </Card>
               </li>
             )
           })}
         </ul>
+        </>
       )}
     </div>
   )

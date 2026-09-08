@@ -376,4 +376,101 @@ describe('ScrapedJobsList', () => {
     await screen.findByRole('button', { name: /scan now/i })
     expect(screen.queryByText(/failed to load scraped jobs/i)).not.toBeInTheDocument()
   })
+
+  it('requests tombstones too, so the Deleted filter can count them', async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ scrapedJobs: [] }) } as Response)
+
+    render(<ScrapedJobsList profileId="p1" />)
+
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/jobsearch/scraped-jobs?profileId=p1&includeDeleted=1',
+        expect.anything()
+      )
+    )
+  })
+
+  it('keeps deleted postings out of the live filters and behind a Deleted tab', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        scrapedJobs: [
+          { _id: 'j1', title: 'Live Job', company: 'Acme', url: 'https://x/a1', status: 'new' },
+          {
+            _id: 'j2',
+            title: 'Dead Job',
+            company: 'Acme',
+            url: 'https://x/a2',
+            status: 'queued',
+            deletedAt: '2026-09-01T00:00:00.000Z',
+          },
+        ],
+      }),
+    } as Response)
+
+    render(<ScrapedJobsList profileId="p1" />)
+
+    expect(await screen.findByText('Live Job')).toBeInTheDocument()
+    expect(screen.queryByText('Dead Job')).not.toBeInTheDocument()
+
+    // "All" must mean all live postings, not all rows - a tombstone is a dedup
+    // record, not something the user still has here.
+    await userEvent.click(screen.getByRole('button', { name: /^all/i }))
+    expect(screen.getByText('Live Job')).toBeInTheDocument()
+    expect(screen.queryByText('Dead Job')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /^deleted/i }))
+
+    expect(await screen.findByText('Dead Job')).toBeInTheDocument()
+    expect(screen.queryByText('Live Job')).not.toBeInTheDocument()
+  })
+
+  it('offers no Deleted tab when nothing has been deleted', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        scrapedJobs: [{ _id: 'j1', title: 'Live Job', company: 'Acme', url: 'https://x/a1', status: 'new' }],
+      }),
+    } as Response)
+
+    render(<ScrapedJobsList profileId="p1" />)
+
+    await screen.findByText('Live Job')
+    expect(screen.queryByRole('button', { name: /^Deleted/i })).not.toBeInTheDocument()
+  })
+
+  it('drops the tombstone via Find again so the next scan can pick the posting up', async () => {
+    const mockFetch = vi.fn()
+    const withTombstone = {
+      ok: true,
+      json: async () => ({
+        scrapedJobs: [
+          {
+            _id: 'j2',
+            title: 'Dead Job',
+            company: 'Acme',
+            url: 'https://x/a2',
+            status: 'queued',
+            deletedAt: '2026-09-01T00:00:00.000Z',
+          },
+        ],
+      }),
+    }
+    mockFetch.mockResolvedValueOnce(withTombstone)
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) })
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ scrapedJobs: [] }) })
+    vi.stubGlobal('fetch', mockFetch)
+
+    render(<ScrapedJobsList profileId="p1" />)
+    await userEvent.click(await screen.findByRole('button', { name: /^deleted/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /find again/i }))
+
+    await waitFor(() =>
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/jobsearch/scraped-jobs/j2',
+        expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ deleted: false }) })
+      )
+    )
+  })
+
 })

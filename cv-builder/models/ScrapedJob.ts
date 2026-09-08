@@ -27,6 +27,7 @@ export interface IScrapedJob extends Document {
   pendingApprovals: string[]
   tailoredKeywords: string[]
   draftedAt?: Date
+  deletedAt?: Date
   status: ScrapedJobStatus
   createdAt: Date
   updatedAt: Date
@@ -54,6 +55,10 @@ const ScrapedJobSchema = new Schema<IScrapedJob>(
     pendingApprovals: { type: [String], default: [] },
     tailoredKeywords: { type: [String], default: [] },
     draftedAt: { type: Date },
+    // Soft-delete marker — see the `deletedAt` note in lib/schemas/jobsearch.zod.ts.
+    // User-facing lists filter it out; the unique (userId, profileId, source,
+    // sourceId) index above keeps using the surviving row to suppress re-scraping.
+    deletedAt: { type: Date },
     status: { type: String, default: 'new' },
   },
   { timestamps: true, minimize: false }

@@ -21,8 +21,17 @@ describe('GET /api/jobsearch/scraped-jobs', () => {
     const res = (await GET(req as never, undefined as never)) as Response
     const body = await res.json()
 
-    expect(mockList).toHaveBeenCalledWith('u1', 'p1')
+    expect(mockList).toHaveBeenCalledWith('u1', 'p1', { includeDeleted: false })
     expect(body.scrapedJobs).toEqual([{ _id: 'j1', title: 'Engineer' }])
+  })
+
+  it('passes includeDeleted through when the Deleted filter asks for it', async () => {
+    mockList.mockResolvedValue([])
+    const req = new Request('http://test/api/jobsearch/scraped-jobs?profileId=p1&includeDeleted=1')
+
+    await GET(req as never, undefined as never)
+
+    expect(mockList).toHaveBeenCalledWith('u1', 'p1', { includeDeleted: true })
   })
 
   it('rejects a missing profileId with 400', async () => {
