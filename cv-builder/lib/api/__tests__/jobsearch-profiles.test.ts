@@ -103,7 +103,7 @@ describe('listJobSearchProfiles', () => {
     const [pipeline] = mockScrapedJobAggregate.mock.calls[0]
     // Nothing narrows the scan but the user: "found" is every posting this
     // profile ever turned up, whatever became of it.
-    expect(pipeline[0]).toEqual({ $match: { userId: 'u1' } })
+    expect(pipeline[0]).toEqual({ $match: { userId: 'u1', deletedAt: { $exists: false } } })
     expect(pipeline[1].$group._id).toBe('$profileId')
     expect(pipeline[1].$group.foundCount).toEqual({ $sum: 1 })
     // ...while "new" stays the same slice countUnreadNotifyMatches uses for

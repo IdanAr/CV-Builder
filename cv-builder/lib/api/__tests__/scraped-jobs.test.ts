@@ -64,6 +64,8 @@ import {
   approveScrapedJob,
   setScrapedJobDismissed,
   deleteScrapedJob,
+  restoreScrapedJob,
+  listNewScrapedJobs,
   listNotifyMatches,
   countUnreadNotifyMatches,
   markNotifyMatchesRead,
@@ -92,7 +94,7 @@ describe('listScrapedJobs', () => {
 
     const result = await listScrapedJobs('u1', 'p1')
 
-    expect(mockFind).toHaveBeenCalledWith({ userId: 'u1', profileId: 'p1' })
+    expect(mockFind).toHaveBeenCalledWith({ userId: 'u1', profileId: 'p1', deletedAt: { $exists: false } })
     expect(result).toEqual(jobs)
   })
 })
@@ -108,6 +110,17 @@ describe('findExistingSourceIds', () => {
       'sourceId'
     )
     expect(result).toEqual(new Set(['a1', 'a2']))
+  })
+
+  // The reason the delete is soft: a tombstoned posting has to keep blocking
+  // re-creation, or the next scan re-fetches it and pays to tailor it again.
+  it('still matches tombstoned rows, so a deleted posting is never re-created', async () => {
+    mockFind.mockReturnValue(leanChain([{ sourceId: 'a1' }]))
+
+    const result = await findExistingSourceIds('u1', 'p1', 'freehire', ['a1'])
+
+    expect(mockFind.mock.calls[0][0]).not.toHaveProperty('deletedAt')
+    expect(result).toEqual(new Set(['a1']))
   })
 
   it('returns an empty Set without querying when given no sourceIds', async () => {
@@ -218,6 +231,15 @@ describe('countDraftedInWindow', () => {
     expect(query.draftedAt.$gte).toBeInstanceOf(Date)
   })
 
+  // Deleting must not refund daily draft-cap headroom - those tokens were spent.
+  it('counts tombstoned jobs too', async () => {
+    mockCountDocuments.mockResolvedValue(1)
+
+    await countDraftedInWindow('u1', 'p1')
+
+    expect(mockCountDocuments.mock.calls[0][0]).not.toHaveProperty('deletedAt')
+  })
+
   it('omits profileId from the query when not given (per-user aggregate)', async () => {
     mockCountDocuments.mockResolvedValue(5)
 
@@ -240,6 +262,7 @@ describe('listDraftQueueBacklog', () => {
       resolvedActions: 'draft_and_queue',
       draftedAt: { $exists: false },
       status: 'new',
+      deletedAt: { $exists: false },
     })
   })
 
@@ -459,14 +482,47 @@ describe('setScrapedJobDismissed', () => {
 })
 
 describe('deleteScrapedJob', () => {
-  it('scopes the delete to userId and reports success', async () => {
+  it('tombstones the row instead of removing it, so dedup still sees the posting', async () => {
     mockFindOne.mockReturnValue(leanChain({}))
-    mockDeleteOne.mockResolvedValue({ deletedCount: 1 })
+    mockUpdateOne.mockResolvedValue({ matchedCount: 1 })
 
     const result = await deleteScrapedJob('u1', 'j1')
 
-    expect(mockDeleteOne).toHaveBeenCalledWith({ _id: 'j1', userId: 'u1' })
+    expect(mockDeleteOne).not.toHaveBeenCalled()
+    const [filter, update] = mockUpdateOne.mock.calls[0]
+    expect(filter).toEqual({ _id: 'j1', userId: 'u1', deletedAt: { $exists: false } })
+    expect(update.$set.deletedAt).toBeInstanceOf(Date)
     expect(result).toEqual({ deleted: true, deletedDraftResume: false })
+  })
+
+  // What survives is only the dedup key plus enough to name the row in the
+  // Deleted list - the description is the bulk of a scraped job.
+  it('strips the heavy and now-dangling fields off the tombstone', async () => {
+    mockFindOne.mockReturnValue(leanChain({ draftResumeId: 'r1' }))
+    mockUpdateOne.mockResolvedValue({ matchedCount: 1 })
+    mockApplicationCountDocuments.mockResolvedValue(0)
+    mockResumeDeleteOne.mockResolvedValue({ deletedCount: 1 })
+
+    await deleteScrapedJob('u1', 'j1')
+
+    const update = mockUpdateOne.mock.calls[0][1]
+    expect(update.$set.description).toBe('')
+    expect(update.$set.pendingApprovals).toEqual([])
+    expect(update.$set.tailoredKeywords).toEqual([])
+    expect(update.$unset).toEqual({ draftResumeId: 1 })
+    // draftedAt is deliberately kept - countDraftedInWindow still has to see it.
+    expect(update.$set).not.toHaveProperty('draftedAt')
+    expect(update.$set).not.toHaveProperty('status')
+  })
+
+  it('reports failure when the row is already tombstoned', async () => {
+    mockFindOne.mockReturnValue(leanChain(null))
+
+    const result = await deleteScrapedJob('u1', 'j1')
+
+    expect(mockUpdateOne).not.toHaveBeenCalled()
+    expect(mockResumeDeleteOne).not.toHaveBeenCalled()
+    expect(result).toEqual({ deleted: false, deletedDraftResume: false })
   })
 
   it('reports failure without touching resumes when nothing matched', async () => {
@@ -474,14 +530,14 @@ describe('deleteScrapedJob', () => {
 
     const result = await deleteScrapedJob('u1', 'missing')
 
-    expect(mockDeleteOne).not.toHaveBeenCalled()
+    expect(mockUpdateOne).not.toHaveBeenCalled()
     expect(mockResumeDeleteOne).not.toHaveBeenCalled()
     expect(result).toEqual({ deleted: false, deletedDraftResume: false })
   })
 
   it('deletes the tailored draft resume along with the posting', async () => {
     mockFindOne.mockReturnValue(leanChain({ draftResumeId: 'r1' }))
-    mockDeleteOne.mockResolvedValue({ deletedCount: 1 })
+    mockUpdateOne.mockResolvedValue({ matchedCount: 1 })
     mockApplicationCountDocuments.mockResolvedValue(0)
     mockResumeDeleteOne.mockResolvedValue({ deletedCount: 1 })
 
@@ -493,7 +549,7 @@ describe('deleteScrapedJob', () => {
 
   it('keeps a draft resume that an application row already points at', async () => {
     mockFindOne.mockReturnValue(leanChain({ draftResumeId: 'r1' }))
-    mockDeleteOne.mockResolvedValue({ deletedCount: 1 })
+    mockUpdateOne.mockResolvedValue({ matchedCount: 1 })
     mockApplicationCountDocuments.mockResolvedValue(1)
 
     const result = await deleteScrapedJob('u1', 'j1')
@@ -505,7 +561,7 @@ describe('deleteScrapedJob', () => {
 
   it('scopes the resume delete to the same user, so an id alone cannot reach another library', async () => {
     mockFindOne.mockReturnValue(leanChain({ draftResumeId: 'r1' }))
-    mockDeleteOne.mockResolvedValue({ deletedCount: 1 })
+    mockUpdateOne.mockResolvedValue({ matchedCount: 1 })
     mockApplicationCountDocuments.mockResolvedValue(0)
     mockResumeDeleteOne.mockResolvedValue({ deletedCount: 0 })
 
@@ -513,6 +569,39 @@ describe('deleteScrapedJob', () => {
 
     expect(mockResumeDeleteOne).toHaveBeenCalledWith({ _id: 'r1', userId: 'u2' })
     expect(result).toEqual({ deleted: true, deletedDraftResume: false })
+  })
+})
+
+describe('restoreScrapedJob', () => {
+  it('drops the tombstone so the next scan can rediscover the posting', async () => {
+    mockDeleteOne.mockResolvedValue({ deletedCount: 1 })
+
+    const result = await restoreScrapedJob('u1', 'j1')
+
+    expect(mockDeleteOne).toHaveBeenCalledWith({ _id: 'j1', userId: 'u1', deletedAt: { $exists: true } })
+    expect(result).toBe(true)
+  })
+
+  // The deletedAt guard is what stops this endpoint hard-deleting a live posting.
+  it('reports failure when the row carries no tombstone', async () => {
+    mockDeleteOne.mockResolvedValue({ deletedCount: 0 })
+
+    expect(await restoreScrapedJob('u1', 'j1')).toBe(false)
+  })
+})
+
+describe('listNewScrapedJobs', () => {
+  // scan.ts's pruneStaleScrapedJobs hard-deletes whatever this returns, so a
+  // tombstone leaking in here would be erased and the posting re-raised.
+  it('excludes tombstones so pruning can never erase one', async () => {
+    mockFind.mockReturnValue(leanChain([]))
+
+    await listNewScrapedJobs('u1', 'p1')
+
+    expect(mockFind).toHaveBeenCalledWith(
+      { userId: 'u1', profileId: 'p1', status: 'new', deletedAt: { $exists: false } },
+      expect.any(String)
+    )
   })
 })
 
@@ -524,7 +613,12 @@ describe('listNotifyMatches', () => {
     const result = await listNotifyMatches('u1')
 
     expect(mockFind).toHaveBeenCalledWith(
-      { userId: 'u1', resolvedActions: 'notify', status: { $in: ['new', 'notified'] } },
+      {
+        userId: 'u1',
+        resolvedActions: 'notify',
+        status: { $in: ['new', 'notified'] },
+        deletedAt: { $exists: false },
+      },
       expect.any(String)
     )
     expect(mockSort).toHaveBeenCalledWith({ createdAt: -1 })
@@ -565,7 +659,7 @@ describe('profile-scoped unread handling', () => {
     await markNotifyMatchesRead('u1', 'p1')
 
     expect(mockUpdateMany).toHaveBeenCalledWith(
-      { userId: 'u1', resolvedActions: 'notify', status: 'new', profileId: 'p1' },
+      { userId: 'u1', resolvedActions: 'notify', status: 'new', deletedAt: { $exists: false }, profileId: 'p1' },
       { $set: { status: 'notified' } }
     )
   })
@@ -576,7 +670,7 @@ describe('profile-scoped unread handling', () => {
     await markNotifyMatchesRead('u1')
 
     expect(mockUpdateMany).toHaveBeenCalledWith(
-      { userId: 'u1', resolvedActions: 'notify', status: 'new' },
+      { userId: 'u1', resolvedActions: 'notify', status: 'new', deletedAt: { $exists: false } },
       { $set: { status: 'notified' } }
     )
   })
@@ -590,6 +684,7 @@ describe('profile-scoped unread handling', () => {
       userId: 'u1',
       resolvedActions: 'notify',
       status: 'new',
+      deletedAt: { $exists: false },
       profileId: 'p1',
     })
   })
@@ -601,7 +696,12 @@ describe('countUnreadNotifyMatches', () => {
 
     const result = await countUnreadNotifyMatches('u1')
 
-    expect(mockCountDocuments).toHaveBeenCalledWith({ userId: 'u1', resolvedActions: 'notify', status: 'new' })
+    expect(mockCountDocuments).toHaveBeenCalledWith({
+      userId: 'u1',
+      resolvedActions: 'notify',
+      status: 'new',
+      deletedAt: { $exists: false },
+    })
     expect(result).toBe(4)
   })
 })
@@ -613,7 +713,7 @@ describe('markNotifyMatchesRead', () => {
     await markNotifyMatchesRead('u1')
 
     expect(mockUpdateMany).toHaveBeenCalledWith(
-      { userId: 'u1', resolvedActions: 'notify', status: 'new' },
+      { userId: 'u1', resolvedActions: 'notify', status: 'new', deletedAt: { $exists: false } },
       { $set: { status: 'notified' } }
     )
   })

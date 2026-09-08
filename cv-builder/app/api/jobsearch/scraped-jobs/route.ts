@@ -13,7 +13,8 @@ export const GET = auth(async function GET(req) {
     if (!profileId) {
       return apiError('VALIDATION_ERROR', 'profileId is required', 400)
     }
-    const scrapedJobs = await listScrapedJobs(req.auth.user.id, profileId)
+    const includeDeleted = searchParams.get('includeDeleted') === '1'
+    const scrapedJobs = await listScrapedJobs(req.auth.user.id, profileId, { includeDeleted })
     return NextResponse.json({ scrapedJobs })
   } catch (err) {
     return handleRouteError(err, 'GET /api/jobsearch/scraped-jobs')

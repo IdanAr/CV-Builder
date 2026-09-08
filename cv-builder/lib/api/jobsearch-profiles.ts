@@ -38,7 +38,9 @@ export const EMPTY_PROFILE_COUNTS: JobSearchProfileCounts = {
  */
 async function countsByProfile(userId: string): Promise<Map<string, JobSearchProfileCounts>> {
   const rows = (await ScrapedJob.aggregate([
-    { $match: { userId } },
+    // Tombstones are dedup keys, not findings — a posting the user deleted
+    // should leave the card's "found" total rather than inflating it.
+    { $match: { userId, deletedAt: { $exists: false } } },
     {
       $group: {
         _id: '$profileId',

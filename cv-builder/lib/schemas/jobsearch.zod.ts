@@ -133,6 +133,18 @@ export const ScrapedJobSchema = z.object({
   // Absent means "not drafted yet" (either never matched draft_and_queue,
   // or matched but is sitting in the backlog waiting for cap headroom).
   draftedAt: z.date().optional(),
+  // Soft-delete tombstone. Deliberately NOT a ScrapedJobStatus value: a deleted
+  // row keeps whatever status it held, and every user-facing list filters on
+  // this field instead.
+  //
+  // Its only job is dedup. findExistingSourceIds ignores it, so a posting the
+  // user deleted keeps matching there forever and is never re-scraped — which
+  // is what stops the next scan re-running the tailoring pipeline (and paying
+  // for it) on something already actioned. The row is stripped down to that
+  // dedup key when it is tombstoned; see deleteScrapedJob.
+  //
+  // Never set at creation; written only by deleteScrapedJob.
+  deletedAt: z.date().optional(),
   status: ScrapedJobStatusEnum.default('new'),
 })
 export type CreateScrapedJobInput = z.infer<typeof ScrapedJobSchema>

@@ -11,6 +11,7 @@ vi.mock('@/lib/auth', () => ({
 vi.mock('@/lib/api/scraped-jobs', () => ({
   setScrapedJobDismissed: vi.fn(),
   deleteScrapedJob: vi.fn(),
+  restoreScrapedJob: vi.fn(),
 }))
 
 afterEach(() => {
@@ -62,6 +63,40 @@ describe('PATCH /api/jobsearch/scraped-jobs/[id]', () => {
     const res = (await PATCH(req({ dismissed: false }), { params: Promise.resolve({ id: 'j1' }) } as never)) as Response
 
     expect(res.status).toBe(404)
+  })
+})
+
+describe('PATCH { deleted: false } (restore)', () => {
+  it('drops the tombstone and returns ok', async () => {
+    const { restoreScrapedJob } = await import('@/lib/api/scraped-jobs')
+    vi.mocked(restoreScrapedJob).mockResolvedValueOnce(true)
+
+    const { PATCH } = await import('./route')
+    const res = (await PATCH(req({ deleted: false }), { params: Promise.resolve({ id: 'j1' }) } as never)) as Response
+
+    expect(res.status).toBe(200)
+    expect(restoreScrapedJob).toHaveBeenCalledWith('u1', 'j1')
+  })
+
+  it('returns 404 when the row carries no tombstone', async () => {
+    const { restoreScrapedJob } = await import('@/lib/api/scraped-jobs')
+    vi.mocked(restoreScrapedJob).mockResolvedValueOnce(false)
+
+    const { PATCH } = await import('./route')
+    const res = (await PATCH(req({ deleted: false }), { params: Promise.resolve({ id: 'j1' }) } as never)) as Response
+
+    expect(res.status).toBe(404)
+  })
+
+  // Deleting has to go through DELETE, which also handles the resume cascade.
+  it('does not accept deleted:true as a way to delete', async () => {
+    const { restoreScrapedJob } = await import('@/lib/api/scraped-jobs')
+
+    const { PATCH } = await import('./route')
+    const res = (await PATCH(req({ deleted: true }), { params: Promise.resolve({ id: 'j1' }) } as never)) as Response
+
+    expect(res.status).toBe(400)
+    expect(restoreScrapedJob).not.toHaveBeenCalled()
   })
 })
 

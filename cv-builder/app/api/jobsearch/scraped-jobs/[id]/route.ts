@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth'
 import { NextResponse } from 'next/server'
-import { setScrapedJobDismissed, deleteScrapedJob } from '@/lib/api/scraped-jobs'
+import { setScrapedJobDismissed, deleteScrapedJob, restoreScrapedJob } from '@/lib/api/scraped-jobs'
 import { apiError, handleRouteError } from '@/lib/api/route-errors'
 
 export const PATCH = auth(async function PATCH(req, { params }: { params: Promise<{ id: string }> }) {
@@ -10,8 +10,16 @@ export const PATCH = auth(async function PATCH(req, { params }: { params: Promis
   try {
     const { id } = await params
     const body = await req.json()
+    // `deleted: false` drops the tombstone so the next scan can find the
+    // posting again. There is deliberately no `deleted: true` here — deleting
+    // goes through DELETE, which also handles the résumé cascade.
+    if (body.deleted === false) {
+      const restored = await restoreScrapedJob(req.auth.user.id, id)
+      if (!restored) return apiError('NOT_FOUND', 'Not found', 404)
+      return NextResponse.json({ ok: true })
+    }
     if (typeof body.dismissed !== 'boolean') {
-      return apiError('VALIDATION_ERROR', 'dismissed (boolean) is required', 400)
+      return apiError('VALIDATION_ERROR', 'dismissed (boolean) or deleted (false) is required', 400)
     }
     // setScrapedJobDismissed returns false for both "not found" and "already
     // submitted, can't toggle a terminal state" — collapsed to 404 here since
