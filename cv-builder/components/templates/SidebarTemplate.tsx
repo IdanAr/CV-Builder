@@ -17,7 +17,7 @@ function rt(text: string | undefined | null): React.ReactNode {
 
 const ALL_SECTIONS = ['work', 'education', 'skills', 'certificates', 'awards', 'publications', 'volunteer', 'languages', 'interests', 'projects']
 
-export function SidebarTemplate({ data, meta }: TemplateProps) {
+function SidebarTemplateImpl({ data, meta }: TemplateProps) {
   const { basics = {} } = data
   const pad = Math.max(meta.pageMargins * 96 * 0.7, 48)
   const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : ALL_SECTIONS
@@ -617,3 +617,15 @@ export function SidebarTemplate({ data, meta }: TemplateProps) {
     </div>
   )
 }
+
+// Memoized because the live preview is mounted unconditionally by EditorShell
+// and PreviewTab subscribes to the raw store, so PreviewTab's body re-runs on
+// every keystroke. The props below are the *debounced* values and are
+// referentially stable between ticks — but a plain function component
+// re-executes whenever its parent renders, regardless of prop identity. So
+// without this the 300ms debounce only delayed *what was displayed*; it
+// skipped none of the work (rich-text parsing, date formatting, role and
+// profile resolution and section ordering across the whole résumé, then a
+// full JSX build and diff), on the main thread, per keypress.
+export const SidebarTemplate = React.memo(SidebarTemplateImpl)
+SidebarTemplate.displayName = 'SidebarTemplate'
