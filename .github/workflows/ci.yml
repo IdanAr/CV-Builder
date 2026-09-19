@@ -38,3 +38,19 @@ jobs:
 
       - name: Test
         run: npm run test:run
+
+      # Catches the build-only failure modes that lint/tsc/test structurally
+      # cannot see — Turbopack panics, `outputFileTracingIncludes` glob
+      # semantics, and font tracing into the PDF/preview routes. See the long
+      # comments in cv-builder/next.config.mjs; a silent tracing regression
+      # there surfaces only as a production PDF bug.
+      #
+      # MONGODB_URI is a placeholder, not a credential. `next build` collects
+      # page data, which evaluates lib/db.ts and lib/mongodb.ts at module
+      # scope, and both throw when it is unset. Nothing connects to it — the
+      # build only requires the variable to be defined. Verified: this is the
+      # only variable the build needs.
+      - name: Build
+        run: npm run build
+        env:
+          MONGODB_URI: mongodb://127.0.0.1:27017/ci-build-placeholder
