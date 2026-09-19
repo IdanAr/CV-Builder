@@ -29,6 +29,17 @@ export interface ScanResult {
   created: number
   skippedExisting: number
   drafted: number
+  /**
+   * Postings whose apply pipeline threw.
+   *
+   * Without this a scan where every drafting attempt failed — an expired
+   * ANTHROPIC_API_KEY, a schema drift, a bug in the pipeline — returned
+   * `{ drafted: 0, degraded: false }` and HTTP 200, which is indistinguishable
+   * from "nothing needed drafting". `degraded` is set only by source-adapter
+   * failures, so it stayed false. The failure was invisible in the response
+   * and, since nothing in this file logged, invisible in the logs too.
+   */
+  draftFailed: number
   pruned: number
   degraded: boolean
   errorMessage?: string
@@ -226,10 +237,98 @@ async function pruneStaleScrapedJobs(userId: string, profileId: string, profile:
   return deleteScrapedJobsByIds(userId, staleIds)
 }
 
+/** Running per-scan allowance, shared across both drain passes. */
+interface DraftBudget {
+  profile: number
+  user: number
+}
+
+/**
+ * Drafts tailored résumés for postings sitting in the draft_and_queue backlog.
+ *
+ * This is the only place the apply pipeline runs. New postings used to be
+ * drafted inline while being built, *before* their ScrapedJob rows were
+ * written — so a throw anywhere between the first pipeline call and the batch
+ * insert left committed résumés with no row pointing at them: untraceable in
+ * the library, invisible to the queue, missed by cleanup, and re-fetched and
+ * re-paid-for on the next scan because no sourceId dedup key had been stored.
+ *
+ * Persisting first and drafting from the backlog removes that window
+ * entirely — every résumé this creates already has a row waiting for it — and
+ * collapses what were two near-identical drafting loops into one.
+ */
+async function drainDraftQueue(
+  userId: string,
+  profileId: string,
+  minAtsScore: number,
+  getResumeData: () => Promise<ResolvedResume | null>,
+  budget: DraftBudget
+): Promise<{ drafted: number; failed: number }> {
+  let drafted = 0
+  let failed = 0
+  if (budget.profile <= 0 || budget.user <= 0) return { drafted, failed }
+
+  const backlog = (await listDraftQueueBacklog(
+    userId,
+    profileId,
+    Math.min(budget.profile, budget.user)
+  )) as unknown as DraftQueueBacklogItem[]
+  if (backlog.length === 0) return { drafted, failed }
+
+  const resumeData = await getResumeData()
+  if (!resumeData) return { drafted, failed }
+
+  for (const item of backlog) {
+    if (budget.profile <= 0 || budget.user <= 0) break
+    const postingId = String(item._id)
+    try {
+      const missingKeywords = scoreResume(resumeData.data, item.description).missingKeywords
+      const applyResult = await runApplyPipeline(
+        userId,
+        resumeData.data,
+        { title: item.title, company: item.company, description: item.description },
+        missingKeywords,
+        minAtsScore,
+        resumeData.id,
+        resumeData.meta
+      )
+      const recorded = await markScrapedJobDrafted(userId, postingId, {
+        draftResumeId: applyResult.draftResumeId,
+        postTailorScore: applyResult.postTailorScore,
+        pendingApprovals: applyResult.pendingApprovals,
+        tailoredKeywords: applyResult.tailoredKeywords,
+        status: applyResult.status,
+      })
+      if (!recorded) {
+        // The posting was deleted (and tombstoned) while its pipeline ran. The
+        // résumé is already committed and now has nothing pointing at it, so
+        // say so loudly rather than counting it as a clean draft.
+        console.error(
+          '[jobsearch] drafted a résumé but its posting row was gone',
+          { userId, profileId, postingId, draftResumeId: applyResult.draftResumeId }
+        )
+        failed++
+        continue
+      }
+      budget.profile--
+      budget.user--
+      drafted++
+    } catch (err) {
+      // Left as backlog (draftedAt still unset) — retried on the next scan.
+      // Counted and logged so a pipeline that is failing every time is
+      // distinguishable from one that simply had nothing to do.
+      failed++
+      console.error('[jobsearch] apply pipeline failed for posting', { userId, profileId, postingId }, err)
+    }
+  }
+
+  return { drafted, failed }
+}
+
 export async function runScanForProfile(userId: string, profileId: string): Promise<ScanResult> {
   const profile = (await getJobSearchProfile(userId, profileId)) as ScannedProfile | null
   if (!profile) {
-    return { fetched: 0, created: 0, skippedExisting: 0, drafted: 0, pruned: 0, degraded: true, errorMessage: 'Profile not found' }
+    return { fetched: 0, created: 0, skippedExisting: 0, drafted: 0, draftFailed: 0, pruned: 0, degraded: true, errorMessage: 'Profile not found' }
   }
 
   // Runs before the backlog drain below so a job that no longer qualifies
@@ -252,49 +351,13 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
   // source (handled below) never blocks draining postings already sitting
   // in the draft_and_queue backlog from a previous cap-limited run (design
   // spec §7: "drafting for them waits for the next scan run").
-  let profileDraftsRemaining = PER_PROFILE_DAILY_DRAFT_CAP - (await countDraftedInWindow(userId, profileId))
-  let userDraftsRemaining = PER_USER_DAILY_DRAFT_CAP - (await countDraftedInWindow(userId))
-  let drafted = 0
+  const profileDraftsRemaining = PER_PROFILE_DAILY_DRAFT_CAP - (await countDraftedInWindow(userId, profileId))
+  const userDraftsRemaining = PER_USER_DAILY_DRAFT_CAP - (await countDraftedInWindow(userId))
 
-  if (profileDraftsRemaining > 0 && userDraftsRemaining > 0) {
-    const backlog = (await listDraftQueueBacklog(
-      userId,
-      profileId,
-      Math.min(profileDraftsRemaining, userDraftsRemaining)
-    )) as unknown as DraftQueueBacklogItem[]
-    if (backlog.length > 0) {
-      const resumeData = await getResumeData()
-      if (resumeData) {
-        for (const item of backlog) {
-          if (profileDraftsRemaining <= 0 || userDraftsRemaining <= 0) break
-          try {
-            const missingKeywords = scoreResume(resumeData.data, item.description).missingKeywords
-            const applyResult = await runApplyPipeline(
-              userId,
-              resumeData.data,
-              { title: item.title, company: item.company, description: item.description },
-              missingKeywords,
-              profile.minAtsScore,
-              resumeData.id,
-              resumeData.meta
-            )
-            await markScrapedJobDrafted(userId, String(item._id), {
-              draftResumeId: applyResult.draftResumeId,
-              postTailorScore: applyResult.postTailorScore,
-              pendingApprovals: applyResult.pendingApprovals,
-              tailoredKeywords: applyResult.tailoredKeywords,
-              status: applyResult.status,
-            })
-            profileDraftsRemaining--
-            userDraftsRemaining--
-            drafted++
-          } catch {
-            // Left as backlog (draftedAt still unset) — retried on the next scan.
-          }
-        }
-      }
-    }
-  }
+  const budget: DraftBudget = { profile: profileDraftsRemaining, user: userDraftsRemaining }
+  const firstDrain = await drainDraftQueue(userId, profileId, profile.minAtsScore, getResumeData, budget)
+  let drafted = firstDrain.drafted
+  let draftFailed = firstDrain.failed
 
   const [freehireResult, comeetResult] = await Promise.all([
     fetchPostingsForRoles(profile.roles, {
@@ -321,6 +384,7 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
       created: 0,
       skippedExisting: 0,
       drafted,
+      draftFailed,
       pruned,
       degraded: true,
       errorMessage: freehireResult.errorMessage,
@@ -399,46 +463,10 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
       )
       if (evaluation.suppressed) continue
 
-      // Semi-auto apply (design spec §7): only for draft_and_queue matches,
-      // only when there's a resume to tailor from, and only while today's
-      // per-profile and per-user caps still have room (§7's "Cost/spend
-      // safety valves"). A posting that misses the cap or whose pipeline
-      // throws simply stays at status 'new' with no draftedAt — the next
-      // scan's backlog drain (above) picks it back up.
-      let draftFields: Partial<CreateScrapedJobInput> = {}
-      if (
-        evaluation.resolvedActions.includes('draft_and_queue') &&
-        resumeData &&
-        scoreResult &&
-        profileDraftsRemaining > 0 &&
-        userDraftsRemaining > 0
-      ) {
-        try {
-          const applyResult = await runApplyPipeline(
-            userId,
-            resumeData.data,
-            { title: posting.title, company: posting.company, description: posting.description },
-            scoreResult.missingKeywords,
-            profile.minAtsScore,
-            resumeData.id,
-            resumeData.meta
-          )
-          draftFields = {
-            draftResumeId: applyResult.draftResumeId,
-            postTailorScore: applyResult.postTailorScore,
-            pendingApprovals: applyResult.pendingApprovals,
-            tailoredKeywords: applyResult.tailoredKeywords,
-            status: applyResult.status,
-            draftedAt: new Date(),
-          }
-          profileDraftsRemaining--
-          userDraftsRemaining--
-          drafted++
-        } catch {
-          // Left at the default 'new' status below — picked up as backlog next scan.
-        }
-      }
-
+      // Semi-auto apply (design spec §7) deliberately does NOT happen here.
+      // Every posting is written at status 'new' first; the drain pass below
+      // then tailors the draft_and_queue ones, so a résumé is never created
+      // before the row that records it exists. See drainDraftQueue.
       toCreate.push({
         // createScrapedJobs also receives profileId as its own argument and
         // spreads it onto each job (see lib/api/scraped-jobs.ts) — it's set here
@@ -458,13 +486,12 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
         resolvedActions: evaluation.resolvedActions,
         // pendingApprovals/tailoredKeywords carry Zod .default([]) — the
         // inferred CreateScrapedJobInput type makes them required fields,
-        // not optional, so they must be set explicitly here even when
-        // draftFields won't overwrite them (Task 1's review caught this
-        // exact class of bug in the pre-Phase-4 scan.ts).
+        // not optional, so they must be set explicitly here (Task 1's review
+        // caught this exact class of bug in the pre-Phase-4 scan.ts). The
+        // drain pass fills in their real values once tailoring has run.
         pendingApprovals: [],
         tailoredKeywords: [],
         status: 'new',
-        ...draftFields,
       })
     }
 
@@ -472,11 +499,19 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
       await createScrapedJobs(userId, profileId, toCreate)
     }
 
+    // Only now that every posting is persisted is it safe to spend money
+    // tailoring résumés for them: each draft this produces already has a row
+    // to be recorded against, so a failure here can no longer orphan one.
+    const secondDrain = await drainDraftQueue(userId, profileId, profile.minAtsScore, getResumeData, budget)
+    drafted += secondDrain.drafted
+    draftFailed += secondDrain.failed
+
     return {
       fetched: mergedPostings.length,
       created: toCreate.length,
       skippedExisting: existingCount,
       drafted,
+      draftFailed,
       pruned,
       degraded: false,
     }
@@ -486,6 +521,7 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
       created: 0,
       skippedExisting: 0,
       drafted,
+      draftFailed,
       pruned,
       degraded: true,
       errorMessage: err instanceof Error ? err.message : 'Scan failed unexpectedly',

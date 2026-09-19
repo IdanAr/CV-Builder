@@ -123,9 +123,24 @@ export interface DraftedFields {
   status: ScrapedJobStatus
 }
 
-export async function markScrapedJobDrafted(userId: string, id: string, fields: DraftedFields): Promise<void> {
+/**
+ * Records the outcome of a completed apply pipeline on its posting row.
+ *
+ * Returns false when no row matched — which means a résumé was generated and
+ * paid for but has nothing pointing at it. The row can legitimately vanish
+ * mid-scan (the user deleting the posting tombstones it), so this is not
+ * exceptional, but it must not pass unnoticed: the draft would otherwise sit
+ * in the library untraceable, and uncounted against the daily cap, which
+ * reads `draftedAt` on this collection.
+ */
+export async function markScrapedJobDrafted(
+  userId: string,
+  id: string,
+  fields: DraftedFields
+): Promise<boolean> {
   await dbConnect()
-  await ScrapedJob.updateOne({ _id: id, userId }, { $set: { ...fields, draftedAt: new Date() } })
+  const result = await ScrapedJob.updateOne({ _id: id, userId }, { $set: { ...fields, draftedAt: new Date() } })
+  return result.matchedCount === 1
 }
 
 export type ConvertResult =
