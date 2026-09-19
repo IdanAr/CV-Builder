@@ -17,7 +17,9 @@
 // defensively below and this should be re-verified against a real company's
 // endpoint the first time one is actually scanned (see the design plan's
 // Verification section).
+import { fetchWithTimeout, RequestTimeoutError } from '@/lib/fetch-with-timeout'
 import type { JobPosting, SourceSearchResult } from './types'
+import { SOURCE_REQUEST_TIMEOUT_MS } from './types'
 
 const BASE_URL = 'https://www.comeet.co/careers-api/2.0'
 const WORK_MODES = new Set(['remote', 'hybrid', 'onsite'])
@@ -125,7 +127,7 @@ export async function searchComeetJobs(company: ComeetCompanyPref): Promise<Sour
     url.searchParams.set('token', company.token)
     url.searchParams.set('details', 'true')
 
-    const res = await fetch(url.toString())
+    const res = await fetchWithTimeout(url.toString(), {}, SOURCE_REQUEST_TIMEOUT_MS)
     if (!res.ok) {
       return { postings: [], degraded: true, errorMessage: `comeet (${company.name}) returned ${res.status}` }
     }
@@ -138,7 +140,12 @@ export async function searchComeetJobs(company: ComeetCompanyPref): Promise<Sour
     return {
       postings: [],
       degraded: true,
-      errorMessage: err instanceof Error ? err.message : `comeet (${company.name}) request failed`,
+      errorMessage:
+        err instanceof RequestTimeoutError
+          ? `comeet (${company.name}) did not respond within ${SOURCE_REQUEST_TIMEOUT_MS / 1000}s`
+          : err instanceof Error
+            ? err.message
+            : `comeet (${company.name}) request failed`,
     }
   }
 }

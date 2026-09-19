@@ -11,7 +11,9 @@
 // field read from the response is still defensively type-checked, and any
 // fetch/parse problem degrades the result rather than throwing, so one
 // source outage degrades a scan instead of crashing it.
+import { fetchWithTimeout, RequestTimeoutError } from '@/lib/fetch-with-timeout'
 import type { JobPosting, SourceSearchResult } from './types'
+import { SOURCE_REQUEST_TIMEOUT_MS } from './types'
 
 const DEFAULT_BASE_URL = 'https://freehire.me'
 const WORK_MODES = new Set(['remote', 'hybrid', 'onsite'])
@@ -93,7 +95,7 @@ export async function searchFreehireJobs(params: FreehireSearchParams): Promise<
     url.searchParams.set('offset', String(((params.page ?? 1) - 1) * limit))
     url.searchParams.set('limit', String(limit))
 
-    const res = await fetch(url.toString())
+    const res = await fetchWithTimeout(url.toString(), {}, SOURCE_REQUEST_TIMEOUT_MS)
     if (!res.ok) {
       return { postings: [], degraded: true, errorMessage: `freehire returned ${res.status}` }
     }
@@ -110,7 +112,12 @@ export async function searchFreehireJobs(params: FreehireSearchParams): Promise<
     return {
       postings: [],
       degraded: true,
-      errorMessage: err instanceof Error ? err.message : 'freehire request failed',
+      errorMessage:
+        err instanceof RequestTimeoutError
+          ? `freehire did not respond within ${SOURCE_REQUEST_TIMEOUT_MS / 1000}s`
+          : err instanceof Error
+            ? err.message
+            : 'freehire request failed',
     }
   }
 }
