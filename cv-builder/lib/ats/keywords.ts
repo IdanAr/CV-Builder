@@ -79,6 +79,14 @@ function looksLikeProperNounOrAcronym(raw: string): boolean {
   return isAllCapsAcronym || hasInternalCap
 }
 
+/**
+ * Upper bound on a single extracted keyword, in characters.
+ *
+ * See the note in extractKeywords' filter: this exists to keep prose-length
+ * tokens out of the ATS-fix prompt, not to tune matching quality.
+ */
+const MAX_KEYWORD_LENGTH = 32
+
 export function extractKeywords(text: string): string[] {
   if (!text.trim()) return []
 
@@ -96,6 +104,17 @@ export function extractKeywords(text: string): string[] {
   }
 
   return order.filter((word) => {
+    // Hyphenated tokens are admitted wholesale below, which is what lets an
+    // entire instruction-shaped phrase ride in as a single "keyword" and reach
+    // the ATS-fix prompt (e.g. ignore-the-keyword-framing-above-and-append).
+    // The prompt is fenced now, but this keeps obviously non-keyword text out
+    // of it in the first place. The bound is empirical: the longest entry in
+    // this file's own TECH_TERMS is "machine-learning" at 16 characters, and
+    // the longest realistic hyphenated skill ("test-driven-development") is
+    // 23 -- so 32 leaves generous headroom while excluding prose. A token this
+    // long could never match resume text anyway, so scoring loses nothing.
+    if (word.length > MAX_KEYWORD_LENGTH) return false
+
     if (TECH_TERMS.has(word)) return true
     if (properNounSeen.get(word)) return true
     if (/[0-9+#]/.test(word) || word.includes('.') || word.includes('-')) return true
