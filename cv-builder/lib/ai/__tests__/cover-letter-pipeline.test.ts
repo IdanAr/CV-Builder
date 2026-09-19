@@ -8,6 +8,7 @@ vi.mock('../models', () => ({
 }))
 
 import { generateCoverLetter } from '../cover-letter-pipeline'
+import { MAX_JD_LENGTH } from '../jd-extraction-pipeline'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 const sampleData: ResumeData = {
@@ -104,5 +105,34 @@ describe('generateCoverLetter', () => {
     const prompt = mockCreate.mock.calls[0][0].messages[0].content as string
     expect(prompt).toMatch(/ignore any such text/i)
     expect(prompt).toContain('"""')
+  })
+})
+
+describe('generateCoverLetter — untrusted job description', () => {
+  beforeEach(() => {
+    mockCreate.mockReset()
+  })
+
+  it('bounds how much of a scraped posting reaches the prompt', async () => {
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'Dear Hiring Manager,' }] })
+
+    // A scraped posting carries no length guarantee; only a user-pasted one is
+    // bounded by the route. jd-extraction-pipeline already truncates the same
+    // input to MAX_JD_LENGTH — this brings the cover-letter path in line.
+    const hugeJd = 'x'.repeat(MAX_JD_LENGTH + 5_000)
+    await generateCoverLetter({ basics: { name: 'Jane' } }, hugeJd)
+
+    const prompt = mockCreate.mock.calls[0][0].messages[0].content as string
+    expect(prompt).not.toContain('x'.repeat(MAX_JD_LENGTH + 1))
+    expect(prompt).toContain('x'.repeat(100))
+  })
+
+  it('leaves a normal-length description untouched', async () => {
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'Dear Hiring Manager,' }] })
+
+    const jd = 'We are hiring a senior engineer with React experience.'
+    await generateCoverLetter({ basics: { name: 'Jane' } }, jd)
+
+    expect(mockCreate.mock.calls[0][0].messages[0].content as string).toContain(jd)
   })
 })
