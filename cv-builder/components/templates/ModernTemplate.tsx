@@ -33,7 +33,7 @@ function buildContactLine(basics: Basics): React.ReactNode {
 
 const ALL_SECTIONS = ['work', 'education', 'skills', 'certificates', 'awards', 'publications', 'volunteer', 'languages', 'interests', 'projects']
 
-export function ModernTemplate({ data, meta }: TemplateProps) {
+function ModernTemplateImpl({ data, meta }: TemplateProps) {
   const { basics = {} } = data
   const pad = meta.pageMargins * 96
   const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : ALL_SECTIONS
@@ -353,3 +353,15 @@ export function ModernTemplate({ data, meta }: TemplateProps) {
     </div>
   )
 }
+
+// Memoized because the live preview is mounted unconditionally by EditorShell
+// and PreviewTab subscribes to the raw store, so PreviewTab's body re-runs on
+// every keystroke. The props below are the *debounced* values and are
+// referentially stable between ticks — but a plain function component
+// re-executes whenever its parent renders, regardless of prop identity. So
+// without this the 300ms debounce only delayed *what was displayed*; it
+// skipped none of the work (rich-text parsing, date formatting, role and
+// profile resolution and section ordering across the whole résumé, then a
+// full JSX build and diff), on the main thread, per keypress.
+export const ModernTemplate = React.memo(ModernTemplateImpl)
+ModernTemplate.displayName = 'ModernTemplate'
