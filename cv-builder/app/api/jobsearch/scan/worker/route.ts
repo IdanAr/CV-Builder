@@ -10,6 +10,20 @@ import { apiError, handleRouteError } from '@/lib/api/route-errors'
 // body ever runs — this route triggers real AI spend via
 // runScanForProfile()'s apply pipeline, so it must never be reachable by an
 // unsigned POST (design spec §6/§12 risk 3).
+// No route in this app set maxDuration, leaving both scan entry points on the
+// platform default — which is well under what a scan can legitimately need.
+// runApplyPipeline makes two Claude calls, the client allows ~60s each
+// (timeout 30s, maxRetries 1 in lib/ai/models.ts), and a scan runs up to
+// PER_PROFILE_DAILY_DRAFT_CAP backlog items plus that many new postings.
+//
+// 60 is the ceiling available on every Vercel plan, so it is the safe value
+// to commit rather than one that fails to deploy on Hobby. It does not cover
+// the pathological worst case; the lever for that is the per-invocation draft
+// caps in lib/jobsearch/apply.ts, which is a throughput decision rather than
+// a correctness one and is deliberately left alone here. What this does buy
+// is a predictable, documented ceiling instead of an implicit platform one.
+export const maxDuration = 60
+
 async function handler(req: Request) {
   try {
     const body = await req.json()
