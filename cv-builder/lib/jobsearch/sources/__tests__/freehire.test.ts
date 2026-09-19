@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { searchFreehireJobs } from '../freehire'
+import { SOURCE_REQUEST_TIMEOUT_MS } from '../types'
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn())
@@ -77,6 +78,34 @@ describe('searchFreehireJobs', () => {
     expect(result.degraded).toBe(true)
     expect(result.postings).toEqual([])
     expect(result.errorMessage).toContain('503')
+  })
+
+  it('bounds a hung upstream and names the timeout in the error', async () => {
+    // A scan fans these out concurrently, so before the deadline was added a
+    // single socket that never answered held the whole scan open until the
+    // platform killed the function — taking every other source's results
+    // with it. Drive the real fetchWithTimeout deadline with fake timers,
+    // and have the mocked fetch honour the abort the way a real one does.
+    vi.useFakeTimers()
+    vi.mocked(fetch).mockImplementation(
+      (_input, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('The operation was aborted.', 'AbortError'))
+          )
+        }) as Promise<Response>
+    )
+
+    const pending = searchFreehireJobs({})
+    await vi.advanceTimersByTimeAsync(SOURCE_REQUEST_TIMEOUT_MS)
+    const result = await pending
+    vi.useRealTimers()
+
+    expect(result.degraded).toBe(true)
+    expect(result.postings).toEqual([])
+    // Distinct from a plain network failure, so an operator reading
+    // ScanResult.errorMessage can tell "slow source" from "broken source".
+    expect(result.errorMessage).toBe('freehire did not respond within 10s')
   })
 
   it('degrades on a network failure instead of throwing', async () => {
