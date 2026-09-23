@@ -366,6 +366,67 @@ describe('convertScrapedJobToApplication', () => {
     expect(result).toEqual({ ok: true, application: { _id: 'app1', company: 'Acme', role: 'Backend Engineer' } })
   })
 
+  it('releases its claim when creating the application fails, so the user can retry', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockFindOne.mockReturnValue(leanChain(baseJob))
+    mockUpdateOne.mockResolvedValue({ matchedCount: 1 })
+    mockCreateApplication.mockRejectedValue(new Error('application insert failed'))
+
+    await expect(convertScrapedJobToApplication('u1', 'j1')).rejects.toThrow('application insert failed')
+
+    // The bug this encodes: the status was claimed as 'submitted' before the
+    // Application was created, with nothing undoing it on failure. The guard
+    // at the top of the function then refused every retry with
+    // ALREADY_SUBMITTED, so the posting could never be converted again.
+    expect(mockUpdateOne).toHaveBeenLastCalledWith(
+      { _id: 'j1', userId: 'u1', status: 'submitted' },
+      { $set: { status: 'queued' } }
+    )
+    consoleError.mockRestore()
+  })
+
+  it('restores the status it actually claimed from, not a hardcoded one', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockFindOne.mockReturnValue(leanChain({ ...baseJob, status: 'needs_review' }))
+    mockUpdateOne.mockResolvedValue({ matchedCount: 1 })
+    mockCreateApplication.mockRejectedValue(new Error('boom'))
+
+    await expect(convertScrapedJobToApplication('u1', 'j1')).rejects.toThrow('boom')
+
+    expect(mockUpdateOne).toHaveBeenLastCalledWith(
+      { _id: 'j1', userId: 'u1', status: 'submitted' },
+      { $set: { status: 'needs_review' } }
+    )
+    consoleError.mockRestore()
+  })
+
+  it('leaves the job alone when something else already moved it on', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockFindOne.mockReturnValue(leanChain(baseJob))
+    // The claim succeeds, then the release matches nothing — the job is no
+    // longer the 'submitted' row we claimed, so it is not ours to revert.
+    mockUpdateOne.mockResolvedValueOnce({ matchedCount: 1 }).mockResolvedValueOnce({ matchedCount: 0 })
+    mockCreateApplication.mockRejectedValue(new Error('boom'))
+
+    await expect(convertScrapedJobToApplication('u1', 'j1')).rejects.toThrow('boom')
+
+    // Nothing silently swallowed: a posting that may be stuck is reported.
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  it('still surfaces the original failure when releasing the claim also throws', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockFindOne.mockReturnValue(leanChain(baseJob))
+    mockUpdateOne.mockResolvedValueOnce({ matchedCount: 1 }).mockRejectedValueOnce(new Error('mongo down'))
+    mockCreateApplication.mockRejectedValue(new Error('application insert failed'))
+
+    // The caller must hear about the failure that matters, not the cleanup's.
+    await expect(convertScrapedJobToApplication('u1', 'j1')).rejects.toThrow('application insert failed')
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
   it('provisions the job-metadata columns and writes the posting URL/location as custom fields', async () => {
     mockFindOne.mockReturnValue(leanChain({ ...baseJob, url: 'https://x/a1', location: 'Berlin' }))
     mockCreateApplication.mockResolvedValue({ _id: 'app1', company: 'Acme', role: 'Backend Engineer' })

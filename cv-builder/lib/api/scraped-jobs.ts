@@ -179,6 +179,7 @@ export async function convertScrapedJobToApplication(userId: string, id: string)
   // concurrent requests could both pass the status==='submitted' check
   // above before either wrote, each then calling createApplication and
   // producing two real Application rows from one user confirmation).
+  const claimedFrom = job.status as ScrapedJobStatus
   const claim = await ScrapedJob.updateOne(
     { _id: id, userId, status: { $ne: 'submitted' } },
     { $set: { status: 'submitted' } }
@@ -187,22 +188,62 @@ export async function convertScrapedJobToApplication(userId: string, id: string)
     return { ok: false, code: 'ALREADY_SUBMITTED', message: 'Already marked as applied.' }
   }
 
-  // Provisions the "Job URL"/"Location" custom columns on first use so the
-  // customFields written below actually render as real columns in the
-  // user's applications table instead of being invisible, orphaned keys.
-  await ensureJobMetadataColumns(userId)
-  const customFields: Record<string, CustomFieldValue> = {}
-  if (job.url) customFields[JOB_URL_COLUMN_ID] = job.url
-  if (job.location) customFields[JOB_LOCATION_COLUMN_ID] = job.location
+  // The claim above is a promise the work below has to keep. If anything here
+  // throws, the job would otherwise stay marked 'submitted' with no
+  // Application row ever created -- and because the guard at the top of this
+  // function rejects an already-'submitted' job, every retry would be refused
+  // with ALREADY_SUBMITTED. The user could never convert that posting again,
+  // and nothing would say why.
+  try {
+    // Provisions the "Job URL"/"Location" custom columns on first use so the
+    // customFields written below actually render as real columns in the
+    // user's applications table instead of being invisible, orphaned keys.
+    await ensureJobMetadataColumns(userId)
+    const customFields: Record<string, CustomFieldValue> = {}
+    if (job.url) customFields[JOB_URL_COLUMN_ID] = job.url
+    if (job.location) customFields[JOB_LOCATION_COLUMN_ID] = job.location
 
-  const application = await createApplication(userId, {
-    resumeId: job.draftResumeId,
-    company: job.company.slice(0, 200),
-    role: job.title.slice(0, 200),
-    status: 'applied',
-    customFields,
-  })
-  return { ok: true, application }
+    const application = await createApplication(userId, {
+      resumeId: job.draftResumeId,
+      company: job.company.slice(0, 200),
+      role: job.title.slice(0, 200),
+      status: 'applied',
+      customFields,
+    })
+    return { ok: true, application }
+  } catch (err) {
+    // Hand the claim back so the user can simply try again. Scoped to
+    // status:'submitted' so this only ever reverts a claim we still hold --
+    // if something else legitimately moved the job on in the meantime, it is
+    // left alone.
+    //
+    // A transaction would be the textbook answer, but it would have to span
+    // three collections (ScrapedJob, BoardConfig via ensureJobMetadataColumns,
+    // and Application) and require a replica set for every developer running
+    // a standalone mongod. Only one field actually needs undoing, so a
+    // targeted compensation is the proportionate fix.
+    try {
+      const released = await ScrapedJob.updateOne(
+        { _id: id, userId, status: 'submitted' },
+        { $set: { status: claimedFrom } }
+      )
+      if (released.matchedCount === 0) {
+        console.error(
+          '[jobsearch] convert failed and the claim could not be released — posting may be stuck at submitted',
+          { userId, scrapedJobId: id }
+        )
+      }
+    } catch (releaseErr) {
+      console.error(
+        '[jobsearch] convert failed and releasing the claim threw — posting is stuck at submitted',
+        { userId, scrapedJobId: id },
+        releaseErr
+      )
+    }
+    // Rethrow: the route wraps this in handleRouteError, so the user gets a
+    // real failure rather than a success they did not get.
+    throw err
+  }
 }
 
 export type ApproveResult =
