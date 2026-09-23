@@ -74,5 +74,24 @@ ScrapedJobSchema.index({ userId: 1, draftedAt: 1 })
 ScrapedJobSchema.index({ userId: 1, profileId: 1, createdAt: -1 })
 ScrapedJobSchema.index({ userId: 1, profileId: 1, status: 1 })
 
+// Tombstone retention: 90 days (product decision).
+//
+// A deleted posting is kept rather than removed because the row IS the dedup
+// key — findExistingSourceIds is what stops the next scan re-fetching and
+// re-tailoring something the user deliberately deleted, at full AI cost. So
+// these cannot simply be purged; they can only be allowed to expire once the
+// posting they describe is old enough that re-surfacing it is acceptable
+// rather than annoying. 90 days is comfortably past the life of a real job
+// posting.
+//
+// A TTL index only expires documents where the field exists and holds a Date,
+// so this applies to tombstones alone -- live postings have no deletedAt and
+// are never touched by it.
+//
+// Note for deploy: MongoDB's TTL monitor runs about once a minute, so
+// expiry is eventual, not immediate. Existing tombstones older than 90 days
+// will be removed shortly after this index builds.
+ScrapedJobSchema.index({ deletedAt: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 })
+
 const ScrapedJob = models.ScrapedJob ?? model<IScrapedJob>('ScrapedJob', ScrapedJobSchema)
 export default ScrapedJob

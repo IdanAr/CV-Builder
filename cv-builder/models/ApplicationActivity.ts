@@ -29,6 +29,21 @@ const ApplicationActivitySchema = new Schema<IApplicationActivity>({
 // find({ applicationId, userId }).sort({ changedAt: -1 })
 ApplicationActivitySchema.index({ applicationId: 1, userId: 1, changedAt: -1 })
 
+// History retention: 180 days (product decision).
+//
+// This collection gains a row per changed field per PATCH and nothing pruned
+// it, so a long-lived, heavily-edited application accumulated history without
+// bound. Unlike a ScrapedJob tombstone, an old activity row carries no
+// load-bearing meaning -- it is a record for the user to read, and one they
+// stop reading long before six months are up.
+//
+// lib/api/applications.ts also bounds how much is read at once; this bounds
+// how much is stored.
+//
+// Note for deploy: this removes existing rows older than 180 days shortly
+// after the index builds. That is the intent, but it is not reversible.
+ApplicationActivitySchema.index({ changedAt: 1 }, { expireAfterSeconds: 180 * 24 * 60 * 60 })
+
 const ApplicationActivity =
   models.ApplicationActivity ??
   model<IApplicationActivity>('ApplicationActivity', ApplicationActivitySchema)
