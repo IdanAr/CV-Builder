@@ -17,6 +17,7 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
   const [open, setOpen] = useState(false)
   const [entries, setEntries] = useState<ActivityEntry[] | null>(null)
   const [error, setError] = useState(false)
+  const [truncated, setTruncated] = useState(false)
   const [openUpward, setOpenUpward] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -27,11 +28,15 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setError(false)
     setEntries(null)
+    setTruncated(false)
     fetch(`/api/applications/${applicationId}/activity`)
       .then(async (res) => {
         if (!res.ok) throw new Error('Activity fetch failed')
-        const { activity } = await res.json()
-        if (!cancelled) setEntries(activity)
+        const { activity, truncated: isTruncated } = await res.json()
+        if (!cancelled) {
+          setEntries(activity)
+          setTruncated(Boolean(isTruncated))
+        }
       })
       .catch((err) => {
         console.error(err)
@@ -120,6 +125,14 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
                 </p>
               </div>
             ))}
+          {truncated && (
+            // Says so rather than presenting a capped list as the full
+            // history. The read is bounded because this log grows without
+            // limit on a heavily-edited row.
+            <p className="border-t border-indigo-50 px-1 pt-2 text-xs text-fg-muted">
+              Showing the most recent changes only.
+            </p>
+          )}
         </div>
       )}
     </div>

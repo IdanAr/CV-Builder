@@ -9,8 +9,8 @@ export const GET = auth(async function GET(req, { params }: { params: Promise<{ 
   }
   try {
     const { id } = await params
-    const activity = await listActivity(req.auth.user.id, id)
-    return NextResponse.json({ activity })
+    const { entries, truncated } = await listActivity(req.auth.user.id, id)
+    return NextResponse.json({ activity: entries, truncated })
   } catch (err) {
     return handleRouteError(err, 'GET /api/applications/[id]/activity')
   }

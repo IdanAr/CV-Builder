@@ -10,6 +10,8 @@ const {
   mockDeleteOne,
   mockResumeFindOne,
   mockScrapedJobAggregate,
+  mockScrapedJobDeleteMany,
+  mockRuleDeleteMany,
 } = vi.hoisted(() => ({
   mockFind: vi.fn(),
   mockCreate: vi.fn(),
@@ -18,6 +20,8 @@ const {
   mockDeleteOne: vi.fn(),
   mockResumeFindOne: vi.fn(),
   mockScrapedJobAggregate: vi.fn(),
+  mockScrapedJobDeleteMany: vi.fn(),
+  mockRuleDeleteMany: vi.fn(),
 }))
 
 vi.mock('@/models/JobSearchProfile', () => ({
@@ -40,7 +44,12 @@ vi.mock('@/models/Resume', () => ({
 vi.mock('@/models/ScrapedJob', () => ({
   default: {
     aggregate: mockScrapedJobAggregate,
+    deleteMany: mockScrapedJobDeleteMany,
   },
+}))
+
+vi.mock('@/models/JobSearchRule', () => ({
+  default: { deleteMany: mockRuleDeleteMany },
 }))
 
 import {
@@ -215,6 +224,11 @@ describe('updateJobSearchProfile', () => {
 })
 
 describe('deleteJobSearchProfile', () => {
+  beforeEach(() => {
+    mockScrapedJobDeleteMany.mockResolvedValue({ deletedCount: 0 })
+    mockRuleDeleteMany.mockResolvedValue({ deletedCount: 0 })
+  })
+
   it('returns true when a document was actually deleted', async () => {
     mockDeleteOne.mockResolvedValue({ deletedCount: 1 })
     expect(await deleteJobSearchProfile('u1', 'p1')).toBe(true)
@@ -223,6 +237,27 @@ describe('deleteJobSearchProfile', () => {
   it('returns false when nothing matched (wrong user or missing id)', async () => {
     mockDeleteOne.mockResolvedValue({ deletedCount: 0 })
     expect(await deleteJobSearchProfile('u1', 'p1')).toBe(false)
+  })
+
+  it('cascades the postings and rules that belonged to the profile', async () => {
+    mockDeleteOne.mockResolvedValue({ deletedCount: 1 })
+
+    await deleteJobSearchProfile('u1', 'p1')
+
+    // Left behind, these kept feeding countUnreadNotifyMatches — which is
+    // scoped by userId alone — so the navbar badge counted unread matches for
+    // a profile the user could no longer open, and could never clear.
+    expect(mockScrapedJobDeleteMany).toHaveBeenCalledWith({ userId: 'u1', profileId: 'p1' })
+    expect(mockRuleDeleteMany).toHaveBeenCalledWith({ userId: 'u1', profileId: 'p1' })
+  })
+
+  it('does not cascade when the profile was not the caller\'s to delete', async () => {
+    mockDeleteOne.mockResolvedValue({ deletedCount: 0 })
+
+    await deleteJobSearchProfile('u1', 'p1')
+
+    expect(mockScrapedJobDeleteMany).not.toHaveBeenCalled()
+    expect(mockRuleDeleteMany).not.toHaveBeenCalled()
   })
 })
 

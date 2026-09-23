@@ -32,7 +32,10 @@ describe('GET /api/applications/[id]/activity', () => {
 
   it('returns the activity list when authenticated', async () => {
     const { listActivity } = await import('@/lib/api/applications')
-    vi.mocked(listActivity).mockResolvedValueOnce([{ type: 'created' }] as never)
+    vi.mocked(listActivity).mockResolvedValueOnce({
+      entries: [{ type: 'created' }],
+      truncated: false,
+    } as never)
 
     const { GET } = await import('./route')
     const req = new Request('http://localhost/api/applications/a1/activity')
@@ -43,5 +46,22 @@ describe('GET /api/applications/[id]/activity', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.activity).toEqual([{ type: 'created' }])
+    expect(body.truncated).toBe(false)
+  })
+
+  it('passes the truncation flag through so the UI can say the list is partial', async () => {
+    const { listActivity } = await import('@/lib/api/applications')
+    vi.mocked(listActivity).mockResolvedValueOnce({
+      entries: [{ type: 'created' }],
+      truncated: true,
+    } as never)
+
+    const { GET } = await import('./route')
+    const res = (await GET(
+      new Request('http://localhost/api/applications/a1/activity') as never,
+      { params: Promise.resolve({ id: 'a1' }) } as never
+    )) as Response
+
+    expect((await res.json()).truncated).toBe(true)
   })
 })
