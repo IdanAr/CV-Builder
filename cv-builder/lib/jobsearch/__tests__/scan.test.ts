@@ -65,6 +65,39 @@ function sortLeanChain(resolved: unknown) {
   return { sort: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(resolved) })) }
 }
 
+/**
+ * Models listDraftQueueBacklog against the same invariants the real query
+ * holds, because runScanForProfile now drains the queue twice — once before
+ * fetching, once after the newly fetched postings are persisted.
+ *
+ * Two behaviours matter and a fixed array has neither:
+ *  - an item leaves the backlog once markScrapedJobDrafted records it, since
+ *    the real query filters on `draftedAt` being unset. Without this the same
+ *    item is handed back on the second pass and drafted twice.
+ *  - postings created during this scan are visible to the later read. That
+ *    round trip is the whole point of the reordering: a résumé is never
+ *    created before the row that records it exists.
+ */
+function backlogModel(
+  seed: Array<{ _id: string; title: string; company: string; description: string }> = []
+) {
+  mockListDraftQueueBacklog.mockImplementation(async (_userId: string, _profileId: string, limit: number) => {
+    const draftedIds = new Set(mockMarkScrapedJobDrafted.mock.calls.map((call) => call[1] as string))
+    const created = mockCreateScrapedJobs.mock.calls
+      .flatMap((call) => call[2] as Array<Record<string, unknown>>)
+      .filter((job) => (job.resolvedActions as string[] | undefined)?.includes('draft_and_queue'))
+      .map((job, i) => ({
+        _id: `sj${i + 1}`,
+        title: job.title as string,
+        company: job.company as string,
+        description: job.description as string,
+      }))
+    return [...seed, ...created]
+      .filter((item) => !draftedIds.has(item._id))
+      .slice(0, Math.max(0, limit))
+  })
+}
+
 const baseProfile = {
   _id: 'p1',
   userId: 'u1',
@@ -96,8 +129,10 @@ beforeEach(() => {
   mockResumeFindOne.mockReturnValue(sortLeanChain({ _id: 'r-default', data: { basics: { name: 'Test' } } }))
   mockListRulesForProfile.mockResolvedValue([])
   mockCountDraftedInWindow.mockResolvedValue(0)
-  mockListDraftQueueBacklog.mockResolvedValue([])
-  mockMarkScrapedJobDrafted.mockResolvedValue(undefined)
+  backlogModel()
+  // Reports whether a row matched. Resolving undefined here would read as
+  // "the posting row vanished mid-scan", which is a real branch in scan.ts.
+  mockMarkScrapedJobDrafted.mockResolvedValue(true)
   mockListNewScrapedJobs.mockResolvedValue([])
   mockDeleteScrapedJobsByIds.mockResolvedValue(0)
   mockRunApplyPipeline.mockResolvedValue({
@@ -233,6 +268,7 @@ describe('runScanForProfile', () => {
       created: 0,
       skippedExisting: 0,
       drafted: 0,
+      draftFailed: 0,
       pruned: 0,
       degraded: true,
       errorMessage: 'insertMany exploded',
@@ -358,12 +394,21 @@ describe('runScanForProfile', () => {
     expect(mockRunApplyPipeline).toHaveBeenCalledWith(
       'u1', expect.anything(), expect.objectContaining({ title: 'Backend Engineer', company: 'Acme' }), ['Node'], 75, 'r-default', expect.anything()
     )
+
+    // The posting is persisted plain first — no draft fields, no draftedAt.
+    // This is the ordering guarantee: nothing is tailored until the row that
+    // will record it exists, so a failure can no longer strand a résumé.
     expect(mockCreateScrapedJobs.mock.calls[0][2][0]).toEqual(
-      expect.objectContaining({
-        draftResumeId: 'draft1', postTailorScore: 91, status: 'queued', tailoredKeywords: ['Node'], draftedAt: expect.any(Date),
-      })
+      expect.objectContaining({ status: 'new' })
     )
+    expect(mockCreateScrapedJobs.mock.calls[0][2][0]).not.toHaveProperty('draftedAt')
+
+    // The draft outcome lands afterwards, on the row that already exists.
+    expect(mockMarkScrapedJobDrafted).toHaveBeenCalledWith('u1', 'sj1', {
+      draftResumeId: 'draft1', postTailorScore: 91, pendingApprovals: [], tailoredKeywords: ['Node'], status: 'queued',
+    })
     expect(result.drafted).toBe(1)
+    expect(result.draftFailed).toBe(0)
   })
 
   it("forwards the source resume's own meta (not schema defaults) into the apply pipeline", async () => {
@@ -455,7 +500,7 @@ describe('runScanForProfile', () => {
   it('drains the existing draft_and_queue backlog before evaluating newly fetched postings', async () => {
     mockGetJobSearchProfile.mockResolvedValue(baseProfile)
     mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
-    mockListDraftQueueBacklog.mockResolvedValue([
+    backlogModel([
       { _id: 'backlog1', title: 'Old Match', company: 'Acme', description: 'JD' },
     ])
     mockScoreResume.mockReturnValue({ total: 80, missingKeywords: ['Node'] })
@@ -477,7 +522,7 @@ describe('runScanForProfile', () => {
   it('leaves a backlog item undrafted (for retry next scan) when the apply pipeline throws', async () => {
     mockGetJobSearchProfile.mockResolvedValue(baseProfile)
     mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
-    mockListDraftQueueBacklog.mockResolvedValue([
+    backlogModel([
       { _id: 'backlog1', title: 'Old Match', company: 'Acme', description: 'JD' },
     ])
     mockScoreResume.mockReturnValue({ total: 80, missingKeywords: [] })
@@ -807,5 +852,81 @@ describe('runScanForProfile', () => {
       expect(result.created).toBe(1)
       expect(mockCreateScrapedJobs.mock.calls[0][2][0].source).toBe('comeet')
     })
+  })
+})
+
+describe('runScanForProfile — draft ordering and failure visibility', () => {
+  const draftRule = [
+    { name: 'Draft it', isActive: true, action: 'draft_and_queue', conditions: [{ field: 'atsScore', op: 'gte', value: 75 }] },
+  ]
+
+  function oneDraftablePosting() {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [{ source: 'freehire', sourceId: 'a1', title: 'Backend Engineer', company: 'Acme', url: 'https://x/a1', description: 'JD' }],
+    })
+    mockScoreResume.mockReturnValue({ total: 80, missingKeywords: ['Node'] })
+    mockListRulesForProfile.mockResolvedValue(draftRule)
+  }
+
+  it('does not spend the apply pipeline when the postings cannot be persisted', async () => {
+    oneDraftablePosting()
+    mockCreateScrapedJobs.mockRejectedValue(new Error('insertMany exploded'))
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    // The bug this encodes: drafting used to happen inline while building the
+    // batch, so a failing insert left committed résumés with no row pointing
+    // at them — untraceable, and re-paid for on the next scan because no
+    // sourceId dedup key was ever stored.
+    expect(mockRunApplyPipeline).not.toHaveBeenCalled()
+    expect(result.degraded).toBe(true)
+  })
+
+  it('counts and logs a failed pipeline instead of reporting a clean scan', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    oneDraftablePosting()
+    mockRunApplyPipeline.mockRejectedValue(new Error('anthropic 401'))
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    // Previously this returned { drafted: 0, degraded: false } and HTTP 200 —
+    // indistinguishable from "nothing needed drafting" — with nothing logged,
+    // so a broken key or a schema drift could go unnoticed indefinitely.
+    expect(result.draftFailed).toBe(1)
+    expect(result.drafted).toBe(0)
+    expect(result.degraded).toBe(false)
+    expect(mockMarkScrapedJobDrafted).not.toHaveBeenCalled()
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  it('does not count a draft whose posting row vanished mid-scan', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    oneDraftablePosting()
+    // The user deleted the posting while its pipeline ran, so the row is
+    // tombstoned and the update matches nothing. The résumé is already
+    // committed and now has nothing pointing at it.
+    mockMarkScrapedJobDrafted.mockResolvedValue(false)
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.drafted).toBe(0)
+    expect(result.draftFailed).toBe(1)
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  it('still drafts a newly created posting within the same scan', async () => {
+    oneDraftablePosting()
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    // Persisting first must not cost a scan its drafting: the drain pass
+    // after the insert picks the new posting straight back up.
+    expect(result.created).toBe(1)
+    expect(result.drafted).toBe(1)
+    expect(result.draftFailed).toBe(0)
   })
 })
