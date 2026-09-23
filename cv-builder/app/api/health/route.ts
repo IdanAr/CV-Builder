@@ -11,7 +11,7 @@ import { checkRateLimit, HEALTH_RATE_LIMIT } from '@/lib/rate-limit'
 import { apiError } from '@/lib/api/route-errors'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 20
+export const maxDuration = 25
 
 /**
  * Bounded well under maxDuration, because mongoose's own
@@ -19,17 +19,21 @@ export const maxDuration = 20
  * database would hold the function open until the platform killed it, and the
  * probe would time out rather than answer "unreachable".
  *
- * 12s, not the 3s this first had. Measured against this project's Atlas
- * cluster from a cold Node process: connect+ping took **7262ms** the first
- * time (mongodb+srv SRV lookup, TLS handshake, server selection) and ~700ms
- * on every subsequent run once DNS was warm. Vercel pays that cold cost on
- * every cold lambda, so a ceiling anywhere near it would mark healthy deploys
- * "degraded" -- precisely the false alarm an uptime monitor must not produce.
+ * 15s, arrived at by measurement rather than taste. Against this project's
+ * Atlas cluster, connect+ping on a *cold* handle (mongodb+srv SRV lookup, TLS
+ * handshake, server selection) came in at 7262ms from a cold Node process and
+ * 10460ms from a cold route, against ~80-720ms once warm. A run overlapping a
+ * full local test suite exceeded 12s and returned "degraded".
  *
- * A slow-but-working database should read as ok with a high latencyMs, not as
- * unreachable; alert on the latency instead.
+ * Vercel pays that cold cost on every cold lambda, so each of the earlier
+ * candidates -- 3s, then 8s, then 12s -- would have reported healthy deploys
+ * as unreachable on cold starts. A slow-but-working database must read as ok
+ * with a high latencyMs; alert on the latency, not on this.
+ *
+ * (That cold cost is not specific to this probe: every route pays it on a cold
+ * lambda. Worth attacking separately -- it is real user-facing latency.)
  */
-const DB_PING_TIMEOUT_MS = 12_000
+const DB_PING_TIMEOUT_MS = 15_000
 
 async function pingDatabase(): Promise<{ ok: boolean; latencyMs: number; error?: string }> {
   const started = Date.now()
