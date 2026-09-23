@@ -231,6 +231,22 @@ export const CreateResumeSchema = z.object({
   applicationStatus: ApplicationStatusEnum.optional().default('draft'),
   targetCompany: z.string().trim().max(200).optional(),
   targetRole: z.string().trim().max(200).optional(),
+  /**
+   * AI-written phrases the hallucination guard could not trace back to the
+   * user's own text (detectHallucinations' output).
+   *
+   * Top-level rather than inside `data` or `meta` on purpose: it is neither a
+   * career fact nor a design setting, it is provenance about how this
+   * document came to exist -- the same shelf as applicationStatus and
+   * parentResumeId. Keeping it out of `data` preserves the two-tree
+   * invariant.
+   */
+  // .optional() WITHOUT .default([]) deliberately. A Zod default makes the
+  // field *required* in the inferred input type, so every existing
+  // createResume caller would have to pass it -- the same trap this codebase
+  // already documents for CreateScrapedJobInput's pendingApprovals. The
+  // Mongoose schema defaults it to [], so nothing is lost.
+  pendingApprovals: z.array(z.string()).optional(),
 })
 
 const ResumeMetaPatchSchema = z.object({
@@ -255,6 +271,10 @@ export const PatchResumeSchema = z.object({
   applicationStatus: ApplicationStatusEnum.optional(),
   targetCompany: z.string().trim().max(200).optional(),
   targetRole: z.string().trim().max(200).optional(),
+  // Clearing this to [] is the user attesting they have checked the flagged
+  // claims -- the same blanket-attestation trust model approveScrapedJob
+  // already uses for the queue.
+  pendingApprovals: z.array(z.string()).optional(),
 })
 
 export type ResumeData = z.infer<typeof ResumeDataSchema>

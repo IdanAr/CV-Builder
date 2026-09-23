@@ -10,6 +10,8 @@ export interface IResume extends Document {
   targetCompany?: string
   targetRole?: string
   parentResumeId?: string
+  /** Unverified AI-written phrases — see CreateResumeSchema's note. */
+  pendingApprovals: string[]
   // Cache-aside for listResumes' ATS format score: reused when
   // formatScoreComputedAt >= updatedAt, recomputed otherwise. See
   // lib/api/resumes.ts's listResumes.
@@ -29,6 +31,7 @@ const ResumeSchema = new Schema<IResume>(
     targetCompany: { type: String, maxlength: 200 },
     targetRole: { type: String, maxlength: 200 },
     parentResumeId: { type: String },
+    pendingApprovals: { type: [String], default: [] },
     cachedFormatScore: { type: Number },
     formatScoreComputedAt: { type: Date },
   },

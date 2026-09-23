@@ -56,6 +56,34 @@ describe('runApplyPipeline', () => {
     expect(result.postTailorScore).toBe(90)
   })
 
+  it('records the unverified claims on the resume itself, not only on the queue row', async () => {
+    // The interactive paths hold AI text back until the user accepts it; this
+    // one writes a real document unattended. Before this the flag lived only
+    // on the sibling ScrapedJob row, so opening the draft in the editor — or
+    // exporting it — warned about nothing.
+    mockRunAtsFixPipeline.mockResolvedValue([
+      { id: 'fix-summary', section: 'summary', original: '', suggested: 'Grew revenue 40%.', targetKeywords: ['revenue'], pendingApprovals: ['40%'] },
+    ])
+
+    await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1', sourceMeta)
+
+    expect(mockCreateResume).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({ pendingApprovals: ['40%'] }),
+      expect.anything()
+    )
+  })
+
+  it('records an empty list when everything traced back to the user\'s own text', async () => {
+    await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1', sourceMeta)
+
+    expect(mockCreateResume).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({ pendingApprovals: [] }),
+      expect.anything()
+    )
+  })
+
   it('returns status "needs_review" when the post-tailor score is below minAtsScore', async () => {
     mockScoreResume.mockReturnValue({ total: 60, missingKeywords: [] })
     const result = await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1', sourceMeta)
