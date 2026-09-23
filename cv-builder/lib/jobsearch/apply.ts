@@ -73,6 +73,13 @@ export async function runApplyPipeline(
     pendingApprovals.length > 0 || postTailorScore < minAtsScore ? 'needs_review' : 'queued'
 
   const resume = await createResume(userId, {
+    // Carried onto the resume itself, not just onto the sibling ScrapedJob
+    // row. The interactive paths hold AI text back until the user accepts it;
+    // this path writes it straight into a real document. Recording the
+    // unverified claims here is what lets the editor warn about a draft that
+    // was auto-tailored -- previously the flag lived only on the queue row,
+    // so opening the draft directly showed nothing at all.
+    pendingApprovals,
     title: truncate(`${posting.title} at ${posting.company} (tailored)`, 200),
     data: { ...tailoredData, coverLetter: coverLetter.content },
     // Carry over the source resume's own design metadata verbatim —
