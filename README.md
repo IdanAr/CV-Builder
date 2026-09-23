@@ -540,18 +540,26 @@ npm run test:run   # Vitest, single run (CI)
 
 Copy `cv-builder/.env.local.example` to `cv-builder/.env.local` and fill in:
 
-| Variable | Purpose |
-|---|---|
-| `MONGODB_URI` | MongoDB Atlas connection string |
-| `AUTH_SECRET` | Auth.js session secret (`openssl rand -base64 32`) |
-| `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | GitHub OAuth app credentials |
-| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth app credentials |
-| `ANTHROPIC_API_KEY` | Powers all AI Copilot features (suggestions, ATS Fix, cover letters, upload extraction, job-search tailoring) - Claude Haiku 4.5 |
-| `QSTASH_TOKEN` | Upstash QStash publish token, used to fan out the daily job-search scan |
-| `QSTASH_CURRENT_SIGNING_KEY` / `QSTASH_NEXT_SIGNING_KEY` | Verify that scan-worker callbacks genuinely came from QStash |
-| `QSTASH_URL` | Only needed if your QStash instance is not the default EU region |
-| `CRON_SECRET` | Bearer token Vercel Cron sends when calling the scan fan-out route (`openssl rand -base64 32`) |
-| `APP_URL` | This app's own canonical base URL, so the QStash publish call knows where to send the worker callback |
+| Variable | Required | Purpose |
+|---|---|---|
+| `MONGODB_URI` | **Yes** | MongoDB Atlas connection string |
+| `AUTH_SECRET` | **Yes** | Auth.js session secret (`openssl rand -base64 32`) |
+| `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | **Yes** | GitHub OAuth app credentials |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | **Yes** | Google OAuth app credentials |
+| `ANTHROPIC_API_KEY` | **Yes** | Powers all AI Copilot features (suggestions, ATS Fix, cover letters, upload extraction, job-search tailoring) - Claude Haiku 4.5 |
+| `QSTASH_TOKEN` | No | Upstash QStash publish token, used to fan out the daily job-search scan |
+| `QSTASH_CURRENT_SIGNING_KEY` / `QSTASH_NEXT_SIGNING_KEY` | No | Verify that scan-worker callbacks genuinely came from QStash |
+| `QSTASH_URL` | No | Only needed if your QStash instance is not the default EU region |
+| `CRON_SECRET` | No | Bearer token Vercel Cron sends when calling the scan fan-out route (`openssl rand -base64 32`). Also unlocks the detailed `/api/health` output. |
+| `APP_URL` | No | This app's own canonical base URL, so the QStash publish call knows where to send the worker callback |
+
+The three QStash variables are a set - configure all of them or none. A token
+without signing keys publishes scan jobs the worker then rejects.
+
+The required set is checked once at startup (`instrumentation.ts` ->
+`lib/env.ts`). A production process refuses to start with any of them missing
+or unusable, naming every problem at once; a development process starts anyway
+and logs the same list.
 
 In production one additional variable is set on the hosting platform - see [Deployment](#deployment):
 
@@ -564,6 +572,12 @@ In production one additional variable is set on the hosting platform - see [Depl
 ## API Reference
 
 All routes below are session-authenticated via Auth.js (`auth()` wrapper) and scoped to the requesting user, except the cron and QStash worker routes noted otherwise.
+
+### Health
+| Method | Route | Purpose |
+|---|---|---|
+| `GET` | `/api/health` | Unauthenticated liveness/readiness probe. `200` with `{"status":"ok"}` when the required configuration is complete and the database answers a real round-trip; `503` with `{"status":"degraded"}` otherwise. The public body deliberately names no variable and carries no error text. Send `Authorization: Bearer $CRON_SECRET` to get the detail (which variables, the database error, the round-trip latency). Rate-limited to 30/min per IP for anonymous callers. |
+
 
 ### Resumes
 | Method | Route | Purpose |

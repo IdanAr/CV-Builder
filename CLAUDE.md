@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository layout
 
-The actual application lives in **`cv-builder/`**, not the repo root. The root only holds `README.md`, `docs/superpowers/` (sprint specs/plans — present on disk but **git-ignored**, internal use only; the same applies to `cv-builder/docs/superpowers/`), and a stray unused `package.json` (single `mongodb` dependency, not wired to anything — ignore it). All commands below are run from `cv-builder/`.
+The actual application lives in **`cv-builder/`**, not the repo root. The root only holds `README.md` and `docs/superpowers/` (sprint specs/plans — present on disk but **git-ignored**, internal use only; the same applies to `cv-builder/docs/superpowers/`). There is deliberately **no lockfile or `package.json` at the repo root**: one used to sit there unused, and Next picked the repo root as its workspace root because of it, which changes output file tracing (see `outputFileTracingIncludes` in `next.config.mjs`). Don't reintroduce one. If you have a stale `node_modules/` at the root from before, it is inert and can be deleted. All commands below are run from `cv-builder/`.
 
 ## Commands
 
