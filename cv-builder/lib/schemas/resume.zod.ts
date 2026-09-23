@@ -1,5 +1,6 @@
 // lib/schemas/resume.zod.ts
 import { z } from 'zod'
+import { defaultSectionOrder } from '@/lib/sections'
 
 // Auto-save fires while the user is mid-typing, so format checks on URL/email
 // must not run at the schema layer — any string is accepted. Format feedback
@@ -205,20 +206,10 @@ export const ResumeMetaSchema = z.object({
   pageMargins: z.number().min(0.5).max(1.5).default(1.0),
   lineSpacing: z.number().min(1.0).max(1.15).default(1.15),
   sidebarRailWidth: z.number().min(20).max(40).default(33),
-  sectionOrder: z
-    .array(z.string())
-    .default([
-      'work',
-      'education',
-      'skills',
-      'certificates',
-      'awards',
-      'publications',
-      'volunteer',
-      'languages',
-      'interests',
-      'projects',
-    ]),
+  // defaultSectionOrder (not a literal array) so the schema, the editor store,
+  // the preview templates and both exporters cannot drift apart again, and so
+  // each parse gets its own array to reorder.
+  sectionOrder: z.array(z.string()).default(defaultSectionOrder),
   layout: z.enum(['single-column', 'two-column']).default('single-column'),
   columnAssignment: z.record(z.string(), z.enum(['left', 'right'])).default({}),
   excludedAtsKeywords: z.array(z.string()).default([]),
@@ -249,20 +240,32 @@ export const CreateResumeSchema = z.object({
   pendingApprovals: z.array(z.string()).optional(),
 })
 
-const ResumeMetaPatchSchema = z.object({
-  templateId: z.string().optional(),
-  fontFamily: z.string().optional(),
-  headerFontFamily: z.string().optional(),
-  primaryColor: z.string().optional(),
-  accentColor: z.string().optional(),
-  pageMargins: z.number().min(0.5).max(1.5).optional(),
-  lineSpacing: z.number().min(1.0).max(1.15).optional(),
-  sidebarRailWidth: z.number().min(20).max(40).optional(),
-  sectionOrder: z.array(z.string()).optional(),
-  layout: z.enum(['single-column', 'two-column']).optional(),
-  columnAssignment: z.record(z.string(), z.enum(['left', 'right'])).optional(),
-  excludedAtsKeywords: z.array(z.string()).optional(),
-})
+type Undefaulted<T> = T extends z.ZodDefault<infer Inner> ? Inner : T
+
+/**
+ * Every field of a shape, stripped of its `.default()` and made optional,
+ * with all other validation (min/max, enums) intact.
+ *
+ * Deliberately NOT `.partial()`: in Zod 4 that leaves the ZodDefault in place
+ * underneath the ZodOptional, so an absent key still parses to the default
+ * rather than to undefined. patchResume writes back every key that comes out
+ * defined, as a `meta.<key>` dot-path $set -- so under `.partial()` a
+ * one-field design tweak would quietly reset template, fonts, colours,
+ * margins and section order along with it.
+ */
+function undefaultedShape<S extends z.ZodRawShape>(shape: S) {
+  return Object.fromEntries(
+    Object.entries(shape).map(([key, field]) => {
+      const base = (field instanceof z.ZodDefault ? field.def.innerType : field) as z.ZodType
+      return [key, base.optional()]
+    })
+  ) as unknown as { [K in keyof S]: z.ZodOptional<Undefaulted<S[K]>> }
+}
+
+// Derived from ResumeMetaSchema rather than restated. The hand-written copy
+// this replaces had to be edited in lockstep with it, and a field added to one
+// but not the other would have been silently unpatchable.
+const ResumeMetaPatchSchema = z.object(undefaultedShape(ResumeMetaSchema.shape))
 
 export const PatchResumeSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),

@@ -2,7 +2,7 @@ import React from 'react'
 import { Text } from '@react-pdf/renderer'
 import type { Style } from '@react-pdf/types'
 import { parseRichText, splitParagraphs } from '@/lib/rich-text'
-import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
+import type { ResumeData } from '@/lib/schemas/resume.zod'
 import { registerPdfFonts, pdfFontFamily } from '@/lib/fonts/registry'
 import { PARAGRAPH_GAP_PT } from '@/lib/design/tokens'
 
@@ -21,13 +21,10 @@ export function inToPt(inches: number): number {
   return inches * 72
 }
 
-export const DEFAULT_SECTION_ORDER = [
-  'work', 'education', 'skills', 'volunteer', 'languages',
-]
-
-export function resolveSectionOrder(meta: ResumeMeta): string[] {
-  return meta.sectionOrder?.length > 0 ? meta.sectionOrder : DEFAULT_SECTION_ORDER
-}
+// Re-exported, not redefined. The private copy that used to live here had
+// gone stale at five entries while the preview templates fell back to ten --
+// see DEFAULT_SECTION_ORDER in lib/sections.
+export { resolveSectionOrder } from '@/lib/sections'
 
 export function ensureHttps(url: string): string {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`

@@ -4,6 +4,7 @@ import React from 'react'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { renderCustomSection } from './renderCustomSection'
 import { getColumnSide } from '@/lib/get-column-side'
+import { resolveSectionOrder } from '@/lib/sections'
 import { RichText } from './RichText'
 import { formatDateRange } from '@/lib/format-date'
 import { resolveProfiles } from '@/lib/basics-profiles'
@@ -20,12 +21,10 @@ export interface TemplateProps {
   meta: ResumeMeta
 }
 
-const ALL_SECTIONS = ['work', 'education', 'skills', 'certificates', 'awards', 'publications', 'volunteer', 'languages', 'interests', 'projects']
-
 function ClassicTemplateImpl({ data, meta }: TemplateProps) {
   const { basics = {} } = data
   const pad = meta.pageMargins * 96
-  const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : ALL_SECTIONS
+  const sectionOrder = resolveSectionOrder(meta)
 
   const page: React.CSSProperties = {
     fontFamily: webFontFamily(meta.fontFamily),

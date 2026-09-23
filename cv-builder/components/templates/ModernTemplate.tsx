@@ -4,6 +4,7 @@ import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
 import { RichText } from './RichText'
 import { getColumnSide } from '@/lib/get-column-side'
+import { resolveSectionOrder } from '@/lib/sections'
 import { formatDateRange } from '@/lib/format-date'
 import { resolveProfiles } from '@/lib/basics-profiles'
 import { resolveWorkRoles, resolveEducationRoles } from '@/lib/roles'
@@ -31,12 +32,10 @@ function buildContactLine(basics: Basics): React.ReactNode {
   return parts.flatMap((p, i) => (i < parts.length - 1 ? [p, ' · '] : [p]))
 }
 
-const ALL_SECTIONS = ['work', 'education', 'skills', 'certificates', 'awards', 'publications', 'volunteer', 'languages', 'interests', 'projects']
-
 function ModernTemplateImpl({ data, meta }: TemplateProps) {
   const { basics = {} } = data
   const pad = meta.pageMargins * 96
-  const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : ALL_SECTIONS
+  const sectionOrder = resolveSectionOrder(meta)
 
   const page: React.CSSProperties = {
     fontFamily: webFontFamily(meta.fontFamily),

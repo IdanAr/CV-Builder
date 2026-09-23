@@ -7,6 +7,7 @@ import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import type { ExportMode } from '@/lib/export-mode'
 import { parseRichText, splitParagraphs, TextRun as RichTextRun } from '@/lib/rich-text'
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
+import { resolveSectionOrder } from '@/lib/sections'
 import { formatDate, formatDateRange } from '@/lib/format-date'
 import { buildDocxStyles } from './styles'
 import { resolveProfiles } from '@/lib/basics-profiles'
@@ -788,8 +789,7 @@ export function buildDocx(data: ResumeData, meta: ResumeMeta, mode: ExportMode =
 
   const { basics = {} } = data
 
-  const DEFAULT_ORDER = ['work', 'education', 'skills', 'volunteer', 'languages']
-  const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : DEFAULT_ORDER
+  const sectionOrder = resolveSectionOrder(meta)
 
   const theme = mode === 'ats' ? buildAtsDocxTheme(meta) : buildDocxTheme(meta)
   const headerShading = theme.headerFill
