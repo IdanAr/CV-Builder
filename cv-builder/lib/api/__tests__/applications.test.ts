@@ -434,14 +434,41 @@ describe('deleteApplication', () => {
 })
 
 describe('listActivity', () => {
-  it('returns the log newest first, scoped to the owner', async () => {
-    const sortMock = vi.fn(() => leanChain([{ _id: 'ev1' }]))
+  function chain(rows: unknown[]) {
+    const limitMock = vi.fn(() => leanChain(rows))
+    const sortMock = vi.fn(() => ({ limit: limitMock }))
     mockActivityFind.mockReturnValue({ sort: sortMock })
+    return { sortMock, limitMock }
+  }
+
+  it('returns the log newest first, scoped to the owner', async () => {
+    const { sortMock } = chain([{ _id: 'ev1' }])
 
     const result = await listActivity('u1', 'a1')
 
     expect(mockActivityFind).toHaveBeenCalledWith({ applicationId: 'a1', userId: 'u1' })
     expect(sortMock).toHaveBeenCalledWith({ changedAt: -1, _id: -1 })
-    expect(result).toEqual([{ _id: 'ev1' }])
+    expect(result).toEqual({ entries: [{ _id: 'ev1' }], truncated: false })
+  })
+
+  it('bounds the read instead of returning an unbounded history', async () => {
+    // This log grows by one row per changed field per PATCH and nothing
+    // prunes it, so the route used to hand back the entire history at once.
+    const { limitMock } = chain([{ _id: 'ev1' }])
+
+    await listActivity('u1', 'a1', 2)
+
+    // limit + 1: one extra row is how truncation is detected without a
+    // second count query.
+    expect(limitMock).toHaveBeenCalledWith(3)
+  })
+
+  it('flags truncation rather than silently capping the list', async () => {
+    chain([{ _id: 'ev1' }, { _id: 'ev2' }, { _id: 'ev3' }])
+
+    const result = await listActivity('u1', 'a1', 2)
+
+    expect(result.truncated).toBe(true)
+    expect(result.entries).toEqual([{ _id: 'ev1' }, { _id: 'ev2' }])
   })
 })

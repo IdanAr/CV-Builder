@@ -229,7 +229,31 @@ export async function deleteApplication(userId: string, id: string): Promise<boo
   return true
 }
 
-export async function listActivity(userId: string, applicationId: string) {
+/**
+ * Newest-first activity for one application row.
+ *
+ * ApplicationActivity gains a row per changed field per PATCH and nothing
+ * prunes it, so a heavily-edited row's history grows without bound. This read
+ * had no limit at all: the route returned the entire history in one response,
+ * and ActivityLog rendered every entry into a popover.
+ *
+ * `truncated` is returned rather than silently capping, so the UI can say the
+ * list is partial instead of quietly presenting it as the whole story.
+ */
+export const ACTIVITY_PAGE_SIZE = 200
+
+export async function listActivity(
+  userId: string,
+  applicationId: string,
+  limit: number = ACTIVITY_PAGE_SIZE
+) {
   await dbConnect()
-  return ApplicationActivity.find({ applicationId, userId }).sort({ changedAt: -1, _id: -1 }).lean()
+  // One extra row is the cheapest way to know whether more exist without a
+  // second count query.
+  const rows = await ApplicationActivity.find({ applicationId, userId })
+    .sort({ changedAt: -1, _id: -1 })
+    .limit(limit + 1)
+    .lean()
+  const truncated = rows.length > limit
+  return { entries: truncated ? rows.slice(0, limit) : rows, truncated }
 }

@@ -55,6 +55,34 @@ describe('ActivityLog', () => {
     expect(screen.getByText('2 hours ago')).toBeInTheDocument()
   })
 
+  it('says so when the history was capped, rather than presenting it as complete', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ activity: entries, truncated: true }) })
+    )
+    render(<ActivityLog applicationId="a1" company="Acme" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Activity log for application at Acme' }))
+
+    // The read is bounded because this log grows without limit on a
+    // heavily-edited row; showing a capped list unlabelled would quietly
+    // misrepresent it as the whole history.
+    expect(await screen.findByText('Showing the most recent changes only.')).toBeInTheDocument()
+  })
+
+  it('shows no such note when the whole history fits', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ activity: entries, truncated: false }) })
+    )
+    render(<ActivityLog applicationId="a1" company="Acme" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Activity log for application at Acme' }))
+
+    await screen.findByText("Status changed from 'Applied' to 'Interviewing'")
+    expect(screen.queryByText('Showing the most recent changes only.')).not.toBeInTheDocument()
+  })
+
   it('announces the panel as a live region so loading-to-loaded transitions are heard', async () => {
     vi.stubGlobal(
       'fetch',
