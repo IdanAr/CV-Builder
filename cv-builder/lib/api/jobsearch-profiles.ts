@@ -3,6 +3,7 @@
 import dbConnect from '@/lib/db'
 import JobSearchProfile from '@/models/JobSearchProfile'
 import ScrapedJob from '@/models/ScrapedJob'
+import JobSearchRule from '@/models/JobSearchRule'
 import Resume from '@/models/Resume'
 import type {
   CreateJobSearchProfileInput,
@@ -155,7 +156,29 @@ export async function updateJobSearchProfile(
 export async function deleteJobSearchProfile(userId: string, id: string): Promise<boolean> {
   await dbConnect()
   const result = await JobSearchProfile.deleteOne({ _id: id, userId })
-  return result.deletedCount === 1
+  if (result.deletedCount !== 1) return false
+
+  // Cascade, matching deleteApplication's shape in lib/api/applications.ts.
+  // Without it these rows outlive the profile that gave them meaning, and two
+  // queries scoped by userId alone keep counting them:
+  // countUnreadNotifyMatches drives the navbar badge, so it showed unread
+  // matches for a profile that no longer existed and that the user had no
+  // way to open or clear; listNotifyMatches returned them with an undefined
+  // profileName, since getProfileNameMap no longer had the id.
+  await Promise.all([
+    ScrapedJob.deleteMany({ userId, profileId: id }),
+    JobSearchRule.deleteMany({ userId, profileId: id }),
+  ])
+
+  // Deliberately NOT deleting the tailored resumes these postings produced.
+  // deleteScrapedJob removes a single posting's draft because that is a
+  // direct, one-for-one undo of the thing the user just deleted. Deleting a
+  // whole profile is a decision to stop searching, not to discard the
+  // documents the search produced -- and unlike an orphaned ScrapedJob, which
+  // is invisible, a draft resume stays in the library where the user can see
+  // it and delete it themselves. The destructive reading of "delete profile"
+  // is not recoverable; this one is.
+  return true
 }
 
 // System-wide query used only by the QStash cron fan-out
