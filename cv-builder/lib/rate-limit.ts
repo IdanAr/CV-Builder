@@ -29,6 +29,12 @@ export const COMEET_RESOLVE_RATE_LIMIT: RateLimitOptions = { limit: 10, windowMs
 /** Résumé/cover-letter PDF & DOCX export (server-side react-pdf/docx render): 20 requests/min per user. */
 export const EXPORT_RATE_LIMIT: RateLimitOptions = { limit: 20, windowMs: 60_000 }
 
+// Keyed by client IP rather than user id -- /api/health is deliberately
+// unauthenticated so an uptime monitor can reach it. 30/min leaves room for a
+// two-second polling interval; requests carrying a valid ops bearer skip the
+// limit entirely.
+export const HEALTH_RATE_LIMIT: RateLimitOptions = { limit: 30, windowMs: 60_000 }
+
 interface Bucket {
   tokens: number
   lastRefill: number

@@ -1,16 +1,10 @@
-import { timingSafeEqual } from 'crypto'
 import { NextResponse } from 'next/server'
 import { listAllActiveJobSearchProfiles } from '@/lib/api/jobsearch-profiles'
 import { publishScanJob } from '@/lib/jobsearch/queue'
 import { apiError, handleRouteError } from '@/lib/api/route-errors'
-
-function isValidCronAuth(authHeader: string | null): boolean {
-  if (!process.env.CRON_SECRET || !authHeader) return false
-  const expected = Buffer.from(`Bearer ${process.env.CRON_SECRET}`)
-  const actual = Buffer.from(authHeader)
-  if (expected.length !== actual.length) return false
-  return timingSafeEqual(expected, actual)
-}
+// Shared with /api/health's detailed output rather than kept private here, so
+// the constant-time comparison has exactly one implementation.
+import { isValidOpsAuth as isValidCronAuth } from '@/lib/ops-auth'
 
 // Caps how many publishScanJob calls run at once. Each is an independent
 // QStash HTTP round-trip; fanning out every active profile unboundedly is
