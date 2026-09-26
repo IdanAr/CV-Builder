@@ -2,6 +2,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import type { ResumeData, ResumeMeta, CustomSection } from '@/lib/schemas/resume.zod'
+import { defaultSectionOrder } from '@/lib/sections'
 
 export interface ResumeEditorStore {
   resumeId: string
@@ -77,18 +78,7 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
       pageMargins: 1.0,
       lineSpacing: 1.15,
       sidebarRailWidth: 33,
-      sectionOrder: [
-        'work',
-        'education',
-        'skills',
-        'certificates',
-        'awards',
-        'publications',
-        'volunteer',
-        'languages',
-        'interests',
-        'projects',
-      ],
+      sectionOrder: defaultSectionOrder(),
       layout: 'single-column',
       columnAssignment: {},
       excludedAtsKeywords: [],

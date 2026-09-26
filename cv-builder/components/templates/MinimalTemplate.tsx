@@ -2,6 +2,7 @@
 import React from 'react'
 import type { TemplateProps } from './ClassicTemplate'
 import { renderCustomSection } from './renderCustomSection'
+import { resolveSectionOrder } from '@/lib/sections'
 import { RichText } from './RichText'
 import { formatDateRange } from '@/lib/format-date'
 import { resolveProfiles } from '@/lib/basics-profiles'
@@ -13,12 +14,10 @@ function rt(text: string | undefined | null): React.ReactNode {
   return <RichText text={text} />
 }
 
-const ALL_SECTIONS = ['work', 'education', 'skills', 'certificates', 'awards', 'publications', 'volunteer', 'languages', 'interests', 'projects']
-
 function MinimalTemplateImpl({ data, meta }: TemplateProps) {
   const { basics = {} } = data
   const pad = meta.pageMargins * 96
-  const sectionOrder = meta.sectionOrder?.length > 0 ? meta.sectionOrder : ALL_SECTIONS
+  const sectionOrder = resolveSectionOrder(meta)
 
   const page: React.CSSProperties = {
     fontFamily: webFontFamily(meta.fontFamily),
