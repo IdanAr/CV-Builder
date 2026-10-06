@@ -82,11 +82,16 @@ function NavLink({
   onNavigate?: () => void
 }) {
   const Icon = item.icon
+  const shown = waiting > 99 ? '99+' : String(waiting)
+  const collapsedLabel =
+    item.showWaiting && waiting > 0
+      ? `${item.label}, ${shown} ${waiting === 1 ? 'item' : 'items'} waiting`
+      : item.label
   const link = (
     <Link
       href={item.href}
       aria-current={active ? 'page' : undefined}
-      aria-label={collapsed ? item.label : undefined}
+      aria-label={collapsed ? collapsedLabel : undefined}
       onClick={onNavigate}
       className={cn(
         'relative flex items-center gap-3 rounded-control px-2.5 py-2 text-sm font-medium transition',

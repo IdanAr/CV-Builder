@@ -91,6 +91,24 @@ describe('SidebarNav', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('collapsed: the waiting count is part of the accessible name', () => {
+    setup({ collapsed: true, waiting: 7 })
+    expect(screen.getByRole('link', { name: /job search, 7 items waiting/i })).toBeInTheDocument()
+  })
+
+  it('collapsed: singular and capped waiting names', () => {
+    const { unmount } = render(<SidebarNav user={user} waiting={1} collapsed onToggle={() => {}} />)
+    expect(screen.getByRole('link', { name: /job search, 1 item waiting/i })).toBeInTheDocument()
+    unmount()
+    render(<SidebarNav user={user} waiting={140} collapsed onToggle={() => {}} />)
+    expect(screen.getByRole('link', { name: /job search, 99\+ items waiting/i })).toBeInTheDocument()
+  })
+
+  it('collapsed: zero waiting keeps the plain name', () => {
+    setup({ collapsed: true, waiting: 0 })
+    expect(screen.getByRole('link', { name: 'Job search' })).toBeInTheDocument()
+  })
+
   it('refreshes the waiting count when job data changes elsewhere', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ count: 0, waiting: 4 }) }))
     setup({ waiting: 1 })
@@ -103,7 +121,11 @@ describe('SidebarNav', () => {
   it('calls onNavigate when a link is followed (closes a drawer)', async () => {
     const onNavigate = vi.fn()
     setup({ onNavigate })
+    // Stop jsdom attempting a real navigation (it logs "Not implemented").
+    const block = (e: Event) => e.preventDefault()
+    document.addEventListener('click', block)
     await userEvent.click(screen.getByRole('link', { name: /applications/i }))
+    document.removeEventListener('click', block)
     expect(onNavigate).toHaveBeenCalled()
   })
 
