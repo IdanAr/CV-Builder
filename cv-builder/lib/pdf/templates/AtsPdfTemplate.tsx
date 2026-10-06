@@ -1,5 +1,7 @@
 import React from 'react'
-import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
+import { Document, View, StyleSheet } from '@react-pdf/renderer'
+import { Page, Text, FontScaleProvider } from '../font-scale'
+import { resolveFontScale } from '@/lib/design/font-scale'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import {
   mapToPdfFont, inToPt, resolveSectionOrder, pdfDocumentProps,
@@ -30,8 +32,9 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
   const margin = inToPt(Math.max(meta.pageMargins, 0.5))
   const lineHeight = Math.min(Math.max(meta.lineSpacing, 1.0), 1.15)
   const sectionOrder = resolveSectionOrder(meta)
-  const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE, lineHeight)
-  const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE, lineHeight)
+  const scale = resolveFontScale(meta)
+  const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE * scale, lineHeight)
+  const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE * scale, lineHeight)
 
   const styles = withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: PAGE_FONT_SIZE, lineHeight, color: '#000000', padding: margin },
@@ -288,15 +291,17 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
 
   return (
     <Document {...pdfDocumentProps(data, title)}>
-      <Page size="A4" style={styles.page}>
-        <View>
-          <Text style={styles.name}>{basics.name ?? ''}</Text>
-          {basics.label ? <Text style={styles.label}>{basics.label}</Text> : null}
-          {contactLine ? <Text style={styles.contact}>{contactLine}</Text> : null}
-          {renderPdfRichText(basics.summary, styles.body)}
-          {sectionOrder.map(renderSection)}
-        </View>
-      </Page>
+      <FontScaleProvider value={scale}>
+        <Page size="A4" style={styles.page}>
+          <View>
+            <Text style={styles.name}>{basics.name ?? ''}</Text>
+            {basics.label ? <Text style={styles.label}>{basics.label}</Text> : null}
+            {contactLine ? <Text style={styles.contact}>{contactLine}</Text> : null}
+            {renderPdfRichText(basics.summary, styles.body)}
+            {sectionOrder.map(renderSection)}
+          </View>
+        </Page>
+      </FontScaleProvider>
     </Document>
   )
 }

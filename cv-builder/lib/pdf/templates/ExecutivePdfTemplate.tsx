@@ -1,5 +1,7 @@
 ﻿import React from 'react'
-import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/renderer'
+import { Document, View, StyleSheet } from '@react-pdf/renderer'
+import { Page, Text, Link, FontScaleProvider } from '../font-scale'
+import { resolveFontScale } from '@/lib/design/font-scale'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns, pdfDocumentProps } from './pdf-utils'
 import { resolveProfiles } from '@/lib/basics-profiles'
@@ -21,8 +23,9 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
   const headFont = mapToPdfFont(meta.headerFontFamily)
   const margin = inToPt(meta.pageMargins)
   const sectionOrder = resolveSectionOrder(meta)
-  const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE, meta.lineSpacing)
-  const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE, meta.lineSpacing)
+  const scale = resolveFontScale(meta)
+  const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE * scale, meta.lineSpacing)
+  const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE * scale, meta.lineSpacing)
   const styles = withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: PAGE_FONT_SIZE, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
     name: { fontFamily: headFont, fontSize: T.nameSize, fontWeight: 'bold', color: meta.primaryColor, letterSpacing: 0.25 },
@@ -378,27 +381,31 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
     const rightSections = sectionOrder.filter((s) => getColumnSide(s, ca) === 'right')
     return (
       <Document {...pdfDocumentProps(data, title)}>
-        <Page size="A4" style={styles.page}>
-          {header}
-          {/* Web two-column: 58% / 42% split with a 24px gap. Each column renders
-              top-to-bottom in full so the PDF reading order stays linear. */}
-          <View style={{ flexDirection: 'row', gap: 18 }}>
-            <View style={{ width: '58%' }}>{leftSections.map(renderPdfSection)}</View>
-            <View style={{ flex: 1 }}>{rightSections.map(renderPdfSection)}</View>
-          </View>
-        </Page>
+        <FontScaleProvider value={scale}>
+          <Page size="A4" style={styles.page}>
+            {header}
+            {/* Web two-column: 58% / 42% split with a 24px gap. Each column renders
+                top-to-bottom in full so the PDF reading order stays linear. */}
+            <View style={{ flexDirection: 'row', gap: 18 }}>
+              <View style={{ width: '58%' }}>{leftSections.map(renderPdfSection)}</View>
+              <View style={{ flex: 1 }}>{rightSections.map(renderPdfSection)}</View>
+            </View>
+          </Page>
+        </FontScaleProvider>
       </Document>
     )
   }
 
   return (
     <Document {...pdfDocumentProps(data, title)}>
-      <Page size="A4" style={styles.page}>
-        {header}
+      <FontScaleProvider value={scale}>
+        <Page size="A4" style={styles.page}>
+          {header}
 
-        {/* Sections */}
-        {sectionOrder.map(renderPdfSection)}
-      </Page>
+          {/* Sections */}
+          {sectionOrder.map(renderPdfSection)}
+        </Page>
+      </FontScaleProvider>
     </Document>
   )
 }

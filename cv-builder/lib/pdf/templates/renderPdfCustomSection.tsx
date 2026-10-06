@@ -1,5 +1,6 @@
 import React from 'react'
-import { View, Text, Link } from '@react-pdf/renderer'
+import { View } from '@react-pdf/renderer'
+import { Text, Link } from '../font-scale'
 import type { Style } from '@react-pdf/types'
 import type { CustomSection } from '@/lib/schemas/resume.zod'
 import { ensureHttps, renderPdfRichText, renderPdfRichTextRuns } from './pdf-utils'

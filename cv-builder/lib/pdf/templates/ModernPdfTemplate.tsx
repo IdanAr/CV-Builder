@@ -1,5 +1,7 @@
 ﻿import React from 'react'
-import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/renderer'
+import { Document, View, StyleSheet } from '@react-pdf/renderer'
+import { Page, Text, Link, FontScaleProvider } from '../font-scale'
+import { resolveFontScale } from '@/lib/design/font-scale'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns, pdfDocumentProps } from './pdf-utils'
 import { resolveProfiles } from '@/lib/basics-profiles'
@@ -21,8 +23,9 @@ export function ModernPdfTemplate({ data, meta, title }: { data: ResumeData; met
   const headFont = mapToPdfFont(meta.headerFontFamily)
   const margin = inToPt(meta.pageMargins)
   const sectionOrder = resolveSectionOrder(meta)
-  const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE, meta.lineSpacing)
-  const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE, meta.lineSpacing)
+  const scale = resolveFontScale(meta)
+  const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE * scale, meta.lineSpacing)
+  const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE * scale, meta.lineSpacing)
   const styles = withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: PAGE_FONT_SIZE, lineHeight: meta.lineSpacing, color: '#000000' },
     headerBlock: { backgroundColor: meta.primaryColor, padding: margin, paddingBottom: margin * 0.75 },
@@ -354,6 +357,29 @@ export function ModernPdfTemplate({ data, meta, title }: { data: ResumeData; met
     const rightSections = sectionOrder.filter((s) => getColumnSide(s, ca) === 'right')
     return (
       <Document {...pdfDocumentProps(data, title)}>
+        <FontScaleProvider value={scale}>
+          <Page size="A4" style={styles.page}>
+            <View style={styles.headerBlock}>
+              <Text style={styles.name}>{basics.name ?? ''}</Text>
+              {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
+              {buildContactRow()}
+            </View>
+            <View style={styles.body_section}>
+              {renderPdfRichText(basics.summary, styles.summaryBox)}
+              <View style={{ flexDirection: 'row', gap: 18 }}>
+                <View style={{ flex: 0.58 }}>{leftSections.map(renderPdfSection)}</View>
+                <View style={{ flex: 0.42 }}>{rightSections.map(renderPdfSection)}</View>
+              </View>
+            </View>
+          </Page>
+        </FontScaleProvider>
+      </Document>
+    )
+  }
+
+  return (
+    <Document {...pdfDocumentProps(data, title)}>
+      <FontScaleProvider value={scale}>
         <Page size="A4" style={styles.page}>
           <View style={styles.headerBlock}>
             <Text style={styles.name}>{basics.name ?? ''}</Text>
@@ -362,29 +388,10 @@ export function ModernPdfTemplate({ data, meta, title }: { data: ResumeData; met
           </View>
           <View style={styles.body_section}>
             {renderPdfRichText(basics.summary, styles.summaryBox)}
-            <View style={{ flexDirection: 'row', gap: 18 }}>
-              <View style={{ flex: 0.58 }}>{leftSections.map(renderPdfSection)}</View>
-              <View style={{ flex: 0.42 }}>{rightSections.map(renderPdfSection)}</View>
-            </View>
+            {sectionOrder.map(renderPdfSection)}
           </View>
         </Page>
-      </Document>
-    )
-  }
-
-  return (
-    <Document {...pdfDocumentProps(data, title)}>
-      <Page size="A4" style={styles.page}>
-        <View style={styles.headerBlock}>
-          <Text style={styles.name}>{basics.name ?? ''}</Text>
-          {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
-          {buildContactRow()}
-        </View>
-        <View style={styles.body_section}>
-          {renderPdfRichText(basics.summary, styles.summaryBox)}
-          {sectionOrder.map(renderPdfSection)}
-        </View>
-      </Page>
+      </FontScaleProvider>
     </Document>
   )
 }

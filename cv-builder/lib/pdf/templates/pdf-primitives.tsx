@@ -1,5 +1,6 @@
 import React from 'react'
-import { View, Text } from '@react-pdf/renderer'
+import { View } from '@react-pdf/renderer'
+import { Text } from '../font-scale'
 import type { Style } from '@react-pdf/types'
 
 /**

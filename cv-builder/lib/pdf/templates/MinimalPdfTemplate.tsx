@@ -1,5 +1,7 @@
 ﻿import React from 'react'
-import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/renderer'
+import { Document, View, StyleSheet } from '@react-pdf/renderer'
+import { Page, Text, Link, FontScaleProvider } from '../font-scale'
+import { resolveFontScale } from '@/lib/design/font-scale'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns, pdfDocumentProps } from './pdf-utils'
 import { resolveProfiles } from '@/lib/basics-profiles'
@@ -20,8 +22,9 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
   const headFont = mapToPdfFont(meta.headerFontFamily)
   const margin = inToPt(meta.pageMargins)
   const sectionOrder = resolveSectionOrder(meta)
-  const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE, meta.lineSpacing)
-  const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE, meta.lineSpacing)
+  const scale = resolveFontScale(meta)
+  const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE * scale, meta.lineSpacing)
+  const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE * scale, meta.lineSpacing)
 
   const styles = withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: PAGE_FONT_SIZE, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
@@ -347,15 +350,17 @@ export function MinimalPdfTemplate({ data, meta, title }: { data: ResumeData; me
 
   return (
     <Document {...pdfDocumentProps(data, title)}>
-      <Page size="A4" style={styles.page}>
-        <View style={{ marginBottom: T.headerMarginBottom }}>
-          <Text style={styles.name}>{basics.name ?? ''}</Text>
-          {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
-          {buildContactRow()}
-        </View>
-        {renderPdfRichText(basics.summary, styles.summaryBox)}
-        {sectionOrder.map(renderPdfSection)}
-      </Page>
+      <FontScaleProvider value={scale}>
+        <Page size="A4" style={styles.page}>
+          <View style={{ marginBottom: T.headerMarginBottom }}>
+            <Text style={styles.name}>{basics.name ?? ''}</Text>
+            {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
+            {buildContactRow()}
+          </View>
+          {renderPdfRichText(basics.summary, styles.summaryBox)}
+          {sectionOrder.map(renderPdfSection)}
+        </Page>
+      </FontScaleProvider>
     </Document>
   )
 }
