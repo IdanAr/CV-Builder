@@ -69,7 +69,7 @@ describe('Overview page', () => {
     listProfilesMock.mockResolvedValue([{ _id: 'p1' }])
     await renderPage()
 
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/^Good (morning|afternoon|evening), Jordan$/)
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Welcome back, Jordan')
     expect(screen.getByText('7 items waiting on you')).toBeInTheDocument()
     for (const name of ['Found 9', 'Matched 4', 'Drafted 1', 'Ready 2', 'Applied 3']) {
       expect(screen.getByRole('link', { name })).toBeInTheDocument()
@@ -79,6 +79,15 @@ describe('Overview page', () => {
     expect(screen.getByRole('link', { name: /Third CV/ })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Oldest CV/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /^homepage$/i })).not.toBeInTheDocument()
+  })
+
+  it('greets without a name when the account has none', async () => {
+    authMock.mockResolvedValue({ user: { id: 'user-1', name: null, email: 'jordan@example.com' } })
+    listResumesMock.mockResolvedValue([cv('r1', 'My CV', 2)])
+    countPipelineStagesMock.mockResolvedValue(zero)
+    listProfilesMock.mockResolvedValue([])
+    await renderPage()
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Welcome back')
   })
 
   it('shows the first-run cards when there are no CVs and no profiles', async () => {

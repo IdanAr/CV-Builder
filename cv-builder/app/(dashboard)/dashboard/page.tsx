@@ -8,12 +8,13 @@ import { PipelineStrip } from '@/components/overview/PipelineStrip'
 import { NeedsYou } from '@/components/overview/NeedsYou'
 import { RecentCvs } from '@/components/overview/RecentCvs'
 import { FirstRun } from '@/components/overview/FirstRun'
-import { greetingFor } from '@/components/overview/greeting'
 
 export default async function DashboardPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/signin')
   const userId = session.user.id
+  // A time-of-day greeting would use the server's clock, not the user's.
+  const firstName = session.user.name?.trim().split(/\s+/)[0]
 
   const [resumes, counts, profiles] = await Promise.all([
     listResumes(userId),
@@ -39,7 +40,7 @@ export default async function DashboardPage() {
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <h1 className="text-xl font-medium text-fg-heading">
-          {greetingFor(new Date().getHours(), session.user.name)}
+          {firstName ? `Welcome back, ${firstName}` : 'Welcome back'}
         </h1>
         {counts.waiting > 0 && (
           <Badge tone="attention">

@@ -62,4 +62,13 @@ describe('(dashboard) layout', () => {
     expect(countStages).toHaveBeenCalledWith('u1')
     expect(screen.getByRole('link', { name: /job search/i })).toHaveTextContent('3')
   })
+
+  it('still renders the shell and page, without a badge, when the count query fails', async () => {
+    countStages.mockRejectedValue(new Error('db down'))
+    render(await DashboardLayout({ children: <p>content</p> }))
+    expect(screen.getByText('content')).toBeInTheDocument()
+    expect(screen.getByTestId('sidebar-desktop')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /job search/i })).not.toHaveTextContent('3')
+    expect(screen.getByRole('link', { name: /job search/i })).not.toHaveTextContent(/\d/)
+  })
 })

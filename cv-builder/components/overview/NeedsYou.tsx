@@ -7,7 +7,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 
 export function NeedsYou({ counts }: { counts: PipelineCounts }) {
   const rows = [
-    { stage: 'matched', n: counts.matched, text: plural(counts.matched, 'match to triage', 'matches to triage') },
+    { stage: 'matched', n: counts.matched, text: plural(counts.matched, 'match to review', 'matches to review') },
     { stage: 'drafted', n: counts.drafted, text: plural(counts.drafted, 'draft to review', 'drafts to review') },
     { stage: 'ready', n: counts.ready, text: plural(counts.ready, 'application ready', 'applications ready') },
   ].filter((r) => r.n > 0)

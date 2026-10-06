@@ -30,9 +30,8 @@ export function RecentCvs({ cvs }: { cvs: RecentCv[] }) {
                 className="flex items-center justify-between gap-3 p-4 text-sm"
               >
                 <span className="min-w-0 truncate font-medium text-fg-heading">{cv.title}</span>
-                <span className="shrink-0 text-xs text-fg-muted">
+                <span className="flex shrink-0 gap-3 text-xs text-fg-muted">
                   <span>Edited {formatRelativeTime(cv.updatedAt)}</span>
-                  {'  '}
                   <span className="tabular-nums">ATS {cv.formatScore}/25</span>
                 </span>
               </Link>
