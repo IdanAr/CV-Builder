@@ -292,7 +292,7 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
           >
             <div
               role="menu"
-              className="w-36 overflow-hidden rounded-xl border border-white/40 bg-surface shadow-xl"
+              className="w-36 overflow-hidden rounded-xl border border-border-subtle bg-surface shadow-xl"
             >
               <button
                 type="button"

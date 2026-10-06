@@ -65,7 +65,7 @@ export function ExportMenu({ onExport, busy = false }: ExportMenuProps) {
           if (e.key === 'ArrowDown') { e.preventDefault(); focusMenuItem(e.currentTarget, 1) }
           if (e.key === 'ArrowUp') { e.preventDefault(); focusMenuItem(e.currentTarget, -1) }
         }}
-        className="w-56 overflow-hidden rounded-xl border border-white/40 bg-surface shadow-xl"
+        className="w-56 overflow-hidden rounded-xl border border-border-subtle bg-surface shadow-xl"
       >
         {item('PDF - Designed', 'Exact match of the preview', 'pdf', 'designed')}
         {item('PDF - ATS-optimized', 'Single-column, parser-safe', 'pdf', 'ats')}

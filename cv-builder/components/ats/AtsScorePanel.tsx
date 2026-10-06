@@ -285,7 +285,7 @@ export function AtsScorePanel() {
 
           {result && (
             <>
-              <div className="rounded-xl border border-white/30 bg-surface p-6 text-center shadow-lg">
+              <div className="rounded-xl border border-border-subtle bg-surface p-6 text-center shadow-lg">
                 <p className="text-sm text-accent-600 mb-1">ATS Score</p>
                 {(() => {
                   const { colorClass, pillClass, label } = getScoreStatusLabel(result.total)
@@ -303,7 +303,7 @@ export function AtsScorePanel() {
                 })()}
               </div>
 
-              <div className="rounded-xl border border-white/30 bg-surface p-4 shadow-lg space-y-3">
+              <div className="rounded-xl border border-border-subtle bg-surface p-4 shadow-lg space-y-3">
                 <p className="text-sm font-semibold text-accent-900">Score Breakdown</p>
                 {VECTOR_LABELS.map(({ key, label, max }) => (
                   <div key={key}>

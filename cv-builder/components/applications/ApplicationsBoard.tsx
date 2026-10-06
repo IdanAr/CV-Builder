@@ -163,7 +163,7 @@ function BoardColumnLane({
           ref={setNodeRef}
           role="list"
           className={`flex min-h-24 flex-1 flex-col gap-2 rounded-xl border p-2 transition ${
-            isOver ? 'border-accent-300 bg-accent-50/60' : 'border-white/40 bg-surface'
+            isOver ? 'border-accent-300 bg-accent-50/60' : 'border-border-subtle bg-surface'
           }`}
         >
           {cards.map((app) => (

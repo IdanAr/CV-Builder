@@ -193,7 +193,7 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
             top: 8,
             right: 16,
             zIndex: 20,
-            background: 'rgba(99, 102, 241, 0.10)',
+            background: 'rgb(var(--color-surface-selected))',
             color: 'rgba(67, 56, 202, 0.9)',
             fontSize: '11px',
             padding: '3px 10px',
@@ -201,7 +201,6 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
             fontFamily: 'sans-serif',
             userSelect: 'none',
             pointerEvents: 'none',
-            backdropFilter: 'blur(4px)',
           }}
         >
           {badgeText}

@@ -515,7 +515,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
               </div>
             ) : (
               <div
-                className="flex flex-col border-r border-white/30 bg-surface shadow-md shrink-0"
+                className="flex flex-col border-r border-border-subtle bg-surface shadow-md shrink-0"
                 style={{ width: panelWidth }}
               >
                 {editPanelBody}
