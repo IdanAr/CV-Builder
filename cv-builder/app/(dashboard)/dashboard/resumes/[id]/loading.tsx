@@ -10,7 +10,7 @@ import { Skeleton, NavbarSkeleton } from '@/components/ui/Skeleton'
  */
 export default function ResumeEditorLoading() {
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-violet-50">
+    <div className="flex h-screen flex-col overflow-hidden bg-surface-page">
       <NavbarSkeleton />
 
       <div role="status" aria-live="polite" className="flex min-h-0 flex-1">

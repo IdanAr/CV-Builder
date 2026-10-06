@@ -3,8 +3,8 @@
 /**
  * Error boundary for every authenticated route.
  *
- * `app/(dashboard)/layout.tsx` wraps its whole subtree in `PlasmaBackground`,
- * which mounts a WebGL canvas. `EditorErrorBoundary` only guards individual
+ * `app/(dashboard)/layout.tsx` wraps its whole subtree in a flat page canvas.
+ * `EditorErrorBoundary` only guards individual
  * editor panels several levels below that, so before this file existed any
  * client-side throw from the layout itself — or from a page with no boundary of
  * its own — fell through to Next's default error screen with no way back into
@@ -21,7 +21,7 @@ export default function DashboardError({
   reset: () => void
 }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
+    <div className="flex min-h-screen bg-surface-page flex-col items-center justify-center gap-4 px-4 text-center">
       <div className="max-w-md rounded-xl border border-indigo-200 bg-white/80 p-8 shadow-sm backdrop-blur-sm">
         <h1 className="text-xl font-semibold text-indigo-900">Something went wrong</h1>
         <p className="mt-2 text-sm text-indigo-700">
