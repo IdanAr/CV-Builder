@@ -35,7 +35,7 @@ export function ExportMenu({ onExport, busy = false }: ExportMenuProps) {
       onClick={() => { setOpen(false); onExport(format, mode) }}
       className="w-full text-left px-3 py-2 hover:bg-accent-50 transition-colors"
     >
-      <span className="block text-xs font-medium text-accent-900">{label}</span>
+      <span className="block text-xs font-medium text-fg">{label}</span>
       <span className="block text-[10px] text-fg-muted">{sub}</span>
     </button>
   )

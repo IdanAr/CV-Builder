@@ -89,7 +89,7 @@ export function ColumnForm({
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="e.g. Recruiter, Salary, Source"
-          className="rounded-md border border-accent-200 bg-white px-2 py-1.5 text-sm text-accent-900 outline-none focus:border-accent-400"
+          className="rounded-md border border-accent-200 bg-white px-2 py-1.5 text-sm text-fg outline-none focus:border-accent-400"
         />
       </label>
 
@@ -100,7 +100,7 @@ export function ColumnForm({
             value={type}
             disabled={isEdit}
             onChange={(e) => setType(e.target.value as ColumnType)}
-            className="mt-1 block w-full rounded-md border border-accent-200 bg-white px-2 py-1.5 text-sm text-accent-900 outline-none focus:border-accent-400 disabled:bg-accent-50 disabled:text-accent-400"
+            className="mt-1 block w-full rounded-md border border-accent-200 bg-white px-2 py-1.5 text-sm text-fg outline-none focus:border-accent-400 disabled:bg-accent-50 disabled:text-accent-400"
           >
             {(Object.keys(TYPE_LABELS) as ColumnType[]).map((t) => (
               <option key={t} value={t}>
@@ -138,7 +138,7 @@ export function ColumnForm({
                       opts.map((o) => (o.id === option.id ? { ...o, label: e.target.value } : o))
                     )
                   }
-                  className="min-w-0 flex-1 rounded-md border border-accent-200 bg-white px-2 py-1 text-sm text-accent-900 outline-none focus:border-accent-400"
+                  className="min-w-0 flex-1 rounded-md border border-accent-200 bg-white px-2 py-1 text-sm text-fg outline-none focus:border-accent-400"
                 />
                 <button
                   type="button"

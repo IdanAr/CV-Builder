@@ -282,7 +282,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
           value={storeTitle}
           onChange={(e) => setTitle(e.target.value)}
           aria-label="Resume title"
-          className="font-semibold text-sm bg-transparent border-none outline-none focus:ring-1 focus:ring-accent-400 rounded px-1 min-w-0 flex-1 text-accent-900"
+          className="font-semibold text-sm bg-transparent border-none outline-none focus:ring-1 focus:ring-accent-400 rounded px-1 min-w-0 flex-1 text-fg"
         />
       </div>
 
@@ -413,7 +413,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
             >
               ← My CVs
             </Link>
-            <span className="text-accent-200">|</span>
+            <span className="text-fg-muted">|</span>
             <span
               role="status"
               aria-live="polite"

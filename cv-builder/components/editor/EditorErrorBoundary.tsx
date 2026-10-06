@@ -22,8 +22,8 @@ export class EditorErrorBoundary extends React.Component<Props, State> {
     if (this.state.confirmingReload) {
       return (
         <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
-          <h2 className="text-lg font-semibold text-accent-900">Reload the editor?</h2>
-          <p className="text-sm text-accent-600">Any unsaved changes will be lost.</p>
+          <h2 className="text-lg font-semibold text-fg-heading">Reload the editor?</h2>
+          <p className="text-sm text-fg-muted">Any unsaved changes will be lost.</p>
           <div className="flex gap-3">
             <button
               onClick={() => window.location.reload()}
@@ -44,7 +44,7 @@ export class EditorErrorBoundary extends React.Component<Props, State> {
 
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
-        <h2 className="text-lg font-semibold text-accent-900">Something went wrong</h2>
+        <h2 className="text-lg font-semibold text-fg-heading">Something went wrong</h2>
         <button
           onClick={() => this.setState({ confirmingReload: true })}
           className="rounded-md bg-accent-600 px-4 py-2 text-sm font-medium text-white hover:bg-accent-700"

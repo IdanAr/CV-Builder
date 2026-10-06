@@ -210,7 +210,7 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
       <div className="flex items-start justify-between gap-4">
         {/* Added 'relative z-10' to text so it stays selectable above the link */}
         <div className="min-w-0 relative z-10 pointer-events-none">
-          <p className="truncate font-semibold text-accent-900">{resume.title}</p>
+          <p className="truncate font-semibold text-fg-heading">{resume.title}</p>
           <p className="truncate text-sm text-fg-muted">
             {resume.data.basics?.label ?? 'No role set'} · {resume.meta.templateId ?? 'classic'} template
           </p>
@@ -227,7 +227,7 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
         {/* Added 'relative z-10' to lift these buttons above the invisible link.
             'flex-wrap' lets buttons wrap onto a second line on narrow viewports
             instead of compressing against the truncated title/role text. */}
-        <div className="relative z-10 flex flex-wrap shrink-0 items-center gap-3">
+        <div className="relative z-10 flex min-w-0 flex-wrap items-center gap-2 sm:shrink-0 sm:gap-3">
 
           <Link
             href={`/dashboard/resumes/${resume._id}`}
@@ -328,19 +328,19 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
         </div>
         <div>
           <p className="text-xs uppercase tracking-wide text-fg-muted">Created</p>
-          <p className="mt-0.5 text-sm text-accent-900">{formatDate(resume.createdAt)}</p>
+          <p className="mt-0.5 text-sm text-fg">{formatDate(resume.createdAt)}</p>
         </div>
         <div>
           <p className="text-xs uppercase tracking-wide text-fg-muted">Last Edited</p>
-          <p className="mt-0.5 text-sm text-accent-900">{formatRelativeTime(resume.updatedAt)}</p>
+          <p className="mt-0.5 text-sm text-fg">{formatRelativeTime(resume.updatedAt)}</p>
         </div>
         <div>
           <p className="text-xs uppercase tracking-wide text-fg-muted">Sections</p>
-          <p className="mt-0.5 text-sm text-accent-900">{resume.sectionsFilledCount} filled</p>
+          <p className="mt-0.5 text-sm text-fg">{resume.sectionsFilledCount} filled</p>
         </div>
         <div>
           <p className="text-xs uppercase tracking-wide text-fg-muted">Layout</p>
-          <p className="mt-0.5 text-sm capitalize text-accent-900">
+          <p className="mt-0.5 text-sm capitalize text-fg">
             {(resume.meta.layout ?? 'single-column').replace('-', ' ')}
           </p>
         </div>

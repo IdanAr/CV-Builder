@@ -84,7 +84,7 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
           className="flex items-center gap-2 rounded-full border border-accent-200/40 bg-surface px-2.5 py-1 shadow-sm transition hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
         >
           <Avatar image={user.image} name={user.name} size={26} />
-          <span className="text-xs font-medium text-accent-700">{firstName}</span>
+          <span className="text-xs font-medium text-fg-body">{firstName}</span>
           <ChevronDown
             aria-hidden="true"
             strokeWidth={2.5}
@@ -99,7 +99,7 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
         <div className="flex items-center gap-3 border-b border-accent-50 px-4 py-3">
           <Avatar image={user.image} name={user.name} size={34} />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-accent-900">
+            <p className="truncate text-sm font-semibold text-fg-heading">
               {user.name ?? 'User'}
             </p>
             <p className="truncate text-xs text-fg-muted">{user.email ?? ''}</p>

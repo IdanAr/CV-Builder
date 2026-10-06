@@ -254,7 +254,7 @@ function SortableRow({
           {...(dragDisabled ? {} : { ...attributes, ...listeners })}
           className={`touch-none rounded px-0.5 text-sm ${
             dragDisabled
-              ? 'cursor-not-allowed text-accent-200'
+              ? 'cursor-not-allowed text-fg-muted'
               : 'cursor-grab text-fg-subtle opacity-0 transition group-hover/row:opacity-100 hover:text-fg-body focus:opacity-100 active:cursor-grabbing'
           }`}
         >

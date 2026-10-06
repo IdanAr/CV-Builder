@@ -318,7 +318,7 @@ export function DesignPanel() {
   }
 
   const selectClass = cn(inputClass, 'px-2')
-  const labelClass = 'block text-xs font-medium text-accent-600 mb-1'
+  const labelClass = 'block text-xs font-medium text-fg-muted mb-1'
 
   // Sidebar always renders skills/languages in the rail regardless of any
   // stored columnAssignment default, so the assignment editor must consult

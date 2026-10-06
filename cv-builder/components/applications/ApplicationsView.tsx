@@ -560,7 +560,7 @@ export default function ApplicationsView({
           }}
         >
           <div className="rounded-xl border border-accent-100 bg-white p-4 shadow-xl">
-            <h2 className="mb-3 text-sm font-semibold text-accent-900">
+            <h2 className="mb-3 text-sm font-semibold text-fg-heading">
               {columnModal.mode === 'add' ? 'Add column' : `Edit "${columnModal.column.label}"`}
             </h2>
             <ColumnForm

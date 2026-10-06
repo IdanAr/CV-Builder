@@ -99,7 +99,7 @@ export function CoverLetterPanel() {
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
       <div>
-        <label htmlFor={`${id}-jd`} className="block text-sm font-medium text-accent-700 mb-1">
+        <label htmlFor={`${id}-jd`} className="block text-sm font-medium text-fg-body mb-1">
           Paste the job description
         </label>
         <textarea
@@ -174,7 +174,7 @@ export function CoverLetterPanel() {
 
       <div>
         <div className="mb-1 flex items-center justify-between">
-          <label htmlFor={`${id}-output`} className="block text-sm font-medium text-accent-700">
+          <label htmlFor={`${id}-output`} className="block text-sm font-medium text-fg-body">
             Your cover letter
           </label>
           <div className="flex gap-2">

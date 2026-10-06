@@ -143,7 +143,7 @@ function ItemForm({ item, enabledFields, resumeId, onUpdate, onRemove }: ItemFor
           <div className="text-xs text-fg-muted font-medium">Keywords</div>
           <div className="flex flex-wrap gap-1">
             {(item.keywords ?? []).map((kw, i) => (
-              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent-50 text-accent-700 text-xs">
+              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent-50 text-fg-body text-xs">
                 {kw}
                 <button type="button"
                   onClick={() => setArr('keywords', (item.keywords ?? []).filter((_, idx) => idx !== i))}
@@ -294,7 +294,7 @@ function RoleForm({
           <div className="text-xs text-fg-muted font-medium">Keywords</div>
           <div className="flex flex-wrap gap-1">
             {(role.keywords ?? []).map((kw, i) => (
-              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent-50 text-accent-700 text-xs">
+              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent-50 text-fg-body text-xs">
                 {kw}
                 <button type="button"
                   onClick={() => setArr('keywords', (role.keywords ?? []).filter((_, idx) => idx !== i))}

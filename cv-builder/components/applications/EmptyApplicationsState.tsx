@@ -8,15 +8,15 @@ import { ClipboardList, FileText, Plus } from 'lucide-react'
 export function EmptyApplicationsState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="rounded-xl border border-accent-100 bg-surface py-12 px-6 text-center">
-      <h2 className="text-lg font-semibold text-accent-900">Track your job applications</h2>
+      <h2 className="text-lg font-semibold text-fg-heading">Track your job applications</h2>
       <p className="mx-auto mt-1 max-w-md text-sm text-fg-muted">
         One row per application - status, resume used, notes, and any custom columns you add. Every
         change is logged with a timestamp.
       </p>
       <div className="mx-auto mt-8 grid max-w-2xl gap-4 sm:grid-cols-2">
         <div className="flex flex-col rounded-xl border border-accent-200 bg-surface p-6 text-left shadow-sm">
-          <ClipboardList className="h-6 w-6 text-accent-600" aria-hidden="true" />
-          <h3 className="mt-3 font-semibold text-accent-900">Start tracking</h3>
+          <ClipboardList className="h-6 w-6 text-fg-muted" aria-hidden="true" />
+          <h3 className="mt-3 font-semibold text-fg-heading">Start tracking</h3>
           <p className="mb-4 mt-1 flex-1 text-sm text-fg-muted">
             Add your first application and fill it in right in the table.
           </p>
@@ -30,8 +30,8 @@ export function EmptyApplicationsState({ onCreate }: { onCreate: () => void }) {
           </button>
         </div>
         <div className="flex flex-col rounded-xl border border-accent-100 bg-surface p-6 text-left shadow-sm">
-          <FileText className="h-6 w-6 text-accent-600" aria-hidden="true" />
-          <h3 className="mt-3 font-semibold text-accent-900">Track from a CV</h3>
+          <FileText className="h-6 w-6 text-fg-muted" aria-hidden="true" />
+          <h3 className="mt-3 font-semibold text-fg-heading">Track from a CV</h3>
           <p className="mb-4 mt-1 flex-1 text-sm text-fg-muted">
             Use &ldquo;Track&rdquo; on any CV card to create a pre-filled row linked to
             that resume.

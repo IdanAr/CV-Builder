@@ -7,7 +7,7 @@ import { X } from 'lucide-react'
 const VARIANT_STYLES: Record<Toast['variant'], string> = {
   success: 'border-success-200 bg-success-50/95 text-success-800',
   error: 'border-danger-200 bg-danger-50/95 text-danger-800',
-  info: 'border-accent-200 bg-surface text-accent-900',
+  info: 'border-accent-200 bg-surface text-fg',
 }
 
 type ToastTimerListener = (id: number) => void

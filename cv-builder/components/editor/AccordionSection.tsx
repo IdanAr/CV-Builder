@@ -99,7 +99,7 @@ export function AccordionSection({
               onClick={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
               aria-label={`Rename ${title}`}
-              className="w-full font-medium text-sm text-accent-900 bg-transparent border-none outline-none focus:ring-1 focus:ring-accent-300 rounded px-2 py-1 min-w-0"
+              className="w-full font-medium text-sm text-fg bg-transparent border-none outline-none focus:ring-1 focus:ring-accent-300 rounded px-2 py-1 min-w-0"
             />
           </div>
         ) : (
@@ -109,7 +109,7 @@ export function AccordionSection({
             aria-expanded={isOpen}
             className="flex-1 flex items-center px-2 py-3 text-left min-w-0"
           >
-            <span className="font-medium text-sm text-accent-900 truncate">{title}</span>
+            <span className="font-medium text-sm text-fg truncate">{title}</span>
           </button>
         )}
         {badge && (

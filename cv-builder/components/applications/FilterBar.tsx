@@ -76,14 +76,14 @@ function FilterEditor({
   }
 
   const inputClass =
-    'rounded-md border border-accent-200 bg-white px-2 py-1 text-sm text-accent-900 outline-none focus:border-accent-400'
+    'rounded-md border border-accent-200 bg-white px-2 py-1 text-sm text-fg outline-none focus:border-accent-400'
 
   return (
     <form onSubmit={apply} className="flex flex-col gap-2">
       {kind === 'options' && (
         <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">
           {(column.options ?? []).map((option) => (
-            <label key={option.id} className="flex items-center gap-2 text-sm text-accent-900">
+            <label key={option.id} className="flex items-center gap-2 text-sm text-fg">
               <input
                 type="checkbox"
                 checked={optionIds.includes(option.id)}
@@ -151,7 +151,7 @@ function FilterEditor({
         </div>
       )}
       {kind === 'checkbox' && (
-        <label className="flex items-center gap-2 text-sm text-accent-900">
+        <label className="flex items-center gap-2 text-sm text-fg">
           <input
             type="checkbox"
             checked={checked}
@@ -227,7 +227,7 @@ export function FilterBar({
                 autoFocus
                 value={columnId}
                 onChange={(e) => setColumnId(e.target.value)}
-                className="rounded-md border border-accent-200 bg-white px-2 py-1.5 text-sm text-accent-900 outline-none focus:border-accent-400"
+                className="rounded-md border border-accent-200 bg-white px-2 py-1.5 text-sm text-fg outline-none focus:border-accent-400"
               >
                 <option value="">Choose a column…</option>
                 {[...columns]

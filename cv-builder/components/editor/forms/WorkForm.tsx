@@ -54,7 +54,7 @@ function RoleForm({
         placeholder="Role summary..."
       />
       <fieldset className="space-y-1 border-0 p-0 m-0">
-        <legend className="block text-xs font-medium text-accent-600 p-0">Bullet points</legend>
+        <legend className="block text-xs font-medium text-fg-muted p-0">Bullet points</legend>
         <ListFieldManager<string>
           items={role.highlights ?? []}
           onChange={setHighlights}

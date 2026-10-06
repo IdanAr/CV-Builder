@@ -264,7 +264,7 @@ export function AtsScorePanel() {
       {currentStep === 1 && (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-accent-700 mb-1">
+            <label className="block text-sm font-medium text-fg-body mb-1">
               Paste job description
             </label>
             <textarea
@@ -286,7 +286,7 @@ export function AtsScorePanel() {
           {result && (
             <>
               <div className="rounded-xl border border-border-subtle bg-surface p-6 text-center shadow-lg">
-                <p className="text-sm text-accent-600 mb-1">ATS Score</p>
+                <p className="text-sm text-fg-muted mb-1">ATS Score</p>
                 {(() => {
                   const { colorClass, pillClass, label } = getScoreStatusLabel(result.total)
                   return (
@@ -304,10 +304,10 @@ export function AtsScorePanel() {
               </div>
 
               <div className="rounded-xl border border-border-subtle bg-surface p-4 shadow-lg space-y-3">
-                <p className="text-sm font-semibold text-accent-900">Score Breakdown</p>
+                <p className="text-sm font-semibold text-fg-heading">Score Breakdown</p>
                 {VECTOR_LABELS.map(({ key, label, max }) => (
                   <div key={key}>
-                    <div className="flex justify-between text-xs text-accent-600 mb-1">
+                    <div className="flex justify-between text-xs text-fg-muted mb-1">
                       <span>{label}</span>
                       <span className="font-medium">{result.breakdown[key]} / {max}</span>
                     </div>
@@ -397,13 +397,13 @@ export function AtsScorePanel() {
                       className="w-72 rounded-xl border border-border-subtle bg-surface p-4 shadow-xl space-y-3 text-left"
                     >
                       <div>
-                        <p className="text-xs font-semibold text-accent-700 mb-0.5">🔎 Semantic Match</p>
+                        <p className="text-xs font-semibold text-fg-heading mb-0.5">🔎 Semantic Match</p>
                         <p className="text-xs text-neutral-600 leading-relaxed">
                           AI checks whether your resume already covers a missing keyword through a synonym or related term (e.g. &quot;k8s&quot; counts for &quot;Kubernetes&quot;) - it doesn&apos;t rewrite anything.
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs font-semibold text-accent-700 mb-0.5">✨ Tailor with AI</p>
+                        <p className="text-xs font-semibold text-fg-heading mb-0.5">✨ Tailor with AI</p>
                         <p className="text-xs text-neutral-600 leading-relaxed">
                           AI rewrites your summary and bullet points to naturally work in the missing keywords - you review and approve each suggested change before it&apos;s applied.
                         </p>
@@ -428,7 +428,7 @@ export function AtsScorePanel() {
               <p className="mb-1 text-xs text-danger-700">
                 Click a keyword you don&apos;t have to ignore it - the AI tools above will skip it too.
               </p>
-              <p className="mb-2 text-xs text-accent-600">
+              <p className="mb-2 text-xs text-fg-muted">
                 <span className="text-danger-700">●</span> must-have / unclear&nbsp;&nbsp;
                 <span className="text-warning-800">●</span> nice-to-have
               </p>
@@ -542,13 +542,13 @@ export function AtsScorePanel() {
             </div>
           ) : fixStatus === 'idle' ? (
             <div className="rounded-xl border border-accent-100 bg-accent-50 p-6 text-center">
-              <p className="text-sm text-accent-600">
+              <p className="text-sm text-fg-muted">
                 Head back to Close the Gap and run Tailor with AI to see suggestions here.
               </p>
             </div>
           ) : fixStatus === 'loading' ? (
             <div className="rounded-xl border border-accent-100 bg-accent-50 p-6 text-center">
-              <p className="text-sm text-accent-600">
+              <p className="text-sm text-fg-muted">
                 <span className="animate-spin inline-block mr-1">⟳</span>
                 Generating fixes…
               </p>
@@ -577,14 +577,14 @@ export function AtsScorePanel() {
                 />
               ) : (
                 <div className="rounded-xl border border-accent-100 bg-accent-50 p-4 text-center">
-                  <p className="text-sm text-accent-600">
+                  <p className="text-sm text-fg-muted">
                     No specific fixes found - try re-analyzing after updating your highlights.
                   </p>
                 </div>
               )}
               {(fixes.length === 0 || fixes.every((f) => dismissedIds.has(f.id))) && (
                 <div className="rounded-xl border border-accent-100 bg-accent-50 p-4 text-center mt-4">
-                  <p className="text-sm text-accent-600 mb-2">Want another pass?</p>
+                  <p className="text-sm text-fg-muted mb-2">Want another pass?</p>
                   <button
                     onClick={handleFixAll}
                     className="px-4 py-2 bg-accent-100 text-accent-700 text-sm rounded-lg hover:bg-accent-200 transition-colors"

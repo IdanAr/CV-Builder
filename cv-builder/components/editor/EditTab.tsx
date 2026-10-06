@@ -263,7 +263,7 @@ export function EditTab() {
                 role="menuitem"
                 onClick={handleAddSection}
                 title="Custom sections hold content the built-in categories don't cover. Give it a name, pick which fields to show, and add as many entries as you like. Handy for things like Military Service, References, or Conferences."
-                className="w-full text-left px-4 py-2.5 text-sm text-accent-900 hover:bg-accent-50"
+                className="w-full text-left px-4 py-2.5 text-sm text-fg hover:bg-accent-50"
               >
                 + New custom section
               </button>
@@ -276,7 +276,7 @@ export function EditTab() {
                       type="button"
                       role="menuitem"
                       onClick={() => handleReAddSection(section)}
-                      className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-accent-800 hover:bg-accent-50"
+                      className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-fg-body hover:bg-accent-50"
                     >
                       <SectionIcon section={section} />
                       {SECTION_LABELS[section]}

@@ -98,7 +98,7 @@ export function RichTextField({
   }
 
   const textareaClass =
-    'w-full resize-y rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-accent-950 transition-colors duration-150 hover:border-neutral-300 focus:outline-none focus:border-accent-400 focus:ring-2 focus:ring-accent-500/35 placeholder:text-neutral-400'
+    'w-full resize-y rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-fg transition-colors duration-150 hover:border-neutral-300 focus:outline-none focus:border-accent-400 focus:ring-2 focus:ring-accent-500/35 placeholder:text-neutral-400'
 
   return (
     <div className={`relative group ${className ?? ''}`}>

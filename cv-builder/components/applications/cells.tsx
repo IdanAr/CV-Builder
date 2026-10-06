@@ -86,7 +86,7 @@ function InlineTextInput({
         if (e.key === 'Enter') commitOnce(() => onDone(draft))
         if (e.key === 'Escape') commitOnce(() => onDone(null))
       }}
-      className="w-full rounded border border-accent-300 bg-white px-1.5 py-0.5 text-sm text-accent-900 outline-none focus:border-accent-500"
+      className="w-full rounded border border-accent-300 bg-white px-1.5 py-0.5 text-sm text-fg outline-none focus:border-accent-500"
     />
   )
 }
@@ -128,7 +128,7 @@ function EditableCell({
       type="button"
       aria-label={`Edit ${ariaLabel}`}
       onClick={() => setEditing(true)}
-      className="block w-full truncate rounded px-1.5 py-0.5 text-left text-sm text-accent-900 hover:bg-accent-50"
+      className="block w-full truncate rounded px-1.5 py-0.5 text-left text-sm text-fg hover:bg-accent-50"
     >
       {display ?? <span className="text-fg-subtle">-</span>}
     </button>
@@ -175,7 +175,7 @@ export function DateCell(props: CellProps & { readOnly?: boolean }) {
   const display = formatDateDisplay(props.value)
   if (props.readOnly) {
     return (
-      <span className="block truncate px-1.5 py-0.5 text-sm text-accent-900" aria-label={props.ariaLabel}>
+      <span className="block truncate px-1.5 py-0.5 text-sm text-fg" aria-label={props.ariaLabel}>
         {display || <span className="text-fg-subtle">-</span>}
       </span>
     )
@@ -349,7 +349,7 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
               className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-accent-50"
             >
               <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: option.color }} />
-              <span className="truncate text-accent-900">{option.label}</span>
+              <span className="truncate text-fg">{option.label}</span>
               {option.id === props.value && <span className="ml-auto text-fg-muted">✓</span>}
             </button>
           ))}
@@ -384,7 +384,7 @@ export function ResumeCell(
           const next = e.target.value === '' ? null : e.target.value
           if (next !== (current || null)) props.onCommit(next)
         }}
-        className="w-full truncate rounded border border-transparent bg-transparent px-0.5 py-0.5 text-sm text-accent-900 hover:border-accent-200 focus:border-accent-400 focus:outline-none"
+        className="w-full truncate rounded border border-transparent bg-transparent px-0.5 py-0.5 text-sm text-fg hover:border-accent-200 focus:border-accent-400 focus:outline-none"
       >
         <option value="">- none -</option>
         {/* Keep a stale link visible even if the resume list no longer contains it. */}

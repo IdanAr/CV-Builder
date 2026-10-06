@@ -22,12 +22,12 @@ export default function DashboardError({
   return (
     <div className="flex min-h-screen flex-col items-center bg-surface-page justify-center gap-4 px-4 text-center">
       <div className="max-w-md rounded-xl border border-accent-200 bg-surface p-8 shadow-sm">
-        <h1 className="text-xl font-semibold text-accent-900">Something went wrong</h1>
-        <p className="mt-2 text-sm text-accent-700">
+        <h1 className="text-xl font-semibold text-fg-heading">Something went wrong</h1>
+        <p className="mt-2 text-sm text-fg-body">
           This page didn&apos;t load correctly. Your saved CVs and applications are unaffected.
         </p>
         {error.digest && (
-          <p className="mt-2 text-xs text-accent-600">
+          <p className="mt-2 text-xs text-fg-muted">
             Reference: <span className="font-mono">{error.digest}</span>
           </p>
         )}

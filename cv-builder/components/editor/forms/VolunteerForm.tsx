@@ -57,7 +57,7 @@ function ItemForm({ item, resumeId, onUpdate, onRemove }: { item: Item; resumeId
         />
       </div>
       <fieldset className="space-y-1 border-0 p-0 m-0">
-        <legend className="block text-xs font-medium text-accent-600 p-0">Highlights</legend>
+        <legend className="block text-xs font-medium text-fg-muted p-0">Highlights</legend>
         <ListFieldManager<string>
           items={item.highlights ?? []}
           onChange={setHighlights}

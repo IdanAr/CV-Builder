@@ -179,7 +179,7 @@ export default function UploadProgressModal({
       <div className="w-full max-w-sm rounded-xl border border-accent-100 bg-white p-6 shadow-xl">
         {stage === 'error' ? (
           <>
-            <h2 className="mb-2 text-sm font-semibold text-accent-900">Upload failed</h2>
+            <h2 className="mb-2 text-sm font-semibold text-fg-heading">Upload failed</h2>
             <p className="mb-4 text-sm text-danger-600">{errorMessage}</p>
             <div className="flex justify-end gap-2">
               <button
@@ -199,8 +199,8 @@ export default function UploadProgressModal({
           </>
         ) : (
           <>
-            <h2 className="mb-1 truncate text-sm font-semibold text-accent-900">{filename}</h2>
-            <p className="mb-4 text-sm text-accent-600">{label}</p>
+            <h2 className="mb-1 truncate text-sm font-semibold text-fg-heading">{filename}</h2>
+            <p className="mb-4 text-sm text-fg-muted">{label}</p>
             <Progress value={percent} className="bg-accent-100" indicatorClassName="bg-accent-600" />
             <div className="mt-2 flex items-center justify-between">
               <p className="text-xs font-medium text-fg-muted">{Math.round(percent)}%</p>

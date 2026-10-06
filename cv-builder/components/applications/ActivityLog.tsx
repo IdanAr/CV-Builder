@@ -119,7 +119,7 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
           {entries !== null &&
             entries.map((entry) => (
               <div key={entry._id} className="border-t border-accent-50 px-1 py-1.5 first:border-t-0">
-                <p className="text-sm text-accent-900">{formatActivityLine(entry)}</p>
+                <p className="text-sm text-fg">{formatActivityLine(entry)}</p>
                 <p className="mt-0.5 text-xs text-fg-muted">
                   {formatRelativeTime(entry.changedAt)}
                 </p>

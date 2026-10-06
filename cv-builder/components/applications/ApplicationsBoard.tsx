@@ -79,7 +79,7 @@ function buildAnnouncements(applications: ApplicationRow[], options: ColumnOptio
 function CardContent({ app, customChips }: { app: ApplicationRow; customChips: string[] }) {
   return (
     <>
-      <p className="truncate text-sm font-semibold text-accent-900">
+      <p className="truncate text-sm font-semibold text-fg-heading">
         {app.company || <span className="text-fg-subtle">No company</span>}
       </p>
       {app.role && <p className="mt-0.5 truncate text-xs text-fg-muted">{app.role}</p>}
@@ -91,7 +91,7 @@ function CardContent({ app, customChips }: { app: ApplicationRow; customChips: s
           {customChips.map((chip) => (
             <span
               key={chip}
-              className="rounded-full bg-accent-50 px-1.5 py-0.5 text-[10px] font-medium text-accent-600"
+              className="rounded-full bg-accent-50 px-1.5 py-0.5 text-[10px] font-medium text-fg-muted"
             >
               {chip}
             </span>

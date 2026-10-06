@@ -88,7 +88,7 @@ export function AtsFixReviewPanel({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-accent-900">
+        <p className="text-sm font-semibold text-fg-heading">
           {visible.length} suggested {visible.length === 1 ? 'fix' : 'fixes'}
         </p>
         <button
@@ -107,7 +107,7 @@ export function AtsFixReviewPanel({
 
       {groups.map((group) => (
         <div key={group.key} className="space-y-2">
-          <p className="text-xs font-semibold text-accent-600 uppercase tracking-wide">
+          <p className="text-xs font-semibold text-fg-muted uppercase tracking-wide">
             {group.label}
           </p>
           {group.fixes.map((fix) => (
@@ -129,7 +129,7 @@ export function AtsFixReviewPanel({
                   {fix.targetKeywords.map((kw) => (
                     <span
                       key={kw}
-                      className="inline-block rounded-full bg-accent-100 px-2 py-0.5 text-xs font-medium text-accent-700"
+                      className="inline-block rounded-full bg-accent-100 px-2 py-0.5 text-xs font-medium text-fg-body"
                     >
                       {kw}
                     </span>
