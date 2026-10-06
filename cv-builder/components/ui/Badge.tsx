@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 /**
  * Status pills. Every tone pairs a token surface with the matching AA-rated
  * foreground, which is the part the hand-rolled pills kept getting wrong —
- * `text-indigo-500` on `bg-indigo-50` is 4.0:1, under the 4.5:1 floor for text
+ * `text-accent-500` on `bg-accent-50` is 4.0:1, under the 4.5:1 floor for text
  * this size.
  */
 

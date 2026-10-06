@@ -142,14 +142,14 @@ describe('ResumeCard', () => {
     render(<ResumeCard resume={{ ...baseResume, formatScore: 22 }} applicationBadge={{ kind: 'none' }} />)
     const badge = screen.getByText('22/25')
     expect(badge).toBeTruthy()
-    expect(badge.className).toContain('text-green-600')
+    expect(badge.className).toContain('text-success-600')
   })
 
   it('displays format score badge with correct color for yellow (10-19)', () => {
     render(<ResumeCard resume={{ ...baseResume, formatScore: 15 }} applicationBadge={{ kind: 'none' }} />)
     const badge = screen.getByText('15/25')
     expect(badge).toBeTruthy()
-    expect(badge.className).toContain('text-yellow-600')
+    expect(badge.className).toContain('text-warning-600')
   })
 
   it('displays format score badge with correct color for red (<10)', () => {
@@ -159,7 +159,7 @@ describe('ResumeCard', () => {
     // The danger token, not red-500: red-500 is 3.43:1 against the page and
     // fails AA, which is the whole reason this moved to a token.
     expect(badge.className).toContain('text-fg-danger')
-    expect(badge.className).not.toContain('text-red-500')
+    expect(badge.className).not.toContain('text-danger-500')
   })
 
   it('shows "Format Score" label (not "ATS Score")', () => {

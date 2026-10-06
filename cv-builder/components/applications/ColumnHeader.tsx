@@ -39,7 +39,7 @@ export function ColumnHeader({
       >
         <span className="truncate">{column.label}</span>
         {entry && (
-          <span className="shrink-0 text-indigo-600" aria-hidden="true">
+          <span className="shrink-0 text-accent-600" aria-hidden="true">
             {entry.direction === 'asc' ? '▲' : '▼'}
             {sort.length > 1 && (
               <span className="ml-0.5 text-[10px]">{LEVEL_BADGES[level] ?? level + 1}</span>

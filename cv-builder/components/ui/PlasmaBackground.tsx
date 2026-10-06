@@ -20,7 +20,7 @@ interface PlasmaBackgroundProps {
 
 export function PlasmaBackground({ children, opacity = 0.2, mouseInteractive = false }: PlasmaBackgroundProps) {
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-white">
+    <div className="relative min-h-screen bg-gradient-to-br from-accent-50 via-accent-50 to-white">
       {/* Fixed to the viewport, not `absolute` to the page: an `absolute
           inset-0` layer here would have to grow to match the full scrollable
           height of `children`, which the Plasma canvas below measures once on

@@ -31,7 +31,7 @@ interface DashboardNavActionsProps {
 }
 
 const LINK_CLASSES =
-  'rounded-control border border-border bg-surface/50 px-3 py-1.5 text-sm font-medium ' +
+  'rounded-control border border-border bg-surface px-3 py-1.5 text-sm font-medium ' +
   'text-fg-body transition hover:bg-surface-subtle focus:outline-none ' +
   'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ' +
   'focus-visible:ring-offset-surface-page'

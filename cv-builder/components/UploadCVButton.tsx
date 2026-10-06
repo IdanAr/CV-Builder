@@ -113,8 +113,8 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
 
   const triggerClassName =
     variant === 'hero'
-      ? 'w-full rounded-lg border border-indigo-300 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50 disabled:opacity-50'
-      : 'rounded-lg border border-indigo-300 bg-white/80 px-4 py-2 text-sm font-medium text-indigo-700 shadow-sm transition hover:bg-indigo-50'
+      ? 'w-full rounded-lg border border-accent-300 bg-white px-4 py-2.5 text-sm font-semibold text-accent-700 shadow-sm transition hover:bg-accent-50 disabled:opacity-50'
+      : 'rounded-lg border border-accent-300 bg-surface px-4 py-2 text-sm font-medium text-accent-700 shadow-sm transition hover:bg-accent-50'
 
   const requirementsText = `PDF or DOCX, up to ${MAX_UPLOAD_MB_LABEL}`
 
@@ -158,7 +158,7 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
             <span
               role="tooltip"
               style={{ left: tooltipPos.x, top: tooltipPos.y }}
-              className="pointer-events-none fixed z-50 -translate-x-1/2 translate-y-3 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-xs text-white shadow-lg"
+              className="pointer-events-none fixed z-50 -translate-x-1/2 translate-y-3 whitespace-nowrap rounded-md bg-neutral-800 px-2 py-1 text-xs text-white shadow-lg"
             >
               {requirementsText}
             </span>

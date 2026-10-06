@@ -94,7 +94,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
             disabled={loading || !currentValue.trim() || !resumeId}
             title={loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'}
             aria-label={loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'}
-            className="px-1.5 py-1 text-sm text-fg-muted hover:text-fg-body hover:bg-indigo-50 rounded transition-colors disabled:opacity-30"
+            className="px-1.5 py-1 text-sm text-fg-muted hover:text-fg-body hover:bg-accent-50 rounded transition-colors disabled:opacity-30"
           >
             {loading ? (
               <Loader2 aria-hidden="true" data-testid="ai-suggest-loading-icon" className="h-4 w-4 animate-spin" strokeWidth={1.75} />
@@ -108,12 +108,12 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
           <div
             role="status"
             aria-live="polite"
-            className="w-56 rounded-lg border border-red-200 bg-red-50 p-2 shadow-sm"
+            className="w-56 rounded-lg border border-danger-200 bg-danger-50 p-2 shadow-sm"
           >
-            <p className="text-xs text-red-600">{error}</p>
+            <p className="text-xs text-danger-600">{error}</p>
             <button
               onClick={() => setError(null)}
-              className="mt-1 text-xs text-red-400 hover:text-red-600"
+              className="mt-1 text-xs text-danger-400 hover:text-danger-600"
             >
               Dismiss
             </button>
@@ -124,20 +124,20 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
           <div
             role="status"
             aria-live="polite"
-            className="flex max-h-[60vh] w-[min(20rem,calc(100vw-2rem))] flex-col overflow-y-auto rounded-xl border border-indigo-200 bg-white/90 backdrop-blur-xl p-3 shadow-xl"
+            className="flex max-h-[60vh] w-[min(20rem,calc(100vw-2rem))] flex-col overflow-y-auto rounded-xl border border-accent-200 bg-surface p-3 shadow-xl"
           >
             {result.pendingApprovals.length > 0 && (
-              <p className="mb-2 rounded border border-yellow-200 bg-yellow-50 px-2 py-1 text-xs text-yellow-700">
+              <p className="mb-2 rounded border border-warning-200 bg-warning-50 px-2 py-1 text-xs text-warning-700">
                 Highlighted items were not in your original notes - verify before accepting.
               </p>
             )}
-            <p className="mb-3 text-sm leading-relaxed text-gray-800">
+            <p className="mb-3 text-sm leading-relaxed text-neutral-800">
               {highlightApprovals(result.suggestion, result.pendingApprovals)}
             </p>
             <div className="flex gap-2">
               <button
                 onClick={handleAccept}
-                className="rounded-lg bg-indigo-600 px-3 py-1 text-xs text-white transition-colors hover:bg-indigo-700"
+                className="rounded-lg bg-accent-600 px-3 py-1 text-xs text-white transition-colors hover:bg-accent-700"
               >
                 Use this
               </button>

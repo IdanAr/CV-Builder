@@ -89,7 +89,7 @@ export function ColumnForm({
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="e.g. Recruiter, Salary, Source"
-          className="rounded-md border border-indigo-200 bg-white px-2 py-1.5 text-sm text-indigo-900 outline-none focus:border-indigo-400"
+          className="rounded-md border border-accent-200 bg-white px-2 py-1.5 text-sm text-accent-900 outline-none focus:border-accent-400"
         />
       </label>
 
@@ -100,7 +100,7 @@ export function ColumnForm({
             value={type}
             disabled={isEdit}
             onChange={(e) => setType(e.target.value as ColumnType)}
-            className="mt-1 block w-full rounded-md border border-indigo-200 bg-white px-2 py-1.5 text-sm text-indigo-900 outline-none focus:border-indigo-400 disabled:bg-indigo-50 disabled:text-indigo-400"
+            className="mt-1 block w-full rounded-md border border-accent-200 bg-white px-2 py-1.5 text-sm text-accent-900 outline-none focus:border-accent-400 disabled:bg-accent-50 disabled:text-accent-400"
           >
             {(Object.keys(TYPE_LABELS) as ColumnType[]).map((t) => (
               <option key={t} value={t}>
@@ -127,7 +127,7 @@ export function ColumnForm({
                       opts.map((o) => (o.id === option.id ? { ...o, color: e.target.value } : o))
                     )
                   }
-                  className="h-8 w-8 shrink-0 cursor-pointer rounded border border-indigo-200 bg-white p-0.5"
+                  className="h-8 w-8 shrink-0 cursor-pointer rounded border border-accent-200 bg-white p-0.5"
                 />
                 <input
                   aria-label={`Label for option ${i + 1}`}
@@ -138,7 +138,7 @@ export function ColumnForm({
                       opts.map((o) => (o.id === option.id ? { ...o, label: e.target.value } : o))
                     )
                   }
-                  className="min-w-0 flex-1 rounded-md border border-indigo-200 bg-white px-2 py-1 text-sm text-indigo-900 outline-none focus:border-indigo-400"
+                  className="min-w-0 flex-1 rounded-md border border-accent-200 bg-white px-2 py-1 text-sm text-accent-900 outline-none focus:border-accent-400"
                 />
                 <button
                   type="button"
@@ -178,7 +178,7 @@ export function ColumnForm({
                       )
                     }
                     style={{ backgroundColor: color }}
-                    className="h-8 w-8 shrink-0 cursor-pointer rounded border border-indigo-200"
+                    className="h-8 w-8 shrink-0 cursor-pointer rounded border border-accent-200"
                   />
                 ))}
               </div>
@@ -198,14 +198,14 @@ export function ColumnForm({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md border border-indigo-200 bg-white px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+          className="rounded-md border border-accent-200 bg-white px-3 py-1.5 text-xs font-medium text-accent-600 hover:bg-accent-50"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={!canSubmit}
-          className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="rounded-md bg-accent-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-700 disabled:opacity-50"
         >
           {isEdit ? 'Save column' : 'Add column'}
         </button>

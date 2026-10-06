@@ -125,7 +125,7 @@ export function JobSearchShell({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <nav
             aria-label="Job search views"
-            className="inline-flex gap-0.5 rounded-control border border-border-subtle bg-surface/60 p-0.5"
+            className="inline-flex gap-0.5 rounded-control border border-border-subtle bg-surface p-0.5"
           >
             {segments.map((segment) => {
               const isActive = segment.key === active

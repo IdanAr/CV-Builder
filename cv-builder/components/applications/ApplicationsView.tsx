@@ -471,7 +471,7 @@ export default function ApplicationsView({
           <button
             type="button"
             onClick={handleAddRow}
-            className="whitespace-nowrap rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
+            className="whitespace-nowrap rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-700"
           >
             + New Application
           </button>
@@ -486,7 +486,7 @@ export default function ApplicationsView({
           <div
             role="group"
             aria-label="View mode"
-            className="flex rounded-lg border border-indigo-200 bg-white/60 p-0.5"
+            className="flex rounded-lg border border-accent-200 bg-surface p-0.5"
           >
             {(['table', 'kanban'] as const).map((mode) => (
               <button
@@ -496,7 +496,7 @@ export default function ApplicationsView({
                 onClick={() => handleViewChange(mode)}
                 className={`rounded-md px-2.5 py-1 text-xs font-medium capitalize transition ${
                   view === mode
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-accent-600 text-white shadow-sm'
                     : 'text-fg-muted hover:text-fg-body'
                 }`}
               >
@@ -535,7 +535,7 @@ export default function ApplicationsView({
               type="button"
               onClick={() => openColumnModal({ mode: 'add' })}
               title="Add a custom column"
-              className="whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium text-fg-muted hover:bg-indigo-50 hover:text-fg-body"
+              className="whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium text-fg-muted hover:bg-accent-50 hover:text-fg-body"
             >
               + Column
             </button>
@@ -554,13 +554,13 @@ export default function ApplicationsView({
           role="dialog"
           aria-modal="true"
           aria-label={columnModal.mode === 'add' ? 'Add column' : 'Edit column'}
-          className="fixed inset-0 z-40 flex items-center justify-center bg-indigo-950/30 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-accent-950/30 p-4"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setColumnModal(null)
           }}
         >
-          <div className="rounded-xl border border-indigo-100 bg-white p-4 shadow-xl">
-            <h2 className="mb-3 text-sm font-semibold text-indigo-900">
+          <div className="rounded-xl border border-accent-100 bg-white p-4 shadow-xl">
+            <h2 className="mb-3 text-sm font-semibold text-accent-900">
               {columnModal.mode === 'add' ? 'Add column' : `Edit "${columnModal.column.label}"`}
             </h2>
             <ColumnForm

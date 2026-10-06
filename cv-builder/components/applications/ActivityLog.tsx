@@ -89,7 +89,7 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
         aria-expanded={open}
         title="Activity log"
         onClick={() => setOpen((o) => !o)}
-        className="rounded px-1 py-0.5 text-xs text-fg-muted hover:bg-indigo-50 hover:text-fg-body"
+        className="rounded px-1 py-0.5 text-xs text-fg-muted hover:bg-accent-50 hover:text-fg-body"
       >
         <History className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -98,7 +98,7 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
           ref={panelRef}
           role="status"
           aria-live="polite"
-          className={`absolute right-0 z-30 max-h-72 w-80 overflow-y-auto rounded-lg border border-indigo-100 bg-white p-2 shadow-xl ${
+          className={`absolute right-0 z-30 max-h-72 w-80 overflow-y-auto rounded-lg border border-accent-100 bg-white p-2 shadow-xl ${
             openUpward ? 'bottom-full mb-1' : 'top-full mt-1'
           }`}
         >
@@ -118,8 +118,8 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
           )}
           {entries !== null &&
             entries.map((entry) => (
-              <div key={entry._id} className="border-t border-indigo-50 px-1 py-1.5 first:border-t-0">
-                <p className="text-sm text-indigo-900">{formatActivityLine(entry)}</p>
+              <div key={entry._id} className="border-t border-accent-50 px-1 py-1.5 first:border-t-0">
+                <p className="text-sm text-accent-900">{formatActivityLine(entry)}</p>
                 <p className="mt-0.5 text-xs text-fg-muted">
                   {formatRelativeTime(entry.changedAt)}
                 </p>
@@ -129,7 +129,7 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
             // Says so rather than presenting a capped list as the full
             // history. The read is bounded because this log grows without
             // limit on a heavily-edited row.
-            <p className="border-t border-indigo-50 px-1 pt-2 text-xs text-fg-muted">
+            <p className="border-t border-accent-50 px-1 pt-2 text-xs text-fg-muted">
               Showing the most recent changes only.
             </p>
           )}

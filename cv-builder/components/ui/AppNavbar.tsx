@@ -25,7 +25,7 @@ export function AppNavbar({
   homeHref = '/dashboard',
 }: AppNavbarProps) {
   return (
-    <nav aria-label="Primary" className="w-full bg-white/55 backdrop-blur-xl border-b border-white/30 shadow-sm">
+    <nav aria-label="Primary" className="w-full bg-surface border-b border-white/30 shadow-sm">
       <div className={containerClassName}>
         {/* Added 'relative' and 'w-full' to this wrapper so the absolute logo positions correctly.
             Below md, height is allowed to grow (min-h + py) so a wrapped actions row has room. */}
@@ -65,7 +65,7 @@ export function AppNavbar({
               <path d="M 42 42 L 48 42 L 50 38 L 52 42 L 58 42 L 54 48 L 56 54 L 50 50 L 44 54 L 46 48 Z"
                 fill="#FFFFFF" opacity="0.9" />
             </svg>
-            <span className="hidden md:inline text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 whitespace-nowrap">
+            <span className="hidden md:inline text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-accent-600 to-accent-700 whitespace-nowrap">
               CV Builder
             </span>
           </Link>

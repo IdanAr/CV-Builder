@@ -588,7 +588,7 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
                 onClick={() => setAddMenuOpen((o) => !o)}
                 style={{
                   // Mirrors EditTab.tsx's own "+ Add Section" emphasis
-                  // (border-2 border-dashed border-indigo-300, font-semibold,
+                  // (border-2 border-dashed border-accent-300, font-semibold,
                   // shadow-[0_0_14px_-2px_rgba(99,102,241,0.45)]) so both entry
                   // points for this action read as the same feature. Padding/
                   // font-size stay smaller than EditTab's — this button lives

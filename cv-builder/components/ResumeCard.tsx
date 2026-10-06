@@ -203,14 +203,14 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
       : DRAFT_BADGE
 
   return (
-    <div className="relative group rounded-xl border border-white/30 bg-white/65 backdrop-blur-xl p-4 shadow-lg hover:border-indigo-300 hover:shadow-xl transition-all">
+    <div className="relative group rounded-xl border border-border-subtle bg-surface p-4 shadow-lg hover:border-accent-300 hover:shadow-xl transition-all">
       {/* The invisible link that covers the whole card */}
       <Link href={`/dashboard/resumes/${resume._id}`} className="absolute inset-0 z-0" aria-label={`Open ${resume.title}`} />
 
       <div className="flex items-start justify-between gap-4">
         {/* Added 'relative z-10' to text so it stays selectable above the link */}
         <div className="min-w-0 relative z-10 pointer-events-none">
-          <p className="truncate font-semibold text-indigo-900">{resume.title}</p>
+          <p className="truncate font-semibold text-accent-900">{resume.title}</p>
           <p className="truncate text-sm text-fg-muted">
             {resume.data.basics?.label ?? 'No role set'} · {resume.meta.templateId ?? 'classic'} template
           </p>
@@ -232,7 +232,7 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
           <Link
             href={`/dashboard/resumes/${resume._id}`}
             aria-label={`Open ${resume.title}`}
-            className="rounded-md border border-indigo-300 bg-white/50 px-3 py-1.5 text-xs font-medium text-indigo-700 transition group-hover:bg-indigo-50"
+            className="rounded-md border border-accent-300 bg-surface px-3 py-1.5 text-xs font-medium text-accent-700 transition group-hover:bg-accent-50"
           >
             Open
           </Link>
@@ -241,7 +241,7 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
             onClick={handleDownload}
             disabled={downloading}
             aria-label={`Download "${resume.title}" as JSON`}
-            className="rounded-md border border-indigo-100 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50"
+            className="rounded-md border border-accent-100 bg-white px-3 py-1.5 text-xs font-medium text-accent-700 transition hover:bg-accent-50 disabled:opacity-50"
             title="Download as JSON"
           >
             {downloading ? '…' : (
@@ -255,7 +255,7 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
             onClick={handleTrack}
             disabled={tracking}
             aria-label={`Track an application using "${resume.title}"`}
-            className="rounded-md border border-indigo-100 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50"
+            className="rounded-md border border-accent-100 bg-white px-3 py-1.5 text-xs font-medium text-accent-700 transition hover:bg-accent-50 disabled:opacity-50"
             title="Track application"
           >
             {tracking ? '…' : (
@@ -269,7 +269,7 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
             onClick={handleDuplicate}
             disabled={duplicating}
             aria-label={`Duplicate "${resume.title}"`}
-            className="rounded-md border border-indigo-100 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50"
+            className="rounded-md border border-accent-100 bg-white px-3 py-1.5 text-xs font-medium text-accent-700 transition hover:bg-accent-50 disabled:opacity-50"
             title="Duplicate"
           >
             {duplicating ? '…' : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
@@ -283,7 +283,7 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"
                 aria-label={`More actions for "${resume.title}"`}
-                className="rounded-md border border-indigo-100 bg-white px-2 py-1.5 text-indigo-700 transition hover:bg-indigo-50"
+                className="rounded-md border border-accent-100 bg-white px-2 py-1.5 text-accent-700 transition hover:bg-accent-50"
                 title="More actions"
               >
                 <MoreVertical className="h-3.5 w-3.5" aria-hidden="true" />
@@ -292,7 +292,7 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
           >
             <div
               role="menu"
-              className="w-36 overflow-hidden rounded-xl border border-white/40 bg-white/90 shadow-xl backdrop-blur-xl"
+              className="w-36 overflow-hidden rounded-xl border border-white/40 bg-surface shadow-xl"
             >
               <button
                 type="button"
@@ -302,7 +302,7 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
                   handleDelete()
                 }}
                 aria-label={`Delete ${resume.title}`}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-danger-600 transition-colors hover:bg-danger-50"
                 title="Delete"
               >
                 <X className="h-3.5 w-3.5" aria-hidden="true" />
@@ -314,7 +314,7 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
       </div>
 
       {/* Metadata row - pointer-events-none allows clicking through to the main card link */}
-      <div className="mt-3 flex flex-wrap gap-6 border-t border-indigo-100 pt-3 relative z-10 pointer-events-none">
+      <div className="mt-3 flex flex-wrap gap-6 border-t border-accent-100 pt-3 relative z-10 pointer-events-none">
         <div>
           <p className="text-xs uppercase tracking-wide text-fg-muted">Status</p>
           <p className="mt-0.5">
@@ -328,19 +328,19 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
         </div>
         <div>
           <p className="text-xs uppercase tracking-wide text-fg-muted">Created</p>
-          <p className="mt-0.5 text-sm text-indigo-900">{formatDate(resume.createdAt)}</p>
+          <p className="mt-0.5 text-sm text-accent-900">{formatDate(resume.createdAt)}</p>
         </div>
         <div>
           <p className="text-xs uppercase tracking-wide text-fg-muted">Last Edited</p>
-          <p className="mt-0.5 text-sm text-indigo-900">{formatRelativeTime(resume.updatedAt)}</p>
+          <p className="mt-0.5 text-sm text-accent-900">{formatRelativeTime(resume.updatedAt)}</p>
         </div>
         <div>
           <p className="text-xs uppercase tracking-wide text-fg-muted">Sections</p>
-          <p className="mt-0.5 text-sm text-indigo-900">{resume.sectionsFilledCount} filled</p>
+          <p className="mt-0.5 text-sm text-accent-900">{resume.sectionsFilledCount} filled</p>
         </div>
         <div>
           <p className="text-xs uppercase tracking-wide text-fg-muted">Layout</p>
-          <p className="mt-0.5 text-sm capitalize text-indigo-900">
+          <p className="mt-0.5 text-sm capitalize text-accent-900">
             {(resume.meta.layout ?? 'single-column').replace('-', ' ')}
           </p>
         </div>
@@ -348,9 +348,9 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
           <p className="text-xs uppercase tracking-wide text-fg-muted">Format Score</p>
           <p className={`mt-0.5 text-sm font-medium ${
             resume.formatScore >= 20
-              ? 'text-green-600'
+              ? 'text-success-600'
               : resume.formatScore >= 10
-              ? 'text-yellow-600'
+              ? 'text-warning-600'
               : 'text-fg-danger'
           }`}>
             {resume.formatScore}/25

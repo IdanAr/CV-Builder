@@ -171,27 +171,27 @@ export default function UploadProgressModal({
       role="dialog"
       aria-modal="true"
       aria-label="Uploading CV"
-      className="fixed inset-0 z-40 flex items-center justify-center bg-indigo-950/30 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-accent-950/30 p-4"
       onMouseDown={(e) => {
         if (dismissible && e.target === e.currentTarget) handleDismiss()
       }}
     >
-      <div className="w-full max-w-sm rounded-xl border border-indigo-100 bg-white p-6 shadow-xl">
+      <div className="w-full max-w-sm rounded-xl border border-accent-100 bg-white p-6 shadow-xl">
         {stage === 'error' ? (
           <>
-            <h2 className="mb-2 text-sm font-semibold text-indigo-900">Upload failed</h2>
-            <p className="mb-4 text-sm text-red-600">{errorMessage}</p>
+            <h2 className="mb-2 text-sm font-semibold text-accent-900">Upload failed</h2>
+            <p className="mb-4 text-sm text-danger-600">{errorMessage}</p>
             <div className="flex justify-end gap-2">
               <button
                 ref={closeButtonRef}
                 onClick={onClose}
-                className="rounded-lg border border-indigo-200 px-3 py-2 text-sm text-indigo-700 hover:bg-indigo-50"
+                className="rounded-lg border border-accent-200 px-3 py-2 text-sm text-accent-700 hover:bg-accent-50"
               >
                 Close
               </button>
               <button
                 onClick={onRetry}
-                className="rounded-lg border border-indigo-300 bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                className="rounded-lg border border-accent-300 bg-accent-600 px-3 py-2 text-sm font-medium text-white hover:bg-accent-700"
               >
                 Try another file
               </button>
@@ -199,9 +199,9 @@ export default function UploadProgressModal({
           </>
         ) : (
           <>
-            <h2 className="mb-1 truncate text-sm font-semibold text-indigo-900">{filename}</h2>
-            <p className="mb-4 text-sm text-indigo-600">{label}</p>
-            <Progress value={percent} className="bg-indigo-100" indicatorClassName="bg-indigo-600" />
+            <h2 className="mb-1 truncate text-sm font-semibold text-accent-900">{filename}</h2>
+            <p className="mb-4 text-sm text-accent-600">{label}</p>
+            <Progress value={percent} className="bg-accent-100" indicatorClassName="bg-accent-600" />
             <div className="mt-2 flex items-center justify-between">
               <p className="text-xs font-medium text-fg-muted">{Math.round(percent)}%</p>
               {canCancel && (

@@ -18,7 +18,7 @@ export function ProfileWizardSteps({ current, maxUnlocked, labels, onStepClick }
       // two steps of the wizard, submit included, simply unreachable. Wrapping
       // below `sm` lays them out 3-per-row with every label still readable;
       // `sm:flex-nowrap` keeps the single row everywhere there is room for it.
-      className="flex flex-wrap sm:flex-nowrap bg-indigo-50 rounded-2xl sm:rounded-full p-1 gap-1"
+      className="flex flex-wrap sm:flex-nowrap bg-accent-50 rounded-2xl sm:rounded-full p-1 gap-1"
       role="tablist"
       aria-label="Job search profile setup steps"
       onKeyDown={handleTablistKeyDown}
@@ -30,16 +30,16 @@ export function ProfileWizardSteps({ current, maxUnlocked, labels, onStepClick }
         const isDone = !isCurrent && !isLocked
 
         const buttonClass = isCurrent
-          ? 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium bg-indigo-600 text-white shadow-md transition-colors'
+          ? 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium bg-accent-600 text-white shadow-md transition-colors'
           : isDone
-          ? 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-colors'
+          ? 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium text-accent-700 hover:bg-accent-100 transition-colors'
           : 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium text-fg-subtle cursor-not-allowed'
 
         const badgeClass = isCurrent
           ? 'flex items-center justify-center h-4 w-4 rounded-full bg-white/25 text-[10px]'
           : isDone
-          ? 'flex items-center justify-center h-4 w-4 rounded-full bg-indigo-200 text-[10px]'
-          : 'flex items-center justify-center h-4 w-4 rounded-full bg-indigo-100 text-[10px]'
+          ? 'flex items-center justify-center h-4 w-4 rounded-full bg-accent-200 text-[10px]'
+          : 'flex items-center justify-center h-4 w-4 rounded-full bg-accent-100 text-[10px]'
 
         return (
           <button

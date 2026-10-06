@@ -45,7 +45,7 @@ export function JobSearchNav() {
         <button
           type="button"
           aria-label="Job search menu"
-          className="relative flex items-center gap-1.5 rounded-md border border-indigo-200 bg-white/50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50"
+          className="relative flex items-center gap-1.5 rounded-md border border-accent-200 bg-surface px-3 py-1.5 text-sm font-medium text-accent-700 transition hover:bg-accent-50"
         >
           Job Search
           <ChevronDown

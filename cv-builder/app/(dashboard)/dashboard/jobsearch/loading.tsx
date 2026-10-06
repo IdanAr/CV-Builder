@@ -31,7 +31,7 @@ export default function JobSearchLoading() {
           {Array.from({ length: 3 }, (_, i) => (
             <div
               key={i}
-              className="flex flex-col gap-2.5 rounded-card border border-border-subtle bg-surface/70 p-4 backdrop-blur-sm"
+              className="flex flex-col gap-2.5 rounded-card border border-border-subtle bg-surface p-4"
             >
               <div className="flex items-center justify-between gap-3">
                 <Skeleton className="h-4 w-48" />

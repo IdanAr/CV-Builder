@@ -43,7 +43,7 @@ function TemplateThumb({ id, active }: { id: string; active: boolean }) {
   const ink = active ? '#4f46e5' : '#a5b4fc'
   const soft = active ? '#c7d2fe' : '#e0e7ff'
   return (
-    <svg aria-hidden="true" viewBox="0 0 40 52" className="h-14 w-10 shrink-0 rounded-[3px] bg-white shadow-sm ring-1 ring-indigo-100">
+    <svg aria-hidden="true" viewBox="0 0 40 52" className="h-14 w-10 shrink-0 rounded-[3px] bg-white shadow-sm ring-1 ring-accent-100">
       {id === 'classic' && (<>
         <rect x="6" y="6" width="28" height="3" rx="1" fill={ink} />
         <rect x="6" y="12" width="28" height="1" fill={soft} />
@@ -182,7 +182,7 @@ function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumn
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 px-2.5 py-1.5 border-b border-indigo-50 last:border-b-0 transition-colors hover:bg-indigo-50/50"
+      className="flex items-center gap-2 px-2.5 py-1.5 border-b border-accent-50 last:border-b-0 transition-colors hover:bg-accent-50/50"
     >
       <span
         {...attributes}
@@ -192,16 +192,16 @@ function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumn
       >
         ⠿
       </span>
-      <span className="flex-1 text-sm text-gray-700">{label}</span>
+      <span className="flex-1 text-sm text-neutral-700">{label}</span>
 
-<div className="flex p-0.5 bg-indigo-50/80 border border-indigo-100 rounded-md text-xs font-medium">
+<div className="flex p-0.5 bg-accent-50/80 border border-accent-100 rounded-md text-xs font-medium">
         <button
           type="button"
           onClick={side === 'left' ? undefined : onToggle}
           className={`px-3 py-1 rounded-[4px] transition-all duration-200 ${
             side === 'left'
-              ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5'
-              : 'text-fg-muted hover:text-fg-body hover:bg-indigo-100/50'
+              ? 'bg-white text-accent-700 shadow-sm ring-1 ring-black/5'
+              : 'text-fg-muted hover:text-fg-body hover:bg-accent-100/50'
           }`}
         >
           Left
@@ -211,8 +211,8 @@ function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumn
           onClick={side === 'right' ? undefined : onToggle}
           className={`px-3 py-1 rounded-[4px] transition-all duration-200 ${
             side === 'right'
-              ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5'
-              : 'text-fg-muted hover:text-fg-body hover:bg-indigo-100/50'
+              ? 'bg-white text-accent-700 shadow-sm ring-1 ring-black/5'
+              : 'text-fg-muted hover:text-fg-body hover:bg-accent-100/50'
           }`}
         >
           Right
@@ -317,7 +317,7 @@ export function DesignPanel() {
   }
 
   const selectClass = cn(inputClass, 'px-2')
-  const labelClass = 'block text-xs font-medium text-indigo-600 mb-1'
+  const labelClass = 'block text-xs font-medium text-accent-600 mb-1'
 
   // Sidebar always renders skills/languages in the rail regardless of any
   // stored columnAssignment default, so the assignment editor must consult
@@ -354,8 +354,8 @@ export function DesignPanel() {
               onClick={() => setMeta({ templateId: t.id })}
               className={`w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-xl border transition-all duration-200 ${
                 meta.templateId === t.id
-                  ? 'border-indigo-500 bg-indigo-50 shadow-sm'
-                  : 'border-indigo-100 hover:border-indigo-300 hover:shadow-sm hover:-translate-y-px'
+                  ? 'border-accent-500 bg-accent-50 shadow-sm'
+                  : 'border-accent-100 hover:border-accent-300 hover:shadow-sm hover:-translate-y-px'
               }`}
             >
               <TemplateThumb id={t.id} active={meta.templateId === t.id} />
@@ -402,8 +402,8 @@ export function DesignPanel() {
                   onClick={() => setMeta({ layout })}
                   className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 text-sm rounded-xl border transition-all duration-200 ${
                     meta.layout === layout
-                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-medium shadow-sm'
-                      : 'border-indigo-100 text-fg-muted hover:border-indigo-300 hover:shadow-sm'
+                      ? 'border-accent-500 bg-accent-50 text-accent-700 font-medium shadow-sm'
+                      : 'border-accent-100 text-fg-muted hover:border-accent-300 hover:shadow-sm'
                   }`}
                 >
                   <svg aria-hidden="true" viewBox="0 0 28 20" className="h-5 w-7">
@@ -431,7 +431,7 @@ export function DesignPanel() {
       {((meta.layout === 'two-column' && meta.templateId !== 'minimal') || meta.templateId === 'sidebar') && (
         <div>
           <p className={labelClass}>Section columns</p>
-          <div className="bg-white border border-indigo-100 rounded-lg overflow-hidden">
+          <div className="bg-white border border-accent-100 rounded-lg overflow-hidden">
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -474,7 +474,7 @@ export function DesignPanel() {
             aria-label="Rail width"
             value={meta.sidebarRailWidth ?? 33}
             onChange={(e) => setMeta({ sidebarRailWidth: parseFloat(e.target.value) })}
-            className="w-full accent-indigo-600" />
+            className="w-full accent-accent-600" />
           <div className="flex justify-between text-xs text-fg-subtle mt-0.5">
             <span>20% (min)</span><span>40%</span>
           </div>
@@ -511,7 +511,7 @@ export function DesignPanel() {
               onChange={handlePrimaryColorSwatchChange}
               aria-label="Custom primary color"
               title="Custom color"
-              className="h-9 w-9 shrink-0 rounded-full border-2 border-white shadow ring-1 ring-indigo-200 cursor-pointer p-0 overflow-hidden" />
+              className="h-9 w-9 shrink-0 rounded-full border-2 border-white shadow ring-1 ring-accent-200 cursor-pointer p-0 overflow-hidden" />
             <input type="text" value={primaryColorDraft}
               onChange={handlePrimaryColorTextChange}
               onBlur={handlePrimaryColorTextBlur}
@@ -529,8 +529,8 @@ export function DesignPanel() {
                   aria-pressed={isActive}
                   onClick={() => handlePrimaryColorPresetSelect(hex)}
                   style={{ backgroundColor: hex }}
-                  className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-1 ${
-                    isActive ? 'border-indigo-600 ring-2 ring-indigo-300 ring-offset-1' : 'border-white shadow-sm'
+                  className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-accent-400 focus:ring-offset-1 ${
+                    isActive ? 'border-accent-600 ring-2 ring-accent-300 ring-offset-1' : 'border-white shadow-sm'
                   }`}
                 />
               )
@@ -547,7 +547,7 @@ export function DesignPanel() {
               onChange={handleAccentColorSwatchChange}
               aria-label="Custom accent color"
               title="Custom color"
-              className="h-9 w-9 shrink-0 rounded-full border-2 border-white shadow ring-1 ring-indigo-200 cursor-pointer p-0 overflow-hidden" />
+              className="h-9 w-9 shrink-0 rounded-full border-2 border-white shadow ring-1 ring-accent-200 cursor-pointer p-0 overflow-hidden" />
             <input type="text" value={accentColorDraft}
               onChange={handleAccentColorTextChange}
               onBlur={handleAccentColorTextBlur}
@@ -565,8 +565,8 @@ export function DesignPanel() {
                   aria-pressed={isActive}
                   onClick={() => handleAccentColorPresetSelect(hex)}
                   style={{ backgroundColor: hex }}
-                  className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-1 ${
-                    isActive ? 'border-indigo-600 ring-2 ring-indigo-300 ring-offset-1' : 'border-white shadow-sm'
+                  className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-accent-400 focus:ring-offset-1 ${
+                    isActive ? 'border-accent-600 ring-2 ring-accent-300 ring-offset-1' : 'border-white shadow-sm'
                   }`}
                 />
               )
@@ -586,7 +586,7 @@ export function DesignPanel() {
         <input type="range" min={0.5} max={1.5} step={0.1}
           value={meta.pageMargins}
           onChange={(e) => setMeta({ pageMargins: parseFloat(e.target.value) })}
-          className="w-full accent-indigo-600" />
+          className="w-full accent-accent-600" />
         <div className="flex justify-between text-xs text-fg-subtle mt-0.5">
           <span>0.5&quot; (min)</span><span>1.5&quot;</span>
         </div>
@@ -600,7 +600,7 @@ export function DesignPanel() {
         <input type="range" min={1.0} max={1.15} step={0.05}
           value={meta.lineSpacing}
           onChange={(e) => setMeta({ lineSpacing: parseFloat(e.target.value) })}
-          className="w-full accent-indigo-600" />
+          className="w-full accent-accent-600" />
         <div className="flex justify-between text-xs text-fg-subtle mt-0.5">
           <span>1.00</span><span>1.15</span>
         </div>

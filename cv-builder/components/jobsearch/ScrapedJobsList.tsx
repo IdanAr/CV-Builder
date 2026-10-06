@@ -303,7 +303,7 @@ export function ScrapedJobsList({ profileId }: ScrapedJobsListProps) {
           <div
             role="group"
             aria-label="Filter scraped jobs"
-            className="inline-flex gap-0.5 rounded-control border border-border-subtle bg-surface/60 p-0.5"
+            className="inline-flex gap-0.5 rounded-control border border-border-subtle bg-surface p-0.5"
           >
             {filters.map((entry) => (
               <button

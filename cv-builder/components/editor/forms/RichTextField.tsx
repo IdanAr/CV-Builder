@@ -98,11 +98,11 @@ export function RichTextField({
   }
 
   const textareaClass =
-    'w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-indigo-950 transition-colors duration-150 hover:border-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/35 placeholder:text-slate-400'
+    'w-full resize-y rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-accent-950 transition-colors duration-150 hover:border-neutral-300 focus:outline-none focus:border-accent-400 focus:ring-2 focus:ring-accent-500/35 placeholder:text-neutral-400'
 
   return (
     <div className={`relative group ${className ?? ''}`}>
-      <div className="absolute -top-3.5 right-2.5 flex gap-0.5 rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm opacity-0 pointer-events-none transition-opacity duration-150 group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+      <div className="absolute -top-3.5 right-2.5 flex gap-0.5 rounded-lg border border-neutral-200 bg-white p-0.5 shadow-sm opacity-0 pointer-events-none transition-opacity duration-150 group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
         {(['bold', 'italic', 'underline'] as Format[]).map((fmt) => {
           const Icon = BUTTON_ICONS[fmt]
           return (
@@ -115,7 +115,7 @@ export function RichTextField({
                 applyFormat(fmt)
               }}
               aria-label={`Format ${fmt}`}
-              className="flex h-5 w-[22px] items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-indigo-600 transition-colors"
+              className="flex h-5 w-[22px] items-center justify-center rounded text-neutral-500 hover:bg-neutral-100 hover:text-accent-600 transition-colors"
             >
               <Icon size={12} />
             </button>

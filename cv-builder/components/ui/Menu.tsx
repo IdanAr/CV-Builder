@@ -68,8 +68,8 @@ export function MenuItem({
   return (
     <DropdownMenu.Item
       className={cn(
-        'flex w-full cursor-pointer select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-indigo-900 outline-none transition',
-        'hover:bg-indigo-50/70 data-[highlighted]:bg-indigo-50/70',
+        'flex w-full cursor-pointer select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-accent-900 outline-none transition',
+        'hover:bg-accent-50/70 data-[highlighted]:bg-accent-50/70',
         className
       )}
       {...props}

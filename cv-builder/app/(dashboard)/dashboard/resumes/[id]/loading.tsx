@@ -25,7 +25,7 @@ export default function ResumeEditorLoading() {
           {Array.from({ length: 5 }, (_, i) => (
             <div
               key={i}
-              className="space-y-2 rounded-card border border-border-subtle bg-surface/70 p-3"
+              className="space-y-2 rounded-card border border-border-subtle bg-surface p-3"
             >
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-8 w-full" />

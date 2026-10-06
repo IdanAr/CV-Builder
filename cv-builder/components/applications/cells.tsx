@@ -86,7 +86,7 @@ function InlineTextInput({
         if (e.key === 'Enter') commitOnce(() => onDone(draft))
         if (e.key === 'Escape') commitOnce(() => onDone(null))
       }}
-      className="w-full rounded border border-indigo-300 bg-white px-1.5 py-0.5 text-sm text-indigo-900 outline-none focus:border-indigo-500"
+      className="w-full rounded border border-accent-300 bg-white px-1.5 py-0.5 text-sm text-accent-900 outline-none focus:border-accent-500"
     />
   )
 }
@@ -128,7 +128,7 @@ function EditableCell({
       type="button"
       aria-label={`Edit ${ariaLabel}`}
       onClick={() => setEditing(true)}
-      className="block w-full truncate rounded px-1.5 py-0.5 text-left text-sm text-indigo-900 hover:bg-indigo-50"
+      className="block w-full truncate rounded px-1.5 py-0.5 text-left text-sm text-accent-900 hover:bg-accent-50"
     >
       {display ?? <span className="text-fg-subtle">-</span>}
     </button>
@@ -175,7 +175,7 @@ export function DateCell(props: CellProps & { readOnly?: boolean }) {
   const display = formatDateDisplay(props.value)
   if (props.readOnly) {
     return (
-      <span className="block truncate px-1.5 py-0.5 text-sm text-indigo-900" aria-label={props.ariaLabel}>
+      <span className="block truncate px-1.5 py-0.5 text-sm text-accent-900" aria-label={props.ariaLabel}>
         {display || <span className="text-fg-subtle">-</span>}
       </span>
     )
@@ -229,7 +229,7 @@ export function UrlCell(props: CellProps) {
           title={fullUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="min-w-0 flex-1 truncate text-sm text-indigo-600 underline decoration-indigo-300 hover:text-indigo-800"
+          className="min-w-0 flex-1 truncate text-sm text-accent-600 underline decoration-accent-300 hover:text-accent-800"
         >
           {displayUrl}
         </a>
@@ -241,7 +241,7 @@ export function UrlCell(props: CellProps) {
         type="button"
         aria-label={`Edit ${props.ariaLabel}`}
         onClick={() => setEditing(true)}
-        className="shrink-0 rounded px-1 text-xs text-fg-muted opacity-0 transition group-hover/cell:opacity-100 hover:bg-indigo-50 hover:text-fg-body focus:opacity-100"
+        className="shrink-0 rounded px-1 text-xs text-fg-muted opacity-0 transition group-hover/cell:opacity-100 hover:bg-accent-50 hover:text-fg-body focus:opacity-100"
       >
         <Pencil className="h-3 w-3" aria-hidden="true" />
       </button>
@@ -257,7 +257,7 @@ export function CheckboxCell(props: CellProps) {
         aria-label={props.ariaLabel}
         checked={props.value === true}
         onChange={(e) => props.onCommit(e.target.checked)}
-        className="h-4 w-4 accent-indigo-600"
+        className="h-4 w-4 accent-accent-600"
       />
     </span>
   )
@@ -313,7 +313,7 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-1.5 rounded px-1 py-0.5 text-left hover:bg-indigo-50"
+        className="flex w-full items-center gap-1.5 rounded px-1 py-0.5 text-left hover:bg-accent-50"
       >
         {selected ? (
           <span
@@ -331,7 +331,7 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
           ref={panelRef}
           role="listbox"
           aria-label={props.ariaLabel}
-          className={`absolute left-0 z-20 min-w-[10rem] rounded-lg border border-indigo-100 bg-white p-1 shadow-lg ${
+          className={`absolute left-0 z-20 min-w-[10rem] rounded-lg border border-accent-100 bg-white p-1 shadow-lg ${
             openUpward ? 'bottom-full mb-1' : 'top-full mt-1'
           }`}
         >
@@ -346,10 +346,10 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
                 if (option.id !== props.value) props.onCommit(option.id)
                 ;(ref.current?.firstElementChild as HTMLElement | null)?.focus()
               }}
-              className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-indigo-50"
+              className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-accent-50"
             >
               <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: option.color }} />
-              <span className="truncate text-indigo-900">{option.label}</span>
+              <span className="truncate text-accent-900">{option.label}</span>
               {option.id === props.value && <span className="ml-auto text-fg-muted">✓</span>}
             </button>
           ))}
@@ -360,7 +360,7 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
               if (props.value !== null && props.value !== '') props.onCommit(null)
               ;(ref.current?.firstElementChild as HTMLElement | null)?.focus()
             }}
-            className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm text-fg-muted hover:bg-indigo-50"
+            className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm text-fg-muted hover:bg-accent-50"
           >
             Clear
           </button>
@@ -384,7 +384,7 @@ export function ResumeCell(
           const next = e.target.value === '' ? null : e.target.value
           if (next !== (current || null)) props.onCommit(next)
         }}
-        className="w-full truncate rounded border border-transparent bg-transparent px-0.5 py-0.5 text-sm text-indigo-900 hover:border-indigo-200 focus:border-indigo-400 focus:outline-none"
+        className="w-full truncate rounded border border-transparent bg-transparent px-0.5 py-0.5 text-sm text-accent-900 hover:border-accent-200 focus:border-accent-400 focus:outline-none"
       >
         <option value="">- none -</option>
         {/* Keep a stale link visible even if the resume list no longer contains it. */}

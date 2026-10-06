@@ -433,9 +433,9 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
   if (createdProfile) {
     return (
       <div className="flex flex-col gap-4">
-        <div className="rounded border bg-gray-50 px-4 py-3 text-sm">
+        <div className="rounded border bg-neutral-50 px-4 py-3 text-sm">
           <p className="font-medium">Profile created!</p>
-          <p className="mt-1 text-gray-600">
+          <p className="mt-1 text-neutral-600">
             Want us to notify you whenever a match scores ≥ {state.minAtsScore}% against this profile?
           </p>
         </div>
@@ -444,7 +444,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
           <button
             type="button"
             disabled={creatingRule}
-            className="rounded bg-indigo-600 px-4 py-2 text-sm text-white disabled:opacity-40"
+            className="rounded bg-accent-600 px-4 py-2 text-sm text-white disabled:opacity-40"
             onClick={handleCreateDefaultRule}
           >
             Yes, notify me
@@ -559,7 +559,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
 
       {step === 4 && (
         <div ref={panelRef} role="tabpanel" id={`wizard-panel-${step}`} aria-labelledby={`wizard-tab-${step}`} tabIndex={-1} className="flex flex-col gap-3">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-neutral-600">
             Optional: track specific companies that use Comeet for hiring (common among
             Israeli high-tech employers). Comeet has no keyword search across companies,
             so postings are fetched per company — paste that company&apos;s own public
@@ -571,7 +571,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
               <span className="text-sm font-medium">{company.name}</span>
               <button
                 type="button"
-                className="rounded border px-3 py-2 text-sm text-red-600"
+                className="rounded border px-3 py-2 text-sm text-danger-600"
                 onClick={() => removeComeetCompany(index)}
               >
                 Remove
@@ -598,7 +598,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
               {comeetResolving ? 'Looking up…' : '+ Add company'}
             </button>
           </div>
-          {comeetResolveError && <p role="alert" className="text-sm text-red-600">{comeetResolveError}</p>}
+          {comeetResolveError && <p role="alert" className="text-sm text-danger-600">{comeetResolveError}</p>}
         </div>
       )}
 
@@ -649,28 +649,28 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
 
       {step === 6 && (
         <div ref={panelRef} role="tabpanel" id={`wizard-panel-${step}`} aria-labelledby={`wizard-tab-${step}`} tabIndex={-1} className="flex flex-col gap-3">
-          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded border bg-gray-50 px-3 py-2 text-sm">
-            <dt className="font-medium text-gray-600">Roles</dt>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded border bg-neutral-50 px-3 py-2 text-sm">
+            <dt className="font-medium text-neutral-600">Roles</dt>
             <dd>{formatList(toTags(draftText.roles))}</dd>
-            <dt className="font-medium text-gray-600">Seniority</dt>
+            <dt className="font-medium text-neutral-600">Seniority</dt>
             <dd>{formatList(state.seniority)}</dd>
-            <dt className="font-medium text-gray-600">Work modes</dt>
+            <dt className="font-medium text-neutral-600">Work modes</dt>
             <dd>{formatList(state.workModes)}</dd>
-            <dt className="font-medium text-gray-600">Country</dt>
+            <dt className="font-medium text-neutral-600">Country</dt>
             <dd>{COUNTRIES.find((c) => c.code === state.locations[0]?.country)?.name || '-'}</dd>
-            <dt className="font-medium text-gray-600">City</dt>
+            <dt className="font-medium text-neutral-600">City</dt>
             <dd>{state.locations[0]?.city || '-'}</dd>
-            <dt className="font-medium text-gray-600">Categories</dt>
+            <dt className="font-medium text-neutral-600">Categories</dt>
             <dd>{formatList(toTags(draftText.categories))}</dd>
-            <dt className="font-medium text-gray-600">Industries</dt>
+            <dt className="font-medium text-neutral-600">Industries</dt>
             <dd>{formatList(toTags(draftText.industries))}</dd>
-            <dt className="font-medium text-gray-600">Watched companies</dt>
+            <dt className="font-medium text-neutral-600">Watched companies</dt>
             <dd>{formatList(state.comeetCompanies.map((c) => c.name).filter(Boolean))}</dd>
-            <dt className="font-medium text-gray-600">Résumé</dt>
+            <dt className="font-medium text-neutral-600">Résumé</dt>
             <dd>{resumeOptions.find((r) => r.id === state.resumeId)?.title || 'Most recently updated'}</dd>
-            <dt className="font-medium text-gray-600">Recency window</dt>
+            <dt className="font-medium text-neutral-600">Recency window</dt>
             <dd>{state.recencyDays} days</dd>
-            <dt className="font-medium text-gray-600">ATS threshold</dt>
+            <dt className="font-medium text-neutral-600">ATS threshold</dt>
             <dd>{state.minAtsScore}%</dd>
           </dl>
           <label className="text-sm font-medium">
@@ -702,7 +702,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
         </div>
         <div className="flex gap-2">
           {step < STEP_LABELS.length && (
-            <button type="button" className="rounded bg-indigo-600 px-4 py-2 text-sm text-white" onClick={goNext}>
+            <button type="button" className="rounded bg-accent-600 px-4 py-2 text-sm text-white" onClick={goNext}>
               Next
             </button>
           )}
@@ -710,7 +710,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
             <button
               type="button"
               disabled={state.name.trim().length === 0 || submitting}
-              className="rounded bg-indigo-600 px-4 py-2 text-sm text-white disabled:opacity-40"
+              className="rounded bg-accent-600 px-4 py-2 text-sm text-white disabled:opacity-40"
               onClick={handleSubmit}
             >
               {isEditing ? 'Save changes' : 'Create profile'}

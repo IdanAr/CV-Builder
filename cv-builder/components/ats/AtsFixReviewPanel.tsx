@@ -79,8 +79,8 @@ export function AtsFixReviewPanel({
 
   if (visible.length === 0) {
     return (
-      <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center">
-        <p className="text-sm text-green-700 font-medium">All fixes applied or dismissed.</p>
+      <div className="rounded-xl border border-success-200 bg-success-50 p-4 text-center">
+        <p className="text-sm text-success-700 font-medium">All fixes applied or dismissed.</p>
       </div>
     )
   }
@@ -88,7 +88,7 @@ export function AtsFixReviewPanel({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-indigo-900">
+        <p className="text-sm font-semibold text-accent-900">
           {visible.length} suggested {visible.length === 1 ? 'fix' : 'fixes'}
         </p>
         <button
@@ -99,7 +99,7 @@ export function AtsFixReviewPanel({
               ? 'Fixes with unverified figures are skipped - apply those individually after checking them'
               : undefined
           }
-          className="px-3 py-1 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+          className="px-3 py-1 text-xs bg-accent-600 text-white rounded-lg hover:bg-accent-700 disabled:opacity-50 transition-colors"
         >
           Apply All Verified{verifiedCount < visible.length ? ` (${verifiedCount})` : ''}
         </button>
@@ -107,29 +107,29 @@ export function AtsFixReviewPanel({
 
       {groups.map((group) => (
         <div key={group.key} className="space-y-2">
-          <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
+          <p className="text-xs font-semibold text-accent-600 uppercase tracking-wide">
             {group.label}
           </p>
           {group.fixes.map((fix) => (
             resolvedAppliedIds.has(fix.id) ? (
               <div
                 key={fix.id}
-                className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 flex items-center justify-between"
+                className="rounded-xl border border-success-200 bg-success-50 px-4 py-3 flex items-center justify-between"
               >
-                <span className="text-sm text-green-800">{fix.targetKeywords.join(', ') || 'Fix'}</span>
-                <span className="text-xs font-semibold text-green-700">✓ Applied</span>
+                <span className="text-sm text-success-800">{fix.targetKeywords.join(', ') || 'Fix'}</span>
+                <span className="text-xs font-semibold text-success-700">✓ Applied</span>
               </div>
             ) : (
             <div
               key={fix.id}
-              className="rounded-xl border border-indigo-100 bg-white/80 backdrop-blur-sm p-4 shadow-sm space-y-2"
+              className="rounded-xl border border-accent-100 bg-surface p-4 shadow-sm space-y-2"
             >
               {fix.targetKeywords.length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-1">
                   {fix.targetKeywords.map((kw) => (
                     <span
                       key={kw}
-                      className="inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700"
+                      className="inline-block rounded-full bg-accent-100 px-2 py-0.5 text-xs font-medium text-accent-700"
                     >
                       {kw}
                     </span>
@@ -139,9 +139,9 @@ export function AtsFixReviewPanel({
 
               {fix.kind === 'generate' ? (
                 <div className="text-sm">
-                  <div className="rounded bg-green-50 border border-green-100 px-3 py-2">
-                    <p className="text-xs text-green-600 font-medium mb-0.5">New professional summary</p>
-                    <p className="text-green-900 leading-relaxed">{fix.suggested}</p>
+                  <div className="rounded bg-success-50 border border-success-100 px-3 py-2">
+                    <p className="text-xs text-success-600 font-medium mb-0.5">New professional summary</p>
+                    <p className="text-success-900 leading-relaxed">{fix.suggested}</p>
                   </div>
                 </div>
               ) : (
@@ -149,24 +149,24 @@ export function AtsFixReviewPanel({
                   const { before, after } = diffWords(fix.original, fix.suggested)
                   return (
                     <div className="space-y-1 text-sm">
-                      <div className="rounded bg-red-50 border border-red-100 px-3 py-2">
+                      <div className="rounded bg-danger-50 border border-danger-100 px-3 py-2">
                         <p className="text-xs text-fg-danger font-medium mb-0.5">Before</p>
-                        <p className="text-gray-700 leading-relaxed">
+                        <p className="text-neutral-700 leading-relaxed">
                           {before.map((seg, i) =>
                             seg.changed ? (
-                              <span key={i} className="line-through text-red-700 bg-red-100 rounded-sm">{seg.text}</span>
+                              <span key={i} className="line-through text-danger-700 bg-danger-100 rounded-sm">{seg.text}</span>
                             ) : (
                               <span key={i}>{seg.text}</span>
                             )
                           )}
                         </p>
                       </div>
-                      <div className="rounded bg-green-50 border border-green-100 px-3 py-2">
-                        <p className="text-xs text-green-600 font-medium mb-0.5">After</p>
-                        <p className="text-gray-700 leading-relaxed">
+                      <div className="rounded bg-success-50 border border-success-100 px-3 py-2">
+                        <p className="text-xs text-success-600 font-medium mb-0.5">After</p>
+                        <p className="text-neutral-700 leading-relaxed">
                           {after.map((seg, i) =>
                             seg.changed ? (
-                              <span key={i} className="font-semibold text-green-800 bg-green-100 rounded-sm">{seg.text}</span>
+                              <span key={i} className="font-semibold text-success-800 bg-success-100 rounded-sm">{seg.text}</span>
                             ) : (
                               <span key={i}>{seg.text}</span>
                             )
@@ -179,15 +179,15 @@ export function AtsFixReviewPanel({
               )}
 
               {fix.pendingApprovals.length > 0 && (
-                <div className="rounded bg-amber-50 border border-amber-200 px-3 py-2">
-                  <p className="text-xs text-amber-700 font-medium mb-1">
+                <div className="rounded bg-warning-50 border border-warning-200 px-3 py-2">
+                  <p className="text-xs text-warning-700 font-medium mb-1">
                     Contains figures not in your original text - verify before applying:
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {fix.pendingApprovals.map((claim) => (
                       <span
                         key={claim}
-                        className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                        className="inline-block rounded-full bg-warning-100 px-2 py-0.5 text-xs font-medium text-warning-800"
                       >
                         {claim}
                       </span>
@@ -199,7 +199,7 @@ export function AtsFixReviewPanel({
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => onApply(fix)}
-                  className="px-3 py-1 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  className="px-3 py-1 text-xs bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors"
                 >
                   Apply
                 </button>

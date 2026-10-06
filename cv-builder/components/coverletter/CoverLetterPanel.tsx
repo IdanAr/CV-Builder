@@ -99,7 +99,7 @@ export function CoverLetterPanel() {
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
       <div>
-        <label htmlFor={`${id}-jd`} className="block text-sm font-medium text-indigo-700 mb-1">
+        <label htmlFor={`${id}-jd`} className="block text-sm font-medium text-accent-700 mb-1">
           Paste the job description
         </label>
         <textarea
@@ -134,7 +134,7 @@ export function CoverLetterPanel() {
         <button
           onClick={handleGenerate}
           disabled={loading || !jobDescription.trim()}
-          className="mt-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+          className="mt-2 px-4 py-2 bg-accent-600 text-white text-sm rounded-lg hover:bg-accent-700 disabled:opacity-50 transition-colors"
         >
           {loading ? 'Generating…' : 'Generate'}
         </button>
@@ -145,20 +145,20 @@ export function CoverLetterPanel() {
         <div
           role="status"
           aria-live="polite"
-          className="rounded-lg border border-indigo-200 bg-white/90 p-3 shadow-sm"
+          className="rounded-lg border border-accent-200 bg-surface p-3 shadow-sm"
         >
           {draft.pendingApprovals.length > 0 && (
-            <p className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-700">
+            <p className="mb-2 rounded border border-warning-200 bg-warning-50 px-2 py-1 text-xs text-warning-700">
               Highlighted items were not in your original notes - verify before using this letter.
             </p>
           )}
-          <p className="mb-3 whitespace-pre-wrap text-sm leading-relaxed text-gray-800">
+          <p className="mb-3 whitespace-pre-wrap text-sm leading-relaxed text-neutral-800">
             {highlightApprovals(draft.content, draft.pendingApprovals)}
           </p>
           <div className="flex gap-2">
             <button
               onClick={handleUseDraft}
-              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700"
+              className="rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-700"
             >
               Use this letter
             </button>
@@ -174,7 +174,7 @@ export function CoverLetterPanel() {
 
       <div>
         <div className="mb-1 flex items-center justify-between">
-          <label htmlFor={`${id}-output`} className="block text-sm font-medium text-indigo-700">
+          <label htmlFor={`${id}-output`} className="block text-sm font-medium text-accent-700">
             Your cover letter
           </label>
           <div className="flex gap-2">
@@ -182,7 +182,7 @@ export function CoverLetterPanel() {
               type="button"
               onClick={handleCopy}
               disabled={!(data.coverLetter ?? '').trim()}
-              className="rounded px-2 py-1 text-xs font-medium text-indigo-600 transition-colors hover:bg-indigo-50 disabled:opacity-40 disabled:hover:bg-transparent"
+              className="rounded px-2 py-1 text-xs font-medium text-accent-600 transition-colors hover:bg-accent-50 disabled:opacity-40 disabled:hover:bg-transparent"
             >
               {copied ? 'Copied!' : 'Copy'}
             </button>
@@ -190,7 +190,7 @@ export function CoverLetterPanel() {
               type="button"
               onClick={() => handleExport('docx')}
               disabled={!(data.coverLetter ?? '').trim() || exporting !== null}
-              className="rounded px-2 py-1 text-xs font-medium text-indigo-600 transition-colors hover:bg-indigo-50 disabled:opacity-40 disabled:hover:bg-transparent"
+              className="rounded px-2 py-1 text-xs font-medium text-accent-600 transition-colors hover:bg-accent-50 disabled:opacity-40 disabled:hover:bg-transparent"
             >
               {exporting === 'docx' ? 'Exporting…' : 'Export DOCX'}
             </button>
@@ -198,7 +198,7 @@ export function CoverLetterPanel() {
               type="button"
               onClick={() => handleExport('pdf')}
               disabled={!(data.coverLetter ?? '').trim() || exporting !== null}
-              className="rounded px-2 py-1 text-xs font-medium text-indigo-600 transition-colors hover:bg-indigo-50 disabled:opacity-40 disabled:hover:bg-transparent"
+              className="rounded px-2 py-1 text-xs font-medium text-accent-600 transition-colors hover:bg-accent-50 disabled:opacity-40 disabled:hover:bg-transparent"
             >
               {exporting === 'pdf' ? 'Exporting…' : 'Export PDF'}
             </button>

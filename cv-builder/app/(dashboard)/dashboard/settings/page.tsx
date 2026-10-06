@@ -32,7 +32,7 @@ export default async function SettingsPage() {
           <div className="flex flex-1 flex-wrap items-center gap-3">
             <Link
               href="/dashboard"
-              className="ml-auto rounded-md border border-indigo-200 bg-white/50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50"
+              className="ml-auto rounded-md border border-accent-200 bg-surface px-3 py-1.5 text-sm font-medium text-accent-700 transition hover:bg-accent-50"
             >
               Back to dashboard
             </Link>

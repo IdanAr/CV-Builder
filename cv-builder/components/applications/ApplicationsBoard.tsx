@@ -79,7 +79,7 @@ function buildAnnouncements(applications: ApplicationRow[], options: ColumnOptio
 function CardContent({ app, customChips }: { app: ApplicationRow; customChips: string[] }) {
   return (
     <>
-      <p className="truncate text-sm font-semibold text-indigo-900">
+      <p className="truncate text-sm font-semibold text-accent-900">
         {app.company || <span className="text-fg-subtle">No company</span>}
       </p>
       {app.role && <p className="mt-0.5 truncate text-xs text-fg-muted">{app.role}</p>}
@@ -91,7 +91,7 @@ function CardContent({ app, customChips }: { app: ApplicationRow; customChips: s
           {customChips.map((chip) => (
             <span
               key={chip}
-              className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600"
+              className="rounded-full bg-accent-50 px-1.5 py-0.5 text-[10px] font-medium text-accent-600"
             >
               {chip}
             </span>
@@ -122,7 +122,7 @@ function BoardCard({ app, customChips }: { app: ApplicationRow; customChips: str
       // cursor is the DragOverlay clone below, which is what makes cross-
       // column dragging read as one continuous motion instead of the list
       // just reflowing around a half-visible original.
-      className={`cursor-grab touch-none rounded-lg border border-indigo-100 bg-white p-3 shadow-sm transition hover:border-indigo-300 hover:shadow ${
+      className={`cursor-grab touch-none rounded-lg border border-accent-100 bg-white p-3 shadow-sm transition hover:border-accent-300 hover:shadow ${
         isDragging ? 'opacity-30' : ''
       }`}
     >
@@ -133,7 +133,7 @@ function BoardCard({ app, customChips }: { app: ApplicationRow; customChips: str
 
 function BoardCardOverlay({ app, customChips }: { app: ApplicationRow; customChips: string[] }) {
   return (
-    <div className="w-64 rotate-2 cursor-grabbing rounded-lg border border-indigo-200 bg-white p-3 shadow-2xl ring-2 ring-indigo-300">
+    <div className="w-64 rotate-2 cursor-grabbing rounded-lg border border-accent-200 bg-white p-3 shadow-2xl ring-2 ring-accent-300">
       <CardContent app={app} customChips={customChips} />
     </div>
   )
@@ -163,7 +163,7 @@ function BoardColumnLane({
           ref={setNodeRef}
           role="list"
           className={`flex min-h-24 flex-1 flex-col gap-2 rounded-xl border p-2 transition ${
-            isOver ? 'border-indigo-300 bg-indigo-50/60' : 'border-white/40 bg-white/40'
+            isOver ? 'border-accent-300 bg-accent-50/60' : 'border-white/40 bg-surface'
           }`}
         >
           {cards.map((app) => (
@@ -235,7 +235,7 @@ export default function ApplicationsBoard({
 
   if (!statusColumn || options.length === 0) {
     return (
-      <p className="rounded-xl border border-indigo-100 bg-white/50 p-6 text-sm text-fg-muted">
+      <p className="rounded-xl border border-accent-100 bg-surface p-6 text-sm text-fg-muted">
         The board view needs a status column with at least one option.
       </p>
     )

@@ -5,9 +5,9 @@ import { useToastStore, type Toast } from '@/lib/stores/toast.store'
 import { X } from 'lucide-react'
 
 const VARIANT_STYLES: Record<Toast['variant'], string> = {
-  success: 'border-green-200 bg-green-50/95 text-green-800',
-  error: 'border-red-200 bg-red-50/95 text-red-800',
-  info: 'border-indigo-200 bg-white/95 text-indigo-900',
+  success: 'border-success-200 bg-success-50/95 text-success-800',
+  error: 'border-danger-200 bg-danger-50/95 text-danger-800',
+  info: 'border-accent-200 bg-surface text-accent-900',
 }
 
 type ToastTimerListener = (id: number) => void
