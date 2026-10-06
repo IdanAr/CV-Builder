@@ -30,7 +30,7 @@ export default function ApplicationsLoading() {
             <Skeleton className="ml-auto h-8 w-36" />
           </div>
 
-          <div className="overflow-hidden rounded-card border border-border-subtle bg-surface">
+          <div className="overflow-hidden rounded-card border border-border bg-surface">
             {/* Header row, then body rows — the repeated column widths are what
                 make this read as a table rather than as a paragraph. */}
             <div className="flex gap-4 border-b border-border-subtle px-4 py-3">

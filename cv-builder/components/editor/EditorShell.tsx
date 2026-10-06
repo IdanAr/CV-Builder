@@ -500,9 +500,9 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
                     key={tab}
                     type="button"
                     onClick={() => { setPreviewExpanded(false); setActiveTab(tab) }}
-                    // Deliberately still a raw indigo-300, not the fg-subtle
+                    // Deliberately still a raw accent-300, not the fg-subtle
                     // token every other muted label moved to. This rail is
-                    // bg-accent-900, so this is light-on-dark: indigo-300
+                    // bg-accent-900, so this is light-on-dark: accent-300
                     // measures 5.73:1 here and already clears AA, while the
                     // token (a dark grey tuned for light surfaces) would be
                     // near-invisible. Do not "fix" it to match its siblings.

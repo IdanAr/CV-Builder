@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import colors from 'tailwindcss/colors'
 import {
   PALETTE,
   SEMANTIC,
@@ -11,6 +12,22 @@ import {
   type PaletteFamily,
   type SemanticToken,
 } from '../color-tokens'
+
+/** HSL hue in degrees from space-separated sRGB channels. */
+function hue(channels: Channels): number {
+  const [r, g, b] = channels.split(' ').map((v) => Number(v) / 255)
+  const max = Math.max(r, g, b)
+  const d = max - Math.min(r, g, b)
+  if (d === 0) return 0
+  let h: number
+  if (max === r) h = ((g - b) / d) % 6
+  else if (max === g) h = (b - r) / d + 2
+  else h = (r - g) / d + 4
+  return (h * 60 + 360) % 360
+}
+
+const toHex = (channels: Channels) =>
+  '#' + channels.split(' ').map((v) => Number(v).toString(16).padStart(2, '0')).join('')
 
 const GLOBALS_CSS = join(__dirname, '..', '..', '..', 'app', 'globals.css')
 
@@ -112,10 +129,32 @@ describe('redesign palette', () => {
     expect(SEMANTIC['surface-subtle']).toBe(PALETTE.neutral[100])
   })
 
-  it('has no purple or violet hue in any accent step (blue channel dominates)', () => {
-    for (const channels of Object.values(PALETTE.accent)) {
-      const [r, , b] = channels.split(' ').map(Number)
-      expect(b).toBeGreaterThan(r)
+  // Cobalt sits near 225 degrees, the old indigo-600 (79 70 229) near 243.
+  // A blue-channel-dominates check passes for both, so it cannot catch a
+  // revert; a hue window can.
+  const COBALT_HUE_RANGE: [number, number] = [200, 235]
+  const inCobaltRange = (channels: Channels) => {
+    const h = hue(channels)
+    return h >= COBALT_HUE_RANGE[0] && h <= COBALT_HUE_RANGE[1]
+  }
+
+  it('keeps every accent step in the cobalt hue range (no indigo or violet drift)', () => {
+    for (const [step, channels] of Object.entries(PALETTE.accent)) {
+      expect({ step, hue: hue(channels), ok: inCobaltRange(channels) }).toMatchObject({ ok: true })
+    }
+  })
+
+  it('proves the hue guard is not vacuous: old indigo-600 fails it', () => {
+    expect(inCobaltRange('79 70 229')).toBe(false)
+  })
+
+  it.each([
+    ['danger', colors.red],
+    ['success', colors.green],
+    ['warning', colors.amber],
+  ] as const)('%s still equals its Tailwind source scale', (family, source) => {
+    for (const [step, channels] of Object.entries(PALETTE[family])) {
+      expect(toHex(channels)).toBe((source as Record<string, string>)[step].toLowerCase())
     }
   })
 })
@@ -204,6 +243,12 @@ describe('app/globals.css', () => {
       (name) => name.startsWith('--color-') && !known.has(name)
     )
     expect(orphans).toEqual([])
+  })
+
+  it('ties --background and --foreground to surface-page and fg', () => {
+    const declared = rootCustomProperties()
+    expect(declared.get('--background')?.toLowerCase()).toBe(toHex(SEMANTIC['surface-page']))
+    expect(declared.get('--foreground')?.toLowerCase()).toBe(toHex(SEMANTIC.fg))
   })
 
   it('exposes the tokens components actually reach for', () => {

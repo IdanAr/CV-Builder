@@ -9,19 +9,16 @@ import { cn } from '@/lib/utils'
  */
 
 export type CardTone =
-  /** The default. Opaque on a flat page. */
+  /** The default. Opaque, hairline border, no shadow. */
   | 'default'
-  /** Opaque. For anything that sits above the page — dialogs, popovers. */
+  /** Opaque, floats above the page with a shadow: dialogs, popovers. */
   | 'raised'
   /** No fill, just an outline. Empty states and drop zones. */
   | 'outline'
 
 const TONE: Record<CardTone, string> = {
-  /** The default. Opaque, hairline border, no shadow. */
   default: 'border-border bg-surface shadow-none',
-  /** Floats above the page: dialogs, popovers. */
   raised: 'border-border bg-surface shadow-popover',
-  /** No fill, just an outline. Empty states and drop zones. */
   outline: 'border-border bg-transparent shadow-none',
 }
 

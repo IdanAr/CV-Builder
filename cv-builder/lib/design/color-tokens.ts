@@ -80,7 +80,7 @@ const WHITE: Channels = '255 255 255'
 
 /**
  * Tier 2. Each entry records the contrast ratio it achieves against the
- * app background (#f5f3ff — the worst common case, since it is tinted and so
+ * app background (#F6F7F9 — the worst common case, since it is tinted and so
  * always slightly darker than white). WCAG 2.2 asks for 4.5:1 on body text,
  * 3:1 on large text and on the boundaries of controls you must be able to find.
  *

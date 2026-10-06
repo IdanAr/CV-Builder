@@ -20,7 +20,7 @@ describe('Card', () => {
     expect(classes).toContain('border')
   })
 
-  it('defaults to the translucent tone at medium padding', () => {
+  it('defaults to the opaque tone at medium padding', () => {
     const { container } = render(<Card />)
     const classes = (container.firstChild as HTMLElement).className.split(/\s+/)
     expect(classes).toContain('bg-surface')

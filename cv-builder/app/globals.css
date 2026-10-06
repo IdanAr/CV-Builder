@@ -5,8 +5,8 @@
 /* Design tokens. Generated from lib/design/color-tokens.ts, which is the
    single source of truth — CSS cannot import TypeScript, so the two are kept
    in step by lib/design/__tests__/color-tokens.test.ts, which fails if this
-   block drifts. Edit the TypeScript, then run the test to see the expected
-   CSS. Channels rather than hex so Tailwind's <alpha-value> works. */
+   block drifts. Edit the TypeScript, then run `npm run tokens:sync` to
+   rewrite this block. Channels rather than hex so Tailwind's <alpha-value> works. */
 :root {
   /* accent */
   --color-accent-50: 238 243 255;

@@ -40,6 +40,8 @@ export const metadata: Metadata = {
   },
 }
 
+// Geist ships as local font files in the `geist` package, so there is no
+// build-time network fetch (unlike next/font/google).
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>

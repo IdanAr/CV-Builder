@@ -40,8 +40,9 @@ import { useShallow } from 'zustand/react/shallow'
 const ATS_FONTS = Object.keys(FONT_SUBSTITUTES)
 
 function TemplateThumb({ id, active }: { id: string; active: boolean }) {
-  const ink = active ? '#4f46e5' : '#a5b4fc'
-  const soft = active ? '#c7d2fe' : '#e0e7ff'
+  // Placeholder CV strokes: accent when selected, neutral otherwise.
+  const ink = active ? 'rgb(var(--color-accent-600))' : 'rgb(var(--color-neutral-400))'
+  const soft = active ? 'rgb(var(--color-accent-200))' : 'rgb(var(--color-neutral-200))'
   return (
     <svg aria-hidden="true" viewBox="0 0 40 52" className="h-14 w-10 shrink-0 rounded-[3px] bg-white shadow-sm ring-1 ring-accent-100">
       {id === 'classic' && (<>
@@ -175,7 +176,7 @@ function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumn
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    boxShadow: isDragging ? '0 4px 12px rgba(79,70,229,0.15)' : undefined,
+    boxShadow: isDragging ? '0 4px 12px rgb(var(--color-accent-700) / 0.15)' : undefined,
   }
 
   return (

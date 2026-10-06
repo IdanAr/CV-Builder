@@ -398,7 +398,7 @@ describe('AtsScorePanel semantic match', () => {
     const errorMessage = await screen.findByText(/semantic match failed/i)
     expect(errorMessage).toBeInTheDocument()
     // Sits inside the bg-danger-50 missing-keywords container, where text-danger-600
-    // falls just under AA contrast (~4.42:1) — must be red-700 (~5.92:1).
+    // falls just under AA contrast (~4.42:1) — must be danger-700 (~5.92:1).
     expect(errorMessage.className).toContain('text-danger-700')
     expect(errorMessage.className).not.toContain('text-danger-600')
   })
@@ -454,7 +454,7 @@ describe('AtsScorePanel fix generation error', () => {
     const errorMessage = await screen.findByText(/could not generate fixes/i)
     expect(errorMessage).toBeInTheDocument()
     // Same bg-danger-50 container as the semanticError message — text-danger-600
-    // fails AA there (~4.42:1); must be red-700 (~5.92:1).
+    // fails AA there (~4.42:1); must be danger-700 (~5.92:1).
     expect(errorMessage.className).toContain('text-danger-700')
     expect(errorMessage.className).not.toContain('text-danger-600')
   })
@@ -481,7 +481,7 @@ describe('AtsScorePanel missing-keyword overflow label', () => {
 
     const overflowLabel = await screen.findByText('+5 more')
     // Sits in the same bg-danger-50 container as the other fixed instances —
-    // text-danger-500 fails AA there (~3.44:1 against #fef2f2); must be red-700 (~5.92:1).
+    // text-danger-500 fails AA there (~3.44:1 against #fef2f2); must be danger-700 (~5.92:1).
     expect(overflowLabel.className).toContain('text-danger-700')
     expect(overflowLabel.className).not.toContain('text-danger-500')
   })

@@ -247,7 +247,7 @@ export function EditTab() {
           onClick={() => setAddMenuOpen((o) => !o)}
           aria-haspopup="menu"
           aria-expanded={addMenuOpen}
-          className="w-full py-2.5 border-2 border-dashed border-accent-300 rounded-xl text-sm font-semibold text-fg-muted bg-accent-50/50 shadow-[0_0_14px_-2px_rgba(99,102,241,0.45)] hover:border-accent-500 hover:text-fg-body hover:bg-accent-50 hover:shadow-[0_0_20px_-2px_rgba(99,102,241,0.6)] transition-all"
+          className="w-full py-2.5 border-2 border-dashed border-accent-300 rounded-xl text-sm font-semibold text-fg-muted bg-accent-50/50 hover:border-accent-500 hover:text-fg-body hover:bg-accent-50 transition-all"
         >
           + Add Section
         </button>

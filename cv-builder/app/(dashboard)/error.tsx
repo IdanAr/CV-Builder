@@ -4,11 +4,10 @@
  * Error boundary for every authenticated route.
  *
  * `app/(dashboard)/layout.tsx` wraps its whole subtree in a flat page canvas.
- * `EditorErrorBoundary` only guards individual
- * editor panels several levels below that, so before this file existed any
- * client-side throw from the layout itself — or from a page with no boundary of
- * its own — fell through to Next's default error screen with no way back into
- * the app.
+ * `EditorErrorBoundary` only guards individual editor panels several levels
+ * below that, so before this file existed any client-side throw from the
+ * layout itself — or from a page with no boundary of its own — fell through to
+ * Next's default error screen with no way back into the app.
  *
  * Next.js remounts the segment when `reset()` is called, which is enough to
  * recover from a transient failure without a full page load.
@@ -21,7 +20,7 @@ export default function DashboardError({
   reset: () => void
 }) {
   return (
-    <div className="flex min-h-screen bg-surface-page flex-col items-center justify-center gap-4 px-4 text-center">
+    <div className="flex min-h-screen flex-col items-center bg-surface-page justify-center gap-4 px-4 text-center">
       <div className="max-w-md rounded-xl border border-accent-200 bg-surface p-8 shadow-sm">
         <h1 className="text-xl font-semibold text-accent-900">Something went wrong</h1>
         <p className="mt-2 text-sm text-accent-700">

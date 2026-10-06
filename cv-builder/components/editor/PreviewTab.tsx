@@ -194,7 +194,7 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
             right: 16,
             zIndex: 20,
             background: 'rgb(var(--color-surface-selected))',
-            color: 'rgba(67, 56, 202, 0.9)',
+            color: 'rgb(var(--color-accent-700) / 0.9)',
             fontSize: '11px',
             padding: '3px 10px',
             borderRadius: '9999px',
@@ -327,16 +327,16 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
                 style={{
                   borderTop:
                     source === 'pdf'
-                      ? '2px solid rgba(99, 102, 241, 0.55)'
-                      : '2px dashed rgba(99, 102, 241, 0.4)',
+                      ? '2px solid rgb(var(--color-accent-500) / 0.55)'
+                      : '2px dashed rgb(var(--color-accent-500) / 0.4)',
                   display: 'flex',
                   justifyContent: 'center',
                 }}
               >
                 <span
                   style={{
-                    background: 'rgba(99, 102, 241, 0.08)',
-                    color: 'rgba(99, 102, 241, 0.6)',
+                    background: 'rgb(var(--color-accent-500) / 0.08)',
+                    color: 'rgb(var(--color-accent-500) / 0.6)',
                     fontSize: '10px',
                     padding: '1px 8px',
                     borderRadius: '0 0 4px 4px',

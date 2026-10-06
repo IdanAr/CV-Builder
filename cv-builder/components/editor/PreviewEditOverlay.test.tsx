@@ -275,20 +275,20 @@ describe('PreviewEditOverlay add-section', () => {
   })
 
   // EditTab.tsx's own "+ Add Section" button (the accordion's top-of-list
-  // control) carries a deliberate glow/bold emphasis treatment — border-2
-  // dashed indigo-300, font-semibold, and a soft indigo box-shadow glow —
+  // control) carries a deliberate dashed/bold emphasis treatment — border-2
+  // dashed accent-300 and font-semibold —
   // to make the entry point discoverable. This overlay control is the same
   // feature's second entry point and should read as visually the same
   // affordance, even though its placement (absolutely positioned after the
   // last section, hover/focus-revealed) necessarily differs from EditTab's
   // always-visible, top-of-accordion placement.
-  it('gives the toggle the same glow/bold emphasis EditTab uses for its Add Section control', () => {
+  it('gives the toggle the same dashed/bold emphasis EditTab uses for its Add Section control', () => {
     render(<OneSectionHarness />)
     const toggle = screen.getByTestId('pv-add-section-toggle')
     expect(toggle.style.borderStyle).toBe('dashed')
     expect(toggle.style.borderWidth).toBe('2px')
     expect(toggle.style.fontWeight).toBe('600')
-    expect(toggle.style.boxShadow).toContain('rgba(99,102,241')
+    expect(toggle.style.boxShadow).toBe('')
   })
 })
 

@@ -28,7 +28,7 @@ export default function JobMatchesLoading() {
           {Array.from({ length: 4 }, (_, i) => (
             <div
               key={i}
-              className="flex flex-col gap-2.5 rounded-card border border-border-subtle bg-surface p-4"
+              className="flex flex-col gap-2.5 rounded-card border border-border bg-surface p-4"
             >
               <div className="flex gap-3.5">
                 <div className="flex w-11 shrink-0 flex-col items-center gap-1.5">

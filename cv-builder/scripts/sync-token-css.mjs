@@ -1,6 +1,8 @@
 // Rewrites the --color-* declarations in app/globals.css from
 // lib/design/color-tokens.ts. CSS cannot import TypeScript, so this closes the
 // loop the drift test only detects. Run via `npm run tokens:sync`.
+// Imports a .ts file directly, so it needs Node >= 22.18 (native type
+// stripping). CI does not run it; the drift test covers CI.
 import { readFileSync, writeFileSync } from 'node:fs'
 import { cssCustomProperties } from '../lib/design/color-tokens.ts'
 
