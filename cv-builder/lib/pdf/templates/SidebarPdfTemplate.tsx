@@ -126,8 +126,9 @@ function chunkContactText(text: string, availableWidthPt: number, fontSizePt: nu
  * single <Text>. Only a token estimated too wide for the *specific*
  * document's rail triggers the chunked flex-row rendering. */
 function RailContactText({ text, style, availableWidthPt, scale }: { text: string; style: Style; availableWidthPt: number; scale: number }) {
-  // The <Text> below renders at the scaled size, so measure at it too.
-  const fontSizePt = scalePt(typeof style.fontSize === 'number' ? style.fontSize : 10, scale)
+  // `style` comes out of the already-scaled stylesheet, so its fontSize is the
+  // rendered size; only the fallback literal still needs scaling.
+  const fontSizePt = typeof style.fontSize === 'number' ? style.fontSize : scalePt(10, scale)
   const hasLongToken = text
     .split(/\s+/)
     .some((t) => t.length > 0 && estimateTextWidthPt(t, fontSizePt) > availableWidthPt)

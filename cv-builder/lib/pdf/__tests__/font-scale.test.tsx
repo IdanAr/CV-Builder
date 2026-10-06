@@ -112,18 +112,29 @@ describe.each(TEMPLATES)('%s PDF font scale', (id, Template) => {
 })
 
 describe('sidebar rail contact text with a scaled font', () => {
-  it('keeps unbroken contact tokens inside the rail and sizes chunks from the scaled font', async () => {
-    const email = 'averyveryverylongfirstname.anevenlongerlastname@subdomain.example-company.com'
-    const data: ResumeData = { ...fixture, basics: { ...fixture.basics, email } }
-    // 20% rail at pageMargins 0.775: padding 0.7 x 0.775in = 39.06pt a side, so
-    // the content box is ~40.9pt. The chunk size is floor(width / (0.65 x font)):
-    // 6 chars at the 10pt contact size, 5 at the 11pt that fontScale 1.1 renders.
-    const meta = { ...metaFor('sidebar', 1.1), pageMargins: 0.775, sidebarRailWidth: 20 }
+  const email = 'averyveryverylongfirstname.anevenlongerlastname@subdomain.example-company.com'
+  const data: ResumeData = { ...fixture, basics: { ...fixture.basics, email } }
+
+  // 20% rail; the rail padding is 0.7 x pageMargins. Chunk length is
+  // floor(contentWidth / (0.65 x measured font size)).
+  async function emailChunks(fontScale: number, pageMargins: number) {
+    const meta = { ...metaFor('sidebar', fontScale), pageMargins, sidebarRailWidth: 20 }
     const runs = await renderToGlyphRuns(SidebarPdfTemplate({ data, meta, title: 'CV' }))
-    const railRight = 595.28 * 0.2 - 0.775 * 0.7 * 72
+    const railRight = 595.28 * 0.2 - pageMargins * 0.7 * 72
     const parts = runs.filter((r) => r.str.trim().length > 0 && email.includes(r.str.trim()) && r.x < railRight + 1)
-    expect(parts.length).toBeGreaterThan(5)
-    expect(Math.max(...parts.map((r) => r.str.trim().length))).toBeLessThanOrEqual(5)
     for (const r of parts) expect(r.x + r.width, r.str).toBeLessThanOrEqual(railRight + 0.5)
+    return Math.max(...parts.map((r) => r.str.trim().length))
+  }
+
+  it('sizes chunks from the rendered (scaled) font, not the unscaled one', async () => {
+    // Content ~40.9pt: 6 chars at 10pt, 5 at 11pt.
+    expect(await emailChunks(1, 0.775)).toBe(6)
+    expect(await emailChunks(1.1, 0.775)).toBe(5)
+  })
+
+  it('does not scale the measured size twice', async () => {
+    // Content ~44.0pt: 6 chars at 10pt and at 11pt, but 5 at 12.1pt (11 scaled again).
+    expect(await emailChunks(1, 0.745)).toBe(6)
+    expect(await emailChunks(1.1, 0.745)).toBe(6)
   })
 })
