@@ -1,79 +1,64 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { listResumes } from '@/lib/api/resumes'
-import { listApplications } from '@/lib/api/applications'
-import { getOrCreateBoardConfig } from '@/lib/api/board-config'
-import { computeResumeApplicationBadges } from '@/lib/applications/resume-status'
-import type { BoardColumn } from '@/lib/schemas/application.zod'
-import ResumeCard from '@/components/ResumeCard'
-import NewResumeButton from '@/components/NewResumeButton'
-import UploadCVButton from '@/components/UploadCVButton'
-import { EmptyDashboardState } from '@/components/EmptyDashboardState'
-import { AppNavbar } from '@/components/ui/AppNavbar'
-import { DashboardNavActions } from '@/components/ui/DashboardNavActions'
+import { countPipelineStages } from '@/lib/api/scraped-jobs'
+import { listJobSearchProfiles } from '@/lib/api/jobsearch-profiles'
+import { Badge } from '@/components/ui/Badge'
+import { PipelineStrip } from '@/components/overview/PipelineStrip'
+import { NeedsYou } from '@/components/overview/NeedsYou'
+import { RecentCvs } from '@/components/overview/RecentCvs'
+import { FirstRun } from '@/components/overview/FirstRun'
+import { greetingFor } from '@/components/overview/greeting'
 
 export default async function DashboardPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/signin')
+  const userId = session.user.id
 
-  const [resumes, applications, boardConfig] = await Promise.all([
-    listResumes(session.user.id),
-    listApplications(session.user.id),
-    getOrCreateBoardConfig(session.user.id),
+  const [resumes, counts, profiles] = await Promise.all([
+    listResumes(userId),
+    countPipelineStages(userId),
+    listJobSearchProfiles(userId),
   ])
 
-  const statusOptions =
-    (boardConfig.columns as BoardColumn[]).find((c) => c.type === 'status')?.options ?? []
-  const badgeMap = computeResumeApplicationBadges(applications, statusOptions)
+  const hasCvs = resumes.length > 0
+  const hasProfiles = profiles.length > 0
+  const isFirstRun = !hasCvs && !hasProfiles
+
+  const recent = [...resumes]
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+    .slice(0, 3)
+    .map((r) => ({
+      id: String(r._id),
+      title: r.title,
+      updatedAt: r.updatedAt.toISOString(),
+      formatScore: r.formatScore ?? 0,
+    }))
 
   return (
-    <>
- <AppNavbar
-        actions={
-          <DashboardNavActions
-            user={session.user}
-            current="resumes"
-            showHomepage
-            leading={
-              <>
-                <NewResumeButton />
-                <UploadCVButton />
-              </>
-            }
-          />
-        }
-      />
-
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-fg-heading">My CVs</h1>
-        </div>
-
-        {resumes.length === 0 ? (
-          <EmptyDashboardState />
-        ) : (
-          <div className="flex flex-col gap-4">
-            {resumes.map((resume) => (
-              <ResumeCard
-                key={String(resume._id)}
-                resume={{
-                  _id: String(resume._id),
-                  title: resume.title,
-                  data: (resume.data ?? {}) as { basics?: { label?: string } },
-                  meta: resume.meta as { templateId?: string; layout?: string },
-                  sectionsFilledCount: resume.sectionsFilledCount,
-                  formatScore: resume.formatScore ?? 0,
-                  createdAt: resume.createdAt.toISOString(),
-                  updatedAt: resume.updatedAt.toISOString(),
-                  parentResumeId: resume.parentResumeId ? String(resume.parentResumeId) : undefined,
-                  parentResumeTitle: resume.parentResumeTitle,
-                }}
-                applicationBadge={badgeMap.get(String(resume._id)) ?? { kind: 'none' }}
-              />
-            ))}
-          </div>
+    <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <h1 className="text-xl font-medium text-fg-heading">
+          {greetingFor(new Date().getHours(), session.user.name)}
+        </h1>
+        {counts.waiting > 0 && (
+          <Badge tone="attention">
+            {counts.waiting} {counts.waiting === 1 ? 'item' : 'items'} waiting on you
+          </Badge>
         )}
       </div>
-    </>
+
+      <div className="flex flex-col gap-8">
+        {isFirstRun ? (
+          <FirstRun hasCvs={hasCvs} hasProfiles={hasProfiles} />
+        ) : (
+          <>
+            <PipelineStrip counts={counts} />
+            <NeedsYou counts={counts} />
+            <RecentCvs cvs={recent} />
+          </>
+        )}
+      </div>
+    </div>
   )
 }
