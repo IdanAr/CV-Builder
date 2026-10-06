@@ -51,4 +51,15 @@ describe('authConfig.callbacks.authorized', () => {
     })
     expect(result).toBe(false)
   })
+
+  it.each(['/dashboard', '/dashboard/cvs', '/dashboard/resumes/abc'])(
+    'requires a session for %s',
+    (path) => {
+      const authorized = authConfig.callbacks!.authorized!
+      expect(authorized({ request: reqFor(path), auth: null })).toBe(false)
+      expect(
+        authorized({ request: reqFor(path), auth: { user: { id: 'u1' } } as never })
+      ).toBe(true)
+    }
+  )
 })
