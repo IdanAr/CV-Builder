@@ -43,6 +43,12 @@ describe('proxy matcher', () => {
     expect(config.matcher).toContain('/dashboard/:path*')
   })
 
+  it('keeps /dashboard/:path* as the only dashboard entry, so /dashboard/cvs is covered', async () => {
+    const { config } = await import('./proxy')
+    const dashboard = (config.matcher as string[]).filter((m) => m.startsWith('/dashboard'))
+    expect(dashboard).toEqual(['/dashboard/:path*'])
+  })
+
   it('does not include the OAuth handshake route', async () => {
     const { config } = await import('./proxy')
     expect(config.matcher).not.toContain('/api/auth/:path*')

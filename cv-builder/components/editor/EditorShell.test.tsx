@@ -312,7 +312,7 @@ describe('EditorShell export flushes pending changes first', () => {
 
     fireEvent.click(screen.getByRole('link', { name: /my cvs/i }))
 
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith('/dashboard'))
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith('/dashboard/cvs'))
     expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'PATCH')).toBe(true)
   })
 

@@ -183,8 +183,8 @@ export function ListFieldManager<T>({
   // and every bullet point — with no confirmation, no undo and no grace period,
   // from a button sitting a few pixels from the drag handle. Rather than gate
   // every removal behind a modal, the delete stays instant and is made
-  // reversible with the same undo-toast pattern ResumeCard already uses for
-  // résumé deletion.
+  // reversible with the same undo-toast pattern the CV library already uses
+  // for résumé deletion (components/cvs/use-cv-deletion.ts).
   const remove = useCallback(
     (i: number) => {
       const removed = itemsRef.current[i]

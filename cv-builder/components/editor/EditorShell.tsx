@@ -258,10 +258,10 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
     setIsLeaving(true)
     try {
       await flushSave()
-      router.push('/dashboard')
+      router.push('/dashboard/cvs')
     } catch {
       if (window.confirm("Your latest changes couldn't be saved. Leave anyway and lose them?")) {
-        router.push('/dashboard')
+        router.push('/dashboard/cvs')
       }
     } finally {
       setIsLeaving(false)
@@ -406,7 +406,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
         actions={
           <div className="flex flex-1 flex-wrap items-center gap-3">
             <Link
-              href="/dashboard"
+              href="/dashboard/cvs"
               onClick={handleLeaveEditor}
               aria-busy={isLeaving}
               className="mr-auto text-lg font-medium text-accent-600 hover:text-accent-800 transition-colors"

@@ -3,7 +3,7 @@
 /**
  * Error boundary for every authenticated route.
  *
- * `app/(dashboard)/layout.tsx` wraps its whole subtree in a flat page canvas.
+ * `app/(dashboard)/layout.tsx` renders every page inside the app shell.
  * `EditorErrorBoundary` only guards individual editor panels several levels
  * below that, so before this file existed any client-side throw from the
  * layout itself — or from a page with no boundary of its own — fell through to
@@ -20,7 +20,7 @@ export default function DashboardError({
   reset: () => void
 }) {
   return (
-    <div className="flex min-h-screen flex-col items-center bg-surface-page justify-center gap-4 px-4 text-center">
+    <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-4 text-center">
       <div className="max-w-md rounded-xl border border-accent-200 bg-surface p-8 shadow-sm">
         <h1 className="text-xl font-semibold text-fg-heading">Something went wrong</h1>
         <p className="mt-2 text-sm text-fg-body">
@@ -43,7 +43,7 @@ export default function DashboardError({
             href="/dashboard"
             className="min-h-[44px] rounded-lg border border-accent-200 px-4 py-2 text-sm font-medium text-accent-700 transition-colors hover:bg-accent-50"
           >
-            Back to my CVs
+            Back to dashboard
           </a>
         </div>
       </div>

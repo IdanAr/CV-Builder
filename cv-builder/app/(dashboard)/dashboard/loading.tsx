@@ -1,52 +1,35 @@
-import { Skeleton, NavbarSkeleton } from '@/components/ui/Skeleton'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 /**
- * Shown while `DashboardPage` awaits its three database calls.
- *
- * Until now there was no `loading.tsx` anywhere in the app, so this wait
- * rendered nothing but the page's background gradient — indistinguishable
- * from a page that had failed to load.
- *
- * The shapes mirror the real page (max-w-4xl column, one heading, a stack of
- * résumé cards) so that content arriving swaps in place rather than shifting
- * the layout.
+ * Shown while `DashboardPage` awaits its data. Mirrors the Overview sections
+ * (greeting, pipeline strip, needs-you, recent CVs). No navbar skeleton: the
+ * shell stays on screen.
  */
 export default function DashboardLoading() {
   return (
-    <>
-      <NavbarSkeleton />
+    <div role="status" aria-live="polite" className="mx-auto max-w-5xl px-4 py-8">
+      <span className="sr-only">Loading your overview</span>
 
-      {/* One polite announcement for the whole route. The individual bars are
-          aria-hidden, so a screen reader hears "Loading your CVs" once rather
-          than a stream of meaningless shapes. */}
-      <div role="status" aria-live="polite" className="mx-auto max-w-4xl px-4 py-8">
-        <span className="sr-only">Loading your CVs</span>
+      <Skeleton className="mb-6 h-7 w-56" />
 
-        <div className="mb-6">
-          <Skeleton className="h-8 w-40" />
+      <div className="flex flex-col gap-8">
+        <div>
+          <Skeleton className="mb-3 h-5 w-40" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            {Array.from({ length: 5 }, (_, i) => (
+              <Skeleton key={i} className="h-16 rounded-card" />
+            ))}
+          </div>
         </div>
-
-        <div className="flex flex-col gap-4">
-          {Array.from({ length: 3 }, (_, i) => (
-            <div
-              key={i}
-              aria-hidden="true"
-              className="rounded-card border border-border-subtle bg-surface p-4 shadow-lg"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0 flex-1 space-y-2">
-                  <Skeleton className="h-5 w-1/2" />
-                  <Skeleton className="h-4 w-1/3" />
-                </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <Skeleton className="h-8 w-16" />
-                  <Skeleton className="h-8 w-16" />
-                </div>
-              </div>
-            </div>
-          ))}
+        <div>
+          <Skeleton className="mb-3 h-5 w-36" />
+          <Skeleton className="h-24 rounded-card" />
+        </div>
+        <div>
+          <Skeleton className="mb-3 h-5 w-32" />
+          <Skeleton className="h-36 rounded-card" />
         </div>
       </div>
-    </>
+    </div>
   )
 }

@@ -7,8 +7,14 @@ vi.mock('@/lib/auth', () => ({
     handler(Object.assign(req as object, { auth: mockSession })),
 }))
 
-const { mockCountUnread } = vi.hoisted(() => ({ mockCountUnread: vi.fn() }))
-vi.mock('@/lib/api/scraped-jobs', () => ({ countUnreadNotifyMatches: mockCountUnread }))
+const { mockCountUnread, mockCountStages } = vi.hoisted(() => ({
+  mockCountUnread: vi.fn(),
+  mockCountStages: vi.fn(),
+}))
+vi.mock('@/lib/api/scraped-jobs', () => ({
+  countUnreadNotifyMatches: mockCountUnread,
+  countPipelineStages: mockCountStages,
+}))
 
 import { GET } from './route'
 
@@ -29,12 +35,14 @@ describe('GET /api/jobsearch/notifications/unread-count', () => {
 
   it('returns this user\'s unread count', async () => {
     mockCountUnread.mockResolvedValue(5)
+    mockCountStages.mockResolvedValue({ found: 0, matched: 5, drafted: 1, ready: 2, applied: 0, matchedUnread: 5, waiting: 8 })
     const req = new Request('http://test/api/jobsearch/notifications/unread-count', {
       method: 'GET',
     })
     const res = (await GET(req as never, undefined as never)) as Response
     const body = await res.json()
     expect(mockCountUnread).toHaveBeenCalledWith('u1')
-    expect(body.count).toBe(5)
+    expect(body).toEqual({ count: 5, waiting: 8 })
+    expect(mockCountStages).toHaveBeenCalledWith('u1')
   })
 })

@@ -1,4 +1,4 @@
-// Relative "time ago" display used by ResumeCard's "Last Edited" and the
+// Relative "time ago" display used by the CV library's "Edited" column and the
 // applications activity log. Falls back to an absolute date past 7 days.
 export function formatAbsoluteDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {

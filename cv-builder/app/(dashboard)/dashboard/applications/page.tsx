@@ -4,8 +4,6 @@ import { listApplications } from '@/lib/api/applications'
 import { getOrCreateBoardConfig } from '@/lib/api/board-config'
 import { listResumeOptions } from '@/lib/api/resumes'
 import ApplicationsView from '@/components/applications/ApplicationsView'
-import { AppNavbar } from '@/components/ui/AppNavbar'
-import { DashboardNavActions } from '@/components/ui/DashboardNavActions'
 import type { ApplicationRow, BoardConfigData } from '@/lib/applications/types'
 
 export default async function ApplicationsPage() {
@@ -19,31 +17,24 @@ export default async function ApplicationsPage() {
   ])
 
   return (
-    <>
-      <AppNavbar
-        containerClassName="mx-auto w-full max-w-7xl px-4"
-        actions={<DashboardNavActions user={session.user} current="applications" />}
-      />
+    <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-fg-heading">Applications</h1>
+        <p className="mt-1 text-base text-fg-muted">
+          Every application you&apos;re tracking, in one customizable table.
+        </p>
+        <p className="mt-1 text-xs text-fg-muted">
+          Create, edit, and manage your applications to keep your job search focused.
+        </p>
+      </div>
 
-<div className="mx-auto max-w-7xl px-4 py-8">
-  <div className="mb-6">
-    <h1 className="text-3xl font-bold text-fg-heading">Applications</h1>
-    <p className="mt-1 text-base text-fg-muted">
-      Every application you&apos;re tracking, in one customizable table.
-    </p>
-    <p className="mt-1 text-xs text-fg-muted">
-      Create, edit, and manage your applications to keep your job search focused.
-    </p>
-  </div>
-
-  <div className="mt-6">
-    <ApplicationsView
-      initialApplications={JSON.parse(JSON.stringify(applications)) as ApplicationRow[]}
-      initialBoardConfig={JSON.parse(JSON.stringify(boardConfig)) as BoardConfigData}
-      resumes={resumes}
-    />
-  </div>
-</div>
-    </>
+      <div className="mt-6">
+        <ApplicationsView
+          initialApplications={JSON.parse(JSON.stringify(applications)) as ApplicationRow[]}
+          initialBoardConfig={JSON.parse(JSON.stringify(boardConfig)) as BoardConfigData}
+          resumes={resumes}
+        />
+      </div>
+    </div>
   )
 }
