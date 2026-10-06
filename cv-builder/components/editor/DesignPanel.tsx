@@ -27,6 +27,7 @@ import { FONT_SUBSTITUTES } from '@/lib/fonts/families'
 import { inputClass } from './forms/field-styles'
 import { cn } from '@/lib/utils'
 import { useShallow } from 'zustand/react/shallow'
+import { TEMPLATE_OPTIONS } from '@/lib/templates'
 
 /**
  * Derived, not restated. A hardcoded list here was the last unguarded copy of
@@ -80,14 +81,6 @@ function TemplateThumb({ id, active }: { id: string; active: boolean }) {
     </svg>
   )
 }
-
-const TEMPLATES = [
-  { id: 'classic', label: 'Classic', desc: 'Clean, professional, thin dividers' },
-  { id: 'modern', label: 'Modern', desc: 'Bold header block, accent titles' },
-  { id: 'minimal', label: 'Minimal', desc: 'Typography-only, maximum ATS compatibility' },
-  { id: 'executive', label: 'Executive', desc: 'Serif, double-rule header, senior industries' },
-  { id: 'sidebar', label: 'Sidebar', desc: 'Colored left rail, skills & languages in panel' },
-]
 
 const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}){1,2}$/
 
@@ -347,7 +340,7 @@ export function DesignPanel() {
       <div>
         <p className={labelClass}>Template</p>
         <div className="space-y-2" role="group" aria-label="Template">
-          {TEMPLATES.map((t) => (
+          {TEMPLATE_OPTIONS.map((t) => (
             <button
               key={t.id}
               type="button"

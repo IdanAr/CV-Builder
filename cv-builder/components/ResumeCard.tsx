@@ -1,16 +1,12 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import Link from 'next/link'
 import { Download, ClipboardList, Copy, X, MoreVertical } from 'lucide-react'
-import { toast, useToastStore } from '@/lib/stores/toast.store'
-import { onToastPause, onToastResume } from '@/components/ui/Toaster'
+import { useResumeActions } from '@/components/cvs/use-resume-actions'
 import { Popover } from '@/components/ui/Popover'
 import { formatAbsoluteDate, formatRelativeTime } from '@/lib/format-relative-time'
 import type { ResumeApplicationBadge } from '@/lib/applications/resume-status'
-
-const UNDO_DELETE_DURATION = 6000
 
 // Continuity with the pre-Task-46 "draft" visual: zero linked applications
 // renders the same gray "Draft" pill it always has.
@@ -42,158 +38,10 @@ interface ResumeCardProps {
 const formatDate = formatAbsoluteDate
 
 export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps) {
-  const router = useRouter()
-  const [duplicating, setDuplicating] = useState(false)
-  const [downloading, setDownloading] = useState(false)
-  const [tracking, setTracking] = useState(false)
-  const [pendingDelete, setPendingDelete] = useState(false)
+  const actions = useResumeActions({ id: resume._id, title: resume.title })
   const [menuOpen, setMenuOpen] = useState(false)
-  const deleteTimerRef = useRef<number | null>(null)
-  const undoToastIdRef = useRef<number | null>(null)
-  // Tracks the undo window's remaining time so a hover/focus pause on the
-  // toast (see Toaster.tsx) can resume the countdown instead of resetting it.
-  const remainingRef = useRef(UNDO_DELETE_DURATION)
-  const startedAtRef = useRef(0)
-  const cancelledRef = useRef(false)
 
-  async function commitDelete() {
-    try {
-      const res = await fetch(`/api/resumes/${resume._id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Delete failed')
-      router.refresh()
-    } catch (err) {
-      console.error(err)
-      setPendingDelete(false)
-      toast.error(`Could not delete "${resume.title}". It has been restored.`)
-    }
-  }
-
-  function startDeleteTimer(ms: number) {
-    startedAtRef.current = Date.now()
-    remainingRef.current = ms
-    deleteTimerRef.current = window.setTimeout(() => {
-      deleteTimerRef.current = null
-      if (undoToastIdRef.current !== null) useToastStore.getState().dismiss(undoToastIdRef.current)
-      void commitDelete()
-    }, ms)
-  }
-
-  function pauseDeleteTimer() {
-    if (deleteTimerRef.current === null) return
-    const elapsed = Date.now() - startedAtRef.current
-    remainingRef.current = Math.max(0, remainingRef.current - elapsed)
-    window.clearTimeout(deleteTimerRef.current)
-    deleteTimerRef.current = null
-  }
-
-  function resumeDeleteTimer() {
-    if (deleteTimerRef.current !== null) return
-    if (cancelledRef.current) return
-    startDeleteTimer(remainingRef.current)
-  }
-
-  function handleDelete() {
-    cancelledRef.current = false
-    setPendingDelete(true)
-    undoToastIdRef.current = toast.withAction(
-      `Deleted "${resume.title}"`,
-      'Undo',
-      () => {
-        cancelledRef.current = true
-        if (deleteTimerRef.current) window.clearTimeout(deleteTimerRef.current)
-        deleteTimerRef.current = null
-        setPendingDelete(false)
-      }
-    )
-    startDeleteTimer(UNDO_DELETE_DURATION)
-  }
-
-  // Subscribe once to the Toaster's pause/resume bus so a hover or focus on
-  // the undo-delete toast pauses this component's own deletion countdown
-  // (the toast's own visual dismiss timer lives in Toaster.tsx and is paused
-  // independently, in lockstep, via the same hover/focus interaction).
-  useEffect(() => {
-    const unsubPause = onToastPause((id) => {
-      if (undoToastIdRef.current === id) pauseDeleteTimer()
-    })
-    const unsubResume = onToastResume((id) => {
-      if (undoToastIdRef.current === id) resumeDeleteTimer()
-    })
-    return () => {
-      unsubPause()
-      unsubResume()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    return () => {
-      if (deleteTimerRef.current) {
-        window.clearTimeout(deleteTimerRef.current)
-        void fetch(`/api/resumes/${resume._id}`, { method: 'DELETE' })
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Creates an Application pre-filled from this resume (the server pulls its
-  // targetCompany/targetRole) and jumps to the applications supertable.
-  async function handleTrack() {
-    if (tracking) return
-    setTracking(true)
-    try {
-      const res = await fetch('/api/applications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeId: resume._id }),
-      })
-      if (!res.ok) throw new Error('Track failed')
-      router.push('/dashboard/applications')
-    } catch (err) {
-      console.error(err)
-      toast.error(`Could not start tracking an application for "${resume.title}". Please try again.`)
-      setTracking(false)
-    }
-  }
-
-  async function handleDuplicate() {
-    setDuplicating(true)
-    try {
-      const res = await fetch(`/api/resumes/${resume._id}/duplicate`, { method: 'POST' })
-      if (!res.ok) throw new Error('Duplicate failed')
-      toast.success(`Duplicated "${resume.title}"`)
-      router.refresh()
-    } catch (err) {
-      console.error(err)
-      toast.error(`Could not duplicate "${resume.title}". Please try again.`)
-    } finally {
-      setDuplicating(false)
-    }
-  }
-
-  async function handleDownload() {
-    if (downloading) return
-    setDownloading(true)
-    try {
-      const res = await fetch(`/api/resumes/${resume._id}`)
-      if (!res.ok) throw new Error('Fetch failed')
-      const { resume: full } = await res.json()
-      const blob = new Blob([JSON.stringify(full.data, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${resume.title}.json`
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error(err)
-      toast.error(`Could not download "${resume.title}" as JSON. Please try again.`)
-    } finally {
-      setDownloading(false)
-    }
-  }
-
-  if (pendingDelete) return null
+  if (actions.hidden) return null
 
   const statusOption =
     applicationBadge.kind === 'single'
@@ -238,13 +86,13 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
           </Link>
           
           <button
-            onClick={handleDownload}
-            disabled={downloading}
+            onClick={actions.download}
+            disabled={actions.downloading}
             aria-label={`Download "${resume.title}" as JSON`}
             className="rounded-md border border-accent-100 bg-white px-3 py-1.5 text-xs font-medium text-accent-700 transition hover:bg-accent-50 disabled:opacity-50"
             title="Download as JSON"
           >
-            {downloading ? '…' : (
+            {actions.downloading ? '…' : (
               <span className="inline-flex items-center gap-1">
                 <Download className="h-3.5 w-3.5" aria-hidden="true" />
                 JSON
@@ -252,13 +100,13 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
             )}
           </button>
           <button
-            onClick={handleTrack}
-            disabled={tracking}
+            onClick={actions.track}
+            disabled={actions.tracking}
             aria-label={`Track an application using "${resume.title}"`}
             className="rounded-md border border-accent-100 bg-white px-3 py-1.5 text-xs font-medium text-accent-700 transition hover:bg-accent-50 disabled:opacity-50"
             title="Track application"
           >
-            {tracking ? '…' : (
+            {actions.tracking ? '…' : (
               <span className="inline-flex items-center gap-1">
                 <ClipboardList className="h-3.5 w-3.5" aria-hidden="true" />
                 Track
@@ -266,13 +114,13 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
             )}
           </button>
           <button
-            onClick={handleDuplicate}
-            disabled={duplicating}
+            onClick={actions.duplicate}
+            disabled={actions.duplicating}
             aria-label={`Duplicate "${resume.title}"`}
             className="rounded-md border border-accent-100 bg-white px-3 py-1.5 text-xs font-medium text-accent-700 transition hover:bg-accent-50 disabled:opacity-50"
             title="Duplicate"
           >
-            {duplicating ? '…' : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+            {actions.duplicating ? '…' : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
           </button>
           <Popover
             open={menuOpen}
@@ -299,7 +147,7 @@ export default function ResumeCard({ resume, applicationBadge }: ResumeCardProps
                 role="menuitem"
                 onClick={() => {
                   setMenuOpen(false)
-                  handleDelete()
+                  actions.remove()
                 }}
                 aria-label={`Delete ${resume.title}`}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-danger-600 transition-colors hover:bg-danger-50"
