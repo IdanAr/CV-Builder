@@ -65,7 +65,7 @@ Five visual templates (Classic, Modern, Minimal, Executive, Sidebar; `components
 
 DOCX export (`lib/docx/resume-docx.ts`) always uses native paragraph styles regardless of mode (no text boxes/floating objects/nested tables; web fonts mapped to ATS-safe system fonts). **Any multi-column PDF/DOCX layout change must preserve linear reading order in `ats` mode** — verify by actually exporting in that mode, not just visually inspecting `designed`.
 
-`meta.fontScale` (0.9-1.1, default 1) multiplies every text size in the preview, PDF and DOCX: preview via each template's `sz()` helper, PDF via the scaled `Text` / `Link` / `Page` wrappers in `lib/pdf/font-scale.tsx`, DOCX via `applyFontScaleToDocx` (`lib/docx/scale-docx.ts`). New hard-coded sizes must go through the same helpers.
+`meta.fontScale` (0.9-1.1, default 1) multiplies every text size in the preview, PDF and DOCX: preview via each template's `sz()` helper, PDF via `withFontScale` (stylesheets) and `scalePt` (inline sizes) in `lib/pdf/font-scale.ts`, applied explicitly with no React context, DOCX via `applyFontScaleToDocx` (`lib/docx/scale-docx.ts`). New hard-coded sizes must go through the same helpers.
 
 ### Application tracking (separate subsystem)
 

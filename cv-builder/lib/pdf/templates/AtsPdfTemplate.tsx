@@ -1,7 +1,7 @@
 import React from 'react'
-import { Document, View, StyleSheet } from '@react-pdf/renderer'
-import { Page, Text, FontScaleProvider } from '../font-scale'
-import { resolveFontScale } from '@/lib/design/font-scale'
+import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
+import { withFontScale } from '../font-scale'
+import { resolveFontScale, scalePt } from '@/lib/design/font-scale'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import {
   mapToPdfFont, inToPt, resolveSectionOrder, pdfDocumentProps,
@@ -36,7 +36,7 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
   const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE * scale, lineHeight)
   const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE * scale, lineHeight)
 
-  const styles = withLineHeights(StyleSheet.create({
+  const styles = withFontScale(withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: PAGE_FONT_SIZE, lineHeight, color: '#000000', padding: margin },
     name: { fontFamily: headFont, fontSize: 20, fontWeight: 'bold', marginBottom: 2 },
     label: { fontSize: 11, color: '#333333', marginBottom: 2 },
@@ -51,7 +51,7 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
     body: { fontSize: 10.5, marginTop: 1 },
     bullet: { fontSize: 10.5, marginLeft: 12, marginBottom: 1 },
     small: { fontSize: 10, color: '#333333' },
-  }), lineHeight)
+  }), lineHeight), scale)
 
   const contactLine = [
     basics.email, basics.phone,
@@ -78,15 +78,15 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
       return renderPdfCustomSection({ ...cs, name: cs.name.toUpperCase() }, {
         sectionTitle: styles.sectionTitle,
         entryRow: { marginBottom: 2 },
-        bold: { fontSize: 10.5, fontWeight: 'bold' },
+        bold: { fontSize: scalePt(10.5, scale), fontWeight: 'bold' },
         accent: styles.position,
         small: styles.small,
         body: styles.body,
         bullet: styles.bullet,
-        link: { fontSize: 10, color: '#333333' },
-        keywords: { fontSize: 10, color: '#333333', marginTop: 2 },
-        level: { fontSize: 10, color: '#333333' },
-      })
+        link: { fontSize: scalePt(10, scale), color: '#333333' },
+        keywords: { fontSize: scalePt(10, scale), color: '#333333', marginTop: 2 },
+        level: { fontSize: scalePt(10, scale), color: '#333333' },
+      }, scale)
     }
     switch (section) {
       case 'work':
@@ -291,17 +291,15 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
 
   return (
     <Document {...pdfDocumentProps(data, title)}>
-      <FontScaleProvider value={scale}>
-        <Page size="A4" style={styles.page}>
-          <View>
-            <Text style={styles.name}>{basics.name ?? ''}</Text>
-            {basics.label ? <Text style={styles.label}>{basics.label}</Text> : null}
-            {contactLine ? <Text style={styles.contact}>{contactLine}</Text> : null}
-            {renderPdfRichText(basics.summary, styles.body)}
-            {sectionOrder.map(renderSection)}
-          </View>
-        </Page>
-      </FontScaleProvider>
+      <Page size="A4" style={styles.page}>
+        <View>
+          <Text style={styles.name}>{basics.name ?? ''}</Text>
+          {basics.label ? <Text style={styles.label}>{basics.label}</Text> : null}
+          {contactLine ? <Text style={styles.contact}>{contactLine}</Text> : null}
+          {renderPdfRichText(basics.summary, styles.body)}
+          {sectionOrder.map(renderSection)}
+        </View>
+      </Page>
     </Document>
   )
 }

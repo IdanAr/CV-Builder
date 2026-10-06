@@ -1,6 +1,8 @@
 import React from 'react'
 import { describe, it, expect, vi } from 'vitest'
-import { scaleStyle } from '../font-scale'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { scaleStyle, withFontScale } from '../font-scale'
 import { renderToGlyphRuns, type GlyphRun } from './pdf-geometry'
 import { ClassicPdfTemplate } from '../templates/ClassicPdfTemplate'
 import { ModernPdfTemplate } from '../templates/ModernPdfTemplate'
@@ -29,6 +31,34 @@ describe('scaleStyle', () => {
   it('passes through styles without a fontSize', () => {
     expect(scaleStyle({ marginTop: 3 }, 1.05)).toEqual({ marginTop: 3 })
     expect(scaleStyle(undefined, 1.05)).toBeUndefined()
+  })
+})
+
+describe('withFontScale', () => {
+  const styles = { a: { fontSize: 10, color: 'red' }, b: { marginTop: 2 } }
+
+  it('returns the same object at scale 1', () => {
+    expect(withFontScale(styles, 1)).toBe(styles)
+  })
+
+  it('scales every fontSize and leaves other styles alone', () => {
+    const out = withFontScale(styles, 1.1)
+    expect(out.a).toEqual({ fontSize: 11, color: 'red' })
+    expect(out.b).toEqual({ marginTop: 2 })
+    expect(styles.a.fontSize).toBe(10)
+  })
+})
+
+describe('PDF modules stay server-safe', () => {
+  it('uses no React context or client directive (Next route handlers import these)', () => {
+    const dir = join(__dirname, '..')
+    const files = [
+      'font-scale.ts', 'templates/pdf-utils.tsx', 'templates/pdf-primitives.tsx', 'templates/renderPdfCustomSection.tsx',
+      ...['Classic', 'Modern', 'Minimal', 'Executive', 'Sidebar', 'Ats'].map((n) => `templates/${n}PdfTemplate.tsx`),
+    ]
+    for (const f of files) {
+      expect(readFileSync(join(dir, f), 'utf8'), f).not.toMatch(/createContext|useContext|use client/)
+    }
   })
 })
 

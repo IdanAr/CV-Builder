@@ -1,7 +1,7 @@
 ﻿import React from 'react'
-import { Document, View, StyleSheet } from '@react-pdf/renderer'
-import { Page, Text, Link, FontScaleProvider } from '../font-scale'
-import { resolveFontScale } from '@/lib/design/font-scale'
+import { Document, Page, View, Text, Link, StyleSheet } from '@react-pdf/renderer'
+import { withFontScale } from '../font-scale'
+import { resolveFontScale, scalePt } from '@/lib/design/font-scale'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns, pdfDocumentProps } from './pdf-utils'
 import { resolveProfiles } from '@/lib/basics-profiles'
@@ -26,7 +26,7 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
   const scale = resolveFontScale(meta)
   const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE * scale, meta.lineSpacing)
   const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE * scale, meta.lineSpacing)
-  const styles = withLineHeights(StyleSheet.create({
+  const styles = withFontScale(withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: PAGE_FONT_SIZE, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
     name: { fontFamily: headFont, fontSize: T.nameSize, fontWeight: 'bold', textAlign: 'center', marginBottom: 1.5 },
     subtitle: { fontSize: T.labelSize, color: '#555555', textAlign: 'center' },
@@ -45,7 +45,7 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
     entrySummary: { fontSize: 10, marginTop: 2 },
     degree: { fontSize: 10.5 },
     summaryBox: { fontSize: 10, fontStyle: 'italic', marginBottom: T.summaryMarginBottom },
-  }), meta.lineSpacing)
+  }), meta.lineSpacing), scale)
 
   function buildContactRow() {
     const items: Array<{ label: string; href: string }> = []
@@ -59,7 +59,7 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
     if (loc) items.push({ label: loc, href: '' })
     if (!items.length) return null
     return (
-      <Text style={{ fontSize: T.contactSize, color: '#555555', textAlign: 'center', marginTop: 3 }}>
+      <Text style={{ fontSize: scalePt(T.contactSize, scale), color: '#555555', textAlign: 'center', marginTop: 3 }}>
         {items.map((item, i) => (
           <React.Fragment key={i}>
             {item.href
@@ -78,7 +78,7 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
       const id = section.slice(7)
       const cs = data.customSections?.find((s) => s.id === id)
       if (!cs) return null
-      return renderPdfCustomSection(cs, { sectionTitle: styles.sectionTitle, bold: styles.bold, accent: styles.accent, small: styles.small, body: styles.entrySummary, bullet: styles.bullet })
+      return renderPdfCustomSection(cs, { sectionTitle: styles.sectionTitle, bold: styles.bold, accent: styles.accent, small: styles.small, body: styles.entrySummary, bullet: styles.bullet }, scale)
     }
     switch (section) {
       case 'work':
@@ -176,11 +176,11 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
             {/* Mirrors the web definition list: fixed-width bold name column, keywords fill the rest */}
             {skills.map((s, i) => (
               <View key={i} style={{ flexDirection: 'row', gap: 12, marginBottom: 1.5 }}>
-                <Text style={{ fontSize: 10, fontWeight: 'bold', minWidth: 97.5 }}>
+                <Text style={{ fontSize: scalePt(10, scale), fontWeight: 'bold', minWidth: 97.5 }}>
                   {s.name ?? ''}
                   {s.level ? <Text style={{ fontWeight: 'normal', color: '#666666' }}> · {s.level}</Text> : null}
                 </Text>
-                {(s.keywords ?? []).length > 0 ? <Text style={{ fontSize: 10, color: '#444444', flex: 1 }}>{(s.keywords ?? []).join(', ')}</Text> : null}
+                {(s.keywords ?? []).length > 0 ? <Text style={{ fontSize: scalePt(10, scale), color: '#444444', flex: 1 }}>{(s.keywords ?? []).join(', ')}</Text> : null}
               </View>
             ))}
           </View>
@@ -354,43 +354,39 @@ export function ClassicPdfTemplate({ data, meta, title }: { data: ResumeData; me
     const rightSections = sectionOrder.filter((s) => getColumnSide(s, ca) === 'right')
     return (
       <Document {...pdfDocumentProps(data, title)}>
-        <FontScaleProvider value={scale}>
-          <Page size="A4" style={styles.page}>
-            <View style={{ marginBottom: T.headerMarginBottom }}>
-              <Text style={styles.name}>{basics.name ?? ''}</Text>
-              {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
-              {buildContactRow()}
-            </View>
-            {renderPdfRichText(basics.summary, styles.summaryBox)}
-            {/* Two columns: left fully then right */}
-            <View style={{ flexDirection: 'row', gap: 18 }}>
-              <View style={{ flex: 0.58 }}>{leftSections.map(renderPdfSection)}</View>
-              <View style={{ flex: 0.42 }}>{rightSections.map(renderPdfSection)}</View>
-            </View>
-          </Page>
-        </FontScaleProvider>
-      </Document>
-    )
-  }
-
-  return (
-    <Document {...pdfDocumentProps(data, title)}>
-      <FontScaleProvider value={scale}>
         <Page size="A4" style={styles.page}>
           <View style={{ marginBottom: T.headerMarginBottom }}>
             <Text style={styles.name}>{basics.name ?? ''}</Text>
             {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
             {buildContactRow()}
           </View>
-          {basics.summary ? (
-            <View>
-              <Text style={styles.sectionTitle}>Summary</Text>
-              {renderPdfRichText(basics.summary, styles.body)}
-            </View>
-          ) : null}
-          {sectionOrder.map(renderPdfSection)}
+          {renderPdfRichText(basics.summary, styles.summaryBox)}
+          {/* Two columns: left fully then right */}
+          <View style={{ flexDirection: 'row', gap: 18 }}>
+            <View style={{ flex: 0.58 }}>{leftSections.map(renderPdfSection)}</View>
+            <View style={{ flex: 0.42 }}>{rightSections.map(renderPdfSection)}</View>
+          </View>
         </Page>
-      </FontScaleProvider>
+      </Document>
+    )
+  }
+
+  return (
+    <Document {...pdfDocumentProps(data, title)}>
+      <Page size="A4" style={styles.page}>
+        <View style={{ marginBottom: T.headerMarginBottom }}>
+          <Text style={styles.name}>{basics.name ?? ''}</Text>
+          {basics.label ? <Text style={styles.subtitle}>{basics.label}</Text> : null}
+          {buildContactRow()}
+        </View>
+        {basics.summary ? (
+          <View>
+            <Text style={styles.sectionTitle}>Summary</Text>
+            {renderPdfRichText(basics.summary, styles.body)}
+          </View>
+        ) : null}
+        {sectionOrder.map(renderPdfSection)}
+      </Page>
     </Document>
   )
 }

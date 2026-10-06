@@ -1,6 +1,6 @@
 import React from 'react'
-import { Document, View, StyleSheet } from '@react-pdf/renderer'
-import { Page, Text, Link, FontScaleProvider, useFontScale } from '../font-scale'
+import { Document, Page, View, Text, Link, StyleSheet } from '@react-pdf/renderer'
+import { withFontScale } from '../font-scale'
 import { resolveFontScale, scalePt } from '@/lib/design/font-scale'
 import type { Style } from '@react-pdf/types'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
@@ -125,9 +125,9 @@ function chunkContactText(text: string, availableWidthPt: number, fontSizePt: nu
  * ordinary email at the default 33% rail, renders exactly as before, as a
  * single <Text>. Only a token estimated too wide for the *specific*
  * document's rail triggers the chunked flex-row rendering. */
-function RailContactText({ text, style, availableWidthPt }: { text: string; style: Style; availableWidthPt: number }) {
+function RailContactText({ text, style, availableWidthPt, scale }: { text: string; style: Style; availableWidthPt: number; scale: number }) {
   // The <Text> below renders at the scaled size, so measure at it too.
-  const fontSizePt = scalePt(typeof style.fontSize === 'number' ? style.fontSize : 10, useFontScale())
+  const fontSizePt = scalePt(typeof style.fontSize === 'number' ? style.fontSize : 10, scale)
   const hasLongToken = text
     .split(/\s+/)
     .some((t) => t.length > 0 && estimateTextWidthPt(t, fontSizePt) > availableWidthPt)
@@ -177,7 +177,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
   const scale = resolveFontScale(meta)
   const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE * scale, meta.lineSpacing)
   const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE * scale, meta.lineSpacing)
-  const styles = withLineHeights(StyleSheet.create({
+  const styles = withFontScale(withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: PAGE_FONT_SIZE, lineHeight: meta.lineSpacing, color: '#000000', flexDirection: 'row' },
 
     // Left rail
@@ -219,7 +219,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
     body: { fontSize: T.bodySize },
     entrySummary: { fontSize: 10, marginTop: 2 },
     degree: { fontSize: 10.5 },
-  }), meta.lineSpacing)
+  }), meta.lineSpacing), scale)
 
   function renderRailSection(kind: string): React.ReactNode {
     if (kind.startsWith('custom:')) {
@@ -444,7 +444,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
       const id = section.slice(7)
       const cs = data.customSections?.find((s) => s.id === id)
       if (!cs) return null
-      return renderPdfCustomSection(cs, { sectionTitle: styles.sectionTitle, bold: styles.bold, accent: styles.accent, small: styles.small, body: styles.entrySummary, bullet: styles.bullet })
+      return renderPdfCustomSection(cs, { sectionTitle: styles.sectionTitle, bold: styles.bold, accent: styles.accent, small: styles.small, body: styles.entrySummary, bullet: styles.bullet }, scale)
     }
     switch (section) {
       case 'work':
@@ -719,38 +719,36 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
 
   return (
     <Document {...pdfDocumentProps(data, title)}>
-      <FontScaleProvider value={scale}>
-        <Page size="A4" style={styles.page}>
-          {/* Left rail — rendered first (column 1 top-to-bottom) */}
-          <View style={styles.rail}>
-            <Text style={styles.railName}>{basics.name ?? ''}</Text>
-            {basics.label ? <Text style={styles.railLabel}>{basics.label}</Text> : null}
-            <View style={styles.railContact}>
-              {basics.email ? <RailContactText style={styles.railContactLine} text={basics.email} availableWidthPt={railContactWidthPt} /> : null}
-              {basics.phone ? <RailContactText style={styles.railContactLine} text={basics.phone} availableWidthPt={railContactWidthPt} /> : null}
-              {resolveProfiles(basics).filter((p) => p.url).map((p) => (
-                <Link key={p.id} src={ensureHttps(p.url!)} style={{ textDecoration: 'none' }}>
-                  <RailContactText style={styles.railContactLine} text={p.label || p.url!} availableWidthPt={railContactWidthPt} />
-                </Link>
-              ))}
-              {[basics.location?.city, basics.location?.region].filter(Boolean).join(', ') ? (
-                <RailContactText
-                  style={styles.railContactLine}
-                  availableWidthPt={railContactWidthPt}
-                  text={[basics.location?.city, basics.location?.region].filter(Boolean).join(', ')}
-                />
-              ) : null}
-            </View>
-            {railSections.map(renderRailSection)}
+      <Page size="A4" style={styles.page}>
+        {/* Left rail — rendered first (column 1 top-to-bottom) */}
+        <View style={styles.rail}>
+          <Text style={styles.railName}>{basics.name ?? ''}</Text>
+          {basics.label ? <Text style={styles.railLabel}>{basics.label}</Text> : null}
+          <View style={styles.railContact}>
+            {basics.email ? <RailContactText style={styles.railContactLine} text={basics.email} availableWidthPt={railContactWidthPt} scale={scale} /> : null}
+            {basics.phone ? <RailContactText style={styles.railContactLine} text={basics.phone} availableWidthPt={railContactWidthPt} scale={scale} /> : null}
+            {resolveProfiles(basics).filter((p) => p.url).map((p) => (
+              <Link key={p.id} src={ensureHttps(p.url!)} style={{ textDecoration: 'none' }}>
+                <RailContactText style={styles.railContactLine} text={p.label || p.url!} availableWidthPt={railContactWidthPt} scale={scale} />
+              </Link>
+            ))}
+            {[basics.location?.city, basics.location?.region].filter(Boolean).join(', ') ? (
+              <RailContactText
+                style={styles.railContactLine}
+                availableWidthPt={railContactWidthPt} scale={scale}
+                text={[basics.location?.city, basics.location?.region].filter(Boolean).join(', ')}
+              />
+            ) : null}
           </View>
+          {railSections.map(renderRailSection)}
+        </View>
 
-          {/* Main column — column 2 top-to-bottom */}
-          <View style={styles.main}>
-            {basics.summary ? renderPdfRichText(basics.summary, styles.summary) : null}
-            {mainSections.map(renderMainSection)}
-          </View>
-        </Page>
-      </FontScaleProvider>
+        {/* Main column — column 2 top-to-bottom */}
+        <View style={styles.main}>
+          {basics.summary ? renderPdfRichText(basics.summary, styles.summary) : null}
+          {mainSections.map(renderMainSection)}
+        </View>
+      </Page>
     </Document>
   )
 }

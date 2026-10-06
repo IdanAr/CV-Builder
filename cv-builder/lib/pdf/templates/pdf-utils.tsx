@@ -1,5 +1,5 @@
 import React from 'react'
-import { Text } from '../font-scale'
+import { Text } from '@react-pdf/renderer'
 import type { Style } from '@react-pdf/types'
 import { parseRichText, splitParagraphs } from '@/lib/rich-text'
 import type { ResumeData } from '@/lib/schemas/resume.zod'

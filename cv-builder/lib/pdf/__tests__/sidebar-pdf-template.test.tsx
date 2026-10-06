@@ -79,9 +79,7 @@ function findStyleOfText(node: unknown, text: string): Record<string, unknown> |
 
 function getPageColumns(meta: ResumeMeta) {
   const doc = SidebarPdfTemplate({ data, meta }) as unknown as AnyElement
-  // Document > FontScaleProvider > Page
-  const provider = doc.props!.children as AnyElement
-  const page = provider.props!.children as AnyElement
+  const page = doc.props!.children as AnyElement
   const children = (page.props!.children as AnyElement[]).filter(Boolean)
   const [rail, main] = children
   return { rail, main }
