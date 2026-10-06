@@ -9,8 +9,6 @@ import { ScrapedJobsList } from '@/components/jobsearch/ScrapedJobsList'
 import { QueuedApplicationsPanel } from '@/components/jobsearch/QueuedApplicationsPanel'
 import { JobMatchesFeed } from '@/components/jobsearch/JobMatchesFeed'
 import { JobSearchShell, type JobSearchSegment } from '@/components/jobsearch/JobSearchShell'
-import { AppNavbar } from '@/components/ui/AppNavbar'
-import { DashboardNavActions } from '@/components/ui/DashboardNavActions'
 
 const TABS = ['jobs', 'matches', 'rules'] as const
 type Tab = (typeof TABS)[number]
@@ -76,55 +74,51 @@ export default async function JobSearchProfilePage({ params, searchParams }: Pag
       : undefined
 
   return (
-    <>
-      <AppNavbar actions={<DashboardNavActions user={session.user} current="jobsearch" />} />
+    <JobSearchShell
+      segments={segments}
+      active={tab}
+      backHref="/dashboard/jobsearch"
+      backLabel="All profiles"
+      title={profile.name}
+      description={TAB_COPY[tab]}
+      stats={stats}
+      // The preferences bar sits above every tab: it is the profile's
+      // identity, not one of its views, and it answers "why did this turn
+      // up?" wherever you are.
+      banner={
+        <ProfileSettings
+          profileId={id}
+          initialProfile={JSON.parse(JSON.stringify(profile))}
+        />
+      }
+    >
+      {tab === 'jobs' && (
+        <div className="flex flex-col gap-8">
+          <section className="flex flex-col gap-3">
+            <div className="flex flex-col gap-0.5">
+              <h2 className="text-base font-semibold text-fg-heading">Queued applications</h2>
+              <p className="text-xs text-fg-subtle">
+                Drafts a rule prepared for you, waiting to be reviewed or submitted.
+              </p>
+            </div>
+            <QueuedApplicationsPanel profileId={id} />
+          </section>
 
-      <JobSearchShell
-        segments={segments}
-        active={tab}
-        backHref="/dashboard/jobsearch"
-        backLabel="All profiles"
-        title={profile.name}
-        description={TAB_COPY[tab]}
-        stats={stats}
-        // The preferences bar sits above every tab: it is the profile's
-        // identity, not one of its views, and it answers "why did this turn
-        // up?" wherever you are.
-        banner={
-          <ProfileSettings
-            profileId={id}
-            initialProfile={JSON.parse(JSON.stringify(profile))}
-          />
-        }
-      >
-        {tab === 'jobs' && (
-          <div className="flex flex-col gap-8">
-            <section className="flex flex-col gap-3">
-              <div className="flex flex-col gap-0.5">
-                <h2 className="text-base font-semibold text-fg-heading">Queued applications</h2>
-                <p className="text-xs text-fg-subtle">
-                  Drafts a rule prepared for you, waiting to be reviewed or submitted.
-                </p>
-              </div>
-              <QueuedApplicationsPanel profileId={id} />
-            </section>
+          <section className="flex flex-col gap-3">
+            <div className="flex flex-col gap-0.5">
+              <h2 className="text-base font-semibold text-fg-heading">Scraped jobs</h2>
+              <p className="text-xs text-fg-subtle">
+                Everything this profile has found, newest first.
+              </p>
+            </div>
+            <ScrapedJobsList profileId={id} />
+          </section>
+        </div>
+      )}
 
-            <section className="flex flex-col gap-3">
-              <div className="flex flex-col gap-0.5">
-                <h2 className="text-base font-semibold text-fg-heading">Scraped jobs</h2>
-                <p className="text-xs text-fg-subtle">
-                  Everything this profile has found, newest first.
-                </p>
-              </div>
-              <ScrapedJobsList profileId={id} />
-            </section>
-          </div>
-        )}
+      {tab === 'matches' && <JobMatchesFeed profileId={id} />}
 
-        {tab === 'matches' && <JobMatchesFeed profileId={id} />}
-
-        {tab === 'rules' && <RuleBuilder profileId={id} />}
-      </JobSearchShell>
-    </>
+      {tab === 'rules' && <RuleBuilder profileId={id} />}
+    </JobSearchShell>
   )
 }

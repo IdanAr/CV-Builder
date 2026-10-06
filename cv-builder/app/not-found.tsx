@@ -25,7 +25,7 @@ export default function NotFound() {
 
         <div className="mt-6 flex items-center justify-center gap-3">
           <Link href="/dashboard" className={buttonClasses({ size: 'md' })}>
-            Back to my CVs
+            Back to dashboard
           </Link>
           <Link href="/" className={buttonClasses({ variant: 'secondary', size: 'md' })}>
             Homepage

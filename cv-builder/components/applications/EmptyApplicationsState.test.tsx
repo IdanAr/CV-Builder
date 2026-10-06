@@ -14,7 +14,7 @@ describe('EmptyApplicationsState', () => {
 
   it('points at the resume-based entry path, referencing the CV card Track action', () => {
     render(<EmptyApplicationsState onCreate={vi.fn()} />)
-    expect(screen.getByRole('link', { name: /My CVs/i })).toHaveAttribute('href', '/dashboard')
+    expect(screen.getByRole('link', { name: /My CVs/i })).toHaveAttribute('href', '/dashboard/cvs')
     // References ResumeCard's Track button generically (no emoji) — see components/ResumeCard.tsx.
     expect(screen.getByText(/Track.*on any CV card/)).toBeInTheDocument()
   })

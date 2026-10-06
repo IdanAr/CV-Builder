@@ -152,7 +152,9 @@ function CvTableRow({ row }: { row: CvRow }) {
         >
           {edited}
         </time>
-        <p className="truncate text-xs text-fg-muted">Created {formatAbsoluteDate(row.createdAt)}</p>
+        <p className="truncate text-xs text-fg-muted" suppressHydrationWarning>
+          Created {formatAbsoluteDate(row.createdAt)}
+        </p>
       </div>
       <div role="cell" className="flex min-w-0 flex-wrap items-center gap-1.5">
         <StatusBadge badge={row.badge} />

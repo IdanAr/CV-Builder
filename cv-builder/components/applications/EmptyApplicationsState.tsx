@@ -37,7 +37,7 @@ export function EmptyApplicationsState({ onCreate }: { onCreate: () => void }) {
             that resume.
           </p>
           <Link
-            href="/dashboard"
+            href="/dashboard/cvs"
             className="rounded-lg border border-accent-300 bg-surface px-4 py-2 text-center text-sm font-medium text-accent-700 transition hover:bg-accent-50"
           >
             Go to My CVs

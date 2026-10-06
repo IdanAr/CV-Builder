@@ -225,6 +225,51 @@ describe('CvLibrary', () => {
     expect(ats).toBeDefined()
   })
 
+  it('colours the ATS score green, amber or red and always writes N/25', () => {
+    render(<CvLibrary rows={ROWS} initialView="table" />)
+    const rowOf = (title: string) =>
+      screen.getByRole('link', { name: title }).closest('[role="row"]') as HTMLElement
+    const tone = (title: string, text: string) =>
+      within(rowOf(title))
+        .getAllByText(text)
+        .map((el) => el.className)
+        .join(' ')
+    expect(tone('Alpha CV', '22/25')).toContain('text-fg-success')
+    expect(tone('Gamma CV', '14/25')).toContain('text-fg-warning')
+    // The danger token, not a raw red: red-500 fails AA against the page.
+    expect(tone('Beta CV', '8/25')).toContain('text-fg-danger')
+    expect(tone('Beta CV', '8/25')).not.toContain('text-danger-500')
+  })
+
+  it('describes template, layout and sections filled under the template name', () => {
+    render(<CvLibrary rows={ROWS} initialView="table" />)
+    const alphaRow = screen.getByRole('link', { name: 'Alpha CV' }).closest('[role="row"]') as HTMLElement
+    expect(within(alphaRow).getByText('Single column, 3 sections filled')).toBeInTheDocument()
+  })
+
+  it('uses the singular for one section filled', () => {
+    render(
+      <CvLibrary
+        rows={[libraryRow({ id: 'z', title: 'Zed CV', sectionsFilledCount: 1 })]}
+        initialView="table"
+      />
+    )
+    expect(screen.getByText('Single column, 1 section filled')).toBeInTheDocument()
+  })
+
+  it('shows the application status colour as a dot beside the label', () => {
+    render(<CvLibrary rows={ROWS} initialView="table" />)
+    const betaRow = screen.getByRole('link', { name: 'Beta CV' }).closest('[role="row"]') as HTMLElement
+    const dot = within(betaRow).getByText('Interviewing').previousElementSibling as HTMLElement
+    expect(dot.getAttribute('style')).toContain('background-color: rgb(36, 87, 245)') // #2457f5
+  })
+
+  it('omits the "Tailored from" line for a CV with no parent', () => {
+    render(<CvLibrary rows={ROWS} initialView="table" />)
+    const alphaRow = screen.getByRole('link', { name: 'Alpha CV' }).closest('[role="row"]') as HTMLElement
+    expect(within(alphaRow).queryByText(/Tailored from/)).not.toBeInTheDocument()
+  })
+
   it('sorts by Edited descending by default', () => {
     render(<CvLibrary rows={ROWS} initialView="table" />)
     expect(rowTitles()).toEqual(['Beta CV', 'Gamma CV', 'Alpha CV'])
