@@ -11,6 +11,7 @@ import { resolveProfiles } from '@/lib/basics-profiles'
 import { resolveWorkRoles, resolveEducationRoles } from '@/lib/roles'
 import { webFontFamily } from '@/lib/fonts/families'
 import { EXECUTIVE_TOKENS as T, px } from '@/lib/design/tokens'
+import { pts, resolveFontScale } from '@/lib/design/font-scale'
 
 function rt(text: string | undefined | null): React.ReactNode {
   return <RichText text={text} />
@@ -18,12 +19,14 @@ function rt(text: string | undefined | null): React.ReactNode {
 
 function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
   const { basics = {} } = data
+  const scale = resolveFontScale(meta)
+  const sz = (pt: number) => pts(pt, scale)
   const pad = meta.pageMargins * 96
   const sectionOrder = resolveSectionOrder(meta)
 
   const page: React.CSSProperties = {
     fontFamily: webFontFamily(meta.fontFamily),
-    fontSize: '11pt',
+    fontSize: sz(11),
     lineHeight: meta.lineSpacing,
     background: '#fff',
     color: '#000',
@@ -35,7 +38,7 @@ function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
 
   const sectionTitle: React.CSSProperties = {
     fontFamily: webFontFamily(meta.headerFontFamily),
-    fontSize: `${T.sectionTitleSize}pt`,
+    fontSize: sz(T.sectionTitleSize),
     fontWeight: 700,
     color: meta.primaryColor,
     textTransform: 'uppercase',
@@ -51,7 +54,7 @@ function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
       const id = section.slice(7)
       const cs = data.customSections?.find((s) => s.id === id)
       if (!cs) return null
-      return renderCustomSection(cs, { sectionTitle, accentColor: meta.accentColor }, section)
+      return renderCustomSection(cs, { sectionTitle, accentColor: meta.accentColor, fontScale: scale }, section)
     }
     switch (section) {
       case 'work': {
@@ -64,18 +67,18 @@ function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
               const roles = resolveWorkRoles(job)
               return (
                 <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.entryMarginBottom) }}>
-                  <strong style={{ fontSize: '11pt' }}>{job.name}</strong>
+                  <strong style={{ fontSize: sz(11) }}>{job.name}</strong>
                   {roles.map((role, ri) => (
                     <div key={role.id ?? ri} style={{ marginTop: ri === 0 ? 0 : '6px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                        <span style={{ color: meta.accentColor, fontStyle: 'italic', fontSize: '10.5pt' }}>{role.position}</span>
-                        <span style={{ fontSize: '10pt', color: '#666' }}>
+                        <span style={{ color: meta.accentColor, fontStyle: 'italic', fontSize: sz(10.5) }}>{role.position}</span>
+                        <span style={{ fontSize: sz(10), color: '#666' }}>
                           {formatDateRange(role.startDate, role.endDate)}
                         </span>
                       </div>
-                      {role.summary && <div style={{ fontSize: '10pt', marginTop: '3px', textAlign: 'justify' }}>{rt(role.summary)}</div>}
+                      {role.summary && <div style={{ fontSize: sz(10), marginTop: '3px', textAlign: 'justify' }}>{rt(role.summary)}</div>}
                       {(role.highlights ?? []).length > 0 && (
-                        <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt', listStyleType: 'disc' }}>
+                        <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: sz(10), listStyleType: 'disc' }}>
                           {(role.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                         </ul>
                       )}
@@ -101,12 +104,12 @@ function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
                   {roles.map((role, ri) => (
                     <div key={role.id ?? ri} style={{ marginTop: ri === 0 ? 0 : '4px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                        <span style={{ fontSize: '10.5pt', fontStyle: 'italic' }}>{[role.studyType, role.area].filter(Boolean).join(' in ')}</span>
-                        <span style={{ fontSize: '10pt', color: '#666' }}>
+                        <span style={{ fontSize: sz(10.5), fontStyle: 'italic' }}>{[role.studyType, role.area].filter(Boolean).join(' in ')}</span>
+                        <span style={{ fontSize: sz(10), color: '#666' }}>
                           {formatDateRange(role.startDate, role.endDate)}
                         </span>
                       </div>
-                      {role.score && <div style={{ fontSize: '10pt', color: '#666' }}>Score: {role.score}</div>}
+                      {role.score && <div style={{ fontSize: sz(10), color: '#666' }}>Score: {role.score}</div>}
                     </div>
                   ))}
                 </div>
@@ -121,7 +124,7 @@ function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
         return (
           <div key="skills" data-pv-section="skills">
             <div style={sectionTitle}>Skills</div>
-            <div style={{ fontSize: '10pt', lineHeight: 1.7 }}>
+            <div style={{ fontSize: sz(10), lineHeight: 1.7 }}>
               {skills.map((s, i) => (
                 <div key={i} data-pv-entry={i} style={{ display: 'flex', gap: '16px', marginBottom: '2px' }}>
                   <div style={{ minWidth: '130px', fontWeight: 600, whiteSpace: 'normal' }}>
@@ -143,7 +146,7 @@ function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
         return (
           <div key="languages" data-pv-section="languages">
             <div style={sectionTitle}>Languages</div>
-            <div style={{ fontSize: '10pt', lineHeight: 1.8 }}>
+            <div style={{ fontSize: sz(10), lineHeight: 1.8 }}>
               {langs.map((l, i) => (
                 <div key={i} data-pv-entry={i}>
                   <strong>{l.language}</strong>
@@ -164,14 +167,14 @@ function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
               <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{v.organization}</strong>
-                  <span style={{ fontSize: '10pt', color: '#666' }}>
+                  <span style={{ fontSize: sz(10), color: '#666' }}>
                     {formatDateRange(v.startDate, v.endDate)}
                   </span>
                 </div>
-                <div style={{ color: meta.accentColor, fontStyle: 'italic', fontSize: '10.5pt' }}>{v.position}</div>
-                {v.summary && <div style={{ fontSize: '10pt', marginTop: '3px' }}>{rt(v.summary)}</div>}
+                <div style={{ color: meta.accentColor, fontStyle: 'italic', fontSize: sz(10.5) }}>{v.position}</div>
+                {v.summary && <div style={{ fontSize: sz(10), marginTop: '3px' }}>{rt(v.summary)}</div>}
                 {(v.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt', listStyleType: 'disc' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: sz(10), listStyleType: 'disc' }}>
                     {(v.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
@@ -187,7 +190,7 @@ function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
           <div key="certificates" data-pv-section="certificates">
             <div style={sectionTitle}>Certifications</div>
             {certificates.map((c, i) => (
-              <div key={i} data-pv-entry={i} style={{ marginBottom: '6px', fontSize: '10pt' }}>
+              <div key={i} data-pv-entry={i} style={{ marginBottom: '6px', fontSize: sz(10) }}>
                 <strong>{c.name}</strong>
                 {c.issuer && <span style={{ color: '#666' }}> - {c.issuer}</span>}
                 {c.date && <span style={{ color: '#666' }}>  ·  {c.date}</span>}
@@ -206,10 +209,10 @@ function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
               <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{a.title}</strong>
-                  <span style={{ fontSize: '10pt', color: '#666' }}>{a.date}</span>
+                  <span style={{ fontSize: sz(10), color: '#666' }}>{a.date}</span>
                 </div>
-                {a.awarder && <div style={{ fontSize: '10pt', color: '#666' }}>{a.awarder}</div>}
-                {a.summary && <div style={{ fontSize: '10pt', textAlign: 'justify' }}>{a.summary}</div>}
+                {a.awarder && <div style={{ fontSize: sz(10), color: '#666' }}>{a.awarder}</div>}
+                {a.summary && <div style={{ fontSize: sz(10), textAlign: 'justify' }}>{a.summary}</div>}
               </div>
             ))}
           </div>
@@ -225,10 +228,10 @@ function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
               <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.eduMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{p.name}</strong>
-                  <span style={{ fontSize: '10pt', color: '#666' }}>{p.releaseDate}</span>
+                  <span style={{ fontSize: sz(10), color: '#666' }}>{p.releaseDate}</span>
                 </div>
-                {p.publisher && <div style={{ fontSize: '10pt', color: '#666' }}>{p.publisher}</div>}
-                {p.summary && <div style={{ fontSize: '10pt', textAlign: 'justify' }}>{p.summary}</div>}
+                {p.publisher && <div style={{ fontSize: sz(10), color: '#666' }}>{p.publisher}</div>}
+                {p.summary && <div style={{ fontSize: sz(10), textAlign: 'justify' }}>{p.summary}</div>}
               </div>
             ))}
           </div>
@@ -240,7 +243,7 @@ function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
         return (
           <div key="interests" data-pv-section="interests">
             <div style={sectionTitle}>Interests</div>
-            <div style={{ fontSize: '10pt' }}>
+            <div style={{ fontSize: sz(10) }}>
               {interests.map((int, i) => (
                 <div key={i} data-pv-entry={i} style={{ display: 'inline' }}>
                   <strong>{int.name}</strong>
@@ -262,18 +265,18 @@ function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
               <div key={i} data-pv-entry={i} style={{ marginBottom: px(T.projectMarginBottom) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <strong>{p.name}</strong>
-                  <span style={{ fontSize: '10pt', color: '#666' }}>
+                  <span style={{ fontSize: sz(10), color: '#666' }}>
                     {formatDateRange(p.startDate, p.endDate)}
                   </span>
                 </div>
-                {p.description && <div style={{ fontSize: '10pt', marginTop: '3px', textAlign: 'justify' }}>{rt(p.description)}</div>}
+                {p.description && <div style={{ fontSize: sz(10), marginTop: '3px', textAlign: 'justify' }}>{rt(p.description)}</div>}
                 {(p.highlights ?? []).length > 0 && (
-                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: '10pt', listStyleType: 'disc' }}>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: px(T.bulletIndent), fontSize: sz(10), listStyleType: 'disc' }}>
                     {(p.highlights ?? []).map((h, hi) => <li key={hi}>{rt(h)}</li>)}
                   </ul>
                 )}
                 {(p.keywords ?? []).length > 0 && (
-                  <div style={{ fontSize: '10pt', color: '#666', marginTop: '2px' }}>{(p.keywords ?? []).join(', ')}</div>
+                  <div style={{ fontSize: sz(10), color: '#666', marginTop: '2px' }}>{(p.keywords ?? []).join(', ')}</div>
                 )}
               </div>
             ))}
@@ -291,7 +294,7 @@ function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
       <div style={{ marginBottom: px(T.headerMarginBottom) }}>
         <div style={{
           fontFamily: webFontFamily(meta.headerFontFamily),
-          fontSize: `${T.nameSize}pt`,
+          fontSize: sz(T.nameSize),
           fontWeight: 700,
           letterSpacing: '0.01em',
           color: meta.primaryColor,
@@ -299,7 +302,7 @@ function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
           {basics.name}
         </div>
         {basics.label && (
-          <div style={{ fontSize: `${T.labelSize}pt`, color: meta.accentColor, fontStyle: 'italic', marginTop: '1px' }}>
+          <div style={{ fontSize: sz(T.labelSize), color: meta.accentColor, fontStyle: 'italic', marginTop: '1px' }}>
             {basics.label}
           </div>
         )}
@@ -314,7 +317,7 @@ function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
       }} />
 
       {/* Contact line */}
-      <div style={{ fontSize: `${T.contactSize}pt`, color: '#555' }}>
+      <div style={{ fontSize: sz(T.contactSize), color: '#555' }}>
         {(() => {
           const eu = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`
           const parts: React.ReactNode[] = []
@@ -332,7 +335,7 @@ function ExecutiveTemplateImpl({ data, meta }: TemplateProps) {
 
       {/* Summary */}
       {basics.summary && (
-        <div style={{ fontSize: '10.5pt', marginTop: px(T.summaryMarginBottom), textAlign: 'justify' }}>
+        <div style={{ fontSize: sz(10.5), marginTop: px(T.summaryMarginBottom), textAlign: 'justify' }}>
           {rt(basics.summary)}
         </div>
       )}
