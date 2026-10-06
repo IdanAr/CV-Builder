@@ -31,6 +31,15 @@ const fixture: ResumeData = {
   languages: [{ language: 'English', fluency: 'Native' }],
 }
 
+const longFixture: ResumeData = {
+  ...fixture,
+  work: Array.from({ length: 9 }, (_, i) => ({
+    name: `Company${i + 1} Holdings`, position: `Engineering Lead ${i + 1}`,
+    startDate: `${2005 + i}-01`, endDate: `${2006 + i}-01`,
+    highlights: Array.from({ length: 4 }, (__, j) => `Delivered milestone ${i + 1}x${j + 1} improving throughput across several distributed services for large customers`),
+  })),
+}
+
 function meta(templateId: string, fontScale: number, lineSpacing: number): ResumeMeta {
   return {
     templateId, fontFamily: 'Calibri', headerFontFamily: 'Calibri',
@@ -38,23 +47,24 @@ function meta(templateId: string, fontScale: number, lineSpacing: number): Resum
     pageMargins: 0.75, sidebarRailWidth: 33, lineSpacing, fontScale,
     sectionOrder: ['work', 'education', 'skills', 'languages'],
     layout: 'single-column', columnAssignment: {}, excludedAtsKeywords: [],
-  } as ResumeMeta
+  } satisfies ResumeMeta
 }
 
 /** Words only: the engines differ in whitespace and wrapping hyphens, not in content. */
 function words(text: string): string {
-  return text.replace(/[-\s·|•]/g, '').toLowerCase()
+  // pdf-parse appends page markers like "-- 1 of 2 --"; they are not content.
+  return text.replace(/--\s*\d+\s+of\s+\d+\s*--/g, '').replace(/[-\s·|•]/g, '').toLowerCase()
 }
 
-async function pdf(m: ResumeMeta, mode: ExportMode): Promise<{ text: string; pages: number }> {
-  const buffer = await renderToBuffer(selectPdfTemplate(fixture, m, mode, 'Parity') as React.ReactElement<never>)
+async function pdf(m: ResumeMeta, mode: ExportMode, data: ResumeData = fixture): Promise<{ text: string; pages: number }> {
+  const buffer = await renderToBuffer(selectPdfTemplate(data, m, mode, 'Parity') as React.ReactElement<never>)
   const parser = new PDFParse({ data: buffer })
   const result = await parser.getText()
   return { text: words(result.text), pages: result.pages.length }
 }
 
-async function docxText(m: ResumeMeta, mode: ExportMode): Promise<string> {
-  const buf = await applyFontScaleToDocx(await Packer.toBuffer(buildDocx(fixture, m, mode)), m.fontScale)
+async function docxText(m: ResumeMeta, mode: ExportMode, data: ResumeData = fixture): Promise<string> {
+  const buf = await applyFontScaleToDocx(await Packer.toBuffer(buildDocx(data, m, mode)), m.fontScale)
   const xml = await (await JSZip.loadAsync(buf)).file('word/document.xml')!.async('string')
   return words([...xml.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((x) => x[1]).join(''))
 }
@@ -98,6 +108,49 @@ describe('ats mode stays strictly linear at the largest scale and spacing', () =
       const idx = text.indexOf(part, last + 1)
       expect(idx, `"${part}" missing or out of order`).toBeGreaterThan(-1)
       last = idx
+    }
+  })
+})
+
+const KEY_WORDS = ['janesmith', 'acmecorp', 'cutinfracosts40%', 'mit']
+
+describe.each(TEMPLATES)('absolute content at scale 1: %s', (templateId) => {
+  it.each(MODES)('%s PDF and DOCX contain the key fixture content', async (mode) => {
+    const pdfText = (await pdf(meta(templateId, 1, 1.15), mode)).text
+    const docText = await docxText(meta(templateId, 1, 1.15), mode)
+    for (const w of KEY_WORDS) {
+      expect(pdfText, `${mode} PDF missing ${w}`).toContain(w)
+      expect(docText, `${mode} DOCX missing ${w}`).toContain(w)
+    }
+  })
+})
+
+describe.each(TEMPLATES)('multi-page parity (long fixture): %s', (templateId) => {
+  const LONG_SPACINGS = [1.0, 1.2] as const
+
+  it('spans 2+ pages at the largest scale and page count is non-decreasing', async () => {
+    const counts: number[] = []
+    for (const scale of SCALES) counts.push((await pdf(meta(templateId, scale, 1.2), 'designed', longFixture)).pages)
+    expect(counts[2], 'precondition: long fixture must span 2+ pages').toBeGreaterThanOrEqual(2)
+    expect(counts[0]).toBeLessThanOrEqual(counts[1])
+    expect(counts[1]).toBeLessThanOrEqual(counts[2])
+  })
+
+  it.each(MODES)('%s PDF text identical across scales and spacings', async (mode) => {
+    const reference = (await pdf(meta(templateId, 1, 1.15), mode, longFixture)).text
+    expect(reference).toContain('company9holdings')
+    for (const scale of SCALES) {
+      for (const spacing of LONG_SPACINGS) {
+        const got = await pdf(meta(templateId, scale, spacing), mode, longFixture)
+        expect(got.text, `${mode} scale ${scale} spacing ${spacing}`).toBe(reference)
+      }
+    }
+  })
+
+  it.each(MODES)('%s DOCX text identical across scales', async (mode) => {
+    const reference = await docxText(meta(templateId, 1, 1.15), mode, longFixture)
+    for (const scale of SCALES) {
+      expect(await docxText(meta(templateId, scale, 1.2), mode, longFixture), `${mode} scale ${scale}`).toBe(reference)
     }
   })
 })
