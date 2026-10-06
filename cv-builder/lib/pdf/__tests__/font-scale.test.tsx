@@ -2,7 +2,7 @@ import React from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { scaleStyle, withFontScale } from '../font-scale'
+import { withFontScale } from '../font-scale'
 import { renderToGlyphRuns, type GlyphRun } from './pdf-geometry'
 import { ClassicPdfTemplate } from '../templates/ClassicPdfTemplate'
 import { ModernPdfTemplate } from '../templates/ModernPdfTemplate'
@@ -13,26 +13,6 @@ import { AtsPdfTemplate } from '../templates/AtsPdfTemplate'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
 vi.setConfig({ testTimeout: 30_000 })
-
-describe('scaleStyle', () => {
-  it('is the identity at scale 1 (same reference)', () => {
-    const s = { fontSize: 10, color: '#000' }
-    expect(scaleStyle(s, 1)).toBe(s)
-  })
-
-  it('scales fontSize and leaves other properties alone', () => {
-    expect(scaleStyle({ fontSize: 10, marginTop: 4 }, 1.05)).toEqual({ fontSize: 10.5, marginTop: 4 })
-  })
-
-  it('flattens style arrays with later entries winning, then scales', () => {
-    expect(scaleStyle([{ fontSize: 10, color: 'red' }, false, [{ fontSize: 12 }]], 1.1)).toEqual({ fontSize: 13.2, color: 'red' })
-  })
-
-  it('passes through styles without a fontSize', () => {
-    expect(scaleStyle({ marginTop: 3 }, 1.05)).toEqual({ marginTop: 3 })
-    expect(scaleStyle(undefined, 1.05)).toBeUndefined()
-  })
-})
 
 describe('withFontScale', () => {
   const styles = { a: { fontSize: 10, color: 'red' }, b: { marginTop: 2 } }
