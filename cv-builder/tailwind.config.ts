@@ -68,6 +68,10 @@ const config: Config = {
         control: "0.5rem",
         card: "0.75rem",
         overlay: "1rem",
+        chip: "0.375rem",
+      },
+      boxShadow: {
+        popover: "0 8px 24px rgb(20 22 27 / 0.12), 0 2px 6px rgb(20 22 27 / 0.08)",
       },
     },
   },

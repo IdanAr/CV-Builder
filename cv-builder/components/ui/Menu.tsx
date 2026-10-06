@@ -52,7 +52,7 @@ export function MenuContent({
         collisionPadding={8}
         loop
         className={cn(
-          'z-[100] overflow-hidden rounded-xl border border-white/40 bg-white/90 shadow-xl backdrop-blur-xl',
+          'z-[100] overflow-hidden rounded-card border border-border bg-surface shadow-popover',
           className
         )}
         {...props}

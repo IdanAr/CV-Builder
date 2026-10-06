@@ -40,7 +40,7 @@ export function NavbarSkeleton() {
   return (
     <div
       aria-hidden="true"
-      className="w-full border-b border-white/30 bg-surface/55 shadow-sm backdrop-blur-xl"
+      className="w-full border-b border-border bg-surface"
     >
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex min-h-[64px] items-center gap-3 py-2 md:h-20 md:py-0">

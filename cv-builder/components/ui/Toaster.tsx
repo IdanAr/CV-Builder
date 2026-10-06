@@ -76,7 +76,7 @@ function ToastItem({ toast: t }: { toast: Toast }) {
 
   return (
     <div
-      className={`pointer-events-auto flex items-center gap-3 rounded-xl border px-4 py-3 shadow-lg backdrop-blur-xl ${VARIANT_STYLES[t.variant]}`}
+      className={`pointer-events-auto flex items-center gap-3 rounded-card border px-4 py-3 shadow-popover ${VARIANT_STYLES[t.variant]}`}
       onMouseEnter={() => pause('hover')}
       onMouseLeave={() => resume('hover')}
       onFocus={() => pause('focus')}

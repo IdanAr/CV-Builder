@@ -23,7 +23,7 @@ describe('Card', () => {
   it('defaults to the translucent tone at medium padding', () => {
     const { container } = render(<Card />)
     const classes = (container.firstChild as HTMLElement).className.split(/\s+/)
-    expect(classes).toContain('bg-surface/70')
+    expect(classes).toContain('bg-surface')
     expect(classes).toContain('p-4')
   })
 
@@ -42,5 +42,13 @@ describe('Card', () => {
   it('passes DOM props through', () => {
     render(<Card data-testid="panel" role="group" aria-label="Résumé design" />)
     expect(screen.getByTestId('panel').getAttribute('aria-label')).toBe('Résumé design')
+  })
+
+  it('is opaque and flat: no backdrop blur, no translucent fill', () => {
+    const { container } = render(<Card>x</Card>)
+    const cls = (container.firstChild as HTMLElement).className
+    expect(cls).not.toContain('backdrop-blur')
+    expect(cls).toContain('bg-surface')
+    expect(cls).not.toMatch(/bg-surface\/\d+/)
   })
 })
