@@ -16,7 +16,7 @@ const resumeListeners = new Set<ToastTimerListener>()
 
 /**
  * Lets other components that own side effects tied to a toast's lifetime
- * (e.g. the resume card's undo-delete countdown) react when this toast's
+ * (e.g. the CV library's undo-delete countdown) react when this toast's
  * own dismiss timer is paused/resumed on hover or focus, so both stay in sync.
  */
 export function onToastPause(cb: ToastTimerListener): () => void {

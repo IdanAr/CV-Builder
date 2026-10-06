@@ -33,8 +33,8 @@ export function EmptyApplicationsState({ onCreate }: { onCreate: () => void }) {
           <FileText className="h-6 w-6 text-fg-muted" aria-hidden="true" />
           <h3 className="mt-3 font-semibold text-fg-heading">Track from a CV</h3>
           <p className="mb-4 mt-1 flex-1 text-sm text-fg-muted">
-            Use &ldquo;Track&rdquo; on any CV card to create a pre-filled row linked to
-            that resume.
+            Use Track application in a CV&apos;s actions menu to create a pre-filled row
+            linked to that CV.
           </p>
           <Link
             href="/dashboard/cvs"

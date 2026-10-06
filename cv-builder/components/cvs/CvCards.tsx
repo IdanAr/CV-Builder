@@ -16,9 +16,8 @@ import { CvThumbnail } from './CvThumbnail'
  * thumbnail holds the template's own links and the card holds the actions
  * menu button, and neither may sit inside another link.
  */
-function CvCard({ row }: { row: CvRow }) {
+function CvCard({ row, onDelete }: { row: CvRow; onDelete: (id: string, title: string) => void }) {
   const actions = useResumeActions({ id: row.id, title: row.title })
-  if (actions.hidden) return null
 
   return (
     <li>
@@ -39,7 +38,7 @@ function CvCard({ row }: { row: CvRow }) {
             <p className="truncate text-xs text-fg-muted">{row.roleLabel}</p>
           </div>
           <div className="relative z-10 -mr-1 -mt-1 shrink-0">
-            <CvRowActions title={row.title} actions={actions} />
+            <CvRowActions title={row.title} actions={actions} onDelete={() => onDelete(row.id, row.title)} />
           </div>
         </div>
         <div className="mt-auto flex items-center justify-between gap-2 text-xs">
@@ -64,11 +63,11 @@ function CvCard({ row }: { row: CvRow }) {
   )
 }
 
-export function CvCards({ rows }: { rows: CvRow[] }) {
+export function CvCards({ rows, onDelete }: { rows: CvRow[]; onDelete: (id: string, title: string) => void }) {
   return (
     <ul role="list" aria-label="CVs" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {rows.map((row) => (
-        <CvCard key={row.id} row={row} />
+        <CvCard key={row.id} row={row} onDelete={onDelete} />
       ))}
     </ul>
   )

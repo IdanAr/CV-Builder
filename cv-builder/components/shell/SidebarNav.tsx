@@ -7,7 +7,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { cn } from '@/lib/utils'
 import { SidebarUserMenu } from './SidebarUserMenu'
-import { useWaitingCount } from './use-waiting-count'
+import { waitingLabel } from './waiting-label'
 
 export interface ShellUser {
   name?: string | null
@@ -62,8 +62,8 @@ function WaitingChip({ count, collapsed }: { count: number; collapsed: boolean }
         collapsed ? 'absolute right-0.5 top-0.5 px-1' : 'ml-auto'
       )}
     >
-      {count > 99 ? '99+' : count}
-      <span className="sr-only"> items waiting</span>
+      <span aria-hidden="true">{count > 99 ? '99+' : count}</span>
+      <span className="sr-only"> {waitingLabel(count)}</span>
     </span>
   )
 }
@@ -82,11 +82,8 @@ function NavLink({
   onNavigate?: () => void
 }) {
   const Icon = item.icon
-  const shown = waiting > 99 ? '99+' : String(waiting)
   const collapsedLabel =
-    item.showWaiting && waiting > 0
-      ? `${item.label}, ${shown} ${waiting === 1 ? 'item' : 'items'} waiting`
-      : item.label
+    item.showWaiting && waiting > 0 ? `${item.label}, ${waitingLabel(waiting)}` : item.label
   const link = (
     <Link
       href={item.href}
@@ -110,16 +107,26 @@ function NavLink({
 
 export interface SidebarNavProps {
   user: ShellUser
+  /** The live waiting count; AppShell owns the refresh so every copy agrees. */
   waiting: number
   collapsed: boolean
   onToggle: () => void
   onNavigate?: () => void
   showToggle?: boolean
+  /** The collapsed rail's Expand button opens the drawer dialog (editor route). */
+  opensDialog?: boolean
 }
 
-export function SidebarNav({ user, waiting, collapsed, onToggle, onNavigate, showToggle = true }: SidebarNavProps) {
+export function SidebarNav({
+  user,
+  waiting,
+  collapsed,
+  onToggle,
+  onNavigate,
+  showToggle = true,
+  opensDialog = false,
+}: SidebarNavProps) {
   const pathname = usePathname() ?? ''
-  const liveWaiting = useWaitingCount(waiting)
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose
 
   return (
@@ -158,6 +165,7 @@ export function SidebarNav({ user, waiting, collapsed, onToggle, onNavigate, sho
             type="button"
             aria-label="Expand sidebar"
             aria-expanded={false}
+            aria-haspopup={opensDialog ? 'dialog' : undefined}
             onClick={onToggle}
             className="mb-1 flex items-center justify-center rounded-control p-2 text-fg-muted transition hover:bg-surface-subtle hover:text-fg-heading focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
@@ -173,7 +181,7 @@ export function SidebarNav({ user, waiting, collapsed, onToggle, onNavigate, sho
             item={item}
             active={item.isActive(pathname)}
             collapsed={collapsed}
-            waiting={liveWaiting}
+            waiting={waiting}
             onNavigate={onNavigate}
           />
         ))}

@@ -5,9 +5,18 @@ import type { PipelineCounts } from '@/lib/api/scraped-jobs'
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
+/**
+ * The three rows add up to `counts.waiting`, the number on the sidebar and
+ * greeting chips: matches count only the unread ones. The pipeline strip's
+ * Matched tile keeps the full total.
+ */
 export function NeedsYou({ counts }: { counts: PipelineCounts }) {
   const rows = [
-    { stage: 'matched', n: counts.matched, text: plural(counts.matched, 'match to review', 'matches to review') },
+    {
+      stage: 'matched',
+      n: counts.matchedUnread,
+      text: plural(counts.matchedUnread, 'unread match to review', 'unread matches to review'),
+    },
     { stage: 'drafted', n: counts.drafted, text: plural(counts.drafted, 'draft to review', 'drafts to review') },
     { stage: 'ready', n: counts.ready, text: plural(counts.ready, 'application ready', 'applications ready') },
   ].filter((r) => r.n > 0)

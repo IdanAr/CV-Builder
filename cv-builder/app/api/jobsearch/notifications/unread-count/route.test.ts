@@ -35,7 +35,7 @@ describe('GET /api/jobsearch/notifications/unread-count', () => {
 
   it('returns this user\'s unread count', async () => {
     mockCountUnread.mockResolvedValue(5)
-    mockCountStages.mockResolvedValue({ found: 0, matched: 5, drafted: 1, ready: 2, applied: 0, waiting: 8 })
+    mockCountStages.mockResolvedValue({ found: 0, matched: 5, drafted: 1, ready: 2, applied: 0, matchedUnread: 5, waiting: 8 })
     const req = new Request('http://test/api/jobsearch/notifications/unread-count', {
       method: 'GET',
     })

@@ -34,7 +34,7 @@ describe('(dashboard) layout', () => {
     vi.clearAllMocks()
     authMock.mockResolvedValue(session)
     cookieStore.get.mockReturnValue(undefined)
-    countStages.mockResolvedValue({ found: 0, matched: 2, drafted: 1, ready: 0, applied: 0, waiting: 3 })
+    countStages.mockResolvedValue({ found: 0, matched: 2, drafted: 1, ready: 0, applied: 0, matchedUnread: 2, waiting: 3 })
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ waiting: 3 }) }))
   })
 
@@ -64,8 +64,15 @@ describe('(dashboard) layout', () => {
   })
 
   it('still renders the shell and page, without a badge, when the count query fails', async () => {
-    countStages.mockRejectedValue(new Error('db down'))
-    render(await DashboardLayout({ children: <p>content</p> }))
+    const error = new Error('db down')
+    countStages.mockRejectedValue(error)
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      render(await DashboardLayout({ children: <p>content</p> }))
+      expect(consoleError).toHaveBeenCalledWith('countPipelineStages failed', error)
+    } finally {
+      consoleError.mockRestore()
+    }
     expect(screen.getByText('content')).toBeInTheDocument()
     expect(screen.getByTestId('sidebar-desktop')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /job search/i })).not.toHaveTextContent('3')

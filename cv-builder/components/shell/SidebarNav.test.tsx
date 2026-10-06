@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, act } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 let mockPathname = '/dashboard'
@@ -11,7 +11,6 @@ vi.mock('next/navigation', () => ({
 vi.mock('next-auth/react', () => ({ signOut: vi.fn() }))
 
 import { SidebarNav } from './SidebarNav'
-import { notifyScrapedJobsChanged } from '@/lib/stores/scraped-jobs.store'
 
 const user = { name: 'Idan Arbel', email: 'idan@example.com', image: null }
 
@@ -65,6 +64,12 @@ describe('SidebarNav', () => {
     expect(link).toHaveTextContent(/items waiting/i)
   })
 
+  it('says "item" for a single waiting item and reads the chip number once', () => {
+    setup({ waiting: 1 })
+    // The visible digit is aria-hidden, so the name carries the number once.
+    expect(screen.getByRole('link', { name: /^job search\s*1 item waiting$/i })).toBeInTheDocument()
+  })
+
   it('shows no chip at zero and caps at 99+', () => {
     const { unmount } = render(
       <SidebarNav user={user} waiting={0} collapsed={false} onToggle={() => {}} />
@@ -89,6 +94,18 @@ describe('SidebarNav', () => {
     expect(screen.queryByText('Overview')).not.toBeInTheDocument()
     const toggle = screen.getByRole('button', { name: 'Expand sidebar' })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(toggle).not.toHaveAttribute('aria-haspopup')
+  })
+
+  it('collapsed: the Expand button announces a dialog when it opens the drawer', () => {
+    setup({ collapsed: true, opensDialog: true })
+    expect(screen.getByRole('button', { name: 'Expand sidebar' })).toHaveAttribute('aria-haspopup', 'dialog')
+  })
+
+  it('does not fetch the waiting count itself', () => {
+    setup({ waiting: 4 })
+    expect(screen.getByRole('link', { name: /job search/i })).toHaveTextContent('4')
+    expect(fetch).not.toHaveBeenCalled()
   })
 
   it('collapsed: the waiting count is part of the accessible name', () => {
@@ -109,23 +126,17 @@ describe('SidebarNav', () => {
     expect(screen.getByRole('link', { name: 'Job search' })).toBeInTheDocument()
   })
 
-  it('refreshes the waiting count when job data changes elsewhere', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ count: 0, waiting: 4 }) }))
-    setup({ waiting: 1 })
-    expect(screen.getByRole('link', { name: /job search/i })).toHaveTextContent('1')
-    act(() => notifyScrapedJobsChanged())
-    await waitFor(() => expect(screen.getByRole('link', { name: /job search/i })).toHaveTextContent('4'))
-    expect(fetch).toHaveBeenCalledWith('/api/jobsearch/notifications/unread-count')
-  })
-
   it('calls onNavigate when a link is followed (closes a drawer)', async () => {
     const onNavigate = vi.fn()
     setup({ onNavigate })
     // Stop jsdom attempting a real navigation (it logs "Not implemented").
     const block = (e: Event) => e.preventDefault()
     document.addEventListener('click', block)
-    await userEvent.click(screen.getByRole('link', { name: /applications/i }))
-    document.removeEventListener('click', block)
+    try {
+      await userEvent.click(screen.getByRole('link', { name: /applications/i }))
+    } finally {
+      document.removeEventListener('click', block)
+    }
     expect(onNavigate).toHaveBeenCalled()
   })
 

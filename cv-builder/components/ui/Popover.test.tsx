@@ -90,8 +90,8 @@ describe('Popover', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
-  // Consumers write their own ARIA on the trigger — "menu" for ExportMenu and
-  // ResumeCard, "listbox" for PreviewTab's zoom picker, "dialog" for
+  // Consumers write their own ARIA on the trigger — "menu" for ExportMenu,
+  // "listbox" for PreviewTab's zoom picker, "dialog" for
   // AtsScorePanel's help panel. The primitive must not flatten those to the
   // single value it would otherwise supply.
   it('lets the caller’s own aria-haspopup win over the default', () => {

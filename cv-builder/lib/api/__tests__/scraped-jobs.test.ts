@@ -793,6 +793,7 @@ describe('countPipelineStages', () => {
       drafted: 1,
       ready: 2,
       applied: 1,
+      matchedUnread: 2,
       waiting: 5, // 2 unread matched (status new + notify) + 1 drafted + 2 ready
     })
   })
@@ -810,7 +811,7 @@ describe('countPipelineStages', () => {
     mockAggregate.mockResolvedValue([])
 
     expect(await countPipelineStages('nobody')).toEqual({
-      found: 0, matched: 0, drafted: 0, ready: 0, applied: 0, waiting: 0,
+      found: 0, matched: 0, drafted: 0, ready: 0, applied: 0, matchedUnread: 0, waiting: 0,
     })
   })
 })

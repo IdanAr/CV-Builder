@@ -9,8 +9,8 @@ import { NeedsYou } from './NeedsYou'
 import { RecentCvs } from './RecentCvs'
 import { FirstRun } from './FirstRun'
 
-const counts = { found: 12, matched: 5, drafted: 0, ready: 2, applied: 7, waiting: 7 }
-const zero = { found: 0, matched: 0, drafted: 0, ready: 0, applied: 0, waiting: 0 }
+const counts = { found: 12, matched: 5, drafted: 0, ready: 2, applied: 7, matchedUnread: 3, waiting: 5 }
+const zero = { found: 0, matched: 0, drafted: 0, ready: 0, applied: 0, matchedUnread: 0, waiting: 0 }
 
 describe('PipelineStrip', () => {
   it('renders five stage links with counts', () => {
@@ -35,8 +35,8 @@ describe('PipelineStrip', () => {
 
 describe('NeedsYou', () => {
   it('lists rows with pluralisation and links, omitting zero rows', () => {
-    render(<NeedsYou counts={{ ...zero, matched: 1, drafted: 2, ready: 1 }} />)
-    expect(screen.getByRole('link', { name: /1 match to review/ })).toHaveAttribute(
+    render(<NeedsYou counts={{ ...zero, matched: 4, matchedUnread: 1, drafted: 2, ready: 1, waiting: 4 }} />)
+    expect(screen.getByRole('link', { name: /^1 unread match to review/ })).toHaveAttribute(
       'href',
       '/dashboard/jobsearch?stage=matched'
     )
@@ -51,10 +51,26 @@ describe('NeedsYou', () => {
   })
 
   it('pluralises and omits zero rows', () => {
-    render(<NeedsYou counts={{ ...zero, matched: 3, ready: 2 }} />)
-    expect(screen.getByRole('link', { name: /3 matches to review/ })).toBeInTheDocument()
+    render(<NeedsYou counts={{ ...zero, matched: 3, matchedUnread: 3, ready: 2, waiting: 5 }} />)
+    expect(screen.getByRole('link', { name: /^3 unread matches to review/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /2 applications ready/ })).toBeInTheDocument()
     expect(screen.queryByText(/drafts? to review/)).not.toBeInTheDocument()
+  })
+
+  it('counts unread matches only, so the rows add up to the waiting chips', () => {
+    // 173 matches in total, 30 waiting: 25 unread matches + 3 drafts + 2 ready.
+    const c = { ...zero, matched: 173, matchedUnread: 25, drafted: 3, ready: 2, waiting: 30 }
+    render(<NeedsYou counts={c} />)
+    expect(screen.getByRole('link', { name: /^25 unread matches to review/ })).toBeInTheDocument()
+    expect(screen.queryByText(/173/)).not.toBeInTheDocument()
+    const numbers = screen.getAllByRole('link').map((l) => Number(l.textContent?.match(/^\d+/)?.[0]))
+    expect(numbers.reduce((a, b) => a + b, 0)).toBe(c.waiting)
+  })
+
+  it('shows no matches row when every match has been read', () => {
+    render(<NeedsYou counts={{ ...zero, matched: 6, matchedUnread: 0, ready: 1, waiting: 1 }} />)
+    expect(screen.queryByText(/match/)).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /^1 application ready/ })).toBeInTheDocument()
   })
 
   it('shows the caught-up invitation when all zero', () => {

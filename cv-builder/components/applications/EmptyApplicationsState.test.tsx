@@ -12,10 +12,13 @@ describe('EmptyApplicationsState', () => {
     expect(onCreate).toHaveBeenCalled()
   })
 
-  it('points at the resume-based entry path, referencing the CV card Track action', () => {
+  it('points at the resume-based entry path, referencing the Track application menu action', () => {
     render(<EmptyApplicationsState onCreate={vi.fn()} />)
     expect(screen.getByRole('link', { name: /My CVs/i })).toHaveAttribute('href', '/dashboard/cvs')
-    // References ResumeCard's Track button generically (no emoji) — see components/ResumeCard.tsx.
-    expect(screen.getByText(/Track.*on any CV card/)).toBeInTheDocument()
+    // Names the "Track application" item in the CV library's row actions menu
+    // (components/cvs/CvRowActions.tsx).
+    expect(
+      screen.getByText(/Use Track application in a CV's actions menu to create a pre-filled row linked to that CV\./)
+    ).toBeInTheDocument()
   })
 })

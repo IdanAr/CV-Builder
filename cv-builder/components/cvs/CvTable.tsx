@@ -91,10 +91,9 @@ function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-function CvTableRow({ row }: { row: CvRow }) {
+function CvTableRow({ row, onDelete }: { row: CvRow; onDelete: (id: string, title: string) => void }) {
   const router = useRouter()
   const actions = useResumeActions({ id: row.id, title: row.title })
-  if (actions.hidden) return null
 
   const href = `/dashboard/resumes/${row.id}`
   const edited = formatRelativeTime(row.updatedAt)
@@ -161,7 +160,7 @@ function CvTableRow({ row }: { row: CvRow }) {
         {row.pendingClaims > 0 && <Badge tone="attention">Review claims</Badge>}
       </div>
       <div role="cell" className={ACTIONS_CELL}>
-        <CvRowActions title={row.title} actions={actions} />
+        <CvRowActions title={row.title} actions={actions} onDelete={() => onDelete(row.id, row.title)} />
       </div>
     </div>
   )
@@ -171,10 +170,12 @@ export function CvTable({
   rows,
   sort,
   onSort,
+  onDelete,
 }: {
   rows: CvRow[]
   sort: CvSort
   onSort: (key: CvSortKey) => void
+  onDelete: (id: string, title: string) => void
 }) {
   return (
     <Card padding="none" role="table" aria-label="CVs">
@@ -196,7 +197,7 @@ export function CvTable({
       </div>
       <div role="rowgroup">
         {rows.map((row) => (
-          <CvTableRow key={row.id} row={row} />
+          <CvTableRow key={row.id} row={row} onDelete={onDelete} />
         ))}
       </div>
     </Card>

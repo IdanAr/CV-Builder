@@ -53,6 +53,7 @@ function CvThumbnailImpl({ data, meta }: { data: unknown; meta: unknown }) {
             left: '50%',
             marginLeft: -SCALED_WIDTH / 2,
             width: A4_WIDTH_PX,
+            // Intentional token exception: CV paper is always white, in every theme.
             background: '#fff',
             transform: `scale(${THUMBNAIL_SCALE})`,
             transformOrigin: 'top left',

@@ -63,13 +63,14 @@ describe('countPipelineStages (real MongoDB)', () => {
       drafted: 1,
       ready: 2,
       applied: 1,
+      matchedUnread: 2,
       waiting: 5,
     })
     expect(await countPipelineStages('u2')).toEqual({
-      found: 0, matched: 0, drafted: 0, ready: 1, applied: 0, waiting: 1,
+      found: 0, matched: 0, drafted: 0, ready: 1, applied: 0, matchedUnread: 0, waiting: 1,
     })
     expect(await countPipelineStages('nobody')).toEqual({
-      found: 0, matched: 0, drafted: 0, ready: 0, applied: 0, waiting: 0,
+      found: 0, matched: 0, drafted: 0, ready: 0, applied: 0, matchedUnread: 0, waiting: 0,
     })
   })
 })

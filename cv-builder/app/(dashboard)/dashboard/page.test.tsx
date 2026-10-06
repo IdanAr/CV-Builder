@@ -33,7 +33,7 @@ vi.mock('@/lib/api/jobsearch-profiles', () => ({
 }))
 
 const signedIn = { user: { id: 'user-1', name: 'Jordan Lee', email: 'jordan@example.com' } }
-const zero = { found: 0, matched: 0, drafted: 0, ready: 0, applied: 0, waiting: 0 }
+const zero = { found: 0, matched: 0, drafted: 0, ready: 0, applied: 0, matchedUnread: 0, waiting: 0 }
 
 function cv(id: string, title: string, hoursAgo: number) {
   const updatedAt = new Date(Date.now() - hoursAgo * 3600_000)
@@ -65,7 +65,7 @@ describe('Overview page', () => {
       cv('r3', 'Third CV', 30),
       cv('r2', 'Second CV', 10),
     ])
-    countPipelineStagesMock.mockResolvedValue({ found: 9, matched: 4, drafted: 1, ready: 2, applied: 3, waiting: 7 })
+    countPipelineStagesMock.mockResolvedValue({ found: 9, matched: 4, drafted: 1, ready: 2, applied: 3, matchedUnread: 4, waiting: 7 })
     listProfilesMock.mockResolvedValue([{ _id: 'p1' }])
     await renderPage()
 

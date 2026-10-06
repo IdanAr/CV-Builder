@@ -463,7 +463,9 @@ export async function countUnreadNotifyMatches(
 }
 
 export interface PipelineCounts extends Record<PipelineStage, number> {
-  /** Items waiting on the user: unread matches + drafts to review + applications ready. */
+  /** Matches still unread (status 'new'); `matched` is every match, read or not. */
+  matchedUnread: number
+  /** Items waiting on the user: matchedUnread + drafted + ready. */
   waiting: number
 }
 
@@ -486,7 +488,15 @@ export async function countPipelineStages(userId: string): Promise<PipelineCount
     },
   ])
 
-  const counts: PipelineCounts = { found: 0, matched: 0, drafted: 0, ready: 0, applied: 0, waiting: 0 }
+  const counts: PipelineCounts = {
+    found: 0,
+    matched: 0,
+    drafted: 0,
+    ready: 0,
+    applied: 0,
+    matchedUnread: 0,
+    waiting: 0,
+  }
   for (const row of rows) {
     const stage = stageOf({
       status: row._id.status,
@@ -494,9 +504,9 @@ export async function countPipelineStages(userId: string): Promise<PipelineCount
     })
     if (stage === 'archive') continue
     counts[stage] += row.n
-    const unreadMatch = stage === 'matched' && row._id.status === 'new'
-    if (unreadMatch || stage === 'drafted' || stage === 'ready') counts.waiting += row.n
+    if (stage === 'matched' && row._id.status === 'new') counts.matchedUnread += row.n
   }
+  counts.waiting = counts.matchedUnread + counts.drafted + counts.ready
   return counts
 }
 

@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { sortRows, type CvRow, type CvSortKey } from './cv-row'
 import { CvTable, type CvSort } from './CvTable'
 import { CvCards } from './CvCards'
+import { useCvDeletion } from './use-cv-deletion'
 
 const DEFAULT_SORT: CvSort = { key: 'edited', dir: 'desc' }
 
@@ -31,7 +32,11 @@ const VIEWS: Array<{ id: CvsView; label: string; Icon: typeof Rows3 }> = [
 export function CvLibrary({ rows, initialView }: { rows: CvRow[]; initialView: CvsView }) {
   const [view, setView] = useState<CvsView>(initialView)
   const [sort, setSort] = useState<CvSort>(DEFAULT_SORT)
-  const sorted = useMemo(() => sortRows(rows, sort.key, sort.dir), [rows, sort])
+  // Owned here, not by a row, so a pending delete survives view switches and
+  // re-sorts (see use-cv-deletion.ts).
+  const { isHidden, requestDelete } = useCvDeletion()
+  const visible = useMemo(() => rows.filter((r) => !isHidden(r.id)), [rows, isHidden])
+  const sorted = useMemo(() => sortRows(visible, sort.key, sort.dir), [visible, sort])
 
   if (rows.length === 0) return <EmptyDashboardState />
 
@@ -46,7 +51,7 @@ export function CvLibrary({ rows, initialView }: { rows: CvRow[]; initialView: C
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-fg-muted">
-          {rows.length} {rows.length === 1 ? 'CV' : 'CVs'}
+          {visible.length} {visible.length === 1 ? 'CV' : 'CVs'}
         </p>
         <div role="group" aria-label="View" className="inline-flex rounded-control border border-border bg-surface p-0.5">
           {VIEWS.map(({ id, label, Icon }) => {
@@ -71,9 +76,14 @@ export function CvLibrary({ rows, initialView }: { rows: CvRow[]; initialView: C
         </div>
       </div>
       {view === 'table' ? (
-        <CvTable rows={sorted} sort={sort} onSort={(key) => setSort((s) => nextSort(s, key))} />
+        <CvTable
+          rows={sorted}
+          sort={sort}
+          onSort={(key) => setSort((s) => nextSort(s, key))}
+          onDelete={requestDelete}
+        />
       ) : (
-        <CvCards rows={sorted} />
+        <CvCards rows={sorted} onDelete={requestDelete} />
       )}
     </div>
   )

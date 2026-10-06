@@ -7,6 +7,7 @@ import { Dialog } from 'radix-ui'
 import { cn } from '@/lib/utils'
 import { SIDEBAR_COOKIE, writePreference } from '@/lib/preferences'
 import { SidebarNav, type ShellUser } from './SidebarNav'
+import { useWaitingCount } from './use-waiting-count'
 
 interface AppShellProps {
   user: ShellUser
@@ -20,6 +21,10 @@ export function AppShell({ user, waiting, initialCollapsed, children }: AppShell
   const isEditor = pathname.startsWith('/dashboard/resumes/')
   const [collapsedPref, setCollapsedPref] = useState(initialCollapsed)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  // Read once here and handed to both the desktop sidebar and the drawer, so
+  // the drawer (mounted on open) never shows a stale count and each change
+  // costs one request, not one per mounted sidebar.
+  const liveWaiting = useWaitingCount(waiting)
 
   // The editor needs the width: it is always a rail there, and the saved
   // preference is left alone.
@@ -45,7 +50,13 @@ export function AppShell({ user, waiting, initialCollapsed, children }: AppShell
           railOnly ? 'w-14' : 'w-[232px]'
         )}
       >
-        <SidebarNav user={user} waiting={waiting} collapsed={railOnly} onToggle={toggleDesktop} />
+        <SidebarNav
+          user={user}
+          waiting={liveWaiting}
+          collapsed={railOnly}
+          onToggle={toggleDesktop}
+          opensDialog={isEditor}
+        />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -77,7 +88,7 @@ export function AppShell({ user, waiting, initialCollapsed, children }: AppShell
             <Dialog.Title className="sr-only">Navigation</Dialog.Title>
             <SidebarNav
               user={user}
-              waiting={waiting}
+              waiting={liveWaiting}
               collapsed={false}
               showToggle={false}
               onToggle={() => setDrawerOpen(false)}

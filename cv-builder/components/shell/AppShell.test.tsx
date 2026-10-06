@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, act, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 let mockPathname = '/dashboard'
@@ -11,6 +11,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('next-auth/react', () => ({ signOut: vi.fn() }))
 
 import { AppShell } from './AppShell'
+import { notifyScrapedJobsChanged } from '@/lib/stores/scraped-jobs.store'
 
 const user = { name: 'Idan Arbel', email: 'idan@example.com', image: null }
 
@@ -67,6 +68,42 @@ describe('AppShell', () => {
     const drawer = await screen.findByRole('dialog', { name: /navigation/i })
     expect(within(drawer).getByRole('link', { name: /job search/i })).toBeInTheDocument()
     expect(document.cookie).not.toContain('cvb-sidebar')
+  })
+
+  it('marks the editor rail Expand button as opening a dialog, and only there', () => {
+    mockPathname = '/dashboard/resumes/abc123'
+    const { unmount } = setup(false)
+    expect(within(desktopAside()).getByRole('button', { name: 'Expand sidebar' })).toHaveAttribute(
+      'aria-haspopup',
+      'dialog'
+    )
+    unmount()
+    mockPathname = '/dashboard'
+    setup(true)
+    expect(within(desktopAside()).getByRole('button', { name: 'Expand sidebar' })).not.toHaveAttribute(
+      'aria-haspopup'
+    )
+  })
+
+  it('refreshes the waiting count once per change and shows the live number in a drawer opened later', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ count: 0, waiting: 12 }) }))
+    setup()
+    const desktopJobs = () => within(desktopAside()).getByRole('link', { name: /job search/i })
+    expect(desktopJobs()).toHaveTextContent('3')
+    act(() => notifyScrapedJobsChanged())
+    await waitFor(() => expect(desktopJobs()).toHaveTextContent('12'))
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch).toHaveBeenCalledWith('/api/jobsearch/notifications/unread-count')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Open navigation' }))
+    const drawer = await screen.findByRole('dialog', { name: /navigation/i })
+    expect(within(drawer).getByRole('link', { name: /job search/i })).toHaveTextContent('12')
+
+    // With both sidebars mounted, one change is still one request.
+    act(() => notifyScrapedJobsChanged())
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+    await act(async () => {})
+    expect(fetch).toHaveBeenCalledTimes(2)
   })
 
   it('offers a menu button on small screens that opens the drawer', async () => {

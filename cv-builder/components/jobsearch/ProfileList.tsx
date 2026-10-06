@@ -141,7 +141,7 @@ export function ProfileList({ initialProfiles }: ProfileListProps = {}) {
 
   // A pending deletion must still happen if the user navigates away before the
   // undo window closes — otherwise the row reappears on the next visit.
-  // Mirrors ResumeCard's unmount handler.
+  // Mirrors the CV library's unmount flush (components/cvs/use-cv-deletion.ts).
   useEffect(() => {
     const timers = deleteTimersRef.current
     return () => {

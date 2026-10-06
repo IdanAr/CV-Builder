@@ -10,10 +10,18 @@ type ResumeActions = ReturnType<typeof useResumeActions>
 /**
  * The trailing overflow menu shared by table rows and cards. It takes the
  * row's already-mounted `useResumeActions` result rather than calling the hook
- * itself, so each CV has exactly one hook instance (one delete timer, one
- * toast subscription) whichever view renders it.
+ * itself, so each CV has exactly one hook instance whichever view renders it.
+ * Delete goes to the library (`onDelete`), which owns the undo window.
  */
-export function CvRowActions({ title, actions }: { title: string; actions: ResumeActions }) {
+export function CvRowActions({
+  title,
+  actions,
+  onDelete,
+}: {
+  title: string
+  actions: ResumeActions
+  onDelete: () => void
+}) {
   return (
     <Menu>
       <MenuTrigger asChild>
@@ -36,7 +44,7 @@ export function CvRowActions({ title, actions }: { title: string; actions: Resum
         </MenuItem>
         <MenuItem
           className="text-fg-danger hover:bg-surface-danger data-[highlighted]:bg-surface-danger"
-          onSelect={actions.remove}
+          onSelect={onDelete}
         >
           <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
           Delete

@@ -345,7 +345,7 @@ export default function ApplicationsView({
     }
   }
 
-  // --- Recoverable delete (ResumeCard convention) ----------------------------
+  // --- Recoverable delete (CV library convention, use-cv-deletion) ----------
   async function commitDelete(appId: string) {
     pendingDeletesRef.current.delete(appId)
     try {
@@ -411,7 +411,7 @@ export default function ApplicationsView({
   }
 
   // Pause/resume the delete countdown in lockstep with the undo toast's own
-  // hover/focus pause (same bus ResumeCard subscribes to).
+  // hover/focus pause (same bus the CV library's use-cv-deletion subscribes to).
   useEffect(() => {
     const unsubPause = onToastPause((id) => {
       for (const entry of pendingDeletesRef.current.values()) {

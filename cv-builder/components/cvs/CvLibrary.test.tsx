@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, within, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, within, fireEvent, cleanup, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toCvRow, sortRows, type CvRow } from './cv-row'
 import { CvLibrary } from './CvLibrary'
@@ -188,8 +188,8 @@ describe('CvLibrary', () => {
   })
 
   afterEach(() => {
-    // Unmount first: a row deleted inside its undo window commits the DELETE
-    // on unmount, and that request must still hit the stubbed fetch.
+    // Unmount first: a CV deleted inside its undo window commits the DELETE
+    // when the library unmounts, and that request must still hit the stubbed fetch.
     cleanup()
     vi.unstubAllGlobals()
     vi.clearAllMocks()
@@ -390,6 +390,72 @@ describe('CvLibrary', () => {
     await user.click(screen.getByRole('button', { name: 'More actions for Gamma CV' }))
     await user.click(await screen.findByRole('menuitem', { name: 'Delete' }))
     expect(screen.queryByRole('link', { name: 'Gamma CV' })).not.toBeInTheDocument()
+  })
+
+  describe('pending delete across views', () => {
+    // userEvent with fake timers deadlocks here, so the menu is driven with
+    // fireEvent: Enter opens the Radix menu, a click selects the item.
+    function deleteVia(title: string) {
+      fireEvent.keyDown(screen.getByRole('button', { name: `More actions for ${title}` }), { key: 'Enter' })
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }))
+    }
+
+    function deleteCalls() {
+      return vi.mocked(fetch).mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('keeps a CV deleted in the table hidden in cards and sends DELETE once after the window', async () => {
+      render(<CvLibrary rows={ROWS} initialView="table" />)
+      deleteVia('Alpha CV')
+      expect(screen.queryByRole('link', { name: 'Alpha CV' })).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Cards' }))
+      expect(screen.getAllByTestId('thumb')).toHaveLength(ROWS.length - 1)
+      expect(screen.queryByRole('link', { name: 'Alpha CV' })).not.toBeInTheDocument()
+      // Switching views must not flush the delete early.
+      expect(deleteCalls()).toHaveLength(0)
+
+      await act(async () => { vi.advanceTimersByTime(6100) })
+      expect(deleteCalls()).toEqual([['/api/resumes/a', { method: 'DELETE' }]])
+      expect(screen.queryByRole('link', { name: 'Alpha CV' })).not.toBeInTheDocument()
+    })
+
+    it('restores the CV on Undo after a view switch and never sends DELETE', async () => {
+      render(<CvLibrary rows={ROWS} initialView="table" />)
+      deleteVia('Alpha CV')
+      fireEvent.click(screen.getByRole('button', { name: 'Cards' }))
+      act(() => { useToastStore.getState().toasts[0].onAction!() })
+      expect(screen.getByRole('link', { name: 'Alpha CV' })).toBeInTheDocument()
+      expect(screen.getAllByTestId('thumb')).toHaveLength(ROWS.length)
+      await act(async () => { vi.advanceTimersByTime(7000) })
+      expect(deleteCalls()).toHaveLength(0)
+    })
+
+    it('sends a pending DELETE once when the whole library unmounts', () => {
+      const { unmount } = render(<CvLibrary rows={ROWS} initialView="table" />)
+      deleteVia('Gamma CV')
+      expect(deleteCalls()).toHaveLength(0)
+      unmount()
+      expect(deleteCalls()).toEqual([['/api/resumes/c', { method: 'DELETE' }]])
+      vi.advanceTimersByTime(7000)
+      expect(deleteCalls()).toHaveLength(1)
+    })
+
+    it('leaves a CV pending deletion out of the count', async () => {
+      render(<CvLibrary rows={ROWS} initialView="table" />)
+      expect(screen.getByText('3 CVs')).toBeInTheDocument()
+      deleteVia('Alpha CV')
+      expect(screen.getByText('2 CVs')).toBeInTheDocument()
+      act(() => { useToastStore.getState().toasts[0].onAction!() })
+      expect(screen.getByText('3 CVs')).toBeInTheDocument()
+    })
   })
 
   it('invites the user to build a first CV when there are none', () => {

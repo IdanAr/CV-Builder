@@ -15,7 +15,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // dashboard page, and error.tsx cannot catch a throw from this layout.
   const waiting = await countPipelineStages(session.user.id)
     .then((c) => c.waiting)
-    .catch(() => 0)
+    .catch((err) => {
+      console.error('countPipelineStages failed', err)
+      return 0
+    })
 
   return (
     <AppShell user={session.user} waiting={waiting} initialCollapsed={collapsed}>
