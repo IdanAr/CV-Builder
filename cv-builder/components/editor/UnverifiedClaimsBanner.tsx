@@ -53,10 +53,10 @@ export function UnverifiedClaimsBanner({
   return (
     <div
       role="status"
-      className="mx-4 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900"
+      className="mx-4 mt-3 rounded-lg border border-warning-300 bg-warning-50 px-4 py-3 text-warning-900"
     >
       <div className="flex items-start gap-2.5">
-        <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 flex-none text-amber-600" />
+        <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 flex-none text-warning-600" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">
             {claims.length === 1
@@ -71,14 +71,14 @@ export function UnverifiedClaimsBanner({
             {claims.map((claim) => (
               <li
                 key={claim}
-                className="rounded bg-amber-200/70 px-1.5 py-0.5 font-mono text-xs text-amber-950"
+                className="rounded bg-warning-200/70 px-1.5 py-0.5 font-mono text-xs text-warning-950"
               >
                 {claim}
               </li>
             ))}
           </ul>
           {failed && (
-            <p className="mt-2 text-sm font-medium text-red-700">
+            <p className="mt-2 text-sm font-medium text-danger-700">
               Could not save that. Try again.
             </p>
           )}
@@ -86,7 +86,7 @@ export function UnverifiedClaimsBanner({
             type="button"
             onClick={confirm}
             disabled={saving}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-amber-400 bg-white px-2.5 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-60"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-warning-400 bg-white px-2.5 py-1.5 text-sm font-medium text-warning-900 hover:bg-warning-100 disabled:opacity-60"
           >
             <Check aria-hidden="true" className="h-3.5 w-3.5" />
             {saving ? 'Saving…' : "I've checked these"}

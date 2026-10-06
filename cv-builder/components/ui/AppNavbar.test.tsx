@@ -6,7 +6,7 @@ import { AppNavbar } from './AppNavbar'
 describe('AppNavbar', () => {
   it('renders the logo mark', () => {
     const { container } = render(<AppNavbar />)
-    expect(container.querySelector('svg')).toBeTruthy()
+    expect(container.querySelector('a[aria-label="CV Builder home"] [aria-hidden="true"]')).toHaveTextContent('CV')
   })
 
   it('renders provided actions', () => {
@@ -30,8 +30,8 @@ describe('AppNavbar', () => {
 
   it('keeps the logo mark visible regardless of the wordmark visibility class', () => {
     render(<AppNavbar />)
-    const svg = document.querySelector('svg')
-    expect(svg?.className.baseVal ?? '').not.toMatch(/^hidden/)
+    const mark = document.querySelector('a[aria-label="CV Builder home"] [aria-hidden="true"]')
+    expect(mark?.className ?? '').not.toMatch(/(^|\s)hidden(\s|$)/)
   })
 
   it('defaults the logo link to /dashboard when homeHref is omitted', () => {
@@ -74,12 +74,27 @@ describe('AppNavbar logo placement', () => {
     expect(classes).toMatch(/md:-translate-x-1\/2/)
   })
 
-  // 64px of logo in a bar that is only 64px tall leaves no room for anything
-  // else once the actions wrap onto their own rows.
-  it('uses a compact mark below md and the full one above', () => {
+  // A tall mark in a short bar leaves no room once the actions wrap.
+  it('uses a compact mark below md and a slightly larger one above', () => {
     const { container } = render(<AppNavbar />)
-    const svg = container.querySelector('a[aria-label="CV Builder home"] svg')!
-    expect(svg.getAttribute('class')).toMatch(/h-10 w-10/)
-    expect(svg.getAttribute('class')).toMatch(/md:h-16 md:w-16/)
+    const mark = container.querySelector('a[aria-label="CV Builder home"] [aria-hidden="true"]')!
+    expect(mark.className).toMatch(/h-8 w-8/)
+    expect(mark.className).toMatch(/md:h-9 md:w-9/)
+  })
+})
+
+describe('AppNavbar flat styling', () => {
+  it('has no gradient wordmark and no purple hex fills', () => {
+    const { container } = render(<AppNavbar />)
+    expect(container.innerHTML).not.toContain('bg-gradient')
+    expect(container.innerHTML).not.toMatch(/#7C3AED|#A78BFA/i)
+  })
+
+  it('is an opaque bar with a hairline border and no blur', () => {
+    render(<AppNavbar />)
+    const nav = screen.getByRole('navigation', { name: 'Primary' })
+    expect(nav.className).toContain('bg-surface')
+    expect(nav.className).toContain('border-border')
+    expect(nav.className).not.toContain('backdrop-blur')
   })
 })

@@ -125,7 +125,7 @@ export function JobSearchShell({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <nav
             aria-label="Job search views"
-            className="inline-flex gap-0.5 rounded-control border border-border-subtle bg-surface/60 p-0.5"
+            className="inline-flex gap-0.5 rounded-control border border-border bg-surface p-0.5"
           >
             {segments.map((segment) => {
               const isActive = segment.key === active
@@ -135,7 +135,7 @@ export function JobSearchShell({
                   href={segment.href}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
-                    'inline-flex items-center gap-2 rounded-[0.375rem] px-3 py-1.5 text-sm font-medium transition',
+                    'inline-flex items-center gap-2 rounded-chip px-3 py-1.5 text-sm font-medium transition',
                     'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     isActive
                       ? 'bg-primary text-primary-fg shadow-sm'

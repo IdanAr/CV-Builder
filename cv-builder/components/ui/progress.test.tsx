@@ -11,10 +11,10 @@ describe('Progress', () => {
   })
 
   it('applies indicatorClassName to the indicator element', () => {
-    render(<Progress value={10} indicatorClassName="bg-indigo-600" />)
+    render(<Progress value={10} indicatorClassName="bg-accent-600" />)
     const bar = screen.getByRole('progressbar')
     const indicator = bar.querySelector('[data-slot="progress-indicator"]')
-    expect(indicator?.className).toContain('bg-indigo-600')
+    expect(indicator?.className).toContain('bg-accent-600')
   })
 })
 

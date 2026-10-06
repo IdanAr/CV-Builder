@@ -19,8 +19,8 @@ describe('ErrorBanner', () => {
     const classes = screen.getByRole('alert').className.split(/\s+/)
     expect(classes).toContain('bg-surface-danger')
     expect(classes).toContain('text-fg-danger')
-    expect(classes).not.toContain('bg-red-50')
-    expect(classes).not.toContain('text-red-700')
+    expect(classes).not.toContain('bg-danger-50')
+    expect(classes).not.toContain('text-danger-700')
   })
 
   it('lets a caller add layout classes without losing the tone', () => {

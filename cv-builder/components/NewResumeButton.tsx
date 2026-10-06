@@ -33,8 +33,8 @@ export default function NewResumeButton({ variant = 'navbar' }: NewResumeButtonP
 
   const className =
     variant === 'hero'
-      ? 'w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50'
-      : 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50'
+      ? 'w-full rounded-lg bg-accent-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-700 disabled:opacity-50'
+      : 'rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-accent-700 disabled:opacity-50'
 
   return (
     <button onClick={handleCreate} disabled={loading} className={className} aria-label={loading ? 'Creating…' : 'New CV'}>

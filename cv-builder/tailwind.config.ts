@@ -68,6 +68,14 @@ const config: Config = {
         control: "0.5rem",
         card: "0.75rem",
         overlay: "1rem",
+        chip: "0.375rem",
+      },
+      fontFamily: {
+        sans: ["var(--font-geist-sans)", "system-ui", "Arial", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
+      },
+      boxShadow: {
+        popover: "0 8px 24px rgb(20 22 27 / 0.12), 0 2px 6px rgb(20 22 27 / 0.08)",
       },
     },
   },

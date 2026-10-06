@@ -9,17 +9,17 @@ import { cn } from '@/lib/utils'
  */
 
 export type CardTone =
-  /** The default. Translucent, so the page's gradient shows through. */
+  /** The default. Opaque, hairline border, no shadow. */
   | 'default'
-  /** Opaque. For anything that sits above the page — dialogs, popovers. */
+  /** Opaque, floats above the page with a shadow: dialogs, popovers. */
   | 'raised'
   /** No fill, just an outline. Empty states and drop zones. */
   | 'outline'
 
 const TONE: Record<CardTone, string> = {
-  default: 'border-border-subtle bg-surface/70 shadow-sm backdrop-blur-sm',
-  raised: 'border-border-subtle bg-surface shadow-xl',
-  outline: 'border-border-subtle bg-surface/50 shadow-none',
+  default: 'border-border bg-surface shadow-none',
+  raised: 'border-border bg-surface shadow-popover',
+  outline: 'border-border bg-transparent shadow-none',
 }
 
 const PADDING = {

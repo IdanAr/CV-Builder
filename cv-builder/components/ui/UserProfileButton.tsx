@@ -47,7 +47,7 @@ function Avatar({
   }
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 font-bold text-white"
+      className="flex shrink-0 items-center justify-center rounded-full bg-primary font-bold text-primary-fg"
       style={{ width: size, height: size, fontSize: Math.floor(size * 0.42) }}
     >
       {getInitials(name)}
@@ -81,10 +81,10 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
         <button
           type="button"
           aria-label="Open user menu"
-          className="flex items-center gap-2 rounded-full border border-indigo-200/40 bg-white/70 px-2.5 py-1 shadow-sm transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+          className="flex items-center gap-2 rounded-full border border-accent-200/40 bg-surface px-2.5 py-1 shadow-sm transition hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
         >
           <Avatar image={user.image} name={user.name} size={26} />
-          <span className="text-xs font-medium text-indigo-700">{firstName}</span>
+          <span className="text-xs font-medium text-fg-body">{firstName}</span>
           <ChevronDown
             aria-hidden="true"
             strokeWidth={2.5}
@@ -96,10 +96,10 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
       <MenuContent className="w-56">
         {/* User info header (non-interactive, so deliberately not a MenuItem —
             roving focus and typeahead must skip it). */}
-        <div className="flex items-center gap-3 border-b border-indigo-50 px-4 py-3">
+        <div className="flex items-center gap-3 border-b border-accent-50 px-4 py-3">
           <Avatar image={user.image} name={user.name} size={34} />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-indigo-900">
+            <p className="truncate text-sm font-semibold text-fg-heading">
               {user.name ?? 'User'}
             </p>
             <p className="truncate text-xs text-fg-muted">{user.email ?? ''}</p>
@@ -121,11 +121,11 @@ export function UserProfileButton({ user }: UserProfileButtonProps) {
           </MenuItem>
         </MenuGroup>
 
-        <MenuGroup className="border-t border-indigo-50 p-1.5">
+        <MenuGroup className="border-t border-accent-50 p-1.5">
           <MenuItem
             textValue="Sign Out"
             onSelect={() => signOut({ callbackUrl: '/signin' })}
-            className="font-medium text-red-600 hover:bg-red-50/80 data-[highlighted]:bg-red-50/80"
+            className="font-medium text-danger-600 hover:bg-danger-50/80 data-[highlighted]:bg-danger-50/80"
           >
             <LogOut aria-hidden="true" strokeWidth={2} className="h-4 w-4 shrink-0" />
             Sign Out

@@ -76,14 +76,14 @@ function FilterEditor({
   }
 
   const inputClass =
-    'rounded-md border border-indigo-200 bg-white px-2 py-1 text-sm text-indigo-900 outline-none focus:border-indigo-400'
+    'rounded-md border border-accent-200 bg-white px-2 py-1 text-sm text-fg outline-none focus:border-accent-400'
 
   return (
     <form onSubmit={apply} className="flex flex-col gap-2">
       {kind === 'options' && (
         <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">
           {(column.options ?? []).map((option) => (
-            <label key={option.id} className="flex items-center gap-2 text-sm text-indigo-900">
+            <label key={option.id} className="flex items-center gap-2 text-sm text-fg">
               <input
                 type="checkbox"
                 checked={optionIds.includes(option.id)}
@@ -92,7 +92,7 @@ function FilterEditor({
                     e.target.checked ? [...ids, option.id] : ids.filter((id) => id !== option.id)
                   )
                 }
-                className="h-4 w-4 accent-indigo-600"
+                className="h-4 w-4 accent-accent-600"
               />
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: option.color }} />
               {option.label}
@@ -151,19 +151,19 @@ function FilterEditor({
         </div>
       )}
       {kind === 'checkbox' && (
-        <label className="flex items-center gap-2 text-sm text-indigo-900">
+        <label className="flex items-center gap-2 text-sm text-fg">
           <input
             type="checkbox"
             checked={checked}
             onChange={(e) => setChecked(e.target.checked)}
-            className="h-4 w-4 accent-indigo-600"
+            className="h-4 w-4 accent-accent-600"
           />
           Only {checked ? 'checked' : 'unchecked'} rows
         </label>
       )}
       <button
         type="submit"
-        className="self-end rounded-md bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700"
+        className="self-end rounded-md bg-accent-600 px-3 py-1 text-xs font-medium text-white hover:bg-accent-700"
       >
         Apply filter
       </button>
@@ -215,19 +215,19 @@ export function FilterBar({
             setOpen((o) => !o)
             setColumnId('')
           }}
-          className="rounded-md border border-indigo-200 bg-white/60 px-3 py-1.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50"
+          className="rounded-md border border-accent-200 bg-surface px-3 py-1.5 text-xs font-medium text-accent-600 transition hover:bg-accent-50"
         >
           + Filter
         </button>
         {open && (
-          <div className="absolute left-0 top-full z-30 mt-1 w-72 rounded-lg border border-indigo-100 bg-white p-3 shadow-xl">
+          <div className="absolute left-0 top-full z-30 mt-1 w-72 rounded-lg border border-accent-100 bg-white p-3 shadow-xl">
             <label className="flex flex-col gap-1 text-xs font-medium text-fg-muted">
               Filter by
               <select
                 autoFocus
                 value={columnId}
                 onChange={(e) => setColumnId(e.target.value)}
-                className="rounded-md border border-indigo-200 bg-white px-2 py-1.5 text-sm text-indigo-900 outline-none focus:border-indigo-400"
+                className="rounded-md border border-accent-200 bg-white px-2 py-1.5 text-sm text-fg outline-none focus:border-accent-400"
               >
                 <option value="">Choose a column…</option>
                 {[...columns]
@@ -264,7 +264,7 @@ export function FilterBar({
         return (
           <span
             key={filter.columnId}
-            className="flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50/80 py-0.5 pl-2.5 pr-1 text-xs font-medium text-indigo-700"
+            className="flex items-center gap-1 rounded-full border border-accent-200 bg-accent-50/80 py-0.5 pl-2.5 pr-1 text-xs font-medium text-accent-700"
           >
             {describeFilter(filter, column)}
             <button

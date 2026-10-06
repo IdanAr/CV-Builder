@@ -193,15 +193,14 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
             top: 8,
             right: 16,
             zIndex: 20,
-            background: 'rgba(99, 102, 241, 0.10)',
-            color: 'rgba(67, 56, 202, 0.9)',
+            background: 'rgb(var(--color-surface-selected))',
+            color: 'rgb(var(--color-accent-700) / 0.9)',
             fontSize: '11px',
             padding: '3px 10px',
             borderRadius: '9999px',
             fontFamily: 'sans-serif',
             userSelect: 'none',
             pointerEvents: 'none',
-            backdropFilter: 'blur(4px)',
           }}
         >
           {badgeText}
@@ -214,14 +213,14 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
         </span>
 
         {/* Floating zoom toolbar — overlays the preview */}
-        <div className="absolute bottom-4 right-4 z-30 flex items-center gap-1 rounded-full bg-white/85 backdrop-blur-md shadow-lg ring-1 ring-indigo-100 px-2 py-1.5">
+        <div className="absolute bottom-4 right-4 z-30 flex items-center gap-1 rounded-full bg-surface shadow-lg ring-1 ring-accent-100 px-2 py-1.5">
           <button
             type="button"
             aria-label="Zoom out"
             data-testid="zoom-out"
             onClick={handleZoomOut}
             disabled={scale <= MIN_ZOOM}
-            className="flex items-center justify-center min-h-[40px] min-w-[40px] text-sm rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center justify-center min-h-[40px] min-w-[40px] text-sm rounded-full text-accent-600 hover:bg-accent-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             −
           </button>
@@ -234,7 +233,7 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
                 aria-haspopup="listbox"
                 aria-expanded={zoomMenuOpen}
                 data-testid="zoom-percentage"
-                className="flex items-center justify-center min-h-[28px] px-2 text-xs rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors tabular-nums"
+                className="flex items-center justify-center min-h-[28px] px-2 text-xs rounded-full text-accent-600 hover:bg-accent-50 transition-colors tabular-nums"
               >
                 {zoomOverride === null ? 'Fit' : `${Math.round(zoomOverride * 100)}%`}
               </button>
@@ -243,7 +242,7 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
             <div
               role="listbox"
               data-testid="zoom-menu"
-              className="bg-white border border-indigo-200 rounded shadow-md py-1 min-w-[80px]"
+              className="bg-white border border-accent-200 rounded shadow-md py-1 min-w-[80px]"
             >
               {ZOOM_PRESETS.map((p) => (
                 <button
@@ -252,7 +251,7 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
                   role="option"
                   aria-selected={zoomOverride === p}
                   onClick={() => handlePresetSelect(p)}
-                  className="block w-full text-left px-3 py-1 text-xs text-indigo-600 hover:bg-indigo-50"
+                  className="block w-full text-left px-3 py-1 text-xs text-accent-600 hover:bg-accent-50"
                 >
                   {Math.round(p * 100)}%
                 </button>
@@ -262,7 +261,7 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
                 role="option"
                 aria-selected={zoomOverride === null}
                 onClick={() => handlePresetSelect(null)}
-                className="block w-full text-left px-3 py-1 text-xs text-indigo-600 hover:bg-indigo-50 border-t border-indigo-100"
+                className="block w-full text-left px-3 py-1 text-xs text-accent-600 hover:bg-accent-50 border-t border-accent-100"
               >
                 Fit
               </button>
@@ -274,7 +273,7 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
             data-testid="zoom-in"
             onClick={handleZoomIn}
             disabled={scale >= MAX_ZOOM}
-            className="flex items-center justify-center min-h-[40px] min-w-[40px] text-sm rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center justify-center min-h-[40px] min-w-[40px] text-sm rounded-full text-accent-600 hover:bg-accent-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             +
           </button>
@@ -282,12 +281,12 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
 
         <div
           ref={containerRef}
-          className="h-full overflow-auto bg-slate-200/60 flex justify-center py-10"
+          className="h-full overflow-auto bg-neutral-200/60 flex justify-center py-10"
         >
           {/* Outer wrapper sized to post-scale visual dimensions so the scroll container tracks content correctly */}
           <div
             ref={wrapperRef}
-            className="shadow-2xl ring-1 ring-gray-900/10 bg-white"
+            className="shadow-2xl ring-1 ring-neutral-900/10 bg-white"
             style={{
               position: 'relative',
               width: A4_WIDTH_PX * scale,
@@ -328,16 +327,16 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
                 style={{
                   borderTop:
                     source === 'pdf'
-                      ? '2px solid rgba(99, 102, 241, 0.55)'
-                      : '2px dashed rgba(99, 102, 241, 0.4)',
+                      ? '2px solid rgb(var(--color-accent-500) / 0.55)'
+                      : '2px dashed rgb(var(--color-accent-500) / 0.4)',
                   display: 'flex',
                   justifyContent: 'center',
                 }}
               >
                 <span
                   style={{
-                    background: 'rgba(99, 102, 241, 0.08)',
-                    color: 'rgba(99, 102, 241, 0.6)',
+                    background: 'rgb(var(--color-accent-500) / 0.08)',
+                    color: 'rgb(var(--color-accent-500) / 0.6)',
                     fontSize: '10px',
                     padding: '1px 8px',
                     borderRadius: '0 0 4px 4px',

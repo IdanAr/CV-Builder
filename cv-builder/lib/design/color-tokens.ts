@@ -8,10 +8,10 @@
  *
  * Two tiers, deliberately:
  *
- *   PALETTE — what the colour *is*. Copied verbatim from the Tailwind 3.4
- *   default palette (indigo/gray/red/green/amber) so that adopting a token is
- *   provably a no-op: `text-accent-700` renders the exact same pixels as the
- *   `text-indigo-700` it replaces. Migration cannot cause a visual regression.
+ *   PALETTE — what the colour *is*. `accent` is cobalt and `neutral` is a cool
+ *   gray, both defined here; `danger`, `success` and `warning` remain the
+ *   Tailwind 3.4 red, green and amber scales. Contrast is guaranteed by
+ *   color-tokens.test.ts rather than by provenance.
  *
  *   SEMANTIC — what the colour *means*. `fg-body`, `input`,
  *   `surface-subtle`. Components should reach for these; the palette tier
@@ -42,17 +42,17 @@ export type PaletteScale = {
  * was lifted from is noted for traceability.
  */
 export const PALETTE = {
-  /** from Tailwind `indigo` — the product's brand hue */
+  /** cobalt, the product accent. 600 is #2457F5 (5.6:1 against white). */
   accent: {
-    50: '238 242 255', 100: '224 231 255', 200: '199 210 254', 300: '165 180 252',
-    400: '129 140 248', 500: '99 102 241', 600: '79 70 229', 700: '67 56 202',
-    800: '55 48 163', 900: '49 46 129', 950: '30 27 75',
+    50: '238 243 255', 100: '224 233 255', 200: '197 214 255', 300: '154 183 255',
+    400: '107 142 252', 500: '66 109 248', 600: '36 87 245', 700: '28 69 210',
+    800: '27 58 166', 900: '25 48 128', 950: '17 30 82',
   },
-  /** from Tailwind `gray` */
+  /** cool gray. 50 is the page canvas #F6F7F9, 900 is the text colour #14161B. */
   neutral: {
-    50: '249 250 251', 100: '243 244 246', 200: '229 231 235', 300: '209 213 219',
-    400: '156 163 175', 500: '107 114 128', 600: '75 85 99', 700: '55 65 81',
-    800: '31 41 55', 900: '17 24 39', 950: '3 7 18',
+    50: '246 247 249', 100: '240 242 246', 200: '228 230 235', 300: '205 209 217',
+    400: '128 135 148', 500: '110 117 130', 600: '91 98 112', 700: '66 72 85',
+    800: '40 45 55', 900: '20 22 27', 950: '11 12 16',
   },
   /** from Tailwind `red` */
   danger: {
@@ -80,7 +80,7 @@ const WHITE: Channels = '255 255 255'
 
 /**
  * Tier 2. Each entry records the contrast ratio it achieves against the
- * app background (#f5f3ff — the worst common case, since it is tinted and so
+ * app background (#F6F7F9 — the worst common case, since it is tinted and so
  * always slightly darker than white). WCAG 2.2 asks for 4.5:1 on body text,
  * 3:1 on large text and on the boundaries of controls you must be able to find.
  *
@@ -88,43 +88,41 @@ const WHITE: Channels = '255 255 255'
  */
 export const SEMANTIC = {
   // --- Surfaces ---
-  /** Cards, panels, popovers, inputs. */
   surface: WHITE,
-  /** Tinted rows, hover fills, quiet callouts. */
-  'surface-subtle': PALETTE.accent[50],
+  /** Hover fills and quiet callouts. Neutral, never tinted. */
+  'surface-subtle': PALETTE.neutral[100],
   /** Chip and badge fills that must read as separate from `surface-subtle`. */
-  'surface-muted': PALETTE.accent[100],
-  /** The page itself. Matches the legacy `--background`. */
-  'surface-page': '245 243 255',
+  'surface-muted': PALETTE.neutral[200],
+  /** The page itself, flat. */
+  'surface-page': PALETTE.neutral[50],
+  /** Selected rows, active tabs, the current nav item: the only cobalt wash. */
+  'surface-selected': PALETTE.accent[50],
+  /** Something is waiting on the user: counts, drafts to review, unverified claims. */
+  'surface-attention': PALETTE.warning[100],
 
   // --- Foreground ---
-  /** Default body copy. 14.6:1 — matches the legacy `--foreground`. */
-  fg: PALETTE.accent[950],
-  /** Section and page headings. 10.4:1 */
-  'fg-heading': PALETTE.accent[900],
-  /** Body copy and labels in the accent hue. 7.2:1 */
-  'fg-body': PALETTE.accent[700],
-  /**
-   * De-emphasised copy — captions, helper text, placeholders. 5.7:1
-   *
-   * Deliberately accent-600 and not the accent-400 (2.7:1) or accent-300
-   * (1.8:1) that 74 call sites currently use for this role. Those fail AA
-   * outright; this is the accessible value the token points at, so repointing
-   * a call site to `fg-muted` fixes its contrast as a side effect.
-   */
-  'fg-muted': PALETTE.accent[600],
-  /** Neutral-hued de-emphasised copy, where accent tinting would be wrong. 6.9:1 */
+  /** Default text. 16.9:1 on the page. */
+  fg: PALETTE.neutral[900],
+  /** Section and page headings. 16.9:1 */
+  'fg-heading': PALETTE.neutral[900],
+  /** Labels and secondary body copy. 8.6:1 */
+  'fg-body': PALETTE.neutral[700],
+  /** Captions, helper text, placeholders. 5.7:1 */
+  'fg-muted': PALETTE.neutral[600],
+  /** Same value as `fg-muted`; kept as its own name for existing call sites. 5.7:1 */
   'fg-subtle': PALETTE.neutral[600],
-  /** On an accent-600 fill (buttons). 6.3:1 */
+  /** On a cobalt fill (buttons). 5.6:1 */
   'fg-on-accent': WHITE,
 
   // --- Status foregrounds, all AA on the page background ---
-  /** 5.9:1. danger-500, used by 41 call sites for error text, is 3.4:1 and fails. */
+  /** 6.0:1 */
   'fg-danger': PALETTE.danger[700],
-  /** 4.6:1 — clears AA, but with little margin; do not lighten. */
+  /** 4.7:1, little margin; do not lighten. */
   'fg-success': PALETTE.success[700],
-  /** 4.6:1 — clears AA, but with little margin; do not lighten. */
+  /** 4.7:1, little margin; do not lighten. */
   'fg-warning': PALETTE.warning[700],
+  /** Amber text on `surface-attention`. 6.4:1 */
+  'fg-attention': PALETTE.warning[800],
 
   // --- Status surfaces ---
   'surface-danger': PALETTE.danger[50],
@@ -133,33 +131,30 @@ export const SEMANTIC = {
   'border-danger': PALETTE.danger[200],
   'border-success': PALETTE.success[200],
   'border-warning': PALETTE.warning[200],
+  'border-attention': PALETTE.warning[300],
 
   // --- Borders ---
-  /** Hairlines and dividers. Decorative, so no contrast floor applies. */
-  'border-subtle': PALETTE.accent[100],
-  /** Card and panel edges. Also decorative. */
-  border: PALETTE.accent[200],
+  /** Hairlines and dividers. Decorative. */
+  'border-subtle': PALETTE.neutral[100],
+  /** Card and panel edges. Decorative. */
+  border: PALETTE.neutral[200],
   /**
-   * The visible edge of a control you must be able to locate — inputs,
-   * selects, textareas. WCAG 2.2 SC 1.4.11 requires 3:1 here, so this is
-   * accent-500 (4.1:1) and not the accent-200 (1.4:1) previously in use.
-   *
-   * Named `input`, not `border-input`, because Tailwind builds the utility by
-   * prefixing the key: a key of `border-input` yields `.border-border-input`,
-   * and the natural-looking `.border-input` silently does not exist — it falls
-   * back to preflight's grey. This bit once; the test below now guards it.
+   * The visible edge of a control you must be able to locate. SC 1.4.11 asks
+   * 3:1: neutral-400 is 3.4:1 on the page and 3.6:1 on white. Named `input`,
+   * not `border-input`: Tailwind prefixes the key, so `border-input` would
+   * generate `.border-border-input` and the real `.border-input` would not
+   * exist. The "token utilities referenced in source" test guards this.
    */
-  input: PALETTE.accent[500],
+  input: PALETTE.neutral[400],
 
   // --- Interactive ---
-  /** Primary button and other filled accent affordances. */
   primary: PALETTE.accent[600],
   'primary-hover': PALETTE.accent[700],
   'primary-fg': WHITE,
   /** Quiet fills: secondary buttons, progress tracks, skeleton bases. */
   secondary: PALETTE.accent[100],
   'secondary-fg': PALETTE.accent[700],
-  /** Focus rings. 4.1:1 against the page, comfortably over the 3:1 floor. */
+  /** Focus rings. 4.1:1 on the page. */
   ring: PALETTE.accent[500],
 } as const
 

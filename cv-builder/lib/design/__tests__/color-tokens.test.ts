@@ -10,9 +10,24 @@ import {
   semanticVar,
   type Channels,
   type PaletteFamily,
-  type PaletteScale,
   type SemanticToken,
 } from '../color-tokens'
+
+/** HSL hue in degrees from space-separated sRGB channels. */
+function hue(channels: Channels): number {
+  const [r, g, b] = channels.split(' ').map((v) => Number(v) / 255)
+  const max = Math.max(r, g, b)
+  const d = max - Math.min(r, g, b)
+  if (d === 0) return 0
+  let h: number
+  if (max === r) h = ((g - b) / d) % 6
+  else if (max === g) h = (b - r) / d + 2
+  else h = (r - g) / d + 4
+  return (h * 60 + 360) % 360
+}
+
+const toHex = (channels: Channels) =>
+  '#' + channels.split(' ').map((v) => Number(v).toString(16).padStart(2, '0')).join('')
 
 const GLOBALS_CSS = join(__dirname, '..', '..', '..', 'app', 'globals.css')
 
@@ -44,31 +59,6 @@ function rootCustomProperties(): Map<string, string> {
 }
 
 describe('colour palette', () => {
-  // The migration story only holds if adopting a token is provably a no-op:
-  // `text-accent-700` must render the identical pixels to the
-  // `text-indigo-700` it replaces. A typo in one channel would break that
-  // silently, so the values are checked against Tailwind's own palette.
-  const sources: Record<PaletteFamily, Record<string, string>> = {
-    accent: colors.indigo,
-    neutral: colors.gray,
-    danger: colors.red,
-    success: colors.green,
-    warning: colors.amber,
-  }
-
-  it.each(Object.keys(PALETTE) as PaletteFamily[])(
-    '%s matches its Tailwind source hue exactly',
-    (family) => {
-      for (const step of Object.keys(PALETTE[family]) as unknown as Array<keyof PaletteScale>) {
-        const hex = sources[family][String(step)]
-        const expected = [1, 3, 5]
-          .map((i) => parseInt(hex.slice(i, i + 2), 16))
-          .join(' ')
-        expect(`${family}-${step}: ${PALETTE[family][step]}`).toBe(`${family}-${step}: ${expected}`)
-      }
-    }
-  )
-
   it('gives every family the full 11-step scale', () => {
     for (const family of Object.keys(PALETTE) as PaletteFamily[]) {
       expect(Object.keys(PALETTE[family])).toEqual([
@@ -79,23 +69,29 @@ describe('colour palette', () => {
 })
 
 describe('semantic tokens', () => {
-  // Guards the reason the token layer exists. Someone lightening `fg-muted`
-  // back toward accent-400 for looks would silently reintroduce the defect
-  // that affected 74 call sites; this fails the build instead.
   const PAGE = SEMANTIC['surface-page']
 
   const bodyText: SemanticToken[] = [
     'fg', 'fg-heading', 'fg-body', 'fg-muted', 'fg-subtle',
-    'fg-danger', 'fg-success', 'fg-warning',
+    'fg-danger', 'fg-success', 'fg-warning', 'fg-attention',
   ]
 
   it.each(bodyText)('%s clears WCAG AA (4.5:1) on the page background', (name) => {
     expect(contrast(SEMANTIC[name], PAGE)).toBeGreaterThanOrEqual(4.5)
   })
 
+  it.each(['fg', 'fg-heading'] as SemanticToken[])('%s reaches 7:1 on page and surface', (name) => {
+    expect(contrast(SEMANTIC[name], PAGE)).toBeGreaterThanOrEqual(7)
+    expect(contrast(SEMANTIC[name], SEMANTIC.surface)).toBeGreaterThanOrEqual(7)
+  })
+
   it('keeps primary-button text readable on its own fill', () => {
     expect(contrast(SEMANTIC['primary-fg'], SEMANTIC.primary)).toBeGreaterThanOrEqual(4.5)
     expect(contrast(SEMANTIC['secondary-fg'], SEMANTIC.secondary)).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('keeps attention text readable on the attention tint', () => {
+    expect(contrast(SEMANTIC['fg-attention'], SEMANTIC['surface-attention'])).toBeGreaterThanOrEqual(4.5)
   })
 
   it.each(['input', 'ring'] as SemanticToken[])(
@@ -109,6 +105,56 @@ describe('semantic tokens', () => {
   it('resolves every semantic token to a real colour', () => {
     for (const [name, value] of Object.entries(SEMANTIC)) {
       expect(`${name}: ${value}`).toMatch(/^[\w-]+: \d{1,3} \d{1,3} \d{1,3}$/)
+    }
+  })
+})
+
+describe('redesign palette', () => {
+  it('uses the cool-neutral page canvas #F6F7F9', () => {
+    expect(SEMANTIC['surface-page']).toBe('246 247 249')
+  })
+
+  it('uses cobalt #2457F5 as the primary action colour', () => {
+    expect(SEMANTIC.primary).toBe('36 87 245')
+  })
+
+  it('maps the attention role onto the amber warning scale', () => {
+    expect(SEMANTIC['surface-attention']).toBe(PALETTE.warning[100])
+    expect(SEMANTIC['fg-attention']).toBe(PALETTE.warning[800])
+    expect(SEMANTIC['border-attention']).toBe(PALETTE.warning[300])
+  })
+
+  it('selection reads as a cobalt tint, hover as a neutral one', () => {
+    expect(SEMANTIC['surface-selected']).toBe(PALETTE.accent[50])
+    expect(SEMANTIC['surface-subtle']).toBe(PALETTE.neutral[100])
+  })
+
+  // Cobalt sits near 225 degrees, the old indigo-600 (79 70 229) near 243.
+  // A blue-channel-dominates check passes for both, so it cannot catch a
+  // revert; a hue window can.
+  const COBALT_HUE_RANGE: [number, number] = [200, 235]
+  const inCobaltRange = (channels: Channels) => {
+    const h = hue(channels)
+    return h >= COBALT_HUE_RANGE[0] && h <= COBALT_HUE_RANGE[1]
+  }
+
+  it('keeps every accent step in the cobalt hue range (no indigo or violet drift)', () => {
+    for (const [step, channels] of Object.entries(PALETTE.accent)) {
+      expect({ step, hue: hue(channels), ok: inCobaltRange(channels) }).toMatchObject({ ok: true })
+    }
+  })
+
+  it('proves the hue guard is not vacuous: old indigo-600 fails it', () => {
+    expect(inCobaltRange('79 70 229')).toBe(false)
+  })
+
+  it.each([
+    ['danger', colors.red],
+    ['success', colors.green],
+    ['warning', colors.amber],
+  ] as const)('%s still equals its Tailwind source scale', (family, source) => {
+    for (const [step, channels] of Object.entries(PALETTE[family])) {
+      expect(toHex(channels)).toBe((source as Record<string, string>)[step].toLowerCase())
     }
   })
 })
@@ -197,6 +243,12 @@ describe('app/globals.css', () => {
       (name) => name.startsWith('--color-') && !known.has(name)
     )
     expect(orphans).toEqual([])
+  })
+
+  it('ties --background and --foreground to surface-page and fg', () => {
+    const declared = rootCustomProperties()
+    expect(declared.get('--background')?.toLowerCase()).toBe(toHex(SEMANTIC['surface-page']))
+    expect(declared.get('--foreground')?.toLowerCase()).toBe(toHex(SEMANTIC.fg))
   })
 
   it('exposes the tokens components actually reach for', () => {

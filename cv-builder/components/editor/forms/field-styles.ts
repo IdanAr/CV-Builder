@@ -6,7 +6,7 @@
  *  Two values here are deliberately not what they were, because this single
  *  string reaches most of the app's form controls and both failed WCAG:
  *
- *  - The placeholder was `text-indigo-300`, 1.8:1 against the page. Most of
+ *  - The placeholder was `text-accent-300`, 1.8:1 against the page. Most of
  *    these forms label their fields with `sr-only` text, which makes the
  *    placeholder the only label a sighted user gets — so it was the only
  *    visible identifier of the field, and it was effectively invisible. It is
@@ -21,7 +21,7 @@
  *  and are covered by its contrast test rather than being re-litigated here.
  */
 export const inputClass =
-  'w-full border border-input rounded-control px-3 py-1.5 text-sm bg-surface/70 shadow-sm transition-all duration-200 hover:border-primary focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary focus:shadow-md placeholder:text-fg-muted'
+  'w-full border border-input rounded-control px-3 py-1.5 text-sm bg-surface shadow-sm transition-all duration-200 hover:border-primary focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary focus:shadow-md placeholder:text-fg-muted'
 
 /** `fg-muted` is the same accent-600 this was already using, now named. */
 export const labelClass = 'block text-xs font-medium text-fg-muted mb-1'

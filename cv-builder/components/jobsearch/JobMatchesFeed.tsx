@@ -244,7 +244,7 @@ export function JobMatchesFeed({ profileId }: JobMatchesFeedProps = {}) {
           <div
             role="group"
             aria-label="Filter matches"
-            className="inline-flex gap-0.5 rounded-control border border-border-subtle bg-surface/60 p-0.5"
+            className="inline-flex gap-0.5 rounded-control border border-border bg-surface p-0.5"
           >
             {filters.map((entry) => (
               <button
@@ -253,7 +253,7 @@ export function JobMatchesFeed({ profileId }: JobMatchesFeedProps = {}) {
                 aria-pressed={filter === entry.key}
                 onClick={() => setFilter(entry.key)}
                 className={cn(
-                  'inline-flex min-h-6 items-center gap-1.5 rounded-[0.375rem] px-3 py-1 text-xs font-medium transition',
+                  'inline-flex min-h-6 items-center gap-1.5 rounded-chip px-3 py-1 text-xs font-medium transition',
                   'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   filter === entry.key
                     ? 'bg-primary text-primary-fg'
@@ -275,7 +275,7 @@ export function JobMatchesFeed({ profileId }: JobMatchesFeedProps = {}) {
                 <select
                   value={profileFilter}
                   onChange={(e) => setProfileFilter(e.target.value)}
-                  className="rounded-control border border-border bg-surface/60 px-2 py-1 text-xs font-medium text-fg-body focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="rounded-control border border-border bg-surface px-2 py-1 text-xs font-medium text-fg-body focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="">All profiles</option>
                   {profileOptions.map((option) => (
@@ -291,7 +291,7 @@ export function JobMatchesFeed({ profileId }: JobMatchesFeedProps = {}) {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as Sort)}
-              className="rounded-control border border-border bg-surface/60 px-2 py-1 text-xs font-medium text-fg-body focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="rounded-control border border-border bg-surface px-2 py-1 text-xs font-medium text-fg-body focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="newest">Newest</option>
               <option value="fit">Best fit</option>
@@ -347,7 +347,7 @@ export function JobMatchesFeed({ profileId }: JobMatchesFeedProps = {}) {
                 <Card
                   className={cn(
                     'relative flex flex-col gap-2.5 overflow-hidden transition hover:border-input',
-                    isUnread && 'border-border bg-surface/90 pl-[15px]'
+                    isUnread && 'border-border bg-surface pl-[15px]'
                   )}
                 >
                   {isUnread && (
@@ -414,7 +414,7 @@ export function JobMatchesFeed({ profileId }: JobMatchesFeedProps = {}) {
                         href={match.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex min-h-8 items-center rounded-control border border-border bg-surface/50 px-3 py-1.5 text-sm font-medium text-fg-body transition hover:bg-surface-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="inline-flex min-h-8 items-center rounded-control border border-border bg-surface px-3 py-1.5 text-sm font-medium text-fg-body transition hover:bg-surface-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         Open posting
                       </a>

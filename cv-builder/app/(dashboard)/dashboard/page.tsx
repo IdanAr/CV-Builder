@@ -46,7 +46,7 @@ export default async function DashboardPage() {
 
       <div className="mx-auto max-w-4xl px-4 py-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-indigo-700">My CVs</h1>
+          <h1 className="text-2xl font-bold text-fg-heading">My CVs</h1>
         </div>
 
         {resumes.length === 0 ? (

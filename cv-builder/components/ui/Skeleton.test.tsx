@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { Skeleton, SkeletonText, NavbarSkeleton } from './Skeleton'
 
 afterEach(cleanup)
@@ -8,12 +10,22 @@ afterEach(cleanup)
 describe('NavbarSkeleton', () => {
   // Every authenticated page renders AppNavbar itself rather than inheriting
   // it from the group layout, so a loading.tsx replaces the navbar too. If
-  // this placeholder loses its height the page jumps 64-80px when content
+  // this placeholder loses its height the page jumps 64px when content
   // arrives — the exact layout shift the skeleton exists to prevent.
   it('reserves the same height AppNavbar occupies', () => {
     const { container } = render(<NavbarSkeleton />)
     expect(container.innerHTML).toContain('min-h-[64px]')
-    expect(container.innerHTML).toContain('md:h-20')
+    expect(container.innerHTML).toContain('md:h-16')
+  })
+
+  // AppNavbar needs a session, so compare against its source: a regression in
+  // either height class fails here instead of showing up as a 16px jump.
+  it('shares its md: height class with AppNavbar', () => {
+    const navbar = readFileSync(join(__dirname, 'AppNavbar.tsx'), 'utf8')
+    const navbarHeight = /\bmd:h-\d+\b/.exec(navbar)?.[0]
+    const skeletonHeight = /\bmd:h-\d+\b/.exec(render(<NavbarSkeleton />).container.innerHTML)?.[0]
+    expect(navbarHeight).toBeDefined()
+    expect(skeletonHeight).toBe(navbarHeight)
   })
 
   it('is hidden from assistive technology', () => {

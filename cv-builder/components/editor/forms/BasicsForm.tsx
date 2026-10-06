@@ -125,7 +125,7 @@ export function BasicsForm() {
       </div>
       <div>
         <div className="flex items-center justify-between mb-1">
-          <label htmlFor="basics-summary" className="block text-xs font-medium text-indigo-600">Professional Summary</label>
+          <label htmlFor="basics-summary" className="block text-xs font-medium text-fg-muted">Professional Summary</label>
           <AiSuggestButton
             resumeId={resumeId}
             currentValue={basics.summary ?? ''}

@@ -5,9 +5,9 @@ import { useToastStore, type Toast } from '@/lib/stores/toast.store'
 import { X } from 'lucide-react'
 
 const VARIANT_STYLES: Record<Toast['variant'], string> = {
-  success: 'border-green-200 bg-green-50/95 text-green-800',
-  error: 'border-red-200 bg-red-50/95 text-red-800',
-  info: 'border-indigo-200 bg-white/95 text-indigo-900',
+  success: 'border-success-200 bg-success-50/95 text-success-800',
+  error: 'border-danger-200 bg-danger-50/95 text-danger-800',
+  info: 'border-accent-200 bg-surface text-fg',
 }
 
 type ToastTimerListener = (id: number) => void
@@ -76,7 +76,7 @@ function ToastItem({ toast: t }: { toast: Toast }) {
 
   return (
     <div
-      className={`pointer-events-auto flex items-center gap-3 rounded-xl border px-4 py-3 shadow-lg backdrop-blur-xl ${VARIANT_STYLES[t.variant]}`}
+      className={`pointer-events-auto flex items-center gap-3 rounded-card border px-4 py-3 shadow-popover ${VARIANT_STYLES[t.variant]}`}
       onMouseEnter={() => pause('hover')}
       onMouseLeave={() => resume('hover')}
       onFocus={() => pause('focus')}

@@ -136,9 +136,9 @@ describe('AtsScorePanel help popover for Semantic Match / Tailor with AI', () =>
 
     const semanticButton = screen.getByRole('button', { name: '🔎 Semantic Match' })
     const tailorButton = screen.getByText(/tailor with ai/i).closest('button')
-    expect(semanticButton?.className).toContain('bg-indigo-600')
+    expect(semanticButton?.className).toContain('bg-accent-600')
     expect(semanticButton?.className).toContain('min-h-[44px]')
-    expect(tailorButton?.className).toContain('bg-indigo-600')
+    expect(tailorButton?.className).toContain('bg-accent-600')
     expect(tailorButton?.className).toContain('min-h-[44px]')
   })
 })
@@ -377,7 +377,7 @@ describe('AtsScorePanel semantic match', () => {
     expect(rescoreCallBody.jdKeywords).toEqual(['react', 'typescript'])
 
     const reactChip = await screen.findByLabelText('Exclude "react" from scoring')
-    await waitFor(() => expect(reactChip.className).toContain('teal'))
+    await waitFor(() => expect(reactChip.className).toContain('bg-accent-100'))
     await waitFor(() => expect(screen.queryByText(/semantic match/i)).not.toBeInTheDocument())
   })
 
@@ -397,10 +397,10 @@ describe('AtsScorePanel semantic match', () => {
 
     const errorMessage = await screen.findByText(/semantic match failed/i)
     expect(errorMessage).toBeInTheDocument()
-    // Sits inside the bg-red-50 missing-keywords container, where text-red-600
-    // falls just under AA contrast (~4.42:1) — must be red-700 (~5.92:1).
-    expect(errorMessage.className).toContain('text-red-700')
-    expect(errorMessage.className).not.toContain('text-red-600')
+    // Sits inside the bg-danger-50 missing-keywords container, where text-danger-600
+    // falls just under AA contrast (~4.42:1) — must be danger-700 (~5.92:1).
+    expect(errorMessage.className).toContain('text-danger-700')
+    expect(errorMessage.className).not.toContain('text-danger-600')
   })
 
   it('shows a soft nudge to try Semantic Match first, hiding it once Semantic Match has run', async () => {
@@ -453,10 +453,10 @@ describe('AtsScorePanel fix generation error', () => {
 
     const errorMessage = await screen.findByText(/could not generate fixes/i)
     expect(errorMessage).toBeInTheDocument()
-    // Same bg-red-50 container as the semanticError message — text-red-600
-    // fails AA there (~4.42:1); must be red-700 (~5.92:1).
-    expect(errorMessage.className).toContain('text-red-700')
-    expect(errorMessage.className).not.toContain('text-red-600')
+    // Same bg-danger-50 container as the semanticError message — text-danger-600
+    // fails AA there (~4.42:1); must be danger-700 (~5.92:1).
+    expect(errorMessage.className).toContain('text-danger-700')
+    expect(errorMessage.className).not.toContain('text-danger-600')
   })
 })
 
@@ -480,10 +480,10 @@ describe('AtsScorePanel missing-keyword overflow label', () => {
     await goToStep2()
 
     const overflowLabel = await screen.findByText('+5 more')
-    // Sits in the same bg-red-50 container as the other fixed instances —
-    // text-red-500 fails AA there (~3.44:1 against #fef2f2); must be red-700 (~5.92:1).
-    expect(overflowLabel.className).toContain('text-red-700')
-    expect(overflowLabel.className).not.toContain('text-red-500')
+    // Sits in the same bg-danger-50 container as the other fixed instances —
+    // text-danger-500 fails AA there (~3.44:1 against #fef2f2); must be danger-700 (~5.92:1).
+    expect(overflowLabel.className).toContain('text-danger-700')
+    expect(overflowLabel.className).not.toContain('text-danger-500')
   })
 })
 
@@ -583,8 +583,8 @@ describe('AtsScorePanel missing-keyword priority coloring', () => {
     await goToStep2()
 
     const reactChip = await screen.findByLabelText('Exclude "react" from scoring')
-    expect(reactChip.className).toContain('red')
-    expect(reactChip.className).not.toContain('yellow')
+    expect(reactChip.className).toContain('danger')
+    expect(reactChip.className).not.toContain('warning')
   })
 
   it('colors a nice-to-have missing keyword yellow', async () => {
@@ -596,8 +596,8 @@ describe('AtsScorePanel missing-keyword priority coloring', () => {
     await goToStep2()
 
     const tsChip = await screen.findByLabelText('Exclude "typescript" from scoring')
-    expect(tsChip.className).toContain('yellow')
-    expect(tsChip.className).not.toContain('red')
+    expect(tsChip.className).toContain('warning')
+    expect(tsChip.className).not.toContain('danger')
   })
 
   it('colors a missing keyword with no priority entry (ambiguous) red, same as must-have', async () => {
@@ -609,8 +609,8 @@ describe('AtsScorePanel missing-keyword priority coloring', () => {
     await goToStep2()
 
     const agileChip = await screen.findByLabelText('Exclude "agile" from scoring')
-    expect(agileChip.className).toContain('red')
-    expect(agileChip.className).not.toContain('yellow')
+    expect(agileChip.className).toContain('danger')
+    expect(agileChip.className).not.toContain('warning')
   })
 
   it('shows a legend explaining the red/yellow priority coloring', async () => {

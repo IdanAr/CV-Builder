@@ -52,7 +52,7 @@ export function MenuContent({
         collisionPadding={8}
         loop
         className={cn(
-          'z-[100] overflow-hidden rounded-xl border border-white/40 bg-white/90 shadow-xl backdrop-blur-xl',
+          'z-[100] overflow-hidden rounded-card border border-border bg-surface shadow-popover',
           className
         )}
         {...props}
@@ -68,8 +68,8 @@ export function MenuItem({
   return (
     <DropdownMenu.Item
       className={cn(
-        'flex w-full cursor-pointer select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-indigo-900 outline-none transition',
-        'hover:bg-indigo-50/70 data-[highlighted]:bg-indigo-50/70',
+        'flex w-full cursor-pointer select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-fg outline-none transition',
+        'hover:bg-accent-50/70 data-[highlighted]:bg-accent-50/70',
         className
       )}
       {...props}

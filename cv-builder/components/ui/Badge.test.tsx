@@ -47,4 +47,18 @@ describe('Badge', () => {
     render(<Badge data-testid="unread" role="status" aria-label="3 unread jobs" />)
     expect(screen.getByTestId('unread').getAttribute('role')).toBe('status')
   })
+
+  it('renders the attention tone with the amber attention tokens', () => {
+    render(<Badge tone="attention">2 claims</Badge>)
+    const el = screen.getByText('2 claims')
+    expect(el.className).toContain('bg-surface-attention')
+    expect(el.className).toContain('text-fg-attention')
+  })
+
+  it('uses the 6px chip radius, not a full pill', () => {
+    render(<Badge>ATS 94</Badge>)
+    const el = screen.getByText('ATS 94')
+    expect(el.className).toContain('rounded-chip')
+    expect(el.className).not.toContain('rounded-full')
+  })
 })

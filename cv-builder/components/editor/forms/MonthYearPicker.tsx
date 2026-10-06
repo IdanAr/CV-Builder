@@ -118,12 +118,12 @@ export function MonthYearPicker({ value, onChange, allowPresent = false, placeho
   if (isPresent && allowPresent) {
     return (
       <div className="flex items-center gap-2">
-        <label className="flex items-center gap-1.5 text-sm text-indigo-600 cursor-pointer">
+        <label className="flex items-center gap-1.5 text-sm text-fg-muted cursor-pointer">
           <input
             type="checkbox"
             checked={isPresent}
             onChange={handlePresentChange}
-            className="rounded border-indigo-300 text-fg-muted focus:ring-indigo-500"
+            className="rounded border-accent-300 text-fg-muted focus:ring-accent-500"
           />
           Present
         </label>
@@ -178,7 +178,7 @@ export function MonthYearPicker({ value, onChange, allowPresent = false, placeho
             type="checkbox"
             checked={isPresent}
             onChange={handlePresentChange}
-            className="rounded border-indigo-300 text-fg-muted focus:ring-indigo-500"
+            className="rounded border-accent-300 text-fg-muted focus:ring-accent-500"
           />
           Present
         </label>

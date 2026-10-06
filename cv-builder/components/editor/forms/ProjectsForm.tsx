@@ -66,7 +66,7 @@ function ItemForm({ item, resumeId, onUpdate, onRemove }: { item: Item; resumeId
         />
       </div>
       <fieldset className="space-y-1 border-0 p-0 m-0">
-        <legend className="block text-xs font-medium text-indigo-600 p-0">Highlights</legend>
+        <legend className="block text-xs font-medium text-fg-muted p-0">Highlights</legend>
         <ListFieldManager<string>
           items={item.highlights ?? []}
           onChange={setHighlights}
@@ -95,7 +95,7 @@ function ItemForm({ item, resumeId, onUpdate, onRemove }: { item: Item; resumeId
         />
       </fieldset>
       <fieldset className="space-y-1 border-0 p-0 m-0">
-        <legend className="block text-xs font-medium text-indigo-600 p-0">Keywords</legend>
+        <legend className="block text-xs font-medium text-fg-muted p-0">Keywords</legend>
         {(item.keywords ?? []).map((k, i) => (
           <div key={i} className="flex gap-1">
             <input type="text" value={k} onChange={(e) => updateKeyword(i, e.target.value)}
@@ -105,7 +105,7 @@ function ItemForm({ item, resumeId, onUpdate, onRemove }: { item: Item; resumeId
           </div>
         ))}
         <button type="button" onClick={addKeyword}
-          className="text-xs text-indigo-600 hover:text-indigo-800">+ Add keyword</button>
+          className="text-xs text-accent-600 hover:text-accent-800">+ Add keyword</button>
       </fieldset>
     </div>
   )

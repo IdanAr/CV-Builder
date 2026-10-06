@@ -49,14 +49,14 @@ export function AccordionSection({
         transform: CSS.Transform.toString(dragHandleProps?.transform ?? null),
         transition: dragHandleProps?.transition,
       }}
-      className={`border border-indigo-100 rounded-xl overflow-hidden bg-white/60 backdrop-blur-sm shadow-sm transition-shadow duration-200 hover:shadow-md group${
-        dragHandleProps?.isDragging ? ' opacity-60 border-dashed border-indigo-400' : ''
+      className={`border border-accent-100 rounded-xl overflow-hidden bg-surface shadow-sm transition-shadow duration-200 hover:shadow-md group${
+        dragHandleProps?.isDragging ? ' opacity-60 border-dashed border-accent-400' : ''
       }`}
     >
       {/* Header layout is a fixed left rail so the icon chip lands at the same
           x-position in every variant: [handle slot] [icon chip] [title/rename].
           Non-draggable sections (Personal Info) get a same-width spacer. */}
-      <div className="flex items-center gap-1 pl-2 pr-2 bg-white/70 hover:bg-white/90 transition-colors">
+      <div className="flex items-center gap-1 pl-2 pr-2 bg-surface hover:bg-surface transition-colors">
         {dragHandleProps ? (
           <button
             type="button"
@@ -71,7 +71,7 @@ export function AccordionSection({
           <span className="w-5 shrink-0" aria-hidden="true" />
         )}
         {icon && (
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-fg-muted">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent-50 text-fg-muted">
             {icon}
           </span>
         )}
@@ -99,7 +99,7 @@ export function AccordionSection({
               onClick={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
               aria-label={`Rename ${title}`}
-              className="w-full font-medium text-sm text-indigo-900 bg-transparent border-none outline-none focus:ring-1 focus:ring-indigo-300 rounded px-2 py-1 min-w-0"
+              className="w-full font-medium text-sm text-fg bg-transparent border-none outline-none focus:ring-1 focus:ring-accent-300 rounded px-2 py-1 min-w-0"
             />
           </div>
         ) : (
@@ -109,11 +109,11 @@ export function AccordionSection({
             aria-expanded={isOpen}
             className="flex-1 flex items-center px-2 py-3 text-left min-w-0"
           >
-            <span className="font-medium text-sm text-indigo-900 truncate">{title}</span>
+            <span className="font-medium text-sm text-fg truncate">{title}</span>
           </button>
         )}
         {badge && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-fg-muted shrink-0">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-accent-50 text-fg-muted shrink-0">
             {badge}
           </span>
         )}
@@ -142,7 +142,7 @@ export function AccordionSection({
         </button>
       </div>
       <Collapsible open={isOpen}>
-        <div className="px-4 pb-4 pt-2 border-t border-indigo-100 bg-white/50">{children}</div>
+        <div className="px-4 pb-4 pt-2 border-t border-accent-100 bg-surface">{children}</div>
       </Collapsible>
     </div>
   )

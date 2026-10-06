@@ -46,7 +46,7 @@ function SkillItemForm({ item, onUpdate, onRemove }: { item: SkillItem; onUpdate
           className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-1 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
       </div>
       <fieldset className="space-y-1 border-0 p-0 m-0">
-        <legend className="block text-xs font-medium text-indigo-600 p-0">Keywords</legend>
+        <legend className="block text-xs font-medium text-fg-muted p-0">Keywords</legend>
         {(item.keywords ?? []).map((k, i) => (
           <div key={i} className="flex gap-1">
             <input type="text" value={k} onChange={(e) => updateKeyword(i, e.target.value)}
@@ -56,7 +56,7 @@ function SkillItemForm({ item, onUpdate, onRemove }: { item: SkillItem; onUpdate
           </div>
         ))}
         <button type="button" onClick={addKeyword}
-          className="text-xs text-indigo-600 hover:text-indigo-800">+ Add keyword</button>
+          className="text-xs text-accent-600 hover:text-accent-800">+ Add keyword</button>
       </fieldset>
     </div>
   )

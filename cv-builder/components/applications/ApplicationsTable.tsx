@@ -196,8 +196,8 @@ function SortableHeaderCell({
         transform: CSS.Transform.toString(transform),
         transition,
       }}
-      className={`flex shrink-0 items-center gap-0.5 border-r border-indigo-50 px-1 py-2 ${
-        isDragging ? 'z-10 rounded bg-indigo-50 opacity-80 shadow' : ''
+      className={`flex shrink-0 items-center gap-0.5 border-r border-accent-50 px-1 py-2 ${
+        isDragging ? 'z-10 rounded bg-accent-50 opacity-80 shadow' : ''
       }`}
     >
       <button
@@ -233,7 +233,7 @@ function SortableRow({
       ref={setNodeRef}
       role="row"
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`group/row flex border-b border-indigo-50 transition hover:bg-indigo-50/40 ${
+      className={`group/row flex border-b border-accent-50 transition hover:bg-accent-50/40 ${
         isDragging ? 'relative z-10 rounded bg-white opacity-90 shadow-lg' : ''
       }`}
     >
@@ -254,7 +254,7 @@ function SortableRow({
           {...(dragDisabled ? {} : { ...attributes, ...listeners })}
           className={`touch-none rounded px-0.5 text-sm ${
             dragDisabled
-              ? 'cursor-not-allowed text-indigo-200'
+              ? 'cursor-not-allowed text-fg-muted'
               : 'cursor-grab text-fg-subtle opacity-0 transition group-hover/row:opacity-100 hover:text-fg-body focus:opacity-100 active:cursor-grabbing'
           }`}
         >
@@ -317,7 +317,7 @@ export default function ApplicationsTable({
   }
 
   return (
-    <div className="min-h-[28rem] overflow-x-auto rounded-xl border border-white/30 bg-white/65 shadow-lg backdrop-blur-xl">
+    <div className="min-h-[28rem] overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-lg">
       <div role="table" aria-label="Applications" className="min-w-max">
         {/* Header (columns are drag-reorderable) */}
         <DndContext
@@ -330,7 +330,7 @@ export default function ApplicationsTable({
           }}
         >
           <SortableContext items={ordered.map((c) => c.id)} strategy={horizontalListSortingStrategy}>
-            <div role="row" className="sticky top-0 z-10 flex border-b border-indigo-100 bg-white">
+            <div role="row" className="sticky top-0 z-10 flex border-b border-accent-100 bg-white">
               <div role="columnheader" style={{ width: GRIP_COLUMN_WIDTH }} className="shrink-0" />
               {ordered.map((column) => (
                 <SortableHeaderCell
@@ -375,7 +375,7 @@ export default function ApplicationsTable({
                     key={column.id}
                     role="cell"
                     style={{ width: columnWidth(column) }}
-                    className="group/cell flex shrink-0 items-center border-r border-indigo-50 px-0.5 py-1"
+                    className="group/cell flex shrink-0 items-center border-r border-accent-50 px-0.5 py-1"
                   >
                     <div className="min-w-0 flex-1">
                       <ApplicationCell
@@ -396,7 +396,7 @@ export default function ApplicationsTable({
                     type="button"
                     aria-label={`Delete application at ${app.company || 'unknown company'}`}
                     onClick={() => onDeleteRow(app._id)}
-                    className="rounded px-1.5 py-0.5 text-xs text-red-400 opacity-0 transition group-hover/row:opacity-100 hover:bg-red-50 hover:text-red-600 focus:opacity-100"
+                    className="rounded px-1.5 py-0.5 text-xs text-danger-400 opacity-0 transition group-hover/row:opacity-100 hover:bg-danger-50 hover:text-danger-600 focus:opacity-100"
                     title="Delete"
                   >
                     <X className="h-3.5 w-3.5" aria-hidden="true" />

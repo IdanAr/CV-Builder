@@ -143,11 +143,11 @@ function ItemForm({ item, enabledFields, resumeId, onUpdate, onRemove }: ItemFor
           <div className="text-xs text-fg-muted font-medium">Keywords</div>
           <div className="flex flex-wrap gap-1">
             {(item.keywords ?? []).map((kw, i) => (
-              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs">
+              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent-50 text-fg-body text-xs">
                 {kw}
                 <button type="button"
                   onClick={() => setArr('keywords', (item.keywords ?? []).filter((_, idx) => idx !== i))}
-                  className="hover:text-red-500">×</button>
+                  className="hover:text-danger-500">×</button>
               </span>
             ))}
           </div>
@@ -193,7 +193,7 @@ function ItemForm({ item, enabledFields, resumeId, onUpdate, onRemove }: ItemFor
       </div>
 
       {hasRoles ? (
-        <div className="pl-3 border-l-2 border-indigo-100 space-y-3">
+        <div className="pl-3 border-l-2 border-accent-100 space-y-3">
           {urlField && <div className="space-y-2">{urlField}</div>}
           <ListFieldManager<CustomSectionRole>
             items={roles}
@@ -294,11 +294,11 @@ function RoleForm({
           <div className="text-xs text-fg-muted font-medium">Keywords</div>
           <div className="flex flex-wrap gap-1">
             {(role.keywords ?? []).map((kw, i) => (
-              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs">
+              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent-50 text-fg-body text-xs">
                 {kw}
                 <button type="button"
                   onClick={() => setArr('keywords', (role.keywords ?? []).filter((_, idx) => idx !== i))}
-                  className="hover:text-red-500">×</button>
+                  className="hover:text-danger-500">×</button>
               </span>
             ))}
           </div>
@@ -363,8 +363,8 @@ export function CustomSectionForm({ sectionId }: { sectionId: string }) {
               aria-pressed={active}
               className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
                 active
-                  ? 'bg-indigo-500 border-indigo-500 text-white'
-                  : 'bg-white border-indigo-200 text-fg-muted hover:border-indigo-400'
+                  ? 'bg-accent-500 border-accent-500 text-white'
+                  : 'bg-white border-accent-200 text-fg-muted hover:border-accent-400'
               }`}
             >
               {FIELD_LABELS[field]}

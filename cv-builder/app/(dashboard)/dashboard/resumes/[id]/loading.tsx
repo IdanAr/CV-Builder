@@ -10,7 +10,7 @@ import { Skeleton, NavbarSkeleton } from '@/components/ui/Skeleton'
  */
 export default function ResumeEditorLoading() {
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-violet-50">
+    <div className="flex h-screen flex-col overflow-hidden bg-surface-page">
       <NavbarSkeleton />
 
       <div role="status" aria-live="polite" className="flex min-h-0 flex-1">
@@ -25,7 +25,7 @@ export default function ResumeEditorLoading() {
           {Array.from({ length: 5 }, (_, i) => (
             <div
               key={i}
-              className="space-y-2 rounded-card border border-border-subtle bg-surface/70 p-3"
+              className="space-y-2 rounded-card border border-border bg-surface p-3"
             >
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-8 w-full" />

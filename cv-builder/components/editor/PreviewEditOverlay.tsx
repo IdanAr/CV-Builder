@@ -259,8 +259,8 @@ function DragHandle({
         justifyContent: 'center',
         borderRadius: 4,
         border: 'none',
-        background: isOver ? 'rgba(99,102,241,0.28)' : 'rgba(99,102,241,0.14)',
-        color: '#4338ca',
+        background: isOver ? 'rgb(var(--color-accent-500) / 0.28)' : 'rgb(var(--color-accent-500) / 0.14)',
+        color: 'rgb(var(--color-accent-700))',
         fontSize: Math.min(size, 12),
         lineHeight: 1,
         cursor: 'grab',
@@ -402,9 +402,9 @@ function SectionOverlayGroup({
             alignItems: 'center',
             justifyContent: 'center',
             borderRadius: 4,
-            border: '1px dashed rgba(99,102,241,0.5)',
-            background: 'rgba(99,102,241,0.08)',
-            color: '#4338ca',
+            border: '1px dashed rgb(var(--color-accent-500) / 0.5)',
+            background: 'rgb(var(--color-accent-500) / 0.08)',
+            color: 'rgb(var(--color-accent-700))',
             fontSize: 12,
             lineHeight: 1,
             cursor: 'pointer',
@@ -588,20 +588,20 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
                 onClick={() => setAddMenuOpen((o) => !o)}
                 style={{
                   // Mirrors EditTab.tsx's own "+ Add Section" emphasis
-                  // (border-2 border-dashed border-indigo-300, font-semibold,
-                  // shadow-[0_0_14px_-2px_rgba(99,102,241,0.45)]) so both entry
+                  // (border-2 border-dashed border-accent-300, font-semibold) so both entry
                   // points for this action read as the same feature. Padding/
                   // font-size stay smaller than EditTab's — this button lives
                   // inside a hover/focus-revealed overlay on top of the scaled
                   // live preview, not a static full-width accordion row.
                   padding: '4px 10px',
                   borderRadius: 8,
-                  border: '2px dashed rgba(165,180,252,0.9)',
-                  background: 'rgba(238,242,255,0.6)',
-                  color: '#6366f1',
+                  borderWidth: 2,
+                  borderStyle: 'dashed',
+                  borderColor: 'rgb(var(--color-accent-300))',
+                  background: 'rgb(var(--color-accent-50) / 0.6)',
+                  color: 'rgb(var(--color-accent-600))',
                   fontSize: 12,
                   fontWeight: 600,
-                  boxShadow: '0 0 14px -2px rgba(99,102,241,0.45)',
                   cursor: 'pointer',
                   transition: 'all 150ms ease',
                 }}
@@ -614,7 +614,7 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
                   style={{
                     marginTop: 4,
                     borderRadius: 8,
-                    border: '1px solid rgba(99,102,241,0.2)',
+                    border: '1px solid rgb(var(--color-accent-500) / 0.2)',
                     background: '#fff',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                     overflow: 'hidden',
@@ -652,7 +652,7 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
             style={{
               padding: '4px 10px',
               borderRadius: 6,
-              background: 'rgba(67,56,202,0.9)',
+              background: 'rgb(var(--color-accent-700) / 0.9)',
               color: '#fff',
               fontSize: 12,
               fontFamily: 'sans-serif',

@@ -31,7 +31,7 @@ export default function DashboardLoading() {
             <div
               key={i}
               aria-hidden="true"
-              className="rounded-card border border-white/30 bg-surface/65 p-4 shadow-lg backdrop-blur-xl"
+              className="rounded-card border border-border-subtle bg-surface p-4 shadow-lg"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1 space-y-2">

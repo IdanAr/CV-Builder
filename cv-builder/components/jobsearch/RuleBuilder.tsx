@@ -223,7 +223,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
     return (
       <div className="flex flex-col items-center gap-3 py-8">
         <ErrorBanner>{error}</ErrorBanner>
-        <button type="button" className="rounded bg-indigo-600 px-4 py-2 text-sm text-white" onClick={() => load()}>
+        <button type="button" className="rounded bg-accent-600 px-4 py-2 text-sm text-white" onClick={() => load()}>
           Try again
         </button>
       </div>
@@ -239,7 +239,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">Notification rules</h2>
         {!showForm && (
-          <button type="button" className="rounded bg-indigo-600 px-4 py-2 text-sm text-white" onClick={() => setShowForm(true)}>
+          <button type="button" className="rounded bg-accent-600 px-4 py-2 text-sm text-white" onClick={() => setShowForm(true)}>
             Add rule
           </button>
         )}
@@ -247,7 +247,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
       {rules.length === 0 && !showForm && (
-        <p className="text-sm text-gray-500">No rules yet - postings will be stored but won&apos;t trigger notifications.</p>
+        <p className="text-sm text-neutral-500">No rules yet - postings will be stored but won&apos;t trigger notifications.</p>
       )}
 
       {rules.length > 0 && (
@@ -256,7 +256,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
             <li key={rule._id} className="flex items-center justify-between rounded border px-4 py-2">
               <div>
                 <div className="font-medium">{rule.name}</div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-neutral-500">
                   {ACTION_LABELS[rule.action]} - {rule.conditions.map(describeCondition).join('; ')}
                 </div>
               </div>
@@ -265,7 +265,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
                   <input type="checkbox" aria-label={`${rule.name} active`} checked={rule.isActive} onChange={() => toggleActive(rule)} />
                   Active
                 </label>
-                <button type="button" className="text-sm text-red-600" onClick={() => deleteRule(rule)}>
+                <button type="button" className="text-sm text-danger-600" onClick={() => deleteRule(rule)}>
                   Delete
                 </button>
               </div>
@@ -412,7 +412,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
             <button
               type="button"
               disabled={!condition || name.trim().length === 0 || submitting}
-              className="rounded bg-indigo-600 px-4 py-2 text-sm text-white disabled:opacity-40"
+              className="rounded bg-accent-600 px-4 py-2 text-sm text-white disabled:opacity-40"
               onClick={handleCreate}
             >
               Save rule
