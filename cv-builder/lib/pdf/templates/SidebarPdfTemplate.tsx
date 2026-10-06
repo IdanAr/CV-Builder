@@ -1,7 +1,7 @@
 import React from 'react'
 import { Document, View, StyleSheet } from '@react-pdf/renderer'
-import { Page, Text, Link, FontScaleProvider } from '../font-scale'
-import { resolveFontScale } from '@/lib/design/font-scale'
+import { Page, Text, Link, FontScaleProvider, useFontScale } from '../font-scale'
+import { resolveFontScale, scalePt } from '@/lib/design/font-scale'
 import type { Style } from '@react-pdf/types'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, renderPdfRichText, renderPdfRichTextRuns, ensureHttps, pdfDocumentProps } from './pdf-utils'
@@ -126,7 +126,8 @@ function chunkContactText(text: string, availableWidthPt: number, fontSizePt: nu
  * single <Text>. Only a token estimated too wide for the *specific*
  * document's rail triggers the chunked flex-row rendering. */
 function RailContactText({ text, style, availableWidthPt }: { text: string; style: Style; availableWidthPt: number }) {
-  const fontSizePt = typeof style.fontSize === 'number' ? style.fontSize : 10
+  // The <Text> below renders at the scaled size, so measure at it too.
+  const fontSizePt = scalePt(typeof style.fontSize === 'number' ? style.fontSize : 10, useFontScale())
   const hasLongToken = text
     .split(/\s+/)
     .some((t) => t.length > 0 && estimateTextWidthPt(t, fontSizePt) > availableWidthPt)
