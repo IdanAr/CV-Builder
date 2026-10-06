@@ -33,6 +33,13 @@ beforeEach(() => {
 })
 
 describe('DesignPanel', () => {
+  it('line spacing slider reaches 1.3', () => {
+    render(<DesignPanel />)
+    const slider = screen.getByRole('slider', { name: /line spacing/i }) as HTMLInputElement
+    expect(slider.max).toBe('1.3')
+    expect(slider.min).toBe('1')
+  })
+
   it('marks the active template and layout buttons as pressed for assistive tech', () => {
     render(<DesignPanel />)
     // Anchored to the start: "Classic"/"Modern" alone would also match the
