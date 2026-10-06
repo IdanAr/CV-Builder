@@ -392,3 +392,28 @@ describe('nested roles', () => {
     expect(result.success).toBe(false)
   })
 })
+
+describe('ResumeMetaSchema fontScale and lineSpacing', () => {
+  it('defaults fontScale to 1 so existing documents render unchanged', () => {
+    expect(ResumeMetaSchema.parse({}).fontScale).toBe(1)
+  })
+
+  it('accepts fontScale across 0.9..1.1 and rejects outside it', () => {
+    expect(ResumeMetaSchema.safeParse({ fontScale: 0.9 }).success).toBe(true)
+    expect(ResumeMetaSchema.safeParse({ fontScale: 1.1 }).success).toBe(true)
+    expect(ResumeMetaSchema.safeParse({ fontScale: 0.89 }).success).toBe(false)
+    expect(ResumeMetaSchema.safeParse({ fontScale: 1.11 }).success).toBe(false)
+  })
+
+  it('accepts lineSpacing up to 1.3 and keeps the default at 1.15', () => {
+    expect(ResumeMetaSchema.parse({}).lineSpacing).toBe(1.15)
+    expect(ResumeMetaSchema.safeParse({ lineSpacing: 1.3 }).success).toBe(true)
+    expect(ResumeMetaSchema.safeParse({ lineSpacing: 1.31 }).success).toBe(false)
+    expect(ResumeMetaSchema.safeParse({ lineSpacing: 0.99 }).success).toBe(false)
+  })
+
+  it('patch schema carries fontScale without resetting any other meta field', () => {
+    const parsed = PatchResumeSchema.parse({ meta: { fontScale: 1.05 } })
+    expect(parsed.meta).toEqual({ fontScale: 1.05 })
+  })
+})

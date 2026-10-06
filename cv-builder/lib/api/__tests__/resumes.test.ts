@@ -199,7 +199,7 @@ describe('createResume', () => {
         sectionOrder: [] as string[],
         layout: 'single-column' as const,
         columnAssignment: {},
-        excludedAtsKeywords: [],
+        excludedAtsKeywords: [], fontScale: 1,
       },
       applicationStatus: 'draft' as const,
     }

@@ -51,7 +51,7 @@ describe('token refactor moves nothing', () => {
         primaryColor: '#1e3a5f', accentColor: '#0066cc',
         pageMargins: 0.5, sidebarRailWidth: 33, lineSpacing: 1.15,
         sectionOrder: ['work', 'education', 'skills', 'projects'],
-        layout: 'single-column', columnAssignment: {}, excludedAtsKeywords: [],
+        layout: 'single-column', columnAssignment: {}, excludedAtsKeywords: [], fontScale: 1,
       } as ResumeMeta
       const runs = await renderToGlyphRuns(selectPdfTemplate(data, meta, 'designed', 'CV'))
       expect(runs.map(r => `${r.str}@${r.x.toFixed(1)},${r.y.toFixed(1)}`)).toMatchSnapshot()

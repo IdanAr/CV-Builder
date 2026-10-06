@@ -45,7 +45,7 @@ const defaultMeta: ResumeMeta = {
   sectionOrder: ['work', 'education', 'skills'],
   layout: 'single-column',
   columnAssignment: {},
-  excludedAtsKeywords: [],
+  excludedAtsKeywords: [], fontScale: 1,
 }
 
 /** Stubs window.matchMedia so useMediaQuery reports `matches` for every query. */

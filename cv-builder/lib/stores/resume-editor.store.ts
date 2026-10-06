@@ -77,6 +77,7 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
       accentColor: '#0066cc',
       pageMargins: 1.0,
       lineSpacing: 1.15,
+      fontScale: 1,
       sidebarRailWidth: 33,
       sectionOrder: defaultSectionOrder(),
       layout: 'single-column',

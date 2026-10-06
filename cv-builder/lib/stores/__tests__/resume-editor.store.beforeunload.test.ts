@@ -15,7 +15,7 @@ const defaultMeta: ResumeMeta = {
   sectionOrder: ['work'],
   layout: 'single-column',
   columnAssignment: {},
-  excludedAtsKeywords: [],
+  excludedAtsKeywords: [], fontScale: 1,
 }
 
 function fireBeforeUnload(): Event {

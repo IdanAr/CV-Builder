@@ -32,7 +32,7 @@ const sourceMeta = {
   sectionOrder: ['work', 'education', 'custom:proj-1'],
   layout: 'two-column' as const,
   columnAssignment: { work: 'left' as const },
-  excludedAtsKeywords: [],
+  excludedAtsKeywords: [], fontScale: 1,
 }
 
 beforeEach(() => {

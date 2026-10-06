@@ -25,7 +25,7 @@ function metaFor(templateId: string, fontFamily: string, lineSpacing: number): R
     primaryColor: '#1e3a5f', accentColor: '#0066cc',
     pageMargins: 0.5, sidebarRailWidth: 33, lineSpacing,
     sectionOrder: ['work'], layout: 'single-column',
-    columnAssignment: {}, excludedAtsKeywords: [],
+    columnAssignment: {}, excludedAtsKeywords: [], fontScale: 1,
   } as ResumeMeta
 }
 
