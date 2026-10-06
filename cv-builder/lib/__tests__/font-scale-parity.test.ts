@@ -112,7 +112,8 @@ describe('ats mode stays strictly linear at the largest scale and spacing', () =
   })
 })
 
-const KEY_WORDS = ['janesmith', 'acmecorp', 'cutinfracosts40%', 'mit']
+// Each word occurs in exactly one fixture field (name, job, highlight, education area).
+const KEY_WORDS = ['janesmith', 'acmecorp', 'cutinfracosts40%', 'computerscience']
 
 describe.each(TEMPLATES)('absolute content at scale 1: %s', (templateId) => {
   it.each(MODES)('%s PDF and DOCX contain the key fixture content', async (mode) => {
