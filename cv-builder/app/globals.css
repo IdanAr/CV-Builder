@@ -9,29 +9,29 @@
    CSS. Channels rather than hex so Tailwind's <alpha-value> works. */
 :root {
   /* accent */
-  --color-accent-50: 238 242 255;
-  --color-accent-100: 224 231 255;
-  --color-accent-200: 199 210 254;
-  --color-accent-300: 165 180 252;
-  --color-accent-400: 129 140 248;
-  --color-accent-500: 99 102 241;
-  --color-accent-600: 79 70 229;
-  --color-accent-700: 67 56 202;
-  --color-accent-800: 55 48 163;
-  --color-accent-900: 49 46 129;
-  --color-accent-950: 30 27 75;
+  --color-accent-50: 238 243 255;
+  --color-accent-100: 224 233 255;
+  --color-accent-200: 197 214 255;
+  --color-accent-300: 154 183 255;
+  --color-accent-400: 107 142 252;
+  --color-accent-500: 66 109 248;
+  --color-accent-600: 36 87 245;
+  --color-accent-700: 28 69 210;
+  --color-accent-800: 27 58 166;
+  --color-accent-900: 25 48 128;
+  --color-accent-950: 17 30 82;
   /* neutral */
-  --color-neutral-50: 249 250 251;
-  --color-neutral-100: 243 244 246;
-  --color-neutral-200: 229 231 235;
-  --color-neutral-300: 209 213 219;
-  --color-neutral-400: 156 163 175;
-  --color-neutral-500: 107 114 128;
-  --color-neutral-600: 75 85 99;
-  --color-neutral-700: 55 65 81;
-  --color-neutral-800: 31 41 55;
-  --color-neutral-900: 17 24 39;
-  --color-neutral-950: 3 7 18;
+  --color-neutral-50: 246 247 249;
+  --color-neutral-100: 240 242 246;
+  --color-neutral-200: 228 230 235;
+  --color-neutral-300: 205 209 217;
+  --color-neutral-400: 128 135 148;
+  --color-neutral-500: 110 117 130;
+  --color-neutral-600: 91 98 112;
+  --color-neutral-700: 66 72 85;
+  --color-neutral-800: 40 45 55;
+  --color-neutral-900: 20 22 27;
+  --color-neutral-950: 11 12 16;
   /* danger */
   --color-danger-50: 254 242 242;
   --color-danger-100: 254 226 226;
@@ -70,14 +70,14 @@
   --color-warning-950: 69 26 3;
 
   --color-surface: 255 255 255;
-  --color-surface-subtle: 238 242 255;
-  --color-surface-muted: 224 231 255;
-  --color-surface-page: 245 243 255;
-  --color-fg: 30 27 75;
-  --color-fg-heading: 49 46 129;
-  --color-fg-body: 67 56 202;
-  --color-fg-muted: 79 70 229;
-  --color-fg-subtle: 75 85 99;
+  --color-surface-subtle: 240 242 246;
+  --color-surface-muted: 228 230 235;
+  --color-surface-page: 246 247 249;
+  --color-fg: 20 22 27;
+  --color-fg-heading: 20 22 27;
+  --color-fg-body: 66 72 85;
+  --color-fg-muted: 91 98 112;
+  --color-fg-subtle: 91 98 112;
   --color-fg-on-accent: 255 255 255;
   --color-fg-danger: 185 28 28;
   --color-fg-success: 21 128 61;
@@ -88,21 +88,25 @@
   --color-border-danger: 254 202 202;
   --color-border-success: 187 247 208;
   --color-border-warning: 253 230 138;
-  --color-border-subtle: 224 231 255;
-  --color-border: 199 210 254;
-  --color-input: 99 102 241;
-  --color-primary: 79 70 229;
-  --color-primary-hover: 67 56 202;
+  --color-border-subtle: 240 242 246;
+  --color-border: 228 230 235;
+  --color-input: 128 135 148;
+  --color-primary: 36 87 245;
+  --color-primary-hover: 28 69 210;
   --color-primary-fg: 255 255 255;
-  --color-secondary: 224 231 255;
-  --color-secondary-fg: 67 56 202;
-  --color-ring: 99 102 241;
+  --color-secondary: 224 233 255;
+  --color-secondary-fg: 28 69 210;
+  --color-ring: 66 109 248;
+  --color-surface-selected: 238 243 255;
+  --color-surface-attention: 254 243 199;
+  --color-fg-attention: 146 64 14;
+  --color-border-attention: 252 211 77;
 
   /* Consumed directly by `body` below and by the `background`/`foreground`
      entries in tailwind.config.ts, which predate the token layer. Kept as hex
      because they are used as whole colours, never with an alpha modifier. */
-  --background: #f5f3ff;
-  --foreground: #1e1b4b;
+  --background: #f6f7f9;
+  --foreground: #14161b;
 }
 
 body {

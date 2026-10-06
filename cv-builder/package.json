@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "vitest",
     "test:run": "vitest run",
+    "tokens:sync": "node scripts/sync-token-css.mjs",
     "fonts:copy": "node scripts/copy-fonts.mjs",
     "favicon:generate": "node scripts/generate-favicon.mjs",
     "prebuild": "node scripts/copy-fonts.mjs",
