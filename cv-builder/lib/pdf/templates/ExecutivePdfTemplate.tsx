@@ -1,5 +1,7 @@
 ﻿import React from 'react'
-import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/renderer'
+import { Document, Page, View, Text, Link, StyleSheet } from '@react-pdf/renderer'
+import { withFontScale } from '../font-scale'
+import { resolveFontScale, scalePt } from '@/lib/design/font-scale'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, ensureHttps, renderPdfRichText, renderPdfRichTextRuns, pdfDocumentProps } from './pdf-utils'
 import { resolveProfiles } from '@/lib/basics-profiles'
@@ -21,9 +23,10 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
   const headFont = mapToPdfFont(meta.headerFontFamily)
   const margin = inToPt(meta.pageMargins)
   const sectionOrder = resolveSectionOrder(meta)
-  const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE, meta.lineSpacing)
-  const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE, meta.lineSpacing)
-  const styles = withLineHeights(StyleSheet.create({
+  const scale = resolveFontScale(meta)
+  const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE * scale, meta.lineSpacing)
+  const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE * scale, meta.lineSpacing)
+  const styles = withFontScale(withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: PAGE_FONT_SIZE, lineHeight: meta.lineSpacing, padding: margin, color: '#000000' },
     name: { fontFamily: headFont, fontSize: T.nameSize, fontWeight: 'bold', color: meta.primaryColor, letterSpacing: 0.25 },
     subtitle: { fontSize: T.labelSize, color: meta.accentColor, fontStyle: 'italic', marginTop: 0.75 },
@@ -49,7 +52,7 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
     plainSummary: { fontSize: 10, marginTop: 2 },
     degree: { fontSize: 10.5, fontStyle: 'italic' },
     summary: { fontSize: 10.5, textAlign: 'justify', marginTop: T.summaryMarginBottom },
-  }), meta.lineSpacing)
+  }), meta.lineSpacing), scale)
 
   function buildContactRow() {
     const items: Array<{ label: string; href: string }> = []
@@ -63,7 +66,7 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
     if (loc) items.push({ label: loc, href: '' })
     if (!items.length) return null
     return (
-      <Text style={{ fontSize: T.contactSize, color: '#555555' }}>
+      <Text style={{ fontSize: scalePt(T.contactSize, scale), color: '#555555' }}>
         {items.map((item, i) => (
           <React.Fragment key={i}>
             {item.href
@@ -82,7 +85,7 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
       const id = section.slice(7)
       const cs = data.customSections?.find((s) => s.id === id)
       if (!cs) return null
-      return renderPdfCustomSection(cs, { sectionTitle: styles.sectionTitle, bold: styles.bold, accent: styles.accent, small: styles.small, body: styles.plainSummary, bullet: styles.bullet })
+      return renderPdfCustomSection(cs, { sectionTitle: styles.sectionTitle, bold: styles.bold, accent: styles.accent, small: styles.small, body: styles.plainSummary, bullet: styles.bullet }, scale)
     }
     switch (section) {
       case 'work':
@@ -180,11 +183,11 @@ export function ExecutivePdfTemplate({ data, meta, title }: { data: ResumeData; 
             {/* Mirrors the web definition list: fixed-width bold name column, keywords fill the rest */}
             {skills.map((s, i) => (
               <View key={i} style={{ flexDirection: 'row', gap: 12, marginBottom: 1.5 }}>
-                <Text style={{ fontSize: 10, fontWeight: 'bold', minWidth: 97.5 }}>
+                <Text style={{ fontSize: scalePt(10, scale), fontWeight: 'bold', minWidth: 97.5 }}>
                   {s.name ?? ''}
                   {s.level ? <Text style={{ fontWeight: 'normal', color: '#666666' }}> · {s.level}</Text> : null}
                 </Text>
-                {(s.keywords ?? []).length > 0 ? <Text style={{ fontSize: 10, color: '#444444', flex: 1 }}>{(s.keywords ?? []).join(', ')}</Text> : null}
+                {(s.keywords ?? []).length > 0 ? <Text style={{ fontSize: scalePt(10, scale), color: '#444444', flex: 1 }}>{(s.keywords ?? []).join(', ')}</Text> : null}
               </View>
             ))}
           </View>

@@ -204,7 +204,10 @@ export const ResumeMetaSchema = z.object({
   primaryColor: z.string().default('#000000'),
   accentColor: z.string().default('#0066cc'),
   pageMargins: z.number().min(0.5).max(1.5).default(1.0),
-  lineSpacing: z.number().min(1.0).max(1.15).default(1.15),
+  lineSpacing: z.number().min(1.0).max(1.3).default(1.15),
+  // A multiplier over each template's own base sizes (Classic 11pt, ATS 10.5pt,
+  // ...), not an absolute size: 1 leaves every existing CV exactly as it was.
+  fontScale: z.number().min(0.9).max(1.1).default(1),
   sidebarRailWidth: z.number().min(20).max(40).default(33),
   // defaultSectionOrder (not a literal array) so the schema, the editor store,
   // the preview templates and both exporters cannot drift apart again, and so

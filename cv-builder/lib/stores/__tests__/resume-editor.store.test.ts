@@ -1,6 +1,7 @@
 // lib/stores/__tests__/resume-editor.store.test.ts
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { useResumeEditorStore, initAutoSave } from '../resume-editor.store'
+import { FONT_SCALE_MIN, FONT_SCALE_MAX } from '@/lib/design/font-scale'
 import type { ResumeData, ResumeMeta, CustomSection } from '@/lib/schemas/resume.zod'
 
 const emptyData: ResumeData = {}
@@ -15,7 +16,7 @@ const defaultMeta: ResumeMeta = {
   sectionOrder: ['work', 'education', 'skills'],
   layout: 'single-column',
   columnAssignment: {},
-  excludedAtsKeywords: [],
+  excludedAtsKeywords: [], fontScale: 1,
 }
 
 beforeEach(() => {
@@ -89,10 +90,38 @@ describe('setMeta', () => {
     expect(useResumeEditorStore.getState().meta.lineSpacing).toBe(1.0)
   })
 
-  it('clamps lineSpacing to maximum 1.15', () => {
+  it('keeps lineSpacing 1.3 and clamps above it to 1.3', () => {
     useResumeEditorStore.getState().hydrate('r1', 'CV', emptyData, defaultMeta)
-    useResumeEditorStore.getState().setMeta({ lineSpacing: 2.0 })
-    expect(useResumeEditorStore.getState().meta.lineSpacing).toBe(1.15)
+    useResumeEditorStore.getState().setMeta({ lineSpacing: 1.3 })
+    expect(useResumeEditorStore.getState().meta.lineSpacing).toBe(1.3)
+    useResumeEditorStore.getState().setMeta({ lineSpacing: 2 })
+    expect(useResumeEditorStore.getState().meta.lineSpacing).toBe(1.3)
+  })
+
+  it('keeps an in-range fontScale', () => {
+    useResumeEditorStore.getState().hydrate('r1', 'CV', emptyData, defaultMeta)
+    useResumeEditorStore.getState().setMeta({ fontScale: 1.05 })
+    expect(useResumeEditorStore.getState().meta.fontScale).toBe(1.05)
+  })
+
+  it('clamps fontScale to FONT_SCALE_MAX / FONT_SCALE_MIN', () => {
+    useResumeEditorStore.getState().hydrate('r1', 'CV', emptyData, defaultMeta)
+    useResumeEditorStore.getState().setMeta({ fontScale: 5 })
+    expect(useResumeEditorStore.getState().meta.fontScale).toBe(FONT_SCALE_MAX)
+    useResumeEditorStore.getState().setMeta({ fontScale: 0.1 })
+    expect(useResumeEditorStore.getState().meta.fontScale).toBe(FONT_SCALE_MIN)
+  })
+
+  it('clamping fontScale leaves other meta fields untouched', () => {
+    useResumeEditorStore.getState().hydrate('r1', 'CV', emptyData, defaultMeta)
+    useResumeEditorStore.getState().setMeta({ fontScale: 5 })
+    expect(useResumeEditorStore.getState().meta).toEqual({ ...defaultMeta, fontScale: FONT_SCALE_MAX })
+  })
+
+  it('a patch without fontScale leaves the existing fontScale as it was', () => {
+    useResumeEditorStore.getState().hydrate('r1', 'CV', emptyData, { ...defaultMeta, fontScale: 1.05 })
+    useResumeEditorStore.getState().setMeta({ fontFamily: 'Arial' })
+    expect(useResumeEditorStore.getState().meta.fontScale).toBe(1.05)
   })
 })
 

@@ -591,12 +591,12 @@ export function DesignPanel() {
         <label className={labelClass}>
           Line spacing - <span className="font-mono">{meta.lineSpacing.toFixed(2)}</span>
         </label>
-        <input type="range" min={1.0} max={1.15} step={0.05}
+        <input type="range" aria-label="Line spacing" min={1.0} max={1.3} step={0.05}
           value={meta.lineSpacing}
           onChange={(e) => setMeta({ lineSpacing: parseFloat(e.target.value) })}
           className="w-full accent-accent-600" />
         <div className="flex justify-between text-xs text-fg-subtle mt-0.5">
-          <span>1.00</span><span>1.15</span>
+          <span>1.00</span><span>1.30</span>
         </div>
       </div>
 

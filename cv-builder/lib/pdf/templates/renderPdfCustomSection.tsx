@@ -1,3 +1,4 @@
+import { scalePt } from '@/lib/design/font-scale'
 import React from 'react'
 import { View, Text, Link } from '@react-pdf/renderer'
 import type { Style } from '@react-pdf/types'
@@ -21,7 +22,8 @@ interface PdfCustomSectionStyles {
 
 export function renderPdfCustomSection(
   section: CustomSection,
-  styles: PdfCustomSectionStyles
+  styles: PdfCustomSectionStyles,
+  fontScale = 1
 ): React.ReactNode {
   const { name, enabledFields, items } = section
   if (!items.length) return null
@@ -48,7 +50,7 @@ export function renderPdfCustomSection(
             ) : null}
             {enabledFields.includes('url') && item.url ? (
               <Link src={ensureHttps(item.url)}>
-                <Text style={styles.link ?? { fontSize: 9, color: '#0066cc' }}>{item.url}</Text>
+                <Text style={styles.link ?? { fontSize: scalePt(9, fontScale), color: '#0066cc' }}>{item.url}</Text>
               </Link>
             ) : null}
             {!hasRoles && enabledFields.includes('summary') && item.summary
@@ -60,10 +62,10 @@ export function renderPdfCustomSection(
                 ))
               : null}
             {!hasRoles && enabledFields.includes('keywords') && (item.keywords ?? []).length > 0 ? (
-              <Text style={styles.keywords ?? { fontSize: 9, color: '#555555', marginTop: 2 }}>{(item.keywords ?? []).join(' · ')}</Text>
+              <Text style={styles.keywords ?? { fontSize: scalePt(9, fontScale), color: '#555555', marginTop: 2 }}>{(item.keywords ?? []).join(' · ')}</Text>
             ) : null}
             {!hasRoles && enabledFields.includes('level') && item.level ? (
-              <Text style={styles.level ?? { fontSize: 9, color: '#555555' }}>Level: {item.level}</Text>
+              <Text style={styles.level ?? { fontSize: scalePt(9, fontScale), color: '#555555' }}>Level: {item.level}</Text>
             ) : null}
             {hasRoles && roles.length > 0 ? (
               <View style={{ marginTop: 3 }}>
@@ -83,10 +85,10 @@ export function renderPdfCustomSection(
                       <Text key={hi} style={hi === 0 ? [styles.bullet, { marginTop: 2 }] : styles.bullet}>{'• '}{renderPdfRichTextRuns(h)}</Text>
                     ))}
                     {enabledFields.includes('keywords') && (role.keywords ?? []).length > 0 ? (
-                      <Text style={styles.keywords ?? { fontSize: 9, color: '#555555', marginTop: 2 }}>{(role.keywords ?? []).join(' · ')}</Text>
+                      <Text style={styles.keywords ?? { fontSize: scalePt(9, fontScale), color: '#555555', marginTop: 2 }}>{(role.keywords ?? []).join(' · ')}</Text>
                     ) : null}
                     {enabledFields.includes('level') && role.level ? (
-                      <Text style={styles.level ?? { fontSize: 9, color: '#555555' }}>Level: {role.level}</Text>
+                      <Text style={styles.level ?? { fontSize: scalePt(9, fontScale), color: '#555555' }}>Level: {role.level}</Text>
                     ) : null}
                   </View>
                 ))}

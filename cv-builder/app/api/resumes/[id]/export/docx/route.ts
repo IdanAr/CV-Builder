@@ -2,6 +2,8 @@ import { Packer } from 'docx'
 import { auth } from '@/lib/auth'
 import { getResume } from '@/lib/api/resumes'
 import { buildDocx } from '@/lib/docx/resume-docx'
+import { applyFontScaleToDocx } from '@/lib/docx/scale-docx'
+import { resolveFontScale } from '@/lib/design/font-scale'
 import { parseExportMode } from '@/lib/export-mode'
 import { checkRateLimit, EXPORT_RATE_LIMIT } from '@/lib/rate-limit'
 import { apiError, handleRouteError } from '@/lib/api/route-errors'
@@ -30,7 +32,7 @@ export const POST = auth(async (req, ctx) => {
     const data = (resume.data ?? {}) as ResumeData
     const meta = resume.meta as ResumeMeta
     const doc = buildDocx(data, meta, mode)
-    const buffer = await Packer.toBuffer(doc)
+    const buffer = await applyFontScaleToDocx(await Packer.toBuffer(doc), resolveFontScale(meta))
 
     return new Response(new Uint8Array(buffer), {
       status: 200,

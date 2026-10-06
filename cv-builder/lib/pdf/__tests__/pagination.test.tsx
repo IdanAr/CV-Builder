@@ -15,7 +15,7 @@ const meta = {
   primaryColor: '#1e3a5f', accentColor: '#0066cc',
   pageMargins: 0.5, sidebarRailWidth: 33, lineSpacing: 1.15,
   sectionOrder: ['work', 'education'], layout: 'single-column',
-  columnAssignment: {}, excludedAtsKeywords: [],
+  columnAssignment: {}, excludedAtsKeywords: [], fontScale: 1,
 } as ResumeMeta
 
 const HIGHLIGHT_A = 'Engineered and executed data integration solutions across cloud platforms utilizing SQL and SAS Data Integration Studio, elevating data quality'

@@ -1,5 +1,7 @@
 import React from 'react'
-import { Document, Page, View, Text, StyleSheet, Link } from '@react-pdf/renderer'
+import { Document, Page, View, Text, Link, StyleSheet } from '@react-pdf/renderer'
+import { withFontScale } from '../font-scale'
+import { resolveFontScale, scalePt } from '@/lib/design/font-scale'
 import type { Style } from '@react-pdf/types'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { mapToPdfFont, inToPt, resolveSectionOrder, renderPdfRichText, renderPdfRichTextRuns, ensureHttps, pdfDocumentProps } from './pdf-utils'
@@ -123,8 +125,10 @@ function chunkContactText(text: string, availableWidthPt: number, fontSizePt: nu
  * ordinary email at the default 33% rail, renders exactly as before, as a
  * single <Text>. Only a token estimated too wide for the *specific*
  * document's rail triggers the chunked flex-row rendering. */
-function RailContactText({ text, style, availableWidthPt }: { text: string; style: Style; availableWidthPt: number }) {
-  const fontSizePt = typeof style.fontSize === 'number' ? style.fontSize : 10
+function RailContactText({ text, style, availableWidthPt, scale }: { text: string; style: Style; availableWidthPt: number; scale: number }) {
+  // `style` comes out of the already-scaled stylesheet, so its fontSize is the
+  // rendered size; only the fallback literal still needs scaling.
+  const fontSizePt = typeof style.fontSize === 'number' ? style.fontSize : scalePt(10, scale)
   const hasLongToken = text
     .split(/\s+/)
     .some((t) => t.length > 0 && estimateTextWidthPt(t, fontSizePt) > availableWidthPt)
@@ -171,9 +175,10 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
   const ca = meta.columnAssignment ?? {}
   const railSections = sectionOrder.filter((s) => getColumnSide(s, ca, SIDEBAR_COLUMN_DEFAULTS) === 'left')
   const mainSections = sectionOrder.filter((s) => getColumnSide(s, ca, SIDEBAR_COLUMN_DEFAULTS) === 'right')
-  const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE, meta.lineSpacing)
-  const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE, meta.lineSpacing)
-  const styles = withLineHeights(StyleSheet.create({
+  const scale = resolveFontScale(meta)
+  const SECTION_RESERVE = sectionReserve(PAGE_FONT_SIZE * scale, meta.lineSpacing)
+  const ENTRY_RESERVE = entryReserve(PAGE_FONT_SIZE * scale, meta.lineSpacing)
+  const styles = withFontScale(withLineHeights(StyleSheet.create({
     page: { fontFamily: bodyFont, fontSize: PAGE_FONT_SIZE, lineHeight: meta.lineSpacing, color: '#000000', flexDirection: 'row' },
 
     // Left rail
@@ -215,7 +220,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
     body: { fontSize: T.bodySize },
     entrySummary: { fontSize: 10, marginTop: 2 },
     degree: { fontSize: 10.5 },
-  }), meta.lineSpacing)
+  }), meta.lineSpacing), scale)
 
   function renderRailSection(kind: string): React.ReactNode {
     if (kind.startsWith('custom:')) {
@@ -440,7 +445,7 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
       const id = section.slice(7)
       const cs = data.customSections?.find((s) => s.id === id)
       if (!cs) return null
-      return renderPdfCustomSection(cs, { sectionTitle: styles.sectionTitle, bold: styles.bold, accent: styles.accent, small: styles.small, body: styles.entrySummary, bullet: styles.bullet })
+      return renderPdfCustomSection(cs, { sectionTitle: styles.sectionTitle, bold: styles.bold, accent: styles.accent, small: styles.small, body: styles.entrySummary, bullet: styles.bullet }, scale)
     }
     switch (section) {
       case 'work':
@@ -721,17 +726,17 @@ export function SidebarPdfTemplate({ data, meta, title }: { data: ResumeData; me
           <Text style={styles.railName}>{basics.name ?? ''}</Text>
           {basics.label ? <Text style={styles.railLabel}>{basics.label}</Text> : null}
           <View style={styles.railContact}>
-            {basics.email ? <RailContactText style={styles.railContactLine} text={basics.email} availableWidthPt={railContactWidthPt} /> : null}
-            {basics.phone ? <RailContactText style={styles.railContactLine} text={basics.phone} availableWidthPt={railContactWidthPt} /> : null}
+            {basics.email ? <RailContactText style={styles.railContactLine} text={basics.email} availableWidthPt={railContactWidthPt} scale={scale} /> : null}
+            {basics.phone ? <RailContactText style={styles.railContactLine} text={basics.phone} availableWidthPt={railContactWidthPt} scale={scale} /> : null}
             {resolveProfiles(basics).filter((p) => p.url).map((p) => (
               <Link key={p.id} src={ensureHttps(p.url!)} style={{ textDecoration: 'none' }}>
-                <RailContactText style={styles.railContactLine} text={p.label || p.url!} availableWidthPt={railContactWidthPt} />
+                <RailContactText style={styles.railContactLine} text={p.label || p.url!} availableWidthPt={railContactWidthPt} scale={scale} />
               </Link>
             ))}
             {[basics.location?.city, basics.location?.region].filter(Boolean).join(', ') ? (
               <RailContactText
                 style={styles.railContactLine}
-                availableWidthPt={railContactWidthPt}
+                availableWidthPt={railContactWidthPt} scale={scale}
                 text={[basics.location?.city, basics.location?.region].filter(Boolean).join(', ')}
               />
             ) : null}

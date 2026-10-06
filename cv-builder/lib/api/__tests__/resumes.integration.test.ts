@@ -40,7 +40,7 @@ const baseInput: CreateResumeInput = {
     sectionOrder: ['work', 'education', 'skills'],
     layout: 'two-column',
     columnAssignment: {},
-    excludedAtsKeywords: [],
+    excludedAtsKeywords: [], fontScale: 1,
   },
   applicationStatus: 'draft',
 }

@@ -2,6 +2,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import type { ResumeData, ResumeMeta, CustomSection } from '@/lib/schemas/resume.zod'
+import { FONT_SCALE_MIN, FONT_SCALE_MAX } from '@/lib/design/font-scale'
 import { defaultSectionOrder } from '@/lib/sections'
 
 export interface ResumeEditorStore {
@@ -77,6 +78,7 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
       accentColor: '#0066cc',
       pageMargins: 1.0,
       lineSpacing: 1.15,
+      fontScale: 1,
       sidebarRailWidth: 33,
       sectionOrder: defaultSectionOrder(),
       layout: 'single-column',
@@ -142,7 +144,9 @@ export const useResumeEditorStore = create<ResumeEditorStore>()(
         if (patch.pageMargins !== undefined)
           merged.pageMargins = Math.max(0.5, Math.min(1.5, patch.pageMargins))
         if (patch.lineSpacing !== undefined)
-          merged.lineSpacing = Math.max(1.0, Math.min(1.15, patch.lineSpacing))
+          merged.lineSpacing = Math.max(1.0, Math.min(1.3, patch.lineSpacing))
+        if (patch.fontScale !== undefined)
+          merged.fontScale = Math.max(FONT_SCALE_MIN, Math.min(FONT_SCALE_MAX, patch.fontScale))
         // Minimal is a single-column-only template — switching to it (or setting
         // two-column while on it) always resolves to single-column.
         if (merged.templateId === 'minimal')

@@ -41,7 +41,7 @@ const HEADING_MIN_LINE_HEIGHT = 1.15
  * A unitless lineHeight resolves against the font size where it is declared,
  * so the same multiplier that reads comfortably at 10pt body text produces a
  * line box smaller than the glyphs' own ink extent at 22pt. The user's line
- * spacing slider allows 1.0-1.15; at 1.0 and 1.05 a name with descenders
+ * spacing slider allows 1.0-1.3; below 1.15 (e.g. 1.0 and 1.05) a name with descenders
  * (g, j, p, q, y) collided with the headline beneath it in most template and
  * font combinations. Body text keeps the user's exact setting — only headings
  * get a floor, and only when their setting is below it, so 1.15 is unchanged.

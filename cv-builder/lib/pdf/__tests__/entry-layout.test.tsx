@@ -11,7 +11,7 @@ const meta = {
   primaryColor: '#1e3a5f', accentColor: '#0066cc',
   pageMargins: 0.5, sidebarRailWidth: 33, lineSpacing: 1.15,
   sectionOrder: ['work'], layout: 'single-column',
-  columnAssignment: {}, excludedAtsKeywords: [],
+  columnAssignment: {}, excludedAtsKeywords: [], fontScale: 1,
 } as ResumeMeta
 
 const data: ResumeData = {
