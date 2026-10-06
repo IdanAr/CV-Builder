@@ -14,6 +14,7 @@ import type {
   WorkMode,
 } from '@/lib/schemas/jobsearch.zod'
 import type { CustomFieldValue } from '@/lib/schemas/application.zod'
+import { stageOf, type PipelineStage } from '@/lib/jobsearch/stages'
 
 // Tombstoned postings are excluded by default; the list's "Deleted" filter
 // passes includeDeleted so it can show and restore them.
@@ -459,6 +460,44 @@ export async function countUnreadNotifyMatches(
     deletedAt: { $exists: false },
     ...(profileId ? { profileId } : {}),
   })
+}
+
+export interface PipelineCounts extends Record<PipelineStage, number> {
+  /** Items waiting on the user: unread matches + drafts to review + applications ready. */
+  waiting: number
+}
+
+/** One aggregation for every stage count. Tombstoned jobs are excluded. */
+export async function countPipelineStages(userId: string): Promise<PipelineCounts> {
+  await dbConnect()
+  const rows = await ScrapedJob.aggregate<{
+    _id: { status: ScrapedJobStatus; notify: boolean }
+    n: number
+  }>([
+    { $match: { userId, deletedAt: { $exists: false } } },
+    {
+      $group: {
+        _id: {
+          status: '$status',
+          notify: { $in: ['notify', { $ifNull: ['$resolvedActions', []] }] },
+        },
+        n: { $sum: 1 },
+      },
+    },
+  ])
+
+  const counts: PipelineCounts = { found: 0, matched: 0, drafted: 0, ready: 0, applied: 0, waiting: 0 }
+  for (const row of rows) {
+    const stage = stageOf({
+      status: row._id.status,
+      resolvedActions: row._id.notify ? ['notify'] : [],
+    })
+    if (stage === 'archive') continue
+    counts[stage] += row.n
+    const unreadMatch = stage === 'matched' && row._id.status === 'new'
+    if (unreadMatch || stage === 'drafted' || stage === 'ready') counts.waiting += row.n
+  }
+  return counts
 }
 
 // Marks currently-unread notify matches as seen (status 'new' -> 'notified')

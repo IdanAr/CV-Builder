@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/lib/db', () => ({ default: vi.fn().mockResolvedValue(undefined) }))
 
-const { mockFind, mockInsertMany, mockCountDocuments, mockFindOne, mockUpdateOne, mockDeleteOne, mockUpdateMany } =
+const { mockFind, mockInsertMany, mockCountDocuments, mockFindOne, mockUpdateOne, mockDeleteOne, mockUpdateMany, mockAggregate } =
   vi.hoisted(() => ({
     mockFind: vi.fn(),
     mockInsertMany: vi.fn(),
@@ -11,6 +11,7 @@ const { mockFind, mockInsertMany, mockCountDocuments, mockFindOne, mockUpdateOne
     mockUpdateOne: vi.fn(),
     mockDeleteOne: vi.fn(),
     mockUpdateMany: vi.fn(),
+    mockAggregate: vi.fn(),
   }))
 
 vi.mock('@/models/ScrapedJob', () => ({
@@ -22,6 +23,7 @@ vi.mock('@/models/ScrapedJob', () => ({
     updateOne: mockUpdateOne,
     deleteOne: mockDeleteOne,
     updateMany: mockUpdateMany,
+    aggregate: mockAggregate,
   },
 }))
 
@@ -68,6 +70,7 @@ import {
   listNewScrapedJobs,
   listNotifyMatches,
   countUnreadNotifyMatches,
+  countPipelineStages,
   markNotifyMatchesRead,
 } from '../scraped-jobs'
 
@@ -764,6 +767,51 @@ describe('countUnreadNotifyMatches', () => {
       deletedAt: { $exists: false },
     })
     expect(result).toBe(4)
+  })
+})
+
+describe('countPipelineStages', () => {
+  // The model is mocked in this file, so the aggregation result is simulated:
+  // the $group rows Mongo would return for the seed described beside each row.
+  const groupedRows = [
+    { _id: { status: 'new', notify: true }, n: 2 }, // two unread matches
+    { _id: { status: 'notified', notify: true }, n: 1 }, // one read match
+    { _id: { status: 'new', notify: false }, n: 1 }, // found only
+    { _id: { status: 'needs_review', notify: false }, n: 1 },
+    { _id: { status: 'queued', notify: false }, n: 2 },
+    { _id: { status: 'submitted', notify: false }, n: 1 },
+    { _id: { status: 'dismissed', notify: true }, n: 1 },
+    { _id: { status: 'expired', notify: false }, n: 1 },
+  ]
+
+  it('maps grouped rows to stage counts and a waiting total, skipping archive', async () => {
+    mockAggregate.mockResolvedValue(groupedRows)
+
+    expect(await countPipelineStages('u1')).toEqual({
+      found: 1,
+      matched: 3,
+      drafted: 1,
+      ready: 2,
+      applied: 1,
+      waiting: 5, // 2 unread matched (status new + notify) + 1 drafted + 2 ready
+    })
+  })
+
+  it('scopes the aggregation to the user and excludes tombstones', async () => {
+    mockAggregate.mockResolvedValue([])
+
+    await countPipelineStages('u1')
+
+    const pipeline = mockAggregate.mock.calls[0][0]
+    expect(pipeline[0]).toEqual({ $match: { userId: 'u1', deletedAt: { $exists: false } } })
+  })
+
+  it('returns zeros for a user with no jobs', async () => {
+    mockAggregate.mockResolvedValue([])
+
+    expect(await countPipelineStages('nobody')).toEqual({
+      found: 0, matched: 0, drafted: 0, ready: 0, applied: 0, waiting: 0,
+    })
   })
 })
 
