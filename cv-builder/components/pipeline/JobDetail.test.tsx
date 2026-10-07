@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { JobDetail } from './JobDetail'
 import type { PipelineJob } from '@/lib/jobsearch/pipeline-types'
@@ -92,6 +92,18 @@ describe('JobDetail', () => {
   it('disables action buttons while busy', () => {
     setup(mk({ stage: 'ready' }), true)
     expect((screen.getByRole('button', { name: 'Mark as applied' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('keeps link actions live while an action is busy', () => {
+    setup(mk({ stage: 'applied' }), true)
+    const link = screen.getByRole('link', { name: 'Open in Applications' })
+    expect(link.getAttribute('aria-disabled')).toBeNull()
+    expect(link.className).not.toMatch(/(^|\s)pointer-events-none/)
+    cleanup()
+    setup(mk({ stage: 'found', url: 'https://x.test/1' }), true)
+    const posting = screen.getByRole('link', { name: 'Open posting' })
+    expect(posting.getAttribute('aria-disabled')).toBeNull()
+    expect(posting.className).not.toMatch(/(^|\s)pointer-events-none/)
   })
 
   it('calls onBack', () => {

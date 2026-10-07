@@ -1,5 +1,9 @@
 'use client'
 
+import Link from 'next/link'
+import { Card } from '@/components/ui/Card'
+import { buttonClasses } from '@/components/ui/Button'
+
 /**
  * Error boundary for every authenticated route.
  *
@@ -20,9 +24,9 @@ export default function DashboardError({
   reset: () => void
 }) {
   return (
-    <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-4 text-center">
-      <div className="max-w-md rounded-xl border border-accent-200 bg-surface p-8 shadow-sm">
-        <h1 className="text-xl font-semibold text-fg-heading">Something went wrong</h1>
+    <div className="flex min-h-[70vh] flex-col items-center justify-center px-4 text-center">
+      <Card padding="lg" className="max-w-md">
+        <h1 className="text-xl font-medium text-fg-heading">Something went wrong</h1>
         <p className="mt-2 text-sm text-fg-body">
           This page didn&apos;t load correctly. Your saved CVs and applications are unaffected.
         </p>
@@ -32,21 +36,14 @@ export default function DashboardError({
           </p>
         )}
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={reset}
-            className="min-h-[44px] rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700"
-          >
+          <button type="button" onClick={reset} className={buttonClasses({ size: 'md' })}>
             Try again
           </button>
-          <a
-            href="/dashboard"
-            className="min-h-[44px] rounded-lg border border-accent-200 px-4 py-2 text-sm font-medium text-accent-700 transition-colors hover:bg-accent-50"
-          >
+          <Link href="/dashboard" className={buttonClasses({ variant: 'secondary', size: 'md' })}>
             Back to dashboard
-          </a>
+          </Link>
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

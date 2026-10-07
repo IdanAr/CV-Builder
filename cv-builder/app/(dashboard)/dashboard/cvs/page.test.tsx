@@ -109,3 +109,18 @@ describe('CVs page', () => {
     expect(screen.getByText("Let's build your first CV")).toBeInTheDocument()
   })
 })
+
+describe('CVs page title', () => {
+  it('uses the shared page-title scale', async () => {
+    authMock.mockResolvedValue({ user: { id: 'user-1' } })
+    listResumesMock.mockResolvedValue([])
+    listApplicationsMock.mockResolvedValue([])
+    getOrCreateBoardConfigMock.mockResolvedValue({ columns: [], sort: [] })
+    const { default: CvsPage } = await import('./page')
+    render(await CvsPage())
+    expect(screen.getByRole('heading', { level: 1, name: 'CVs' })).toHaveAttribute(
+      'class',
+      'text-xl font-medium text-fg-heading',
+    )
+  })
+})

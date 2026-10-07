@@ -15,12 +15,12 @@ import { buttonClasses } from '@/components/ui/Button'
  */
 export default function NotFound() {
   return (
-    <main id="main-content" className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-violet-50 px-4">
+    <main id="main-content" className="flex min-h-screen items-center justify-center bg-surface-page px-4">
       <div className="w-full max-w-md text-center">
-        <p className="text-sm font-semibold text-fg-muted">404</p>
-        <h1 className="mt-2 text-2xl font-bold text-fg-heading">We couldn&apos;t find that page</h1>
+        <p className="text-sm font-medium text-fg-muted">404</p>
+        <h1 className="mt-2 text-xl font-medium text-fg-heading">We couldn&apos;t find that page</h1>
         <p className="mt-3 text-sm text-fg-body">
-          The link may be out of date, or the CV may have been deleted.
+          The link may be out of date, or the item may have been deleted.
         </p>
 
         <div className="mt-6 flex items-center justify-center gap-3">

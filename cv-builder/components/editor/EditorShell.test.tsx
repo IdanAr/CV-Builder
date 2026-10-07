@@ -261,6 +261,19 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
       expect(divider().previousElementSibling).toHaveStyle({ width: '380px' })
     })
 
+    it('re-clamps the panel width when the window shrinks', () => {
+      setViewport(1280)
+      localStorage.setItem('cv-builder:panel-width', '480')
+      renderShell()
+      expect(divider().previousElementSibling).toHaveStyle({ width: '480px' })
+      act(() => {
+        setViewport(700)
+        window.dispatchEvent(new Event('resize'))
+      })
+      const w = parseInt((divider().previousElementSibling as HTMLElement).style.width, 10)
+      expect(w).toBeLessThanOrEqual(Math.floor(700 * 0.6))
+    })
+
     it('clamps to 320 at a narrow viewport where the 60% cap is below the minimum', () => {
       setViewport(375)
       renderShell()
@@ -608,23 +621,23 @@ describe('EditorShell — preserved capabilities (characterization)', () => {
       render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
       const undo = screen.getByRole('button', { name: /Undo/i })
       const redo = screen.getByRole('button', { name: /Redo/i })
-      expect(undo).toBeDisabled()
-      expect(redo).toBeDisabled()
+      expect(undo).toHaveAttribute('aria-disabled', 'true')
+      expect(redo).toHaveAttribute('aria-disabled', 'true')
 
       act(() => {
         useResumeEditorStore.getState().setMeta({ templateId: 'modern' })
       })
-      expect(undo).toBeEnabled()
-      expect(redo).toBeDisabled()
+      expect(undo).toHaveAttribute('aria-disabled', 'false')
+      expect(redo).toHaveAttribute('aria-disabled', 'true')
 
       fireEvent.click(undo)
       expect(useResumeEditorStore.getState().meta.templateId).toBe('classic')
-      expect(undo).toBeDisabled()
-      expect(redo).toBeEnabled()
+      expect(undo).toHaveAttribute('aria-disabled', 'true')
+      expect(redo).toHaveAttribute('aria-disabled', 'false')
 
       fireEvent.click(redo)
       expect(useResumeEditorStore.getState().meta.templateId).toBe('modern')
-      expect(redo).toBeDisabled()
+      expect(redo).toHaveAttribute('aria-disabled', 'true')
     })
   })
 

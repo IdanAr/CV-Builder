@@ -12,7 +12,7 @@ export interface JobActionPlan {
 
 type Planned = Pick<PipelineJob, 'stage' | 'pendingApprovals' | 'draftResumeId' | 'url' | 'deletedAt'>
 
-const ONE_STEP: ReadonlySet<JobActionId> = new Set(['approve', 'mark-applied', 'restore', 'find-again', 'track'])
+const ONE_STEP: ReadonlySet<JobActionId> = new Set(['approve', 'mark-applied', 'restore', 'find-again'])
 /** `A` runs the primary action only when it finishes in place. Opening a link is never a keyboard shortcut. */
 export function isOneStep(id: JobActionId): boolean {
   return ONE_STEP.has(id)

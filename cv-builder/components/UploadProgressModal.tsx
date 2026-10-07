@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Progress } from '@/components/ui/progress'
+import { Button } from '@/components/ui/Button'
 
 export type UploadStage = 'reading' | 'extracting' | 'done' | 'error'
 
@@ -171,47 +172,34 @@ export default function UploadProgressModal({
       role="dialog"
       aria-modal="true"
       aria-label="Uploading CV"
-      className="fixed inset-0 z-40 flex items-center justify-center bg-accent-950/30 p-4"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-fg-heading/40 p-4"
       onMouseDown={(e) => {
         if (dismissible && e.target === e.currentTarget) handleDismiss()
       }}
     >
-      <div className="w-full max-w-sm rounded-xl border border-accent-100 bg-white p-6 shadow-xl">
+      <div className="w-full max-w-sm rounded-overlay border border-border bg-surface p-6 shadow-popover">
         {stage === 'error' ? (
           <>
-            <h2 className="mb-2 text-sm font-semibold text-fg-heading">Upload failed</h2>
-            <p className="mb-4 text-sm text-danger-600">{errorMessage}</p>
+            <h2 className="mb-2 text-sm font-medium text-fg-heading">Upload failed</h2>
+            <p className="mb-4 text-sm text-fg-danger">{errorMessage}</p>
             <div className="flex justify-end gap-2">
-              <button
-                ref={closeButtonRef}
-                onClick={onClose}
-                className="rounded-lg border border-accent-200 px-3 py-2 text-sm text-accent-700 hover:bg-accent-50"
-              >
+              <Button ref={closeButtonRef} variant="secondary" onClick={onClose}>
                 Close
-              </button>
-              <button
-                onClick={onRetry}
-                className="rounded-lg border border-accent-300 bg-accent-600 px-3 py-2 text-sm font-medium text-white hover:bg-accent-700"
-              >
-                Try another file
-              </button>
+              </Button>
+              <Button onClick={onRetry}>Try another file</Button>
             </div>
           </>
         ) : (
           <>
-            <h2 className="mb-1 truncate text-sm font-semibold text-fg-heading">{filename}</h2>
+            <h2 className="mb-1 truncate text-sm font-medium text-fg-heading">{filename}</h2>
             <p className="mb-4 text-sm text-fg-muted">{label}</p>
-            <Progress value={percent} className="bg-accent-100" indicatorClassName="bg-accent-600" />
+            <Progress value={percent} className="bg-secondary" indicatorClassName="bg-primary" />
             <div className="mt-2 flex items-center justify-between">
               <p className="text-xs font-medium text-fg-muted">{Math.round(percent)}%</p>
               {canCancel && (
-                <button
-                  ref={closeButtonRef}
-                  onClick={handleDismiss}
-                  className="text-xs font-medium text-fg-muted hover:text-fg-body hover:underline"
-                >
+                <Button ref={closeButtonRef} variant="ghost" size="xs" onClick={handleDismiss}>
                   Cancel
-                </button>
+                </Button>
               )}
             </div>
           </>

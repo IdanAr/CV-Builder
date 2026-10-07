@@ -8,6 +8,7 @@ import {
   type RuleAction,
   type RuleCondition,
 } from '@/lib/schemas/jobsearch.zod'
+import { Button } from '@/components/ui/Button'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
 
 type RuleField = RuleCondition['field']
@@ -222,9 +223,9 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
     return (
       <div className="flex flex-col items-center gap-3 py-8">
         <ErrorBanner>{error}</ErrorBanner>
-        <button type="button" className="rounded bg-accent-600 px-4 py-2 text-sm text-white" onClick={() => load()}>
+        <Button variant="primary" size="md" onClick={() => load()}>
           Try again
-        </button>
+        </Button>
       </div>
     )
   }
@@ -236,26 +237,26 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Notification rules</h2>
+        <h2 className="text-sm font-medium">Notification rules</h2>
         {!showForm && (
-          <button type="button" className="rounded bg-accent-600 px-4 py-2 text-sm text-white" onClick={() => setShowForm(true)}>
+          <Button variant="primary" size="md" onClick={() => setShowForm(true)}>
             Add rule
-          </button>
+          </Button>
         )}
       </div>
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
       {rules.length === 0 && !showForm && (
-        <p className="text-sm text-neutral-500">No rules yet - postings will be stored but won&apos;t trigger notifications.</p>
+        <p className="text-sm text-fg-subtle">No rules yet - postings will be stored but won&apos;t trigger notifications.</p>
       )}
 
       {rules.length > 0 && (
         <ul className="flex flex-col gap-2">
           {rules.map((rule) => (
-            <li key={rule._id} className="flex items-center justify-between rounded border px-4 py-2">
+            <li key={rule._id} className="flex items-center justify-between rounded-card border border-border px-4 py-2">
               <div>
                 <div className="font-medium">{rule.name}</div>
-                <div className="text-xs text-neutral-500">
+                <div className="text-xs text-fg-subtle">
                   {ACTION_LABELS[rule.action]} - {rule.conditions.map(describeCondition).join('; ')}
                 </div>
               </div>
@@ -264,7 +265,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
                   <input type="checkbox" aria-label={`${rule.name} active`} checked={rule.isActive} onChange={() => toggleActive(rule)} />
                   Active
                 </label>
-                <button type="button" className="text-sm text-danger-600" onClick={() => deleteRule(rule)}>
+                <button type="button" className="rounded-control px-2 text-sm text-fg-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10" onClick={() => deleteRule(rule)}>
                   Delete
                 </button>
               </div>
@@ -274,16 +275,16 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
       )}
 
       {showForm && (
-        <div className="flex flex-col gap-3 rounded border px-3 py-3">
+        <div className="flex flex-col gap-3 rounded-card border border-border px-3 py-3">
           <label className="text-sm font-medium">
             Rule name
-            <input className="mt-1 w-full rounded border px-3 py-2 text-sm" value={name} onChange={(e) => setName(e.target.value)} />
+            <input className="mt-1 w-full rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" value={name} onChange={(e) => setName(e.target.value)} />
           </label>
 
           <label className="text-sm font-medium">
             When a posting matches
             <select
-              className="mt-1 w-full rounded border px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={draft.field}
               onChange={(e) => setDraft((d) => ({ ...d, field: e.target.value as RuleField }))}
             >
@@ -299,7 +300,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
             <div className="flex gap-2">
               <select
                 aria-label="ATS score comparison"
-                className="rounded border px-3 py-2 text-sm"
+                className="rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={draft.atsOp}
                 onChange={(e) => setDraft((d) => ({ ...d, atsOp: e.target.value as 'gte' | 'lte' }))}
               >
@@ -311,7 +312,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
                 type="number"
                 min={0}
                 max={100}
-                className="w-24 rounded border px-3 py-2 text-sm"
+                className="w-24 rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={draft.atsValue}
                 onChange={(e) => setDraft((d) => ({ ...d, atsValue: Number(e.target.value) }))}
               />
@@ -322,7 +323,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
             <div className="flex gap-2">
               <select
                 aria-label="Company comparison"
-                className="rounded border px-3 py-2 text-sm"
+                className="rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={draft.companyOp}
                 onChange={(e) => setDraft((d) => ({ ...d, companyOp: e.target.value as 'in' | 'notIn' }))}
               >
@@ -331,7 +332,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
               </select>
               <input
                 aria-label="Company names"
-                className="flex-1 rounded border px-3 py-2 text-sm"
+                className="flex-1 rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 placeholder="Comma-separated company names"
                 value={draft.companyText}
                 onChange={(e) => setDraft((d) => ({ ...d, companyText: e.target.value }))}
@@ -366,7 +367,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
               aria-label="Posted within days"
               type="number"
               min={1}
-              className="w-24 rounded border px-3 py-2 text-sm"
+              className="w-24 rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={draft.postedWithinDaysValue}
               onChange={(e) => setDraft((d) => ({ ...d, postedWithinDaysValue: Math.max(1, Number(e.target.value) || 0) }))}
             />
@@ -376,7 +377,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
             <div className="flex gap-2">
               <select
                 aria-label="Title comparison"
-                className="rounded border px-3 py-2 text-sm"
+                className="rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={draft.titleOp}
                 onChange={(e) => setDraft((d) => ({ ...d, titleOp: e.target.value as 'contains' | 'notContains' }))}
               >
@@ -385,7 +386,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
               </select>
               <input
                 aria-label="Title text"
-                className="flex-1 rounded border px-3 py-2 text-sm"
+                className="flex-1 rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={draft.titleValue}
                 onChange={(e) => setDraft((d) => ({ ...d, titleValue: e.target.value }))}
               />
@@ -395,7 +396,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
           <label className="text-sm font-medium">
             Then
             <select
-              className="mt-1 w-full rounded border px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={action}
               onChange={(e) => setAction(e.target.value as RuleAction)}
             >
@@ -408,17 +409,17 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
           </label>
 
           <div className="flex gap-2">
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="md"
               disabled={!condition || name.trim().length === 0 || submitting}
-              className="rounded bg-accent-600 px-4 py-2 text-sm text-white disabled:opacity-40"
               onClick={handleCreate}
             >
               Save rule
-            </button>
-            <button type="button" className="rounded border px-4 py-2 text-sm" onClick={() => setShowForm(false)}>
+            </Button>
+            <Button variant="secondary" size="md" onClick={() => setShowForm(false)}>
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       )}

@@ -38,6 +38,15 @@ function openAdvanced(container: HTMLElement) {
 }
 
 describe('DesignPanel', () => {
+  it('titles its sections with h2 headings and no h3', () => {
+    render(<DesignPanel />)
+    const h2 = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+    for (const t of ['Template', 'Layout', 'Fonts', 'Colors', 'Size and spacing']) {
+      expect(h2).toContain(t)
+    }
+    expect(screen.queryAllByRole('heading', { level: 3 })).toHaveLength(0)
+  })
+
   it('line spacing slider reaches 1.3', () => {
     const { container } = render(<DesignPanel />)
     openAdvanced(container)
@@ -435,13 +444,13 @@ describe('DesignPanel', () => {
       })
       render(<DesignPanel />)
       // SortableColumnRow always renders both "Left" and "Right" buttons, styling
-      // whichever is the current side with the active (bg-white) class. Skills has
+      // whichever is the current side with the active (text-fg-heading) class. Skills has
       // no LEFT_DEFAULTS entry, so this only passes when the sidebar's own column
       // defaults (SIDEBAR_COLUMN_DEFAULTS) are threaded through getColumnSide.
       const leftBtn = screen.getByRole('button', { name: 'Left' })
       const rightBtn = screen.getByRole('button', { name: 'Right' })
-      expect(leftBtn.className).toContain('bg-white')
-      expect(rightBtn.className).not.toContain('bg-white')
+      expect(leftBtn.className).toContain('text-fg-heading')
+      expect(rightBtn.className).not.toContain('text-fg-heading')
     })
   })
 

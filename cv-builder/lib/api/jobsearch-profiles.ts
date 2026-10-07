@@ -163,8 +163,7 @@ export async function deleteJobSearchProfile(userId: string, id: string): Promis
   // queries scoped by userId alone keep counting them:
   // countUnreadNotifyMatches drives the navbar badge, so it showed unread
   // matches for a profile that no longer existed and that the user had no
-  // way to open or clear; listNotifyMatches returned them with an undefined
-  // profileName, since getProfileNameMap no longer had the id.
+  // way to open or clear.
   await Promise.all([
     ScrapedJob.deleteMany({ userId, profileId: id }),
     JobSearchRule.deleteMany({ userId, profileId: id }),

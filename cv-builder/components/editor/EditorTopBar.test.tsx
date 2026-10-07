@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { EditorTopBar } from './EditorTopBar'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 
@@ -101,10 +101,27 @@ describe('EditorTopBar', () => {
     setup()
     const undo = screen.getByRole('button', { name: 'Undo' })
     const redo = screen.getByRole('button', { name: 'Redo' })
-    expect(undo).toBeEnabled()
-    expect(redo).toBeDisabled()
+    expect(undo).not.toHaveAttribute('aria-disabled', 'true')
+    expect(redo).toHaveAttribute('aria-disabled', 'true')
     fireEvent.click(undo)
     expect(useResumeEditorStore.getState().undo).toHaveBeenCalled()
+  })
+
+  it('keeps an unavailable Undo focusable, inert, and explains why in its tooltip', async () => {
+    setup()
+    const undo = screen.getByRole('button', { name: 'Undo' })
+    expect(undo).toHaveAttribute('aria-disabled', 'true')
+    expect(undo).not.toBeDisabled()
+    fireEvent.click(undo)
+    expect(useResumeEditorStore.getState().undo).not.toHaveBeenCalled()
+    act(() => undo.focus())
+    expect((await screen.findAllByText('Nothing to undo')).length).toBeGreaterThan(0)
+  })
+
+  it('does not call redo when unavailable', () => {
+    setup()
+    fireEvent.click(screen.getByRole('button', { name: 'Redo' }))
+    expect(useResumeEditorStore.getState().redo).not.toHaveBeenCalled()
   })
 
   it('calls redo when enabled', () => {

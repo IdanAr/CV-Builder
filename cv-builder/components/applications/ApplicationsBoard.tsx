@@ -79,7 +79,7 @@ function buildAnnouncements(applications: ApplicationRow[], options: ColumnOptio
 function CardContent({ app, customChips }: { app: ApplicationRow; customChips: string[] }) {
   return (
     <>
-      <p className="truncate text-sm font-semibold text-fg-heading">
+      <p className="truncate text-sm font-medium text-fg-heading">
         {app.company || <span className="text-fg-subtle">No company</span>}
       </p>
       {app.role && <p className="mt-0.5 truncate text-xs text-fg-muted">{app.role}</p>}
@@ -91,7 +91,7 @@ function CardContent({ app, customChips }: { app: ApplicationRow; customChips: s
           {customChips.map((chip) => (
             <span
               key={chip}
-              className="rounded-full bg-accent-50 px-1.5 py-0.5 text-[10px] font-medium text-fg-muted"
+              className="rounded-chip bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-fg-muted"
             >
               {chip}
             </span>
@@ -122,7 +122,7 @@ function BoardCard({ app, customChips }: { app: ApplicationRow; customChips: str
       // cursor is the DragOverlay clone below, which is what makes cross-
       // column dragging read as one continuous motion instead of the list
       // just reflowing around a half-visible original.
-      className={`cursor-grab touch-none rounded-lg border border-accent-100 bg-white p-3 shadow-sm transition hover:border-accent-300 hover:shadow ${
+      className={`cursor-grab touch-none rounded-card border border-border bg-surface p-3 transition hover:border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
         isDragging ? 'opacity-30' : ''
       }`}
     >
@@ -133,7 +133,7 @@ function BoardCard({ app, customChips }: { app: ApplicationRow; customChips: str
 
 function BoardCardOverlay({ app, customChips }: { app: ApplicationRow; customChips: string[] }) {
   return (
-    <div className="w-64 rotate-2 cursor-grabbing rounded-lg border border-accent-200 bg-white p-3 shadow-2xl ring-2 ring-accent-300">
+    <div className="w-64 rotate-2 cursor-grabbing rounded-card border border-border bg-surface p-3 shadow-popover ring-2 ring-ring">
       <CardContent app={app} customChips={customChips} />
     </div>
   )
@@ -153,17 +153,17 @@ function BoardColumnLane({
     <div className="flex w-64 shrink-0 flex-col" role="group" aria-label={`${option.label} column`}>
       <div className="mb-2 flex items-center gap-2 px-1">
         <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: option.color }} />
-        <span className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
+        <span className="text-sm font-medium text-fg-heading">
           {option.label}
         </span>
-        <span className="text-xs text-fg-subtle">{cards.length}</span>
+        <span className="text-xs tabular-nums text-fg-muted">{cards.length}</span>
       </div>
       <SortableContext items={cards.map((c) => c._id)} strategy={verticalListSortingStrategy}>
         <div
           ref={setNodeRef}
           role="list"
-          className={`flex min-h-24 flex-1 flex-col gap-2 rounded-xl border p-2 transition ${
-            isOver ? 'border-accent-300 bg-accent-50/60' : 'border-border bg-surface'
+          className={`flex min-h-24 flex-1 flex-col gap-2 rounded-card border p-2 transition ${
+            isOver ? 'border-ring bg-secondary' : 'border-border bg-surface-subtle'
           }`}
         >
           {cards.map((app) => (
@@ -235,7 +235,7 @@ export default function ApplicationsBoard({
 
   if (!statusColumn || options.length === 0) {
     return (
-      <p className="rounded-xl border border-accent-100 bg-surface p-6 text-sm text-fg-muted">
+      <p className="rounded-card border border-border bg-surface p-6 text-sm text-fg-muted">
         The board view needs a status column with at least one option.
       </p>
     )
@@ -273,7 +273,7 @@ export default function ApplicationsBoard({
           ))}
           {unmatched.length > 0 && (
             <BoardColumnLane
-              option={{ id: '__unmatched', label: 'No status', color: 'rgb(var(--color-accent-300))' }}
+              option={{ id: '__unmatched', label: 'No status', color: 'rgb(var(--color-border))' }}
               cards={unmatched}
               customChipsFor={customChipsFor}
             />

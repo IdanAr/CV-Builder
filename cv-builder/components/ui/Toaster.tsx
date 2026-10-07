@@ -7,7 +7,7 @@ import { X } from 'lucide-react'
 const VARIANT_STYLES: Record<Toast['variant'], string> = {
   success: 'border-success-200 bg-success-50/95 text-success-800',
   error: 'border-danger-200 bg-danger-50/95 text-danger-800',
-  info: 'border-accent-200 bg-surface text-fg',
+  info: 'border-border bg-surface text-fg',
 }
 
 type ToastTimerListener = (id: number) => void
@@ -86,7 +86,7 @@ function ToastItem({ toast: t }: { toast: Toast }) {
       {t.actionLabel && (
         <button
           onClick={() => { t.onAction?.(); dismiss(t.id) }}
-          className="rounded-md border border-current px-2 py-1 text-xs font-semibold hover:opacity-80"
+          className="rounded-control border border-current px-2 py-1 text-xs font-medium hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {t.actionLabel}
         </button>
@@ -94,7 +94,7 @@ function ToastItem({ toast: t }: { toast: Toast }) {
       <button
         aria-label="Dismiss notification"
         onClick={() => dismiss(t.id)}
-        className="inline-flex h-6 w-6 items-center justify-center rounded-control opacity-60 transition-opacity hover:opacity-100"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-control opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:h-10 max-sm:w-10"
       >
         <X aria-hidden="true" className="h-3.5 w-3.5" />
       </button>

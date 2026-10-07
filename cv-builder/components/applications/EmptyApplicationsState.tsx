@@ -2,48 +2,46 @@
 
 import Link from 'next/link'
 import { ClipboardList, FileText, Plus } from 'lucide-react'
+import { Button, buttonClasses } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 
 // Mirrors EmptyDashboardState's pattern: explain the feature, offer a CTA
 // that doesn't require starting from a resume, and point at the resume path.
 export function EmptyApplicationsState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="rounded-xl border border-accent-100 bg-surface py-12 px-6 text-center">
-      <h2 className="text-lg font-semibold text-fg-heading">Track your job applications</h2>
+    <Card padding="lg" className="py-12 text-center">
+      <h2 className="text-base font-medium text-fg-heading">Track your job applications</h2>
       <p className="mx-auto mt-1 max-w-md text-sm text-fg-muted">
-        One row per application - status, resume used, notes, and any custom columns you add. Every
+        One row per application: status, resume used, notes, and any custom columns you add. Every
         change is logged with a timestamp.
       </p>
       <div className="mx-auto mt-8 grid max-w-2xl gap-4 sm:grid-cols-2">
-        <div className="flex flex-col rounded-xl border border-accent-200 bg-surface p-6 text-left shadow-sm">
+        <Card padding="lg" className="flex flex-col text-left">
           <ClipboardList className="h-6 w-6 text-fg-muted" aria-hidden="true" />
-          <h3 className="mt-3 font-semibold text-fg-heading">Start tracking</h3>
+          <h3 className="mt-3 text-base font-medium text-fg-heading">Start tracking</h3>
           <p className="mb-4 mt-1 flex-1 text-sm text-fg-muted">
             Add your first application and fill it in right in the table.
           </p>
-          <button
-            type="button"
-            onClick={onCreate}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-700"
-          >
+          <Button variant="primary" size="md" onClick={onCreate}>
             <Plus className="h-4 w-4" aria-hidden="true" />
             New Application
-          </button>
-        </div>
-        <div className="flex flex-col rounded-xl border border-accent-100 bg-surface p-6 text-left shadow-sm">
+          </Button>
+        </Card>
+        <Card padding="lg" className="flex flex-col text-left">
           <FileText className="h-6 w-6 text-fg-muted" aria-hidden="true" />
-          <h3 className="mt-3 font-semibold text-fg-heading">Track from a CV</h3>
+          <h3 className="mt-3 text-base font-medium text-fg-heading">Track from a CV</h3>
           <p className="mb-4 mt-1 flex-1 text-sm text-fg-muted">
             Use Track application in a CV&apos;s actions menu to create a pre-filled row
             linked to that CV.
           </p>
           <Link
             href="/dashboard/cvs"
-            className="rounded-lg border border-accent-300 bg-surface px-4 py-2 text-center text-sm font-medium text-accent-700 transition hover:bg-accent-50"
+            className={buttonClasses({ variant: 'secondary', size: 'md' })}
           >
             Go to My CVs
           </Link>
-        </div>
+        </Card>
       </div>
-    </div>
+    </Card>
   )
 }

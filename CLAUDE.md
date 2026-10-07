@@ -85,7 +85,7 @@ Scraped jobs flow through one funnel (Found, Matched, Drafted, Ready, Applied, p
 
 ### Auth & route protection
 
-`proxy.ts` (Next.js 16's rename of the old `middleware.ts`) uses Auth.js's `authorized` callback (`auth.config.ts`) gated on `matcher: ['/dashboard/:path*', '/api/resumes/:path*', '/api/applications/:path*', '/api/preview/:path*']`. All API routes under those prefixes are expected to be session-scoped via the `auth()` wrapper and filtered to the requesting user — new routes under these paths must follow the same pattern, and `middleware.test.ts` should be extended when matcher coverage changes.
+`proxy.ts` (Next.js 16's rename of the old `middleware.ts`) uses Auth.js's `authorized` callback (`auth.config.ts`) gated on `matcher: ['/dashboard/:path*', '/api/resumes/:path*', '/api/applications/:path*', '/api/preview/:path*', '/api/jobsearch/:path*', '/api/account/:path*']`. All API routes under those prefixes are expected to be session-scoped via the `auth()` wrapper and filtered to the requesting user — new routes under these paths must follow the same pattern, and `proxy.test.ts` should be extended when matcher coverage changes.
 
 ### Directory map
 
@@ -93,7 +93,8 @@ Scraped jobs flow through one funnel (Found, Matched, Drafted, Ready, Applied, p
 cv-builder/
 ├── app/
 │   ├── (auth)/signin/                       # GitHub / Google sign-in
-│   ├── (dashboard)/dashboard/                # Résumé library, applications view, jobsearch/ (pipeline inbox, sources/), editor ([id]/)
+│   ├── (dashboard)/                          # layout.tsx (AppShell), error.tsx and not-found.tsx boundaries for every dashboard route
+│   │   └── dashboard/                         # Overview, cvs/ (library), applications/, jobsearch/ (pipeline inbox, sources/), settings/, resumes/[id]/ (editor)
 │   └── api/                                  # resumes/, applications/, jobsearch/, preview/pagination/, auth/
 ├── components/
 │   ├── editor/       # EditorShell, EditorTopBar, PreviewToolbar, EditTab, DesignPanel, PreviewTab, forms/, design/ (TemplateGrid, FontSection, SpacingControls, ColorField, ColumnsSection, SegmentedControl)
@@ -104,7 +105,11 @@ cv-builder/
 │   ├── applications/      # ApplicationsView, Board, Table, Filters, ActivityLog, ColumnForm
 │   ├── jobsearch/           # ProfileList, ProfileWizard, ProfileSettings, RuleBuilder (Sources and rules)
 │   ├── pipeline/            # PipelineInbox, StageTabs, PipelineList, JobDetail, hooks (usePipelineJobs, usePipelineActions)
-│   └── ui/                  # AppNavbar, PlasmaBackground, Toaster, UserProfileButton
+│   ├── shell/       # AppShell, SidebarNav, SidebarUserMenu: the authenticated app shell (collapsible sidebar, drawer below 768px)
+│   ├── overview/     # Overview page: NeedsYou, PipelineStrip, RecentCvs, FirstRun
+│   ├── cvs/           # CV library: CvLibrary, CvTable, CvCards, CvThumbnail
+│   ├── account/        # ExportDataSection, DeleteAccountSection (settings page)
+│   └── ui/              # Button, Card, Badge, Popover, Menu, Toaster, Skeleton, ...; AppNavbar and Plasma serve marketing/legal pages only
 ├── lib/
 │   ├── ai/             # pipeline.ts, ats-fix-pipeline.ts, cover-letter-pipeline.ts, jd-extraction-pipeline.ts, keyword-analysis-pipeline.ts, hallucination-guard.ts, models.ts
 │   ├── ats/             # scorer.ts, keywords.ts
@@ -118,10 +123,17 @@ cv-builder/
 │   ├── stores/                      # resume-editor.store.ts, toast.store.ts (Zustand)
 │   ├── upload/                        # parse-file.ts, extract-resume.ts
 │   ├── editor/design-presets.ts, editor/use-format-score.ts, fonts/pairings.ts   # spacing/margin presets, font pairings for the Design panel
+│   ├── design/            # color-tokens.ts (semantic colours), tokens.ts, font-scale.ts; __tests__/legacy-utilities.test.ts is the ratchet
 │   └── rate-limit.ts, export-mode.ts, preview-pagination.ts, mongodb.ts, auth.ts, db.ts
 ├── models/                # Mongoose models: Resume.ts, Application.ts, ApplicationActivity.ts, BoardConfig.ts, JobSearchProfile.ts, JobSearchRule.ts, ScrapedJob.ts
 └── docs/superpowers/       # sprint-by-sprint specs/ and plans/ — git-ignored, local only
 ```
+
+## Design system
+
+Colours come from semantic tokens in `lib/design/color-tokens.ts` (surface, text, border, accent, danger, ...), wired into `tailwind.config.ts`; use those names instead of raw palette classes. The radius scale is `rounded-control`, `rounded-chip`, `rounded-card`, `rounded-overlay` (plus `rounded-full`), and type is Geist. A global `prefers-reduced-motion` rule in `app/globals.css` shortens all animation and transitions, and `Button` floors every size at 40px below `sm` for touch targets.
+
+`lib/design/__tests__/legacy-utilities.test.ts` is a ratchet: it records how many legacy utility classes (`bg-white`, `text-white`, off-scale radii, in-flow shadows, raw `bg-accent-600/700`, `focus:ring/border`) each file under `components/` and `app/(dashboard)/` still uses. A count may only go down. New files must be clean, and when you clean a file you must lower its entry in `BASELINE`, because the test also fails on a baseline that is higher than reality. Marketing, sign-in, `Plasma` and `AppNavbar` are out of scope.
 
 ## Contributing conventions (from README)
 

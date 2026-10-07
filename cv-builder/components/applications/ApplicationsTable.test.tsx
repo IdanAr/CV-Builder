@@ -280,7 +280,7 @@ describe('ApplicationsTable', () => {
     expect(headerRow).toHaveClass('sticky')
     expect(headerRow).toHaveClass('top-0')
     expect(headerRow).toHaveClass('z-10')
-    expect(headerRow).toHaveClass('bg-white')
+    expect(headerRow).toHaveClass('bg-surface-subtle')
   })
 
   describe('SelectCell viewport-aware flip', () => {
@@ -308,7 +308,7 @@ describe('ApplicationsTable', () => {
             height: triggerBottom - triggerTop, x: 0, y: triggerTop, toJSON: () => ({}),
           } as DOMRect
         }
-        if (this.className.includes('shadow-lg')) {
+        if (this.className.includes('shadow-popover')) {
           return {
             top: 0, bottom: panelHeight, left: 0, right: 100, width: 100,
             height: panelHeight, x: 0, y: 0, toJSON: () => ({}),

@@ -71,7 +71,7 @@ export function DeleteAccountSection({ email }: { email: string }) {
   return (
     <Card padding="lg" className="space-y-3 border-danger-200">
       <div>
-        <h2 className="text-base font-semibold text-fg-danger">Delete your account</h2>
+        <h2 className="text-base font-medium text-fg-danger">Delete your account</h2>
         <p className="mt-1 text-sm text-fg-muted">
           Permanently removes your account and everything in it: every résumé and cover letter, every
           tracked application and its history, your board setup, and your job-search profiles, rules
@@ -91,7 +91,7 @@ export function DeleteAccountSection({ email }: { email: string }) {
         <div className="space-y-3">
           <div>
             <label htmlFor="confirm-delete-email" className="block text-sm font-medium text-fg">
-              Type <span className="font-semibold">{email}</span> to confirm
+              Type <span className="font-medium">{email}</span> to confirm
             </label>
             <input
               ref={inputRef}

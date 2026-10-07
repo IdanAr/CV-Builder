@@ -176,6 +176,19 @@ describe('usePipelineActions', () => {
     expect(result.current.error).toBe('Failed to mark as applied.')
   })
 
+  it('reloads the list when approve or convert fails, since the row is stale', async () => {
+    const { result } = renderHook(() => usePipelineActions(deps))
+    fetchMock.mockResolvedValue(bad({ error: 'Conflict' }))
+    await act(async () => { await result.current.approve(job()) })
+    expect(result.current.error).toBe('Conflict')
+    expect(deps.reload).toHaveBeenCalledTimes(1)
+    await act(async () => { await result.current.markApplied(job()) })
+    expect(deps.reload).toHaveBeenCalledTimes(2)
+    fetchMock.mockResolvedValue(ok())
+    await act(async () => { await result.current.approve(job()) })
+    expect(deps.reload).toHaveBeenCalledTimes(2)
+  })
+
   it('track POSTs, toasts a View action and does not navigate itself', async () => {
     fetchMock.mockResolvedValue(ok())
     const { result } = renderHook(() => usePipelineActions(deps))

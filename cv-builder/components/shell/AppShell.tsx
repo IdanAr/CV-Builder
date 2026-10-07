@@ -66,7 +66,7 @@ export function AppShell({ user, waiting, initialCollapsed, children }: AppShell
               type="button"
               aria-label="Open navigation"
               onClick={() => setDrawerOpen(true)}
-              className="rounded-control p-2 text-fg-body hover:bg-surface-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="rounded-control p-2 max-md:flex max-md:min-h-10 max-md:min-w-10 max-md:items-center max-md:justify-center text-fg-body hover:bg-surface-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <MenuIcon aria-hidden="true" strokeWidth={1.75} className="h-5 w-5" />
             </button>

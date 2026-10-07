@@ -19,6 +19,8 @@ import { ColumnHeader } from './ColumnHeader'
 import { ColumnForm, type ColumnFormResult } from './ColumnForm'
 import { ActivityLog } from './ActivityLog'
 import { EmptyApplicationsState } from './EmptyApplicationsState'
+import { Button } from '@/components/ui/Button'
+import { cn } from '@/lib/utils'
 
 const UNDO_DELETE_DURATION = 6000
 // Display preference, not board config — localStorage, same convention as
@@ -468,13 +470,9 @@ export default function ApplicationsView({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={handleAddRow}
-            className="whitespace-nowrap rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-700"
-          >
+          <Button variant="primary" size="md" onClick={handleAddRow}>
             + New Application
-          </button>
+          </Button>
           <FilterBar columns={columns} filters={filters} onChange={handleFiltersChange} />
         </div>
         <div className="flex items-center gap-3">
@@ -486,7 +484,7 @@ export default function ApplicationsView({
           <div
             role="group"
             aria-label="View mode"
-            className="flex rounded-lg border border-accent-200 bg-surface p-0.5"
+            className="flex rounded-control border border-border bg-surface p-0.5"
           >
             {(['table', 'kanban'] as const).map((mode) => (
               <button
@@ -494,11 +492,13 @@ export default function ApplicationsView({
                 type="button"
                 aria-pressed={view === mode}
                 onClick={() => handleViewChange(mode)}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium capitalize transition ${
+                className={cn(
+                  'rounded-chip px-2.5 py-1 text-xs font-medium capitalize transition-colors max-sm:min-h-10',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   view === mode
-                    ? 'bg-accent-600 text-white shadow-sm'
-                    : 'text-fg-muted hover:text-fg-body'
-                }`}
+                    ? 'bg-primary text-primary-fg'
+                    : 'text-fg-muted hover:bg-surface-subtle'
+                )}
               >
                 {mode === 'table' ? 'Table' : 'Board'}
               </button>
@@ -531,14 +531,14 @@ export default function ApplicationsView({
             />
           )}
           headerAccessory={
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="xs"
               onClick={() => openColumnModal({ mode: 'add' })}
               title="Add a custom column"
-              className="whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium text-fg-muted hover:bg-accent-50 hover:text-fg-body"
             >
               + Column
-            </button>
+            </Button>
           }
         />
       ) : (
@@ -554,13 +554,13 @@ export default function ApplicationsView({
           role="dialog"
           aria-modal="true"
           aria-label={columnModal.mode === 'add' ? 'Add column' : 'Edit column'}
-          className="fixed inset-0 z-40 flex items-center justify-center bg-accent-950/30 p-4"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-fg-heading/40 p-4"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setColumnModal(null)
           }}
         >
-          <div className="rounded-xl border border-accent-100 bg-white p-4 shadow-xl">
-            <h2 className="mb-3 text-sm font-semibold text-fg-heading">
+          <div className="rounded-card border border-border bg-surface shadow-popover p-4">
+            <h2 className="mb-3 text-sm font-medium text-fg-heading">
               {columnModal.mode === 'add' ? 'Add column' : `Edit "${columnModal.column.label}"`}
             </h2>
             <ColumnForm

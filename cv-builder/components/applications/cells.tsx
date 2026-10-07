@@ -86,7 +86,7 @@ function InlineTextInput({
         if (e.key === 'Enter') commitOnce(() => onDone(draft))
         if (e.key === 'Escape') commitOnce(() => onDone(null))
       }}
-      className="w-full rounded border border-accent-300 bg-white px-1.5 py-0.5 text-sm text-fg outline-none focus:border-accent-500"
+      className="w-full rounded-control border border-input bg-surface px-2 py-1.5 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
     />
   )
 }
@@ -128,7 +128,7 @@ function EditableCell({
       type="button"
       aria-label={`Edit ${ariaLabel}`}
       onClick={() => setEditing(true)}
-      className="block w-full truncate rounded px-1.5 py-0.5 text-left text-sm text-fg hover:bg-accent-50"
+      className="block w-full truncate rounded-chip px-1.5 py-0.5 text-left text-sm text-fg hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
     >
       {display ?? <span className="text-fg-subtle">-</span>}
     </button>
@@ -229,7 +229,7 @@ export function UrlCell(props: CellProps) {
           title={fullUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="min-w-0 flex-1 truncate text-sm text-accent-600 underline decoration-accent-300 hover:text-accent-800"
+          className="min-w-0 flex-1 truncate text-sm text-fg-body underline underline-offset-4 hover:text-fg-heading focus-visible:rounded-chip focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {displayUrl}
         </a>
@@ -241,7 +241,7 @@ export function UrlCell(props: CellProps) {
         type="button"
         aria-label={`Edit ${props.ariaLabel}`}
         onClick={() => setEditing(true)}
-        className="shrink-0 rounded px-1 text-xs text-fg-muted opacity-0 transition group-hover/cell:opacity-100 hover:bg-accent-50 hover:text-fg-body focus:opacity-100"
+        className="shrink-0 rounded-chip px-1 text-xs text-fg-muted opacity-0 transition group-hover/cell:opacity-100 hover:bg-surface-subtle hover:text-fg-body focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10"
       >
         <Pencil className="h-3 w-3" aria-hidden="true" />
       </button>
@@ -257,7 +257,7 @@ export function CheckboxCell(props: CellProps) {
         aria-label={props.ariaLabel}
         checked={props.value === true}
         onChange={(e) => props.onCommit(e.target.checked)}
-        className="h-4 w-4 accent-accent-600"
+        className="h-4 w-4 accent-primary max-sm:h-5 max-sm:w-5"
       />
     </span>
   )
@@ -313,11 +313,11 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-1.5 rounded px-1 py-0.5 text-left hover:bg-accent-50"
+        className="flex w-full items-center gap-1.5 rounded-chip px-1 py-0.5 text-left hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
       >
         {selected ? (
           <span
-            className="inline-flex max-w-full items-center truncate rounded-full px-2 py-0.5 text-xs font-medium text-white"
+            className="inline-flex max-w-full items-center truncate rounded-chip px-2 py-0.5 text-xs font-medium text-fg-on-accent"
             style={{ backgroundColor: selected.color }}
           >
             {selected.label}
@@ -331,7 +331,7 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
           ref={panelRef}
           role="listbox"
           aria-label={props.ariaLabel}
-          className={`absolute left-0 z-20 min-w-[10rem] rounded-lg border border-accent-100 bg-white p-1 shadow-lg ${
+          className={`absolute left-0 z-20 min-w-[10rem] rounded-card border border-border bg-surface p-1 shadow-popover ${
             openUpward ? 'bottom-full mb-1' : 'top-full mt-1'
           }`}
         >
@@ -346,7 +346,7 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
                 if (option.id !== props.value) props.onCommit(option.id)
                 ;(ref.current?.firstElementChild as HTMLElement | null)?.focus()
               }}
-              className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-accent-50"
+              className="flex w-full items-center gap-2 rounded-chip px-2 py-1 text-left text-sm hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
             >
               <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: option.color }} />
               <span className="truncate text-fg">{option.label}</span>
@@ -360,7 +360,7 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
               if (props.value !== null && props.value !== '') props.onCommit(null)
               ;(ref.current?.firstElementChild as HTMLElement | null)?.focus()
             }}
-            className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm text-fg-muted hover:bg-accent-50"
+            className="flex w-full items-center gap-2 rounded-chip px-2 py-1 text-left text-sm text-fg-muted hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
           >
             Clear
           </button>
@@ -384,7 +384,7 @@ export function ResumeCell(
           const next = e.target.value === '' ? null : e.target.value
           if (next !== (current || null)) props.onCommit(next)
         }}
-        className="w-full truncate rounded border border-transparent bg-transparent px-0.5 py-0.5 text-sm text-fg hover:border-accent-200 focus:border-accent-400 focus:outline-none"
+        className="w-full truncate rounded-control border border-transparent bg-transparent px-0.5 py-0.5 text-sm text-fg hover:border-border focus:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
       >
         <option value="">- none -</option>
         {/* Keep a stale link visible even if the resume list no longer contains it. */}

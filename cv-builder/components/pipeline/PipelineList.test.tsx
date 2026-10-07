@@ -26,6 +26,9 @@ describe('PipelineList', () => {
     setup()
     const list = screen.getByRole('list', { name: 'Jobs' })
     expect(list.getAttribute('aria-live')).toBeNull()
+    // list-style:none drops the implicit role in Safari/VoiceOver, so it is explicit.
+    expect(list.getAttribute('role')).toBe('list')
+    expect(list.tabIndex).toBe(-1)
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
     expect(screen.getAllByRole('button').map((b) => b.tabIndex)).toEqual([0, 0])
   })

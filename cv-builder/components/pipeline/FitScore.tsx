@@ -10,7 +10,7 @@ export function FitScore({ score }: { score?: number }) {
     <>
       <span
         aria-hidden="true"
-        className={cn('text-sm tabular-nums', score >= STRONG_FIT ? 'font-semibold text-fg-success' : 'text-fg-body')}
+        className={cn('text-sm tabular-nums', score >= STRONG_FIT ? 'font-medium text-fg-success' : 'text-fg-body')}
       >
         {score}
       </span>

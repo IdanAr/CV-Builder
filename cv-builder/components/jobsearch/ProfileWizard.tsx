@@ -13,6 +13,7 @@ import {
   type JobLocation,
   type ComeetCompanyWatch,
 } from '@/lib/schemas/jobsearch.zod'
+import { Button } from '@/components/ui/Button'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
 
 const STEP_LABELS = ['Roles', 'Location', 'Focus', 'Sources', 'Threshold', 'Review']
@@ -433,25 +434,25 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
   if (createdProfile) {
     return (
       <div className="flex flex-col gap-4">
-        <div className="rounded border bg-neutral-50 px-4 py-3 text-sm">
+        <div className="rounded-card border border-border bg-surface-subtle px-4 py-3 text-sm">
           <p className="font-medium">Profile created!</p>
-          <p className="mt-1 text-neutral-600">
+          <p className="mt-1 text-fg-muted">
             Want us to notify you whenever a match scores ≥ {state.minAtsScore}% against this profile?
           </p>
         </div>
         {ruleError && <ErrorBanner>{ruleError}</ErrorBanner>}
         <div className="flex gap-2">
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="md"
             disabled={creatingRule}
-            className="rounded bg-accent-600 px-4 py-2 text-sm text-white disabled:opacity-40"
             onClick={handleCreateDefaultRule}
           >
             Yes, notify me
-          </button>
-          <button type="button" className="rounded border px-4 py-2 text-sm" onClick={() => onCreated?.(createdProfile)}>
+          </Button>
+          <Button variant="secondary" size="md" onClick={() => onCreated?.(createdProfile)}>
             Skip
-          </button>
+          </Button>
         </div>
       </div>
     )
@@ -467,7 +468,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
           <label className="text-sm font-medium">
             Target roles (comma-separated)
             <input
-              className="mt-1 w-full rounded border px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={draftText.roles}
               onChange={(e) => setDraftText((d) => ({ ...d, roles: e.target.value }))}
             />
@@ -503,7 +504,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
           <label className="text-sm font-medium">
             Country
             <select
-              className="mt-1 w-full rounded border px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={state.locations[0]?.country ?? ''}
               onChange={(e) =>
                 setState((s) => ({
@@ -523,7 +524,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
           <label className="text-sm font-medium">
             City
             <input
-              className="mt-1 w-full rounded border px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={state.locations[0]?.city ?? ''}
               onChange={(e) =>
                 setState((s) => ({
@@ -541,7 +542,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
           <label className="text-sm font-medium">
             Categories (comma-separated)
             <input
-              className="mt-1 w-full rounded border px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={draftText.categories}
               onChange={(e) => setDraftText((d) => ({ ...d, categories: e.target.value }))}
             />
@@ -549,7 +550,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
           <label className="text-sm font-medium">
             Industries (comma-separated - soft-matched against results, not queried directly)
             <input
-              className="mt-1 w-full rounded border px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={draftText.industries}
               onChange={(e) => setDraftText((d) => ({ ...d, industries: e.target.value }))}
             />
@@ -559,19 +560,19 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
 
       {step === 4 && (
         <div ref={panelRef} role="tabpanel" id={`wizard-panel-${step}`} aria-labelledby={`wizard-tab-${step}`} tabIndex={-1} className="flex flex-col gap-3">
-          <p className="text-sm text-neutral-600">
+          <p className="text-sm text-fg-muted">
             Optional: track specific companies that use Comeet for hiring (common among
             Israeli high-tech employers). Comeet has no keyword search across companies,
-            so postings are fetched per company — paste that company&apos;s own public
+            so postings are fetched per company. Paste that company&apos;s own public
             Comeet careers page URL (e.g. comeet.com/jobs/company-name/uid) and we&apos;ll
             look it up for you.
           </p>
           {state.comeetCompanies.map((company, index) => (
-            <div key={index} className="flex items-center justify-between gap-2 rounded border p-2">
+            <div key={index} className="flex items-center justify-between gap-2 rounded-card border border-border p-2">
               <span className="text-sm font-medium">{company.name}</span>
               <button
                 type="button"
-                className="rounded border px-3 py-2 text-sm text-danger-600"
+                className="rounded-control border border-border bg-surface px-3 py-2 text-sm text-fg-danger max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => removeComeetCompany(index)}
               >
                 Remove
@@ -582,7 +583,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
             <label className="flex-1 text-sm font-medium">
               Company careers page URL
               <input
-                className="mt-1 w-full rounded border px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 placeholder="https://www.comeet.com/jobs/company-name/uid"
                 value={comeetUrlInput}
                 onChange={(e) => setComeetUrlInput(e.target.value)}
@@ -591,14 +592,14 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
             </label>
             <button
               type="button"
-              className="mt-6 rounded border px-3 py-2 text-sm disabled:opacity-50"
+              className="mt-6 rounded-control border border-border bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
               onClick={handleResolveComeetUrl}
               disabled={comeetResolving || !comeetUrlInput.trim()}
             >
               {comeetResolving ? 'Looking up…' : '+ Add company'}
             </button>
           </div>
-          {comeetResolveError && <p role="alert" className="text-sm text-danger-600">{comeetResolveError}</p>}
+          {comeetResolveError && <p role="alert" className="text-sm text-fg-danger">{comeetResolveError}</p>}
         </div>
       )}
 
@@ -608,7 +609,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
             Only show postings from the last N days
             <input
               type="number"
-              className="mt-1 w-full rounded border px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={state.recencyDays}
               onChange={(e) =>
                 // Clamped to >=1 (the schema's floor) at the source, rather than
@@ -624,7 +625,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
               type="number"
               min={0}
               max={100}
-              className="mt-1 w-full rounded border px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={state.minAtsScore}
               onChange={(e) => setState((s) => ({ ...s, minAtsScore: Number(e.target.value) }))}
             />
@@ -632,7 +633,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
           <label className="text-sm font-medium">
             Résumé to tailor from
             <select
-              className="mt-1 w-full rounded border px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={state.resumeId ?? ''}
               onChange={(e) => setState((s) => ({ ...s, resumeId: e.target.value || undefined }))}
             >
@@ -649,34 +650,34 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
 
       {step === 6 && (
         <div ref={panelRef} role="tabpanel" id={`wizard-panel-${step}`} aria-labelledby={`wizard-tab-${step}`} tabIndex={-1} className="flex flex-col gap-3">
-          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded border bg-neutral-50 px-3 py-2 text-sm">
-            <dt className="font-medium text-neutral-600">Roles</dt>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-card border border-border bg-surface-subtle px-3 py-2 text-sm">
+            <dt className="font-medium text-fg-muted">Roles</dt>
             <dd>{formatList(toTags(draftText.roles))}</dd>
-            <dt className="font-medium text-neutral-600">Seniority</dt>
+            <dt className="font-medium text-fg-muted">Seniority</dt>
             <dd>{formatList(state.seniority)}</dd>
-            <dt className="font-medium text-neutral-600">Work modes</dt>
+            <dt className="font-medium text-fg-muted">Work modes</dt>
             <dd>{formatList(state.workModes)}</dd>
-            <dt className="font-medium text-neutral-600">Country</dt>
+            <dt className="font-medium text-fg-muted">Country</dt>
             <dd>{COUNTRIES.find((c) => c.code === state.locations[0]?.country)?.name || '-'}</dd>
-            <dt className="font-medium text-neutral-600">City</dt>
+            <dt className="font-medium text-fg-muted">City</dt>
             <dd>{state.locations[0]?.city || '-'}</dd>
-            <dt className="font-medium text-neutral-600">Categories</dt>
+            <dt className="font-medium text-fg-muted">Categories</dt>
             <dd>{formatList(toTags(draftText.categories))}</dd>
-            <dt className="font-medium text-neutral-600">Industries</dt>
+            <dt className="font-medium text-fg-muted">Industries</dt>
             <dd>{formatList(toTags(draftText.industries))}</dd>
-            <dt className="font-medium text-neutral-600">Watched companies</dt>
+            <dt className="font-medium text-fg-muted">Watched companies</dt>
             <dd>{formatList(state.comeetCompanies.map((c) => c.name).filter(Boolean))}</dd>
-            <dt className="font-medium text-neutral-600">Résumé</dt>
+            <dt className="font-medium text-fg-muted">Résumé</dt>
             <dd>{resumeOptions.find((r) => r.id === state.resumeId)?.title || 'Most recently updated'}</dd>
-            <dt className="font-medium text-neutral-600">Recency window</dt>
+            <dt className="font-medium text-fg-muted">Recency window</dt>
             <dd>{state.recencyDays} days</dd>
-            <dt className="font-medium text-neutral-600">ATS threshold</dt>
+            <dt className="font-medium text-fg-muted">ATS threshold</dt>
             <dd>{state.minAtsScore}%</dd>
           </dl>
           <label className="text-sm font-medium">
             Profile name
             <input
-              className="mt-1 w-full rounded border px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-control border border-input bg-surface px-3 py-2 text-sm max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={state.name}
               onChange={(e) => setState((s) => ({ ...s, name: e.target.value }))}
             />
@@ -690,31 +691,31 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
             // Leaves the saved draft in place deliberately: cancelling is a
             // "not now", and reopening the wizard resumes where you left off.
             // The draft is only discarded once the profile is actually created.
-            <button type="button" className="rounded border px-4 py-2 text-sm" onClick={onCancel}>
+            <Button variant="secondary" size="md" onClick={onCancel}>
               Cancel
-            </button>
+            </Button>
           )}
           {step > 1 && (
-            <button type="button" className="rounded border px-4 py-2 text-sm" onClick={goBack}>
+            <Button variant="secondary" size="md" onClick={goBack}>
               Back
-            </button>
+            </Button>
           )}
         </div>
         <div className="flex gap-2">
           {step < STEP_LABELS.length && (
-            <button type="button" className="rounded bg-accent-600 px-4 py-2 text-sm text-white" onClick={goNext}>
+            <Button variant="primary" size="md" onClick={goNext}>
               Next
-            </button>
+            </Button>
           )}
           {step === STEP_LABELS.length && (
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="md"
               disabled={state.name.trim().length === 0 || submitting}
-              className="rounded bg-accent-600 px-4 py-2 text-sm text-white disabled:opacity-40"
               onClick={handleSubmit}
             >
               {isEditing ? 'Save changes' : 'Create profile'}
-            </button>
+            </Button>
           )}
         </div>
       </div>

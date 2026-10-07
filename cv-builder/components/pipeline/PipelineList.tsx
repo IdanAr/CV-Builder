@@ -78,8 +78,10 @@ export function PipelineList({
         <p className="text-xs text-fg-subtle">Scans skip these, so they are never tailored again.</p>
       )}
       <ul
+        role="list"
         aria-label="Jobs"
-        className="relative overflow-hidden rounded-card border border-border bg-surface"
+        tabIndex={-1}
+        className="relative overflow-hidden rounded-card border border-border bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {items.map((job) => (
           <PipelineRow

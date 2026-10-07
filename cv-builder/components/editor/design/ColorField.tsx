@@ -84,7 +84,7 @@ export function ColorField({ label, value, onCommit, swatchLabel, presetsLabel, 
           onChange={handleSwatchChange}
           aria-label={swatchLabel}
           title="Custom color"
-          className="h-9 w-9 shrink-0 cursor-pointer overflow-hidden rounded-full border-2 border-white p-0 shadow ring-1 ring-accent-200"
+          className="h-9 w-9 shrink-0 cursor-pointer overflow-hidden rounded-full border-2 border-surface p-0 shadow-sm ring-1 ring-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         <input
           id={textId}
@@ -93,7 +93,7 @@ export function ColorField({ label, value, onCommit, swatchLabel, presetsLabel, 
           onChange={handleTextChange}
           onBlur={handleTextBlur}
           placeholder={placeholder}
-          className={cn(inputClass, 'w-auto flex-1 px-2 py-1 text-xs font-mono focus:ring-1')}
+          className={cn(inputClass, 'w-auto flex-1 px-2 py-1 text-xs font-mono focus-visible:ring-1 max-sm:min-h-10')}
         />
       </div>
       <div className="flex flex-wrap gap-1.5" role="group" aria-label={presetsLabel}>
@@ -108,8 +108,8 @@ export function ColorField({ label, value, onCommit, swatchLabel, presetsLabel, 
               aria-pressed={isActive}
               onClick={() => handlePresetSelect(hex)}
               style={{ backgroundColor: hex }}
-              className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-accent-400 focus:ring-offset-1 ${
-                isActive ? 'border-accent-600 ring-2 ring-accent-300 ring-offset-1' : 'border-white shadow-sm'
+              className={`h-6 w-6 rounded-full border-2 motion-safe:transition-transform motion-safe:hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+                isActive ? 'border-primary ring-2 ring-ring ring-offset-1' : 'border-surface shadow-sm'
               }`}
             />
           )

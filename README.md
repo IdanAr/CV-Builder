@@ -63,7 +63,7 @@ Key differentiators:
 - Blank-line paragraph breaks in bullet/summary text render as visually distinct paragraphs consistently across live preview, PDF, and DOCX export.
 - Undo/redo, dirty-state tracking, `beforeunload` guard against losing unsaved work, and per-field validation errors.
 - Full keyboard and screen-reader accessibility pass on the editor shell.
-- Mobile-responsive editor shell and navbar.
+- The authenticated app shell is a collapsible sidebar (a drawer below 768px), shared by every dashboard page.
 
 ### Templates & Design
 - Five ATS-safe visual templates: **Classic**, **Modern**, **Minimal**, **Executive**, **Sidebar** - plus a sixth, text-only **ATS** template used exclusively for ATS-safe export.
@@ -104,7 +104,7 @@ Key differentiators:
 - Build **rules** per profile (or shared across all of them) that match on ATS score, company, work mode, posting age, or title, and resolve to `notify`, `draft_and_queue`, or `ignore`.
 - A daily scan (Vercel Cron → QStash → per-profile worker) searches active job boards, scores every new posting against the linked resume, and evaluates it against the profile's rules.
 - Postings resolved to `draft_and_queue` run through the same tailor → cover-letter → hallucination-guard → re-score pipeline used elsewhere, subject to daily per-profile and per-user drafting caps, so spend never runs away.
-- A **review queue** surfaces drafted matches for approval, rejection, or one-click conversion into a tracked application; matches resolved to `notify` only appear in an in-app notification feed.
+- A **review queue** surfaces drafted matches for approval, rejection, or one-click conversion into a tracked application; matches resolved to `notify` appear in the Matched stage and the sidebar waiting count.
 
 ### Auth
 - GitHub OAuth and Google OAuth via Auth.js v5, backed by the MongoDB adapter.
@@ -233,10 +233,12 @@ cv-builder/
 ├── app/
 │   ├── (auth)/signin/                       # GitHub / Google sign-in page
 │   ├── (dashboard)/
-│   │   ├── dashboard/                       # Resume library
+│   │   ├── dashboard/                       # Overview (what needs you, pipeline strip, recent CVs)
+│   │   ├── dashboard/cvs/                   # CV library (table or cards)
 │   │   ├── dashboard/applications/          # Application supertable (table + board views)
 │   │   ├── dashboard/resumes/[id]/          # Full editor page
-│   │   └── dashboard/jobsearch/             # Profiles list, profile detail/scan page, notifications feed
+│   │   ├── dashboard/settings/              # Account, data export, delete account
+│   │   └── dashboard/jobsearch/             # Pipeline inbox; sources/ holds profiles, rules and settings
 │   ├── api/
 │   │   ├── resumes/                         # CRUD
 │   │   ├── resumes/[id]/ai-suggest/         # Bullet / summary AI copilot
@@ -252,11 +254,15 @@ cv-builder/
 │   │   ├── jobsearch/profiles/              # Search-profile CRUD
 │   │   ├── jobsearch/rules/                 # Rule CRUD (per profile or shared)
 │   │   ├── jobsearch/scan/                  # Manual scan (sync) + cron fan-out + QStash worker
-│   │   ├── jobsearch/scraped-jobs/          # List, approve, convert-to-application, delete
-│   │   ├── jobsearch/notifications/         # notify-only matches feed, unread count, mark-read
+│   │   ├── jobsearch/scraped-jobs/          # Pipeline list (?stage= cursor pagination, search, counts), approve, convert, dismiss, restore, delete
+│   │   ├── jobsearch/notifications/         # mark-read and unread-count (also returns the sidebar waiting count)
+│   │   ├── account/                         # Delete account; account/export downloads the user's data
 │   │   └── preview/pagination/              # Server-side paginated preview render
 │   └── page.tsx                             # Landing / marketing page
 ├── components/
+│   ├── shell/                               # AppShell, SidebarNav, SidebarUserMenu (collapsible sidebar, drawer below 768px)
+│   ├── overview/                            # Overview page: NeedsYou, PipelineStrip, RecentCvs, FirstRun
+│   ├── cvs/                                 # CV library: CvLibrary, CvTable, CvCards, CvThumbnail
 │   ├── editor/                              # EditorShell, EditTab, DesignPanel, PreviewTab, forms/
 │   ├── templates/                           # HTML/CSS live-preview templates (5 templates) + RichText
 │   ├── ats/                                 # AtsScorePanel, AtsFixReviewPanel
@@ -264,15 +270,17 @@ cv-builder/
 │   ├── coverletter/                         # CoverLetterPanel
 │   ├── applications/                        # ApplicationsView, Board, Table, Filters, ActivityLog, ColumnForm
 │   ├── jobsearch/                           # ProfileList, ProfileWizard, ProfileSettings, RuleBuilder
-│   ├── pipeline/                            # PipelineInbox, StageTabs, PipelineList, JobDetail
-│   └── ui/                                  # AppNavbar, PlasmaBackground, Toaster, UserProfileButton
+│   ├── pipeline/                            # PipelineInbox, StageTabs, PipelineList, PipelineRow, JobDetail, keyboard shortcuts
+│   ├── account/                             # ExportDataSection, DeleteAccountSection
+│   ├── marketing/                           # Landing and legal page sections
+│   └── ui/                                  # Button, Card, Badge, Popover, Menu, Toaster, Skeleton, ... (AppNavbar, Plasma: marketing and legal pages only)
 ├── lib/
 │   ├── ai/                                  # pipeline.ts, ats-fix-pipeline.ts, cover-letter-pipeline.ts, hallucination-guard.ts, models.ts
 │   ├── api/                                 # Shared route handler logic: resumes.ts, applications.ts, board-config.ts, jobsearch-profiles.ts, jobsearch-rules.ts, scraped-jobs.ts, route-errors.ts
 │   ├── ats/                                 # scorer.ts, keywords.ts
 │   ├── applications/                        # cells.ts, filter.ts, order.ts, sort.ts, types.ts
-│   ├── jobsearch/                           # scan.ts, apply.ts, rules.ts, queue.ts, countries.ts, sources/ (freehire.ts)
-│   ├── design/                               # tokens.ts - shared design-panel constants
+│   ├── jobsearch/                           # scan.ts, apply.ts, rules.ts, queue.ts, countries.ts, stages.ts, pipeline-url.ts, job-actions.ts, sources/ (freehire.ts, comeet.ts)
+│   ├── design/                               # color-tokens.ts (semantic colours), tokens.ts (design-panel constants), font-scale.ts
 │   ├── docx/                                # resume-docx.ts, styles.ts
 │   ├── fonts/                                # families.ts, registry.ts - web-font → ATS-safe system font mapping
 │   ├── hooks/                                # use-debounce.ts, use-media-query.ts, use-pdf-pagination.ts
@@ -289,6 +297,15 @@ cv-builder/
 ├── vercel.json                              # Vercel Cron schedule for the job-search scan
 └── types/                                   # Global TypeScript types
 ```
+
+### Design System
+
+- **Semantic colour tokens** live in `lib/design/color-tokens.ts`, the single source for every colour (surface, text, border, accent, danger and so on). Components use the semantic names rather than raw palette classes.
+- **Radius scale:** `rounded-control`, `rounded-chip`, `rounded-card` and `rounded-overlay` (defined in `tailwind.config.ts`), plus `rounded-full` for pills and avatars. The off-scale `rounded-md/lg/xl/2xl` are legacy.
+- **Type:** Geist Sans and Geist Mono, loaded from the `geist` package.
+- **Motion:** a global `prefers-reduced-motion` rule in `app/globals.css` collapses animations and transitions to near zero, so components do not need their own checks.
+- **Touch targets:** `Button` floors every size at 40px below the `sm` breakpoint.
+- **Legacy-utility ratchet:** `lib/design/__tests__/legacy-utilities.test.ts` counts legacy utility classes (`bg-white`, `text-white`, off-scale radii, in-flow shadows, raw `bg-accent-600/700`, `focus:ring/border`) per file under `components/` and `app/(dashboard)/`. A file may never exceed its recorded baseline, and new files must be clean. When you clean a file, lower its entry in the test's `BASELINE` map (the test also fails if a baseline is higher than reality).
 
 ---
 
@@ -357,7 +374,7 @@ A dedicated `/dashboard/applications` view for managing every job application, i
 
 ## Job Search Automation
 
-A dedicated `/dashboard/jobsearch` area that finds and pre-qualifies new openings instead of requiring the user to search manually.
+A dedicated `/dashboard/jobsearch` area that finds and pre-qualifies new openings instead of requiring the user to search manually. Profiles and rules are configured under Sources, and everything found lands in the pipeline inbox.
 
 ### Profiles
 Each **search profile** (`JobSearchProfile`) captures what "a good match" means for one line of search: target roles, work modes, locations (country/region/city), seniority levels, categories, industries, how recent a posting must be, a minimum ATS-score threshold, and an optional linked resume to score and tailor against. Profiles are created and edited through a multi-step wizard and can be toggled active/inactive without deleting them.
@@ -367,7 +384,7 @@ Each **search profile** (`JobSearchProfile`) captures what "a good match" means 
 
 | Action | Effect |
 |---|---|
-| `notify` | Surfaced in the in-app notification feed; no draft is created. |
+| `notify` | Shown in the pipeline's Matched stage; no draft is created. |
 | `draft_and_queue` | Runs the semi-auto apply pipeline to produce a tailored draft resume and cover letter. |
 | `ignore` | The posting is suppressed outright and never stored, even as a dismissed row. |
 
@@ -394,10 +411,28 @@ For a posting resolved to `draft_and_queue`, `runApplyPipeline()` reuses the sam
 
 A match reaches status `queued` only if it has **zero** pending approvals **and** its post-tailor score meets the profile's threshold; otherwise it lands in `needs_review` for the user to resolve by hand. Two rolling 24-hour caps bound total AI spend: **3 drafts per profile** and **10 drafts per user** across all profiles.
 
-### Review queue and notifications
-- The **scraped jobs list** on each profile's page shows every match with its status, score, and matched rules, with actions to dismiss or delete a listing.
-- The **queued applications panel** surfaces `queued` and `needs_review` drafts; a `needs_review` item can be approved (once its pending approvals are resolved) or rejected, and any `queued` item can be converted directly into a tracked `Application` row with one click.
-- Matches resolved to `notify` never generate a draft; they appear in a dedicated **notifications feed** with an unread-count badge and a mark-as-read action.
+### Pipeline inbox
+`/dashboard/jobsearch` is one screen for every posting, organised as a funnel of stages plus an Archive:
+
+| Stage | What it holds |
+|---|---|
+| Found | New postings that passed the profile's filters and score threshold, with no `notify` rule on them. |
+| Matched | Postings a rule resolved to `notify`; nothing is drafted. |
+| Drafted | Tailored drafts that need a decision (`needs_review`, usually pending approvals to resolve). |
+| Ready | Drafts with no pending approvals and a score above the threshold (`queued`). |
+| Applied | Postings you marked as applied. |
+| Archive | Dismissed and expired postings, plus deleted ones kept as tombstones. |
+
+A stage is always derived from a job's stored status and resolved actions (`stageOf` in `lib/jobsearch/stages.ts`), never stored separately. The list is cursor-paginated, searchable, and filterable by profile, with per-stage counts on the tabs.
+
+A posting moves through the funnel like this: a scan finds it, the profile's rules resolve it (`notify`, `draft_and_queue` or `ignore`), `draft_and_queue` matches get a tailored resume and cover letter, flagged claims are approved by hand, and **Mark applied** records it and creates a tracked `Application` row. Each stage offers only the actions that make sense there (open the posting, track, dismiss, approve, open the CV, mark applied, restore, delete).
+
+Keyboard shortcuts in the list: `J` / `K` move the selection, `Enter` opens the job, `A` runs the primary one-step action (such as approve or mark applied), and `D` dismisses.
+
+Deleting a posting soft-deletes it as a tombstone so the next scan does not resurrect it; **Find again** removes the tombstone and lets a later scan pick the posting up fresh. The sidebar shows a **waiting** count (unread Matched postings plus everything in Drafted and Ready), which refreshes after every action.
+
+### Sources and rules
+`/dashboard/jobsearch/sources` holds everything that feeds the pipeline: search **profiles** (created through the wizard, toggled active), **rules** (shared or per profile), and per-profile **settings** such as the minimum score and linked resume. The old per-profile and notifications URLs redirect into the pipeline or here.
 
 ---
 
@@ -613,13 +648,18 @@ All routes below are session-authenticated via Auth.js (`auth()` wrapper) and sc
 | `POST` | `/api/jobsearch/scan` | Run a synchronous scan for one profile ("Scan now") |
 | `GET` | `/api/jobsearch/scan/cron` | Vercel Cron target - Bearer `CRON_SECRET`, fans every active profile out to QStash |
 | `POST` | `/api/jobsearch/scan/worker` | QStash callback target - signature-verified, runs the scan for one profile |
-| `GET` | `/api/jobsearch/scraped-jobs` | List scraped jobs for a profile |
-| `PATCH` / `DELETE` | `/api/jobsearch/scraped-jobs/:id` | Update (dismiss/undismiss) / delete a scraped job |
+| `GET` | `/api/jobsearch/scraped-jobs` | Two modes. `?profileId=` returns the legacy list for a profile. `?stage=&profileId=&q=&cursor=&limit=` returns a pipeline page (`items`, `nextCursor`, `counts`) |
+| `PATCH` / `DELETE` | `/api/jobsearch/scraped-jobs/:id` | Update (`dismissed` boolean, or `deleted: false` to restore a tombstone) / delete a scraped job |
 | `POST` | `/api/jobsearch/scraped-jobs/:id/approve` | Approve a `needs_review` match once pending approvals are resolved |
 | `POST` | `/api/jobsearch/scraped-jobs/:id/convert` | Convert a `queued` match into a tracked application |
-| `GET` | `/api/jobsearch/notifications` | List `notify`-resolved matches |
-| `GET` | `/api/jobsearch/notifications/unread-count` | Unread notification count for the badge |
-| `POST` | `/api/jobsearch/notifications/mark-read` | Mark all notifications as read |
+| `GET` | `/api/jobsearch/notifications/unread-count` | Unread match count, plus `waiting` for the sidebar |
+| `POST` | `/api/jobsearch/notifications/mark-read` | Mark unread matches as read, optionally scoped by `profileId` |
+
+### Account
+| Method | Route | Purpose |
+|---|---|---|
+| `GET` | `/api/account/export` | Download the user's data |
+| `DELETE` | `/api/account` | Delete the account and its data |
 
 ### Preview
 | Method | Route | Purpose |

@@ -68,7 +68,6 @@ import {
   deleteScrapedJob,
   restoreScrapedJob,
   listNewScrapedJobs,
-  listNotifyMatches,
   countUnreadNotifyMatches,
   countPipelineStages,
   markNotifyMatchesRead,
@@ -666,53 +665,6 @@ describe('listNewScrapedJobs', () => {
       { userId: 'u1', profileId: 'p1', status: 'new', deletedAt: { $exists: false } },
       expect.any(String)
     )
-  })
-})
-
-describe('listNotifyMatches', () => {
-  it('queries every notify-matched job for this user, regardless of profile, sorted newest first', async () => {
-    const mockSort = vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ _id: 'j1' }]) })
-    mockFind.mockReturnValue({ sort: mockSort })
-
-    const result = await listNotifyMatches('u1')
-
-    expect(mockFind).toHaveBeenCalledWith(
-      {
-        userId: 'u1',
-        resolvedActions: 'notify',
-        status: { $in: ['new', 'notified'] },
-        deletedAt: { $exists: false },
-      },
-      expect.any(String)
-    )
-    expect(mockSort).toHaveBeenCalledWith({ createdAt: -1 })
-    expect(result).toEqual([{ _id: 'j1', profileName: undefined }])
-  })
-
-  it('projects the fields a match card renders', async () => {
-    mockFind.mockReturnValue({
-      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }),
-    })
-
-    await listNotifyMatches('u1')
-
-    const projection = mockFind.mock.calls[0][1] as string
-    for (const field of ['workMode', 'matchedRules', 'postedAt', 'createdAt', 'atsScore']) {
-      expect(projection).toContain(field)
-    }
-  })
-
-  it('attributes each match to the profile that found it', async () => {
-    mockFind.mockReturnValue({
-      sort: vi.fn().mockReturnValue({
-        lean: vi.fn().mockResolvedValue([{ _id: 'j1', profileId: 'p1' }]),
-      }),
-    })
-    mockGetProfileNameMap.mockResolvedValue(new Map([['p1', 'Frontend, Remote EU']]))
-
-    const result = await listNotifyMatches('u1')
-
-    expect(result[0].profileName).toBe('Frontend, Remote EU')
   })
 })
 

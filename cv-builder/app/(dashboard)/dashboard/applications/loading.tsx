@@ -10,12 +10,11 @@ import { Skeleton } from '@/components/ui/Skeleton'
  */
 export default function ApplicationsLoading() {
   return (
-    <div role="status" aria-live="polite" className="mx-auto max-w-7xl px-4 py-8">
+    <div role="status" aria-live="polite" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
       <span className="sr-only">Loading your applications</span>
 
       <div className="mb-6 space-y-2">
-        <Skeleton className="h-9 w-56" />
-        <Skeleton className="h-5 w-96 max-w-full" />
+        <Skeleton className="h-7 w-40" />
         <Skeleton className="h-4 w-80 max-w-full" />
       </div>
 

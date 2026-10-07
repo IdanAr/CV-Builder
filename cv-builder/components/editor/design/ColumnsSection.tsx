@@ -26,7 +26,7 @@ import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 const labelClass = 'block text-xs font-medium text-fg-muted mb-1'
-const sectionTitle = 'mb-3 text-xs font-semibold uppercase tracking-wide text-fg-subtle'
+const sectionTitle = 'mb-3 text-xs font-medium uppercase tracking-wide text-fg-subtle'
 
 const SECTION_LABELS: Record<string, string> = {
   work: 'Work',
@@ -98,33 +98,32 @@ function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumn
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    boxShadow: isDragging ? '0 4px 12px rgb(var(--color-accent-700) / 0.15)' : undefined,
   }
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 px-2.5 py-1.5 border-b border-border last:border-b-0 transition-colors hover:bg-accent-50/50"
+      className={`flex items-center gap-2 px-2.5 py-1.5 border-b border-border last:border-b-0 transition-colors hover:bg-surface-subtle${isDragging ? ' shadow-popover' : ''}`}
     >
       <span
         {...attributes}
         {...listeners}
-        className="text-fg-subtle cursor-grab active:cursor-grabbing text-base select-none"
+        className="rounded-chip text-fg-subtle cursor-grab active:cursor-grabbing text-base select-none outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:flex max-sm:min-h-10 max-sm:min-w-10 max-sm:items-center max-sm:justify-center"
         aria-label="Drag to reorder"
       >
         ⠿
       </span>
-      <span className="flex-1 text-sm text-neutral-700">{label}</span>
+      <span className="flex-1 text-sm text-fg-body">{label}</span>
 
-<div className="flex p-0.5 bg-accent-50/80 border border-border rounded-md text-xs font-medium">
+<div className="flex rounded-control border border-border bg-surface-subtle p-0.5 text-xs font-medium">
         <button
           type="button"
           onClick={side === 'left' ? undefined : onToggle}
-          className={`px-3 py-1 rounded-[4px] transition-all duration-200 ${
+          className={`px-3 py-1 rounded-chip transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 ${
             side === 'left'
-              ? 'bg-white text-accent-700 shadow-sm ring-1 ring-black/5'
-              : 'text-fg-muted hover:text-fg-body hover:bg-accent-100/50'
+              ? 'bg-surface border border-border text-fg-heading'
+              : 'text-fg-muted hover:text-fg-body hover:bg-surface'
           }`}
         >
           Left
@@ -132,10 +131,10 @@ function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumn
         <button
           type="button"
           onClick={side === 'right' ? undefined : onToggle}
-          className={`px-3 py-1 rounded-[4px] transition-all duration-200 ${
+          className={`px-3 py-1 rounded-chip transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 ${
             side === 'right'
-              ? 'bg-white text-accent-700 shadow-sm ring-1 ring-black/5'
-              : 'text-fg-muted hover:text-fg-body hover:bg-accent-100/50'
+              ? 'bg-surface border border-border text-fg-heading'
+              : 'text-fg-muted hover:text-fg-body hover:bg-surface'
           }`}
         >
           Right
@@ -180,7 +179,7 @@ export function ColumnsSection() {
   }
   return (
     <section aria-labelledby="design-layout">
-      <h3 id="design-layout" className={sectionTitle}>Layout</h3>
+      <h2 id="design-layout" className={sectionTitle}>Layout</h2>
       <div className="space-y-5">
       {/* Layout toggle — Minimal is single-column only; Sidebar always uses a
           rail + main layout, so the toggle is meaningless there and hidden. */}
@@ -195,7 +194,7 @@ export function ColumnsSection() {
                 vanished from the exported PDF — so the guidance below is
                 preference, not a constraint. */}
             <p className="text-xs text-fg-subtle mt-1">
-              Every section can go in either column — set them under{' '}
+              Every section can go in either column. Set them under{' '}
               <span className="font-medium">Section columns</span> below. Skills and Languages start in
               the rail. The rail is only {meta.sidebarRailWidth ?? 33}% of the page width, so short
               sections suit it best; longer ones like Work Experience read better in the main column.
@@ -213,10 +212,10 @@ export function ColumnsSection() {
                   type="button"
                   aria-pressed={meta.layout === layout}
                   onClick={() => setMeta({ layout })}
-                  className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 text-sm rounded-xl border transition-all duration-200 ${
+                  className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 text-sm rounded-control border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 ${
                     meta.layout === layout
-                      ? 'border-accent-500 bg-accent-50 text-accent-700 font-medium shadow-sm'
-                      : 'border-border text-fg-muted hover:border-accent-300 hover:shadow-sm'
+                      ? 'border-primary bg-secondary text-fg-heading font-medium'
+                      : 'border-border text-fg-muted hover:border-input hover:bg-surface-subtle'
                   }`}
                 >
                   <svg aria-hidden="true" viewBox="0 0 28 20" className="h-5 w-7">
@@ -244,7 +243,7 @@ export function ColumnsSection() {
       {((meta.layout === 'two-column' && meta.templateId !== 'minimal') || meta.templateId === 'sidebar') && (
         <div>
           <p className={labelClass}>Section columns</p>
-          <div className="bg-white border border-border rounded-lg overflow-hidden">
+          <div className="bg-surface border border-border rounded-card overflow-hidden">
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}

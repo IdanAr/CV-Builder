@@ -156,7 +156,7 @@ describe('ActivityLog', () => {
             height: triggerBottom - triggerTop, x: 0, y: triggerTop, toJSON: () => ({}),
           } as DOMRect
         }
-        if (this.className.includes('shadow-xl')) {
+        if (this.className.includes('shadow-popover')) {
           return {
             top: 0, bottom: panelHeight, left: 0, right: 100, width: 100,
             height: panelHeight, x: 0, y: 0, toJSON: () => ({}),

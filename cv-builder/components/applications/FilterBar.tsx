@@ -11,6 +11,7 @@ import {
   type ColumnFilter,
 } from '@/lib/applications/filter'
 import { X } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 
 function FilterEditor({
   column,
@@ -76,7 +77,7 @@ function FilterEditor({
   }
 
   const inputClass =
-    'rounded-md border border-accent-200 bg-white px-2 py-1 text-sm text-fg outline-none focus:border-accent-400'
+    'rounded-control border border-input bg-surface px-2 py-1 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10'
 
   return (
     <form onSubmit={apply} className="flex flex-col gap-2">
@@ -92,7 +93,7 @@ function FilterEditor({
                     e.target.checked ? [...ids, option.id] : ids.filter((id) => id !== option.id)
                   )
                 }
-                className="h-4 w-4 accent-accent-600"
+                className="h-4 w-4 accent-primary max-sm:h-5 max-sm:w-5"
               />
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: option.color }} />
               {option.label}
@@ -156,17 +157,14 @@ function FilterEditor({
             type="checkbox"
             checked={checked}
             onChange={(e) => setChecked(e.target.checked)}
-            className="h-4 w-4 accent-accent-600"
+            className="h-4 w-4 accent-primary max-sm:h-5 max-sm:w-5"
           />
           Only {checked ? 'checked' : 'unchecked'} rows
         </label>
       )}
-      <button
-        type="submit"
-        className="self-end rounded-md bg-accent-600 px-3 py-1 text-xs font-medium text-white hover:bg-accent-700"
-      >
+      <Button type="submit" size="sm" className="self-end">
         Apply filter
-      </button>
+      </Button>
     </form>
   )
 }
@@ -208,26 +206,26 @@ export function FilterBar({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div ref={ref} className="relative">
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
           aria-expanded={open}
           onClick={() => {
             setOpen((o) => !o)
             setColumnId('')
           }}
-          className="rounded-md border border-accent-200 bg-surface px-3 py-1.5 text-xs font-medium text-accent-600 transition hover:bg-accent-50"
         >
           + Filter
-        </button>
+        </Button>
         {open && (
-          <div className="absolute left-0 top-full z-30 mt-1 w-72 rounded-lg border border-accent-100 bg-white p-3 shadow-xl">
+          <div className="absolute left-0 top-full z-30 mt-1 w-72 rounded-card border border-border bg-surface p-3 shadow-popover">
             <label className="flex flex-col gap-1 text-xs font-medium text-fg-muted">
               Filter by
               <select
                 autoFocus
                 value={columnId}
                 onChange={(e) => setColumnId(e.target.value)}
-                className="rounded-md border border-accent-200 bg-white px-2 py-1.5 text-sm text-fg outline-none focus:border-accent-400"
+                className="rounded-control border border-input bg-surface px-2 py-1.5 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
               >
                 <option value="">Choose a column…</option>
                 {[...columns]
@@ -264,26 +262,25 @@ export function FilterBar({
         return (
           <span
             key={filter.columnId}
-            className="flex items-center gap-1 rounded-full border border-accent-200 bg-accent-50/80 py-0.5 pl-2.5 pr-1 text-xs font-medium text-accent-700"
+            className="flex items-center gap-1 rounded-chip border border-border bg-secondary py-0.5 pl-2.5 pr-1 text-xs font-medium text-secondary-fg"
           >
             {describeFilter(filter, column)}
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon"
               aria-label={`Remove filter on ${column.label}`}
               onClick={() => onChange(filters.filter((f) => f.columnId !== filter.columnId))}
-              className="inline-flex h-6 w-6 items-center justify-center rounded-full text-fg-muted transition-colors hover:bg-secondary hover:text-fg-body"
-            ><X aria-hidden="true" className="h-3 w-3" /></button>
+              className="h-6 w-6"
+            >
+              <X aria-hidden="true" className="h-3 w-3" />
+            </Button>
           </span>
         )
       })}
       {filters.length > 0 && (
-        <button
-          type="button"
-          onClick={() => onChange([])}
-          className="rounded px-1.5 py-0.5 text-xs text-fg-muted hover:text-fg-body"
-        >
+        <Button variant="ghost" size="xs" onClick={() => onChange([])}>
           Clear all
-        </button>
+        </Button>
       )}
     </div>
   )

@@ -63,7 +63,7 @@ function Indicator({
   return (
     <div className="flex min-w-0 flex-col gap-0.5 border-r border-border-subtle pr-4 last:border-r-0 last:pr-0">
       <dt className="text-[10px] font-medium uppercase tracking-wider text-fg-subtle">{label}</dt>
-      <dd className={`truncate text-sm font-semibold tabular-nums ${valueTone}`} title={value}>
+      <dd className={`truncate text-sm font-medium tabular-nums ${valueTone}`} title={value}>
         {value}
       </dd>
     </div>

@@ -8,7 +8,6 @@ import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/Menu'
 import { planActions, type JobActionId } from '@/lib/jobsearch/job-actions'
 import type { PipelineJob } from '@/lib/jobsearch/pipeline-types'
 import { FILTER_LABELS } from '@/lib/jobsearch/stages'
-import { cn } from '@/lib/utils'
 import { FitScore } from './FitScore'
 
 export const ACTION_LABELS: Record<JobActionId, string> = {
@@ -58,16 +57,14 @@ function ActionControl({
   const label = ACTION_LABELS[action]
   const target = hrefFor(action, job)
   if (target) {
-    const className = buttonClasses({
-      variant, size: 'md', className: cn('sm:min-h-8', busy && 'pointer-events-none opacity-60'),
-    })
+    // Opening a link does not conflict with an in-flight request, so links stay live while busy.
+    const className = buttonClasses({ variant, size: 'md', className: 'sm:min-h-8' })
     if (target.external) {
       return (
         <a
           href={target.href}
           target="_blank"
           rel="noreferrer"
-          aria-disabled={busy || undefined}
           className={className}
         >
           {label}
@@ -76,7 +73,7 @@ function ActionControl({
       )
     }
     return (
-      <Link href={target.href} aria-disabled={busy || undefined} className={className}>
+      <Link href={target.href} className={className}>
         {label}
       </Link>
     )
@@ -112,7 +109,7 @@ export function JobDetail({ job, busy, onAction, onBack }: JobDetailProps) {
         <h2
           tabIndex={-1}
           data-job-detail-heading=""
-          className="text-lg font-semibold text-fg-body focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="text-lg font-medium text-fg-body focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {job.title}
         </h2>
@@ -129,7 +126,7 @@ export function JobDetail({ job, busy, onAction, onBack }: JobDetailProps) {
       </header>
 
       <div>
-        <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-fg-subtle">Why it matched</h3>
+        <h3 className="mb-1.5 text-xs font-medium uppercase tracking-wide text-fg-subtle">Why it matched</h3>
         {job.matchedRules.length > 0 ? (
           <ul className="flex flex-wrap gap-1.5">
             {job.matchedRules.map((rule) => (
@@ -169,7 +166,7 @@ export function JobDetail({ job, busy, onAction, onBack }: JobDetailProps) {
 
       {job.pendingApprovals.length > 0 && (
         <div className="rounded-control bg-surface-attention p-3 text-fg-attention">
-          <p className="flex items-center gap-2 text-sm font-semibold">
+          <p className="flex items-center gap-2 text-sm font-medium">
             <AlertTriangle aria-hidden="true" className="h-4 w-4 shrink-0" />
             Flagged claims need your approval
           </p>

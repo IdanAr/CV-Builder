@@ -192,6 +192,10 @@ export function usePipelineActions(deps: PipelineActionsDeps): UsePipelineAction
           if (!res.ok) {
             const body = await res.json().catch(() => ({}))
             setError((body as { error?: string }).error ?? fallback)
+            // reload() runs on every non-OK response (409, 429, 5xx), not only a stale 409.
+            // That is safe: loadFirstPage re-reads as many rows as are loaded, so it just
+            // refreshes the visible list.
+            void depsRef.current.reload()
             return
           }
           notifyScrapedJobsChanged()

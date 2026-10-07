@@ -24,20 +24,20 @@ export default async function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="text-2xl font-bold text-fg-heading">Settings</h1>
+      <h1 className="text-xl font-medium text-fg-heading">Settings</h1>
       <p className="mt-1 text-sm text-fg-muted">Your account, and what happens to the data in it.</p>
 
       <div className="mt-6 space-y-4">
         <Card padding="lg">
-          <h2 className="text-base font-semibold text-fg-heading">Account</h2>
+          <h2 className="text-base font-medium text-fg-heading">Account</h2>
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex flex-wrap gap-x-3">
               <dt className="w-24 shrink-0 text-fg-muted">Name</dt>
-              <dd className="min-w-0 break-words text-fg">{name ?? '—'}</dd>
+              <dd className="min-w-0 break-words text-fg">{name ?? 'Not set'}</dd>
             </div>
             <div className="flex flex-wrap gap-x-3">
               <dt className="w-24 shrink-0 text-fg-muted">Email</dt>
-              <dd className="min-w-0 break-words text-fg">{email ?? '—'}</dd>
+              <dd className="min-w-0 break-words text-fg">{email ?? 'Not set'}</dd>
             </div>
           </dl>
           {/* Not an oversight that these are read-only. Both come from the
@@ -59,7 +59,7 @@ export default async function SettingsPage() {
           <DeleteAccountSection email={email} />
         ) : (
           <Card padding="lg">
-            <h2 className="text-base font-semibold text-fg-heading">Delete your account</h2>
+            <h2 className="text-base font-medium text-fg-heading">Delete your account</h2>
             <p className="mt-1 text-sm text-fg-muted">
               Deleting an account is confirmed by retyping its email address, and this account has
               none on file. Contact support and we will remove it for you.

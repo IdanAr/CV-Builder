@@ -12,6 +12,8 @@ export interface PipelineShortcutHandlers {
   dismissSelected(): void
 }
 
+const OVERLAY_SELECTOR = '[role=menu],[role=menuitem],[role=dialog],[role=listbox]'
+
 export function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   const tag = target.tagName
@@ -39,7 +41,10 @@ export function usePipelineShortcuts(handlers: PipelineShortcutHandlers, enabled
     function onKeyDown(event: KeyboardEvent) {
       if (event.defaultPrevented) return
       if (event.ctrlKey || event.metaKey || event.altKey) return
+      if (event.isComposing) return
       if (isTypingTarget(event.target)) return
+      // Typeahead in an open Radix menu or a dialog must not dismiss or move a job.
+      if (event.target instanceof Element && event.target.closest(OVERLAY_SELECTOR)) return
       const h = ref.current
       switch (event.key) {
         case 'j':
@@ -52,10 +57,12 @@ export function usePipelineShortcuts(handlers: PipelineShortcutHandlers, enabled
           break
         case 'a':
         case 'A':
+          if (event.repeat) return
           h.runPrimary()
           break
         case 'd':
         case 'D':
+          if (event.repeat) return
           h.dismissSelected()
           break
         case 'Enter': {
