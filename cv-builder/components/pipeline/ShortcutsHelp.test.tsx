@@ -16,4 +16,9 @@ describe('ShortcutsHelp', () => {
     }
     expect(screen.getByText('Shortcuts are optional; every action also has a button.')).toBeTruthy()
   })
+
+  it('keeps a 40px touch target on mobile', () => {
+    render(<ShortcutsHelp />)
+    expect(screen.getByRole('button', { name: /keyboard shortcuts/i }).classList.contains('min-h-10')).toBe(true)
+  })
 })
