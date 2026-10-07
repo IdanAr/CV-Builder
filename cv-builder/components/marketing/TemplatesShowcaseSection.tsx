@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { buttonClasses } from '@/components/ui/Button'
 import { TemplateThumbnail, type MarketingTemplateId } from './TemplateThumbnail'
 import { Marquee } from './Marquee'
 
@@ -17,7 +18,7 @@ const TEMPLATES: {
 export function TemplatesShowcaseSection() {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-      <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">Templates Designed by Recruiters</h2>
+      <h2 className="text-center text-3xl font-medium tracking-tight text-fg-heading">Templates Designed by Recruiters</h2>
       <div className="mt-10">
         <Marquee
           ariaLabel="Template previews"
@@ -25,7 +26,7 @@ export function TemplatesShowcaseSection() {
           items={TEMPLATES.map(({ id, label, colors }) => (
             <div key={id} className="text-center">
               <TemplateThumbnail templateId={id} height={360} colors={colors} decorative={false} />
-              <p className="mt-3 text-sm font-medium text-gray-700">{label}</p>
+              <p className="mt-3 text-sm font-medium text-fg-body">{label}</p>
             </div>
           ))}
         />
@@ -33,7 +34,7 @@ export function TemplatesShowcaseSection() {
       <div className="mt-8 text-center">
         <Link
           href="/signin"
-          className="inline-block rounded-lg border border-indigo-200 bg-white/70 px-6 py-3 text-base font-semibold text-indigo-700 backdrop-blur-xl transition hover:bg-indigo-50"
+          className={buttonClasses({ variant: 'secondary', size: 'md', className: 'px-6 text-base' })}
         >
           Sign Up to Browse Templates
         </Link>

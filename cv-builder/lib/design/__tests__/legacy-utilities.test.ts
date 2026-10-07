@@ -57,18 +57,7 @@ const BASELINE: Record<string, number> = {
   'app/privacy/page.tsx': 36,
   'app/terms/page.tsx': 34,
   'components/editor/design/SegmentedControl.tsx': 1,
-  'components/marketing/FaqSection.tsx': 8,
-  'components/marketing/FeaturesSection.tsx': 12,
-  'components/marketing/FinalCtaSection.tsx': 13,
-  'components/marketing/HeroSection.tsx': 30,
-  'components/marketing/HowItWorksSection.tsx': 10,
-  'components/marketing/JobSearchSection.tsx': 34,
   'components/marketing/LegalPageShell.tsx': 8,
-  'components/marketing/MarketingFooter.tsx': 12,
-  'components/marketing/MarketingNavActions.tsx': 16,
-  'components/marketing/TemplateThumbnail.tsx': 3,
-  'components/marketing/TemplatesShowcaseSection.tsx': 9,
-  'components/marketing/TestimonialsSection.tsx': 13,
   'components/ui/AppNavbar.tsx': 1,
 }
 

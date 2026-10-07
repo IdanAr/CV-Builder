@@ -2,20 +2,20 @@ import Link from 'next/link'
 
 export function MarketingFooter() {
   return (
-    <footer className="border-t border-white/40 bg-white/40 backdrop-blur-xl">
+    <footer className="border-t border-border bg-surface">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <span className="text-sm font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+        <span className="text-sm font-medium text-primary">
           CV Builder
         </span>
-        <p className="text-sm text-gray-500">&copy; {new Date().getFullYear()} CV Builder. All rights reserved.</p>
+        <p className="text-sm text-fg-muted">&copy; {new Date().getFullYear()} CV Builder. All rights reserved.</p>
         <nav aria-label="Footer" className="flex items-center gap-4">
-          <Link href="/privacy" className="text-sm font-medium text-indigo-700 hover:text-indigo-900">
+          <Link href="/privacy" className="inline-flex min-h-10 items-center rounded-chip text-sm font-medium text-fg-body underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-0">
             Privacy Policy
           </Link>
-          <Link href="/terms" className="text-sm font-medium text-indigo-700 hover:text-indigo-900">
+          <Link href="/terms" className="inline-flex min-h-10 items-center rounded-chip text-sm font-medium text-fg-body underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-0">
             Terms of Use
           </Link>
-          <Link href="/signin" className="text-sm font-medium text-indigo-700 hover:text-indigo-900">
+          <Link href="/signin" className="inline-flex min-h-10 items-center rounded-chip text-sm font-medium text-fg-body underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-0">
             Sign In
           </Link>
         </nav>
