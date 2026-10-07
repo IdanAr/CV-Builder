@@ -324,25 +324,13 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
   function renderPreviewPanelBody(showExpandToggle: boolean) {
     return (
       <>
-        <div className="flex items-center gap-2 px-3 h-12 border-b border-border bg-surface shrink-0">
-          <span className="text-xs font-medium text-fg-muted flex-1">Live Preview</span>
-          {showExpandToggle && (
-            <button
-              onClick={() => setPreviewExpanded((v) => !v)}
-              title={previewExpanded ? 'Collapse preview' : 'Expand preview'}
-              aria-label={previewExpanded ? 'Collapse preview' : 'Expand preview'}
-              className={`flex items-center justify-center min-h-[40px] min-w-[40px] text-sm border rounded px-2 py-1 transition-colors ${
-                previewExpanded
-                  ? 'border-accent-400 bg-surface-subtle text-accent-600'
-                  : 'border-border text-fg-muted hover:bg-surface-subtle'
-              }`}
-            >
-              ⛶
-            </button>
-          )}
-        </div>
         <div className="flex-1 overflow-hidden flex flex-col">
-          <EditorErrorBoundary><PreviewTab interactive={!previewExpanded} /></EditorErrorBoundary>
+          <EditorErrorBoundary><PreviewTab
+              interactive={!previewExpanded}
+              expandable={showExpandToggle}
+              expanded={previewExpanded}
+              onToggleExpand={() => setPreviewExpanded((v) => !v)}
+            /></EditorErrorBoundary>
         </div>
       </>
     )

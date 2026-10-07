@@ -21,8 +21,27 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('./EditTab', () => ({ EditTab: () => <div>EditTabContent</div> }))
 vi.mock('./PreviewTab', () => ({
-  PreviewTab: ({ interactive }: { interactive?: boolean }) => (
-    <div data-testid="preview-tab-mock" data-interactive={String(interactive)}>PreviewTabContent</div>
+  PreviewTab: ({
+    interactive,
+    expandable,
+    expanded,
+    onToggleExpand,
+  }: {
+    interactive?: boolean
+    expandable?: boolean
+    expanded?: boolean
+    onToggleExpand?: () => void
+  }) => (
+    <div data-testid="preview-tab-mock" data-interactive={String(interactive)} data-expandable={String(expandable)}>
+      PreviewTabContent
+      {expandable && (
+        <button
+          title={expanded ? 'Collapse preview' : 'Expand preview'}
+          aria-label={expanded ? 'Collapse preview' : 'Expand preview'}
+          onClick={onToggleExpand}
+        />
+      )}
+    </div>
   ),
 }))
 // Real TemplateGrid, so the `active` wiring from the shell is observable as
@@ -397,6 +416,13 @@ describe('EditorShell — mobile layout (below breakpoint)', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Preview' }))
     expect(screen.queryByText('EditTabContent')).not.toBeInTheDocument()
     expect(screen.getByText('PreviewTabContent')).toBeInTheDocument()
+  })
+
+  it('does not offer the expand toggle on mobile, and has no Live Preview strip', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Preview' }))
+    expect(screen.getByTestId('preview-tab-mock')).toHaveAttribute('data-expandable', 'false')
+    expect(screen.queryByText('Live Preview')).not.toBeInTheDocument()
   })
 
   it('switching back to Edit restores the edit panel', () => {

@@ -6,7 +6,8 @@ import { useDebounce } from '@/lib/hooks/use-debounce'
 import { usePdfPagination } from '@/lib/hooks/use-pdf-pagination'
 import { resolveAnchorTops, type ResolvedBreak } from '@/lib/preview-anchor'
 import { PreviewEditOverlay } from './PreviewEditOverlay'
-import { Popover } from '@/components/ui/Popover'
+import { PreviewToolbar } from './PreviewToolbar'
+import { useFormatScore } from '@/lib/editor/use-format-score'
 import { ClassicTemplate } from '@/components/templates/ClassicTemplate'
 import { ModernTemplate } from '@/components/templates/ModernTemplate'
 import { MinimalTemplate } from '@/components/templates/MinimalTemplate'
@@ -24,18 +25,27 @@ const TEMPLATES: Record<string, React.ComponentType<{ data: ResumeData; meta: Re
 }
 
 const ZOOM_STORAGE_KEY = 'cv-builder:preview-zoom'
-const MIN_ZOOM = 0.25
-const MAX_ZOOM = 2.0
+// User-facing zoom range (buttons, presets, stored value).
+const USER_MIN_ZOOM = 0.5
+const USER_MAX_ZOOM = 1.5
+// Auto-fit has its own, lower floor — see fitScaleFor.
+const FIT_MIN = 0.25
+const FIT_MAX = 1
 const ZOOM_STEP = 0.1
 const ZOOM_PRESETS = [0.5, 0.75, 1.0, 1.25, 1.5]
 
+function clampRange(z: number, min: number, max: number): number {
+  return Math.round(Math.min(max, Math.max(min, z)) * 100) / 100
+}
+
 function clampZoom(z: number): number {
-  return Math.round(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z)) * 100) / 100
+  return clampRange(z, USER_MIN_ZOOM, USER_MAX_ZOOM)
 }
 
 /**
- * Auto-fit scale for a container width, clamped to the same range as every
- * user-facing zoom control.
+ * Auto-fit scale for a container width, clamped to 0.25..1. The floor is lower
+ * than the 0.5 user-zoom floor on purpose: a narrow phone container genuinely
+ * needs a smaller page to fit, but the clamp itself must stay (see below).
  *
  * The clamp is load-bearing, not defensive tidying. `resolveAnchorTops` keeps
  * a break only when its measured position clears `minGap`, a fixed 200
@@ -45,12 +55,12 @@ function clampZoom(z: number): number {
  * no divider is drawn at all. Measured at scale 0.15 (a container under ~183px
  * wide), where the page-1 divider disappears entirely.
  *
- * Every other path into `scale` already goes through `clampZoom`; this one
- * came straight from the container width and could reach 0, or go negative for
- * a container narrower than the 64px padding.
+ * Every other path into `scale` goes through `clampZoom`; this one came
+ * straight from the container width and could reach 0, or go negative for a
+ * container narrower than the 64px padding.
  */
 export function fitScaleFor(clientWidth: number): number {
-  return clampZoom(Math.min(1, (clientWidth - 64) / A4_WIDTH_PX))
+  return clampRange((clientWidth - 64) / A4_WIDTH_PX, FIT_MIN, FIT_MAX)
 }
 
 export interface PreviewTabProps {
@@ -58,14 +68,24 @@ export interface PreviewTabProps {
   // used for Expanded Preview mode, where the point is a clean, unobstructed
   // look at the résumé rather than an editing surface.
   interactive?: boolean
+  // Expand/collapse toggle, rendered in the toolbar. Owned by EditorShell.
+  expandable?: boolean
+  expanded?: boolean
+  onToggleExpand?: () => void
 }
 
-export function PreviewTab({ interactive = true }: PreviewTabProps) {
+export function PreviewTab({
+  interactive = true,
+  expandable = false,
+  expanded = false,
+  onToggleExpand,
+}: PreviewTabProps) {
   const data = useResumeEditorStore((s) => s.data)
   const meta = useResumeEditorStore((s) => s.meta)
   const debouncedData = useDebounce(data, 300)
   const debouncedMeta = useDebounce(meta, 300)
   const pagination = usePdfPagination(data, meta)
+  const formatScore = useFormatScore()
 
   const containerRef = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -136,11 +156,11 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
   const estimatedPageCount = estimates.length + 1
 
   function handleZoomIn() {
-    applyZoom(clampZoom((zoomOverride ?? fitScale) + ZOOM_STEP))
+    applyZoom(clampZoom(scale + ZOOM_STEP))
   }
 
   function handleZoomOut() {
-    applyZoom(clampZoom((zoomOverride ?? fitScale) - ZOOM_STEP))
+    applyZoom(clampZoom(scale - ZOOM_STEP))
   }
 
   function applyZoom(z: number | null) {
@@ -183,110 +203,64 @@ export function PreviewTab({ interactive = true }: PreviewTabProps) {
         ? `${estimatedPageCount} page${estimatedPageCount === 1 ? '' : 's'} (estimated)`
         : 'Calculating pages…'
 
+  const zoomMenu = (
+    <div
+      role="listbox"
+      data-testid="zoom-menu"
+      className="min-w-[80px] rounded-control border border-border bg-surface py-1 shadow-md"
+    >
+      {ZOOM_PRESETS.map((p) => (
+        <button
+          key={p}
+          type="button"
+          role="option"
+          aria-selected={zoomOverride === p}
+          onClick={() => handlePresetSelect(p)}
+          className="block min-h-8 w-full px-3 py-1 text-left text-xs text-fg-body hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {Math.round(p * 100)}%
+        </button>
+      ))}
+      <button
+        type="button"
+        role="option"
+        aria-selected={zoomOverride === null}
+        onClick={() => handlePresetSelect(null)}
+        className="block min-h-8 w-full border-t border-border px-3 py-1 text-left text-xs text-fg-body hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Fit
+      </button>
+    </div>
+  )
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
+      <PreviewToolbar
+        pageText={badgeText}
+        formatScore={formatScore}
+        zoomLabel={zoomOverride === null ? 'Fit' : `${Math.round(zoomOverride * 100)}%`}
+        canZoomIn={scale < USER_MAX_ZOOM}
+        canZoomOut={scale > USER_MIN_ZOOM}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onFit={() => applyZoom(null)}
+        fitActive={zoomOverride === null}
+        zoomMenu={zoomMenu}
+        zoomMenuOpen={zoomMenuOpen}
+        onZoomMenuOpenChange={setZoomMenuOpen}
+        expandable={expandable}
+        expanded={expanded}
+        onToggleExpand={onToggleExpand}
+      />
       <div className="relative flex-1 min-h-0">
-        {/* Pagination status badge — floats over the preview, does not scroll */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 8,
-            right: 16,
-            zIndex: 20,
-            background: 'rgb(var(--color-surface-selected))',
-            color: 'rgb(var(--color-accent-700) / 0.9)',
-            fontSize: '11px',
-            padding: '3px 10px',
-            borderRadius: '9999px',
-            fontFamily: 'sans-serif',
-            userSelect: 'none',
-            pointerEvents: 'none',
-          }}
-        >
-          {badgeText}
-        </div>
-
-        {/* Screen-reader-only mirror of the badge above — the visible badge is
-            pointer-events:none/decorative and never announced on its own. */}
-        <span aria-live="polite" className="sr-only">
-          {badgeText}
-        </span>
-
-        {/* Floating zoom toolbar — overlays the preview */}
-        <div className="absolute bottom-4 right-4 z-30 flex items-center gap-1 rounded-full bg-surface shadow-lg ring-1 ring-accent-100 px-2 py-1.5">
-          <button
-            type="button"
-            aria-label="Zoom out"
-            data-testid="zoom-out"
-            onClick={handleZoomOut}
-            disabled={scale <= MIN_ZOOM}
-            className="flex items-center justify-center min-h-[40px] min-w-[40px] text-sm rounded-full text-accent-600 hover:bg-accent-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            −
-          </button>
-          <Popover
-            open={zoomMenuOpen}
-            onOpenChange={setZoomMenuOpen}
-            trigger={
-              <button
-                type="button"
-                aria-haspopup="listbox"
-                aria-expanded={zoomMenuOpen}
-                data-testid="zoom-percentage"
-                className="flex items-center justify-center min-h-[28px] px-2 text-xs rounded-full text-accent-600 hover:bg-accent-50 transition-colors tabular-nums"
-              >
-                {zoomOverride === null ? 'Fit' : `${Math.round(zoomOverride * 100)}%`}
-              </button>
-            }
-          >
-            <div
-              role="listbox"
-              data-testid="zoom-menu"
-              className="bg-white border border-accent-200 rounded shadow-md py-1 min-w-[80px]"
-            >
-              {ZOOM_PRESETS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  role="option"
-                  aria-selected={zoomOverride === p}
-                  onClick={() => handlePresetSelect(p)}
-                  className="block w-full text-left px-3 py-1 text-xs text-accent-600 hover:bg-accent-50"
-                >
-                  {Math.round(p * 100)}%
-                </button>
-              ))}
-              <button
-                type="button"
-                role="option"
-                aria-selected={zoomOverride === null}
-                onClick={() => handlePresetSelect(null)}
-                className="block w-full text-left px-3 py-1 text-xs text-accent-600 hover:bg-accent-50 border-t border-accent-100"
-              >
-                Fit
-              </button>
-            </div>
-          </Popover>
-          <button
-            type="button"
-            aria-label="Zoom in"
-            data-testid="zoom-in"
-            onClick={handleZoomIn}
-            disabled={scale >= MAX_ZOOM}
-            className="flex items-center justify-center min-h-[40px] min-w-[40px] text-sm rounded-full text-accent-600 hover:bg-accent-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            +
-          </button>
-        </div>
-
         <div
           ref={containerRef}
-          className="h-full overflow-auto bg-neutral-200/60 flex justify-center py-10"
+          className="h-full overflow-auto bg-surface-muted flex justify-center py-10"
         >
           {/* Outer wrapper sized to post-scale visual dimensions so the scroll container tracks content correctly */}
           <div
             ref={wrapperRef}
-            className="shadow-2xl ring-1 ring-neutral-900/10 bg-white"
+            className="shadow-sm ring-1 ring-black/5 bg-white"
             style={{
               position: 'relative',
               width: A4_WIDTH_PX * scale,
