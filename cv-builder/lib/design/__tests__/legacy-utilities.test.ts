@@ -53,7 +53,6 @@ const fmt = (b: Record<string, number>) =>
 
 // Keys are repo-relative with forward slashes. Copy counts from the test output; never hand-edit.
 const BASELINE: Record<string, number> = {
-  'app/(auth)/signin/page.tsx': 24,
   'components/editor/design/SegmentedControl.tsx': 1,
 }
 
