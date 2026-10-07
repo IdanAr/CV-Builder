@@ -6,6 +6,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { History } from 'lucide-react'
 import type { ActivityEntry } from '@/lib/applications/types'
 import { formatRelativeTime } from '@/lib/format-relative-time'
+import { Button } from '@/components/ui/Button'
 
 export function formatActivityLine(entry: ActivityEntry): string {
   const from = entry.fromValue === null ? '-' : `'${entry.fromValue}'`
@@ -83,26 +84,26 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="icon"
         aria-label={`Activity log for application at ${company || 'unknown company'}`}
         aria-expanded={open}
         title="Activity log"
         onClick={() => setOpen((o) => !o)}
-        className="rounded px-1 py-0.5 text-xs text-fg-muted hover:bg-accent-50 hover:text-fg-body"
       >
         <History className="h-4 w-4" aria-hidden="true" />
-      </button>
+      </Button>
       {open && (
         <div
           ref={panelRef}
           role="status"
           aria-live="polite"
-          className={`absolute right-0 z-30 max-h-72 w-80 overflow-y-auto rounded-lg border border-accent-100 bg-white p-2 shadow-xl ${
+          className={`absolute right-0 z-30 max-h-72 w-80 overflow-y-auto rounded-card border border-border bg-surface p-2 shadow-popover ${
             openUpward ? 'bottom-full mb-1' : 'top-full mt-1'
           }`}
         >
-          <p className="px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-fg-muted">
+          <p className="px-1 pb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
             Activity
           </p>
           {error && (
@@ -113,14 +114,14 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
           )}
           {entries !== null && entries.length === 0 && (
             <p className="px-1 py-2 text-sm text-fg-muted">
-              No changes yet - edits to this application will appear here.
+              No changes yet: edits to this application will appear here.
             </p>
           )}
           {entries !== null &&
             entries.map((entry) => (
-              <div key={entry._id} className="border-t border-accent-50 px-1 py-1.5 first:border-t-0">
+              <div key={entry._id} className="border-t border-border px-1 py-1.5 first:border-t-0">
                 <p className="text-sm text-fg">{formatActivityLine(entry)}</p>
-                <p className="mt-0.5 text-xs text-fg-muted">
+                <p className="mt-0.5 text-xs tabular-nums text-fg-muted">
                   {formatRelativeTime(entry.changedAt)}
                 </p>
               </div>
@@ -129,7 +130,7 @@ export function ActivityLog({ applicationId, company }: { applicationId: string;
             // Says so rather than presenting a capped list as the full
             // history. The read is bounded because this log grows without
             // limit on a heavily-edited row.
-            <p className="border-t border-accent-50 px-1 pt-2 text-xs text-fg-muted">
+            <p className="border-t border-border px-1 pt-2 text-xs text-fg-muted">
               Showing the most recent changes only.
             </p>
           )}
