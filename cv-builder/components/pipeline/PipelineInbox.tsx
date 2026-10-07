@@ -110,7 +110,8 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
   )
   // Follow the URL when it changes elsewhere (back/forward), but never fight typing.
   useEffect(() => {
-    if (queryTimerRef.current === null) setQuery(view.q)
+    // pipelineHref trims q, so compare ignoring trim or a trailing space would be eaten.
+    if (queryTimerRef.current === null) setQuery((prev) => (prev.trim() === view.q ? prev : view.q))
   }, [view.q])
 
   const selected = jobs.items.find((j) => j._id === view.job) ?? null

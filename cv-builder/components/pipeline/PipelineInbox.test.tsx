@@ -120,6 +120,27 @@ describe('PipelineInbox', () => {
     expect(replace).toHaveBeenCalledWith('/dashboard/jobsearch?stage=found&q=react', { scroll: false })
   })
 
+  it('keeps a trailing space in the search box after the debounce writes the trimmed q', () => {
+    vi.useFakeTimers()
+    setup(initial('found', [mk('a')]))
+    const input = screen.getByRole('searchbox') as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'foo ' } })
+    act(() => { vi.advanceTimersByTime(250) })
+    expect(replace).toHaveBeenLastCalledWith('/dashboard/jobsearch?stage=found&q=foo', { scroll: false })
+    expect(input.value).toBe('foo ')
+  })
+
+  it('still syncs the search box when the URL q changes externally', () => {
+    setup(initial('found', [mk('a')]), { params: 'stage=found&q=foo' })
+    const input = screen.getByRole('searchbox') as HTMLInputElement
+    expect(input.value).toBe('foo')
+    act(() => {
+      nav.current = new URLSearchParams('stage=found&q=bar')
+      nav.listeners.forEach((l) => l())
+    })
+    expect(input.value).toBe('bar')
+  })
+
   it('J/K move the selection and are ignored while typing in search', () => {
     setup(initial('found', [mk('a'), mk('b'), mk('c')]))
     fireEvent.keyDown(document.body, { key: 'j' })
