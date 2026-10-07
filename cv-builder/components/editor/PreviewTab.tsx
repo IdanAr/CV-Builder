@@ -257,6 +257,7 @@ export function PreviewTab({
           ref={containerRef}
           className="h-full overflow-auto bg-surface-muted flex justify-center py-10"
         >
+          {/* The paper is deliberately white (bg-surface); make it a dedicated `paper` token if dark mode ever lands. */}
           {/* Outer wrapper sized to post-scale visual dimensions so the scroll container tracks content correctly */}
           <div
             ref={wrapperRef}

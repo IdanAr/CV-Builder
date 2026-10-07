@@ -147,7 +147,7 @@ function ItemForm({ item, enabledFields, resumeId, onUpdate, onRemove }: ItemFor
                 {kw}
                 <button type="button"
                   onClick={() => setArr('keywords', (item.keywords ?? []).filter((_, idx) => idx !== i))}
-                  className="hover:text-fg-danger">×</button>
+                  className="rounded-full hover:text-fg-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10">×</button>
               </span>
             ))}
           </div>
@@ -298,7 +298,7 @@ function RoleForm({
                 {kw}
                 <button type="button"
                   onClick={() => setArr('keywords', (role.keywords ?? []).filter((_, idx) => idx !== i))}
-                  className="hover:text-fg-danger">×</button>
+                  className="rounded-full hover:text-fg-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10">×</button>
               </span>
             ))}
           </div>
@@ -361,7 +361,7 @@ export function CustomSectionForm({ sectionId }: { sectionId: string }) {
               type="button"
               onClick={() => toggleField(field)}
               aria-pressed={active}
-              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
+              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 ${
                 active
                   ? 'bg-primary border-primary text-primary-fg'
                   : 'bg-surface border-border text-fg-muted hover:border-primary'

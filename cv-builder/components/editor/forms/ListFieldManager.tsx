@@ -252,7 +252,7 @@ export function ListFieldManager<T>({
                     type="button"
                     data-testid={`list-drag-handle-${instanceId}-${i}`}
                     aria-label="Drag to reorder"
-                    className="shrink-0 py-1 px-0.5 text-fg-subtle hover:text-fg-body cursor-grab select-none"
+                    className="shrink-0 py-1 px-0.5 rounded-control text-fg-subtle hover:text-fg-body cursor-grab select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10"
                     {...listeners}
                     {...attributes}
                   >

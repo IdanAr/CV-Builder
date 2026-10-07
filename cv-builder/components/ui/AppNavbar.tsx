@@ -46,7 +46,7 @@ export function AppNavbar({
           <Link
             href={homeHref}
             aria-label="CV Builder home"
-            className="order-first mr-auto flex items-center gap-2 rounded-control pointer-events-auto transition-colors hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:absolute md:left-1/2 md:top-1/2 md:order-none md:mr-0 md:-translate-x-1/2 md:-translate-y-1/2 md:z-20"
+            className="order-first mr-auto flex items-center gap-2 rounded-control pointer-events-auto transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:absolute md:left-1/2 md:top-1/2 md:order-none md:mr-0 md:-translate-x-1/2 md:-translate-y-1/2 md:z-20"
           >
             <span
               aria-hidden="true"

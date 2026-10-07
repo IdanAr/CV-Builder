@@ -65,7 +65,7 @@ export function CvLibrary({ rows, initialView }: { rows: CvRow[]; initialView: C
                 className={cn(
                   'inline-flex min-h-8 items-center gap-1.5 rounded-chip px-2.5 text-sm transition-colors',
                   'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  pressed ? 'bg-surface-selected text-fg-body' : 'text-fg-muted hover:text-fg-heading'
+                  pressed ? 'bg-surface-selected font-medium text-fg-body' : 'text-fg-muted hover:text-fg-heading'
                 )}
               >
                 <Icon aria-hidden="true" className="h-4 w-4" />

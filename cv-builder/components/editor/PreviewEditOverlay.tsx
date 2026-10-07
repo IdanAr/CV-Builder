@@ -615,8 +615,8 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
                     marginTop: 4,
                     borderRadius: 8,
                     border: '1px solid rgb(var(--color-ring) / 0.2)',
-                    background: '#fff',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    background: 'rgb(var(--color-surface))',
+                    boxShadow: '0 4px 12px rgb(var(--color-fg-heading) / 0.12)',
                     overflow: 'hidden',
                     minWidth: 180,
                   }}
@@ -625,7 +625,7 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
                     type="button"
                     role="menuitem"
                     onClick={handleAddCustomSection}
-                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 13, color: '#312e81', background: 'none', border: 'none', cursor: 'pointer' }}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 13, color: 'rgb(var(--color-fg-heading))', background: 'none', border: 'none', cursor: 'pointer' }}
                   >
                     + New custom section
                   </button>
@@ -635,7 +635,7 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
                       type="button"
                       role="menuitem"
                       onClick={() => handleReAddBuiltIn(k)}
-                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 13, color: '#312e81', background: 'none', border: 'none', cursor: 'pointer' }}
+                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 13, color: 'rgb(var(--color-fg-heading))', background: 'none', border: 'none', cursor: 'pointer' }}
                     >
                       {SECTION_LABELS[k]}
                     </button>
@@ -653,7 +653,7 @@ export function PreviewEditOverlay({ innerRef, wrapperRef, scale, sectionOrder, 
               padding: '4px 10px',
               borderRadius: 6,
               background: 'rgb(var(--color-primary-hover) / 0.9)',
-              color: '#fff',
+              color: 'rgb(var(--color-primary-fg))',
               fontSize: 12,
               fontFamily: 'sans-serif',
               whiteSpace: 'nowrap',
