@@ -54,6 +54,23 @@ export function FontSection() {
     else if (e.key === 'End') { e.preventDefault(); move(PAIRINGS.length - 1) }
   }
 
+  const fontRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const currentIndex = FONT_NAMES.indexOf(current)
+  const fontTabbable = currentIndex === -1 ? 0 : currentIndex
+
+  function moveFont(to: number) {
+    const next = (to + FONT_NAMES.length) % FONT_NAMES.length
+    chooseFont(FONT_NAMES[next])
+    fontRefs.current[next]?.focus()
+  }
+
+  function onFontKeyDown(e: React.KeyboardEvent, i: number) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); moveFont(i + 1) }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); moveFont(i - 1) }
+    else if (e.key === 'Home') { e.preventDefault(); moveFont(0) }
+    else if (e.key === 'End') { e.preventDefault(); moveFont(FONT_NAMES.length - 1) }
+  }
+
   function chooseFont(name: string) {
     if (name === current) return
     setMeta(target === 'body' ? { fontFamily: name } : { headerFontFamily: name })
@@ -107,15 +124,18 @@ export function FontSection() {
           aria-label={target === 'body' ? 'Fonts for body' : 'Fonts for headings'}
           className="flex flex-col gap-1"
         >
-          {FONT_NAMES.map((name) => {
+          {FONT_NAMES.map((name, i) => {
             const checked = name === current
             return (
               <button
                 key={name}
+                ref={(el) => { fontRefs.current[i] = el }}
                 type="button"
                 role="radio"
                 aria-checked={checked}
+                tabIndex={i === fontTabbable ? 0 : -1}
                 onClick={() => chooseFont(name)}
+                onKeyDown={(e) => onFontKeyDown(e, i)}
                 style={{ fontFamily: webFontFamily(name) }}
                 className={cn(
                   'min-h-10 w-full rounded-control border px-3 text-left text-sm text-fg sm:min-h-8',
