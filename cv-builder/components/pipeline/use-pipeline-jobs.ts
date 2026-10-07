@@ -32,10 +32,14 @@ export interface UsePipelineJobs {
 const LOAD_ERROR = 'Failed to load jobs.'
 const EMPTY_SET: ReadonlySet<string> = new Set()
 
-function buildUrl(view: ViewKey, cursor?: string): string {
+const PAGE_SIZE = 30
+const MAX_PAGE_SIZE = 50
+
+function buildUrl(view: ViewKey, cursor?: string, limit?: number): string {
   const p = new URLSearchParams({ stage: view.stage })
   if (view.profile) p.set('profileId', view.profile)
   if (view.q.trim()) p.set('q', view.q.trim())
+  if (limit) p.set('limit', String(limit))
   if (cursor) p.set('cursor', cursor)
   return `/api/jobsearch/scraped-jobs?${p.toString()}`
 }
@@ -78,6 +82,8 @@ export function usePipelineJobs(view: ViewKey, initial?: PipelineInitial): UsePi
   // pending view load; a view load does invalidate refreshes.
   const refreshIdRef = useRef(0)
   const viewPendingRef = useRef(false)
+  // A refresh that arrived while a view load was pending; replayed once that load applies.
+  const refreshQueuedRef = useRef(false)
   const controllerRef = useRef<AbortController | null>(null)
   // The view whose data `items` currently holds; lets a seeded first render skip the fetch.
   const loadedKeyRef = useRef<string | null>(seeded ? viewKey : null)
@@ -113,17 +119,28 @@ export function usePipelineJobs(view: ViewKey, initial?: PipelineInitial): UsePi
   const loadFirstPage = useCallback(
     async (target: ViewKey, fromView: boolean, signal?: AbortSignal) => {
       // A refresh while a view load is pending would only fetch the same page.
-      if (!fromView && viewPendingRef.current) return
+      if (!fromView && viewPendingRef.current) {
+        refreshQueuedRef.current = true
+        return
+      }
       const viewId = fromView ? ++requestIdRef.current : requestIdRef.current
       const refreshId = ++refreshIdRef.current
       if (fromView) viewPendingRef.current = true
       const stale = () =>
         requestIdRef.current !== viewId || (!fromView && refreshIdRef.current !== refreshId)
       try {
-        const res = await fetch(buildUrl(target), { signal })
+        // A refresh re-reads as many rows as are loaded (up to the page cap) so
+        // triaging on page 2+ does not collapse the list back to page 1.
+        const limit = fromView
+          ? undefined
+          : Math.min(Math.max(itemsRef.current.length, PAGE_SIZE), MAX_PAGE_SIZE)
+        const res = await fetch(buildUrl(target, undefined, limit), { signal })
         if (stale()) return
         if (!res.ok) {
-          if (fromView) viewPendingRef.current = false
+          if (fromView) {
+            viewPendingRef.current = false
+            refreshQueuedRef.current = false
+          }
           setError(LOAD_ERROR)
           if (fromView || itemsRef.current.length === 0) setStatus('error')
           return
@@ -131,6 +148,7 @@ export function usePipelineJobs(view: ViewKey, initial?: PipelineInitial): UsePi
         const body = (await res.json()) as PipelinePageDto
         if (stale()) return
         if (fromView) viewPendingRef.current = false
+        itemsRef.current = body.items
         setItems(body.items)
         setNextCursor(body.nextCursor)
         setCounts(body.counts)
@@ -145,11 +163,20 @@ export function usePipelineJobs(view: ViewKey, initial?: PipelineInitial): UsePi
               ? body.items.filter((j) => j.status === 'new').map((j) => j._id)
               : []
           setUnreadIds(unread.length ? new Set(unread) : EMPTY_SET)
-          if (unread.length) markRead(target.profile)
+          // Gate on the server's count, not on page 1: unread rows may sit past it.
+          if (target.stage === 'matched' && body.counts.matchedUnread > 0) markRead(target.profile)
+          // Replay a refresh that was skipped while this load was pending. A refresh never marks read.
+          if (refreshQueuedRef.current) {
+            refreshQueuedRef.current = false
+            void loadFirstPage(target, false)
+          }
         }
       } catch (err) {
         if (isAbort(err) || stale()) return
-        if (fromView) viewPendingRef.current = false
+        if (fromView) {
+          viewPendingRef.current = false
+          refreshQueuedRef.current = false
+        }
         setError(LOAD_ERROR)
         if (fromView || itemsRef.current.length === 0) setStatus('error')
       }
@@ -162,7 +189,7 @@ export function usePipelineJobs(view: ViewKey, initial?: PipelineInitial): UsePi
     if (loadedKeyRef.current === viewKey) {
       if (!initialMarkedRef.current && seeded && view.stage === 'matched') {
         initialMarkedRef.current = true
-        if (seeded.items.some((j) => j.status === 'new')) markRead(view.profile)
+        if (seeded.counts.matchedUnread > 0) markRead(view.profile)
       }
       return
     }
@@ -177,6 +204,7 @@ export function usePipelineJobs(view: ViewKey, initial?: PipelineInitial): UsePi
     setUnreadIds(EMPTY_SET)
     loadedKeyRef.current = null
     viewPendingRef.current = false
+    refreshQueuedRef.current = false
     setStatus('loading')
     void loadFirstPage(viewRef.current, true, controller.signal)
     return () => {

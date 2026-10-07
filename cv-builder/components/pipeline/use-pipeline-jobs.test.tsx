@@ -286,4 +286,101 @@ describe('usePipelineJobs', () => {
     expect(urlsOf()).toHaveLength(1)
     expect(fetchMock.mock.calls.filter((c) => String(c[0]).includes('mark-read'))).toHaveLength(1)
   })
+
+  describe('unread badge gating', () => {
+    const markCalls = () => fetchMock.mock.calls.filter((c) => String(c[0]).includes('mark-read'))
+
+    it('marks read from counts.matchedUnread even when page 1 has no new rows', async () => {
+      const counts = { ...COUNTS, matchedUnread: 3 }
+      fetchMock.mockImplementation(async (u: string) =>
+        u.includes('mark-read') ? ok({}) : ok(page([job('a', { status: 'notified' })], 'c1', counts)))
+      const { result } = renderHook(() => usePipelineJobs(view({ stage: 'matched' })))
+      await waitFor(() => expect(result.current.status).toBe('ready'))
+      await waitFor(() => expect(markCalls()).toHaveLength(1))
+      expect(markCalls()[0][1].body).toBe('{}')
+      expect([...result.current.unreadIds]).toEqual([])
+      await act(async () => {})
+      expect(markCalls()).toHaveLength(1)
+    })
+
+    it('does not mark read when counts report no unread, even if a row says new', async () => {
+      const counts = { ...COUNTS, matchedUnread: 0 }
+      fetchMock.mockImplementation(async (u: string) =>
+        u.includes('mark-read') ? ok({}) : ok(page([job('a', { status: 'new' })], null, counts)))
+      const { result } = renderHook(() => usePipelineJobs(view({ stage: 'matched' })))
+      await waitFor(() => expect(result.current.status).toBe('ready'))
+      await act(async () => {})
+      expect(markCalls()).toHaveLength(0)
+    })
+
+    it('seeded view marks read from initial counts without new rows on page 1, and not when zero', async () => {
+      fetchMock.mockResolvedValue(ok({}))
+      const seed = (matchedUnread: number): PipelineInitial => ({
+        view: view({ stage: 'matched' }),
+        items: [job('a', { status: 'notified' })],
+        nextCursor: 'c1',
+        counts: { ...COUNTS, matchedUnread },
+      })
+      renderHook(() => usePipelineJobs(view({ stage: 'matched' }), seed(3)))
+      await waitFor(() => expect(markCalls()).toHaveLength(1))
+      fetchMock.mockClear()
+      renderHook(() => usePipelineJobs(view({ stage: 'matched' }), seed(0)))
+      await act(async () => {})
+      expect(markCalls()).toHaveLength(0)
+    })
+  })
+
+  describe('refresh keeps loaded pages', () => {
+    const rows = (n: number) => Array.from({ length: n }, (_, i) => job(`r${i}`))
+
+    it('a revision tick requests as many rows as are loaded, between 30 and 50', async () => {
+      fetchMock.mockResolvedValue(ok(page([])))
+      const seed = (n: number): PipelineInitial => ({ view: view(), items: rows(n), nextCursor: null, counts: COUNTS })
+      const first = renderHook(() => usePipelineJobs(view(), seed(45)))
+      act(() => { notifyScrapedJobsChanged() })
+      await waitFor(() => expect(urlsOf()).toHaveLength(1))
+      expect(urlsOf()[0]).toBe('/api/jobsearch/scraped-jobs?stage=found&limit=45')
+      first.unmount()
+
+      fetchMock.mockClear()
+      const second = renderHook(() => usePipelineJobs(view(), seed(3)))
+      act(() => { notifyScrapedJobsChanged() })
+      await waitFor(() => expect(urlsOf().length).toBeGreaterThan(0))
+      expect(urlsOf().every((u) => u.endsWith('limit=30'))).toBe(true)
+      second.unmount()
+
+      fetchMock.mockClear()
+      renderHook(() => usePipelineJobs(view(), seed(80)))
+      act(() => { notifyScrapedJobsChanged() })
+      await waitFor(() => expect(urlsOf().length).toBeGreaterThan(0))
+      expect(urlsOf().every((u) => u.endsWith('limit=50'))).toBe(true)
+    })
+
+    it('reload() also requests the loaded size', async () => {
+      fetchMock.mockResolvedValue(ok(page([])))
+      const initial: PipelineInitial = { view: view(), items: rows(40), nextCursor: null, counts: COUNTS }
+      const { result } = renderHook(() => usePipelineJobs(view(), initial))
+      await act(async () => { await result.current.reload() })
+      expect(urlsOf()[0]).toBe('/api/jobsearch/scraped-jobs?stage=found&limit=40')
+    })
+
+    it('replays a tick that arrived during a pending view load, without marking read again', async () => {
+      const pending = defer()
+      const counts = { ...COUNTS, matchedUnread: 1 }
+      let dataCalls = 0
+      fetchMock.mockImplementation((u: string) => {
+        if (u.includes('mark-read')) return Promise.resolve(ok({}))
+        dataCalls++
+        return dataCalls === 1 ? pending.promise : Promise.resolve(ok(page([job('a'), job('n')], null, counts)))
+      })
+      const { result } = renderHook(() => usePipelineJobs(view({ stage: 'matched' })))
+      act(() => { notifyScrapedJobsChanged() })
+      expect(dataCalls).toBe(1)
+      await act(async () => { pending.resolve(ok(page([job('a', { status: 'new' })], null, counts))) })
+      await waitFor(() => expect(dataCalls).toBeGreaterThanOrEqual(2))
+      await waitFor(() => expect(result.current.items.map((j) => j._id)).toEqual(['a', 'n']))
+      await act(async () => {})
+      expect(fetchMock.mock.calls.filter((c) => String(c[0]).includes('mark-read'))).toHaveLength(1)
+    })
+  })
 })

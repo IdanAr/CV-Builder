@@ -318,7 +318,9 @@ describe('PipelineInbox', () => {
 
     it('keeps the New chip on unread Matched rows after mark-read', async () => {
       const job = mk('m', { stage: 'matched', status: 'new' })
-      setup(initial('matched', [job]), { params: 'stage=matched' })
+      const seeded = initial('matched', [job])
+      seeded.counts = counts({ matched: 1, matchedUnread: 1 })
+      setup(seeded, { params: 'stage=matched' })
       await waitFor(() => expect(calls('mark-read')).toHaveLength(1))
       // mark-read bumps the revision, which reloads the (now read) page; let that second matched fetch land.
       await waitFor(() => expect(calls('stage=matched')).toHaveLength(1))
