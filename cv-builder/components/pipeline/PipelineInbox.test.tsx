@@ -194,15 +194,24 @@ describe('PipelineInbox', () => {
 
   it('swaps list and detail with CSS-only classes and Back to list drops ?job=', () => {
     const { container, unmount } = setup(initial('found', [mk('a')]))
-    expect(container.querySelector('[data-pipeline-detail]')?.className).toContain('hidden lg:block')
-    expect(container.querySelector('[data-pipeline-list]')?.className).toBe('block')
+    expect(container.querySelector('[data-pipeline-detail]')?.className).toContain('hidden min-w-0 lg:block')
+    expect(container.querySelector('[data-pipeline-list]')?.className).toBe('block min-w-0')
     unmount()
 
     const second = setup(initial('found', [mk('a')]), { params: 'stage=found&job=a' })
-    expect(second.container.querySelector('[data-pipeline-list]')?.className).toContain('hidden lg:block')
-    expect(second.container.querySelector('[data-pipeline-detail]')?.className).toBe('block')
+    expect(second.container.querySelector('[data-pipeline-list]')?.className).toContain('hidden min-w-0 lg:block')
+    expect(second.container.querySelector('[data-pipeline-detail]')?.className).toBe('block min-w-0')
     fireEvent.click(screen.getByRole('button', { name: 'Back to list' }))
     expect(replace).toHaveBeenCalledWith('/dashboard/jobsearch?stage=found')
+  })
+
+  it('keeps the layout grid on an explicit shrinkable track so it cannot overflow narrow screens', () => {
+    const { container } = setup(initial('found', [mk('a')]))
+    const list = container.querySelector('[data-pipeline-list]') as HTMLElement
+    const detail = container.querySelector('[data-pipeline-detail]') as HTMLElement
+    expect(list.parentElement?.className).toContain('grid-cols-[minmax(0,1fr)]')
+    expect(list.className).toContain('min-w-0')
+    expect(detail.className).toContain('min-w-0')
   })
 
   it('scan with a profile filter posts that profile once', async () => {

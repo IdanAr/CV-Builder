@@ -276,8 +276,8 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
         </ErrorBanner>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]">
-        <div data-pipeline-list="" className={view.job ? 'hidden lg:block' : 'block'}>
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]">
+        <div data-pipeline-list="" className={view.job ? 'hidden min-w-0 lg:block' : 'block min-w-0'}>
           <PipelineList
             stage={view.stage}
             status={jobs.status}
@@ -293,7 +293,7 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
             onRetry={() => void jobs.reload()}
           />
         </div>
-        <div ref={detailRef} data-pipeline-detail="" className={view.job ? 'block' : 'hidden lg:block'}>
+        <div ref={detailRef} data-pipeline-detail="" className={view.job ? 'block min-w-0' : 'hidden min-w-0 lg:block'}>
           <JobDetail
             job={selected}
             busy={actions.busyId !== null}
