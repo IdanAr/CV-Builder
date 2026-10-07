@@ -218,6 +218,79 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
     fireEvent.keyDown(divider, { key: 'ArrowRight' })
     expect(localStorage.getItem('cv-builder:panel-width')).toBe(String(initial + 16))
   })
+
+  describe('panel width 320-480', () => {
+    const originalInnerWidth = window.innerWidth
+    function setViewport(w: number) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: w })
+    }
+    afterEach(() => setViewport(originalInnerWidth))
+
+    function divider() {
+      return screen.getByTestId('panel-resize-divider')
+    }
+    function renderShell() {
+      render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    }
+
+    it('defaults to 380px and exposes 320/480 bounds at a wide viewport', () => {
+      setViewport(1280)
+      renderShell()
+      expect(Number(divider().getAttribute('aria-valuenow'))).toBe(380)
+      expect(divider()).toHaveAttribute('aria-valuemin', '320')
+      expect(divider()).toHaveAttribute('aria-valuemax', '480')
+      expect(divider().previousElementSibling).toHaveStyle({ width: '380px' })
+    })
+
+    it('clamps to 320 at a narrow viewport where the 60% cap is below the minimum', () => {
+      setViewport(375)
+      renderShell()
+      expect(divider()).toHaveAttribute('aria-valuemin', '320')
+      expect(divider()).toHaveAttribute('aria-valuemax', '320')
+    })
+
+    it('clamps an old stored 500 down to 480', () => {
+      setViewport(1280)
+      localStorage.setItem('cv-builder:panel-width', '500')
+      renderShell()
+      expect(Number(divider().getAttribute('aria-valuenow'))).toBe(480)
+    })
+
+    it('clamps a stored 100 up to 320', () => {
+      setViewport(1280)
+      localStorage.setItem('cv-builder:panel-width', '100')
+      renderShell()
+      expect(Number(divider().getAttribute('aria-valuenow'))).toBe(320)
+    })
+
+    it('ignores a garbage stored width', () => {
+      setViewport(1280)
+      localStorage.setItem('cv-builder:panel-width', 'abc')
+      renderShell()
+      expect(Number(divider().getAttribute('aria-valuenow'))).toBe(380)
+    })
+
+    it('steps 16 (Shift 64) with the arrow keys, stays within 320-480 and persists', () => {
+      setViewport(1280)
+      renderShell()
+      fireEvent.keyDown(divider(), { key: 'ArrowRight' })
+      expect(Number(divider().getAttribute('aria-valuenow'))).toBe(396)
+      expect(localStorage.getItem('cv-builder:panel-width')).toBe('396')
+      fireEvent.keyDown(divider(), { key: 'ArrowRight', shiftKey: true })
+      expect(Number(divider().getAttribute('aria-valuenow'))).toBe(460)
+      fireEvent.keyDown(divider(), { key: 'ArrowRight', shiftKey: true })
+      expect(Number(divider().getAttribute('aria-valuenow'))).toBe(480)
+      expect(localStorage.getItem('cv-builder:panel-width')).toBe('480')
+      for (let i = 0; i < 4; i++) fireEvent.keyDown(divider(), { key: 'ArrowLeft', shiftKey: true })
+      expect(Number(divider().getAttribute('aria-valuenow'))).toBe(320)
+      expect(localStorage.getItem('cv-builder:panel-width')).toBe('320')
+    })
+
+    it('keeps its accessible name', () => {
+      renderShell()
+      expect(divider()).toHaveAttribute('aria-label', 'Resize editor panel')
+    })
+  })
 })
 
 describe('EditorShell — tab/tabpanel ARIA association', () => {

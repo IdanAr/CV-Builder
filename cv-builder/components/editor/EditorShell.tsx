@@ -24,7 +24,9 @@ type Tab = 'edit' | 'design' | 'ats' | 'coverLetter'
 const TAB_LABELS: Record<Tab, string> = { edit: 'Edit', design: 'Design', ats: 'ATS', coverLetter: 'Cover Letter' }
 
 const PANEL_WIDTH_KEY = 'cv-builder:panel-width'
-const DEFAULT_PANEL_WIDTH = 500 // Increased to give the UI breathing room initially
+const PANEL_MIN = 320
+const PANEL_MAX = 480
+const DEFAULT_PANEL_WIDTH = 380
 
 // Below this width, the resizable side-by-side layout is replaced by a
 // single full-width panel with an Edit/Preview switcher (matches Tailwind's `md`).
@@ -35,14 +37,12 @@ type MobileView = 'edit' | 'preview'
 /** The effective min/max a panel width can be clamped to, given the current viewport. */
 function getPanelWidthBounds(): { min: number; max: number } {
   // Safety check for Next.js SSR
-  if (typeof window === 'undefined') return { min: DEFAULT_PANEL_WIDTH, max: DEFAULT_PANEL_WIDTH }
+  if (typeof window === 'undefined') return { min: PANEL_MIN, max: PANEL_MAX }
 
-  // 1. Prevent squishing on desktop: hard minimum of 500px.
-  // 2. Prevent breaking on mobile: if screen is < 500px, limit the minimum to the screen width.
-  const min = Math.min(500, window.innerWidth)
-
-  // 3. Max width: 60% of the screen, but ensure it never drops below the minimum width.
-  const max = Math.max(min, Math.floor(window.innerWidth * 0.6))
+  // Never wider than the screen on tiny viewports; never above 60% of the
+  // screen or PANEL_MAX, but never below the minimum either.
+  const min = Math.min(PANEL_MIN, window.innerWidth)
+  const max = Math.min(PANEL_MAX, Math.max(min, Math.floor(window.innerWidth * 0.6)))
 
   return { min, max }
 }
@@ -269,7 +269,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
         role="tablist"
         aria-label="Editor sections"
         onKeyDown={handleTablistKeyDown}
-        className="flex border-b border-accent-100 shrink-0 bg-surface"
+        className="flex border-b border-border shrink-0 bg-surface"
       >
         {(['edit', 'design', 'ats', 'coverLetter'] as Tab[]).map((tab) => (
           <button
@@ -320,7 +320,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
   function renderPreviewPanelBody(showExpandToggle: boolean) {
     return (
       <>
-        <div className="flex items-center gap-2 px-3 h-12 border-b border-accent-100 bg-surface shrink-0">
+        <div className="flex items-center gap-2 px-3 h-12 border-b border-border bg-surface shrink-0">
           <span className="text-xs font-medium text-fg-muted flex-1">Live Preview</span>
           {showExpandToggle && (
             <button
@@ -329,8 +329,8 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
               aria-label={previewExpanded ? 'Collapse preview' : 'Expand preview'}
               className={`flex items-center justify-center min-h-[40px] min-w-[40px] text-sm border rounded px-2 py-1 transition-colors ${
                 previewExpanded
-                  ? 'border-accent-400 bg-accent-50 text-accent-600'
-                  : 'border-accent-200 text-fg-muted hover:bg-accent-50'
+                  ? 'border-accent-400 bg-surface-subtle text-accent-600'
+                  : 'border-border text-fg-muted hover:bg-surface-subtle'
               }`}
             >
               ⛶
@@ -375,7 +375,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
               role="tablist"
               aria-label="View"
               onKeyDown={handleTablistKeyDown}
-              className="flex gap-1 p-1 border-b border-accent-100 bg-surface shrink-0"
+              className="flex gap-1 p-1 border-b border-border bg-surface shrink-0"
             >
               <button
                 type="button"
@@ -386,7 +386,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
                 className={`flex-1 min-h-[40px] rounded text-sm font-medium transition-colors ${
                   mobileView === 'edit'
                     ? 'bg-accent-600 text-white'
-                    : 'text-fg-muted hover:bg-accent-50'
+                    : 'text-fg-muted hover:bg-surface-subtle'
                 }`}
               >
                 Edit
@@ -400,7 +400,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
                 className={`flex-1 min-h-[40px] rounded text-sm font-medium transition-colors ${
                   mobileView === 'preview'
                     ? 'bg-accent-600 text-white'
-                    : 'text-fg-muted hover:bg-accent-50'
+                    : 'text-fg-muted hover:bg-surface-subtle'
                 }`}
               >
                 Preview
@@ -421,19 +421,13 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
           <>
             {/* Left panel */}
             {previewExpanded ? (
-              <div className="w-9 min-w-[36px] bg-accent-900 flex flex-col items-center py-3 gap-4 border-r border-accent-800 shrink-0">
+              <div className="w-9 min-w-[36px] bg-surface-subtle flex flex-col items-center py-3 gap-4 border-r border-border shrink-0">
                 {(['edit', 'design', 'ats', 'coverLetter'] as Tab[]).map((tab) => (
                   <button
                     key={tab}
                     type="button"
                     onClick={() => { setPreviewExpanded(false); setActiveTab(tab) }}
-                    // Deliberately still a raw accent-300, not the fg-subtle
-                    // token every other muted label moved to. This rail is
-                    // bg-accent-900, so this is light-on-dark: accent-300
-                    // measures 5.73:1 here and already clears AA, while the
-                    // token (a dark grey tuned for light surfaces) would be
-                    // near-invisible. Do not "fix" it to match its siblings.
-                    className="text-xs text-accent-300 hover:text-white transition-colors"
+                    className="text-xs text-fg-muted hover:text-fg transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
                   >
                     {TAB_LABELS[tab]}
@@ -442,7 +436,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
               </div>
             ) : (
               <div
-                className="flex flex-col border-r border-border-subtle bg-surface shadow-md shrink-0"
+                className="flex flex-col border-r border-border bg-surface shrink-0"
                 style={{ width: panelWidth }}
               >
                 {editPanelBody}
@@ -457,11 +451,11 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
                 aria-orientation="vertical"
                 aria-label="Resize editor panel"
                 aria-valuenow={panelWidth}
-                aria-valuemin={mounted ? getPanelWidthBounds().min : DEFAULT_PANEL_WIDTH}
-                aria-valuemax={mounted ? getPanelWidthBounds().max : DEFAULT_PANEL_WIDTH}
+                aria-valuemin={mounted ? getPanelWidthBounds().min : PANEL_MIN}
+                aria-valuemax={mounted ? getPanelWidthBounds().max : PANEL_MAX}
                 tabIndex={0}
                 className={`group/divider w-1.5 shrink-0 cursor-col-resize select-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
-                  dividerActive ? 'bg-accent-400/60' : 'hover:bg-accent-400/40 bg-accent-200/30'
+                  dividerActive ? 'bg-accent-400/60' : 'bg-border hover:bg-accent-400/40'
                 }`}
                 onPointerDown={handleDividerPointerDown}
                 onPointerMove={handleDividerPointerMove}
@@ -472,7 +466,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
             )}
 
             {/* Right panel — preview */}
-            <div className="flex-1 flex flex-col min-w-0 bg-neutral-100/60">
+            <div className="flex-1 flex flex-col min-w-0 bg-surface-muted">
               {renderPreviewPanelBody(true)}
             </div>
           </>
