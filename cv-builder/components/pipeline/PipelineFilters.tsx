@@ -16,6 +16,8 @@ interface PipelineFiltersProps {
   scanning: boolean
   onScan(): void
   scanLabel: string
+  /** Hides the scan button (no active profile to scan). */
+  hideScan?: boolean
 }
 
 const FIELD =
@@ -23,7 +25,7 @@ const FIELD =
   'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 export function PipelineFilters({
-  profiles, profile, q, onProfileChange, onQueryChange, scanning, onScan, scanLabel,
+  profiles, profile, q, onProfileChange, onQueryChange, scanning, onScan, scanLabel, hideScan,
 }: PipelineFiltersProps) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -53,9 +55,11 @@ export function PipelineFilters({
           className={`w-full ${FIELD}`}
         />
       </label>
-      <Button variant="secondary" size="md" className="sm:min-h-8" onClick={onScan} disabled={scanning}>
-        {scanning ? 'Scanning…' : scanLabel}
-      </Button>
+      {!hideScan && (
+        <Button variant="secondary" size="md" className="sm:min-h-8" onClick={onScan} disabled={scanning}>
+          {scanning ? 'Scanning…' : scanLabel}
+        </Button>
+      )}
     </div>
   )
 }
