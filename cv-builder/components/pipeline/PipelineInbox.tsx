@@ -14,6 +14,7 @@ import { notifyScrapedJobsChanged } from '@/lib/stores/scraped-jobs.store'
 import { toast } from '@/lib/stores/toast.store'
 import { cn } from '@/lib/utils'
 import { JobDetail } from './JobDetail'
+import { planFocusAfterRemoval } from './focus-after-removal'
 import { PipelineFilters, type ProfileOption } from './PipelineFilters'
 import { PipelineList } from './PipelineList'
 import { ShortcutsHelp } from './ShortcutsHelp'
@@ -162,20 +163,27 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
   )
   useEffect(() => {
     const pending = focusAfterRef.current
-    if (!pending || jobs.items.some((j) => j._id === pending.removed)) return
+    if (!pending) return
+    const plan = planFocusAfterRemoval(pending, jobs.items.map((j) => j._id), Boolean(view.job))
+    if (plan.kind === 'wait') return
     focusAfterRef.current = null
     const wrap = listWrapRef.current
     if (!wrap) return
-    for (const id of pending.fallbacks) {
-      const btn = wrap.querySelector<HTMLElement>(`[data-job-id="${CSS.escape(id)}"]`)
-      if (btn) {
-        btn.focus()
-        return
-      }
+    if (plan.kind === 'row') {
+      wrap.querySelector<HTMLElement>(`[data-job-id="${CSS.escape(plan.id)}"]`)?.focus()
+      return
     }
     // No rows left: the list (or its wrapper when the empty message replaces it).
     ;(wrap.querySelector<HTMLElement>('ul[aria-label="Jobs"]') ?? wrap).focus()
-  }, [jobs.items])
+  }, [jobs.items, view.job])
+
+  // A failed action restores the row, and a new view makes the plan meaningless.
+  useEffect(() => {
+    if (actions.error) focusAfterRef.current = null
+  }, [actions.error])
+  useEffect(() => {
+    focusAfterRef.current = null
+  }, [view.stage, view.profile, view.q])
 
   usePipelineShortcuts(
     {

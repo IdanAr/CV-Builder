@@ -436,13 +436,15 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
       <div className="flex flex-col gap-4">
         <div className="rounded-card border border-border bg-surface-subtle px-4 py-3 text-sm">
           <p className="font-medium">Profile created!</p>
-          <p className="mt-1 text-neutral-600">
+          <p className="mt-1 text-fg-muted">
             Want us to notify you whenever a match scores ≥ {state.minAtsScore}% against this profile?
           </p>
         </div>
         {ruleError && <ErrorBanner>{ruleError}</ErrorBanner>}
         <div className="flex gap-2">
-          <Button variant="primary" size="md"
+          <Button
+            variant="primary"
+            size="md"
             disabled={creatingRule}
             onClick={handleCreateDefaultRule}
           >
@@ -558,7 +560,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
 
       {step === 4 && (
         <div ref={panelRef} role="tabpanel" id={`wizard-panel-${step}`} aria-labelledby={`wizard-tab-${step}`} tabIndex={-1} className="flex flex-col gap-3">
-          <p className="text-sm text-neutral-600">
+          <p className="text-sm text-fg-muted">
             Optional: track specific companies that use Comeet for hiring (common among
             Israeli high-tech employers). Comeet has no keyword search across companies,
             so postings are fetched per company — paste that company&apos;s own public
@@ -649,27 +651,27 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
       {step === 6 && (
         <div ref={panelRef} role="tabpanel" id={`wizard-panel-${step}`} aria-labelledby={`wizard-tab-${step}`} tabIndex={-1} className="flex flex-col gap-3">
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-card border border-border bg-surface-subtle px-3 py-2 text-sm">
-            <dt className="font-medium text-neutral-600">Roles</dt>
+            <dt className="font-medium text-fg-muted">Roles</dt>
             <dd>{formatList(toTags(draftText.roles))}</dd>
-            <dt className="font-medium text-neutral-600">Seniority</dt>
+            <dt className="font-medium text-fg-muted">Seniority</dt>
             <dd>{formatList(state.seniority)}</dd>
-            <dt className="font-medium text-neutral-600">Work modes</dt>
+            <dt className="font-medium text-fg-muted">Work modes</dt>
             <dd>{formatList(state.workModes)}</dd>
-            <dt className="font-medium text-neutral-600">Country</dt>
+            <dt className="font-medium text-fg-muted">Country</dt>
             <dd>{COUNTRIES.find((c) => c.code === state.locations[0]?.country)?.name || '-'}</dd>
-            <dt className="font-medium text-neutral-600">City</dt>
+            <dt className="font-medium text-fg-muted">City</dt>
             <dd>{state.locations[0]?.city || '-'}</dd>
-            <dt className="font-medium text-neutral-600">Categories</dt>
+            <dt className="font-medium text-fg-muted">Categories</dt>
             <dd>{formatList(toTags(draftText.categories))}</dd>
-            <dt className="font-medium text-neutral-600">Industries</dt>
+            <dt className="font-medium text-fg-muted">Industries</dt>
             <dd>{formatList(toTags(draftText.industries))}</dd>
-            <dt className="font-medium text-neutral-600">Watched companies</dt>
+            <dt className="font-medium text-fg-muted">Watched companies</dt>
             <dd>{formatList(state.comeetCompanies.map((c) => c.name).filter(Boolean))}</dd>
-            <dt className="font-medium text-neutral-600">Résumé</dt>
+            <dt className="font-medium text-fg-muted">Résumé</dt>
             <dd>{resumeOptions.find((r) => r.id === state.resumeId)?.title || 'Most recently updated'}</dd>
-            <dt className="font-medium text-neutral-600">Recency window</dt>
+            <dt className="font-medium text-fg-muted">Recency window</dt>
             <dd>{state.recencyDays} days</dd>
-            <dt className="font-medium text-neutral-600">ATS threshold</dt>
+            <dt className="font-medium text-fg-muted">ATS threshold</dt>
             <dd>{state.minAtsScore}%</dd>
           </dl>
           <label className="text-sm font-medium">
@@ -706,7 +708,9 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
             </Button>
           )}
           {step === STEP_LABELS.length && (
-            <Button variant="primary" size="md"
+            <Button
+              variant="primary"
+              size="md"
               disabled={state.name.trim().length === 0 || submitting}
               onClick={handleSubmit}
             >

@@ -8,7 +8,7 @@ describe('FitScore', () => {
     render(<FitScore score={STRONG_FIT} />)
     const num = screen.getByText(String(STRONG_FIT))
     expect(num.className).toContain('text-fg-success')
-    expect(num.className).toContain('font-semibold')
+    expect(num.className).toContain('font-medium')
     expect(screen.getByText(`${STRONG_FIT}% match`).className).toContain('sr-only')
   })
 

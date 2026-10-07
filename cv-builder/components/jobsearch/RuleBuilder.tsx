@@ -247,7 +247,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
       {rules.length === 0 && !showForm && (
-        <p className="text-sm text-neutral-500">No rules yet - postings will be stored but won&apos;t trigger notifications.</p>
+        <p className="text-sm text-fg-subtle">No rules yet - postings will be stored but won&apos;t trigger notifications.</p>
       )}
 
       {rules.length > 0 && (
@@ -256,7 +256,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
             <li key={rule._id} className="flex items-center justify-between rounded-card border border-border px-4 py-2">
               <div>
                 <div className="font-medium">{rule.name}</div>
-                <div className="text-xs text-neutral-500">
+                <div className="text-xs text-fg-subtle">
                   {ACTION_LABELS[rule.action]} - {rule.conditions.map(describeCondition).join('; ')}
                 </div>
               </div>
@@ -265,7 +265,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
                   <input type="checkbox" aria-label={`${rule.name} active`} checked={rule.isActive} onChange={() => toggleActive(rule)} />
                   Active
                 </label>
-                <button type="button" className="text-sm text-fg-danger" onClick={() => deleteRule(rule)}>
+                <button type="button" className="rounded-control px-2 text-sm text-fg-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10" onClick={() => deleteRule(rule)}>
                   Delete
                 </button>
               </div>
@@ -409,7 +409,9 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
           </label>
 
           <div className="flex gap-2">
-            <Button variant="primary" size="md"
+            <Button
+              variant="primary"
+              size="md"
               disabled={!condition || name.trim().length === 0 || submitting}
               onClick={handleCreate}
             >

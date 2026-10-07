@@ -109,7 +109,7 @@ export function JobDetail({ job, busy, onAction, onBack }: JobDetailProps) {
         <h2
           tabIndex={-1}
           data-job-detail-heading=""
-          className="text-lg font-semibold text-fg-body focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="text-lg font-medium text-fg-body focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {job.title}
         </h2>
@@ -126,7 +126,7 @@ export function JobDetail({ job, busy, onAction, onBack }: JobDetailProps) {
       </header>
 
       <div>
-        <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-fg-subtle">Why it matched</h3>
+        <h3 className="mb-1.5 text-xs font-medium uppercase tracking-wide text-fg-subtle">Why it matched</h3>
         {job.matchedRules.length > 0 ? (
           <ul className="flex flex-wrap gap-1.5">
             {job.matchedRules.map((rule) => (
@@ -166,7 +166,7 @@ export function JobDetail({ job, busy, onAction, onBack }: JobDetailProps) {
 
       {job.pendingApprovals.length > 0 && (
         <div className="rounded-control bg-surface-attention p-3 text-fg-attention">
-          <p className="flex items-center gap-2 text-sm font-semibold">
+          <p className="flex items-center gap-2 text-sm font-medium">
             <AlertTriangle aria-hidden="true" className="h-4 w-4 shrink-0" />
             Flagged claims need your approval
           </p>
