@@ -136,9 +136,9 @@ describe('AtsScorePanel help popover for Semantic Match / Tailor with AI', () =>
 
     const semanticButton = screen.getByRole('button', { name: '🔎 Semantic Match' })
     const tailorButton = screen.getByText(/tailor with ai/i).closest('button')
-    expect(semanticButton?.className).toContain('bg-accent-600')
+    expect(semanticButton?.className).toContain('bg-primary')
     expect(semanticButton?.className).toContain('min-h-[44px]')
-    expect(tailorButton?.className).toContain('bg-accent-600')
+    expect(tailorButton?.className).toContain('bg-primary')
     expect(tailorButton?.className).toContain('min-h-[44px]')
   })
 })
@@ -377,7 +377,7 @@ describe('AtsScorePanel semantic match', () => {
     expect(rescoreCallBody.jdKeywords).toEqual(['react', 'typescript'])
 
     const reactChip = await screen.findByLabelText('Exclude "react" from scoring')
-    await waitFor(() => expect(reactChip.className).toContain('bg-accent-100'))
+    await waitFor(() => expect(reactChip.className).toContain('bg-surface-selected'))
     await waitFor(() => expect(screen.queryByText(/semantic match/i)).not.toBeInTheDocument())
   })
 
@@ -397,9 +397,9 @@ describe('AtsScorePanel semantic match', () => {
 
     const errorMessage = await screen.findByText(/semantic match failed/i)
     expect(errorMessage).toBeInTheDocument()
-    // Sits inside the bg-danger-50 missing-keywords container, where text-danger-600
+    // Sits inside the surface-danger missing-keywords container, where text-danger-600
     // falls just under AA contrast (~4.42:1) — must be danger-700 (~5.92:1).
-    expect(errorMessage.className).toContain('text-danger-700')
+    expect(errorMessage.className).toContain('text-fg-danger')
     expect(errorMessage.className).not.toContain('text-danger-600')
   })
 
@@ -453,9 +453,9 @@ describe('AtsScorePanel fix generation error', () => {
 
     const errorMessage = await screen.findByText(/could not generate fixes/i)
     expect(errorMessage).toBeInTheDocument()
-    // Same bg-danger-50 container as the semanticError message — text-danger-600
+    // Same surface-danger container as the semanticError message — text-danger-600
     // fails AA there (~4.42:1); must be danger-700 (~5.92:1).
-    expect(errorMessage.className).toContain('text-danger-700')
+    expect(errorMessage.className).toContain('text-fg-danger')
     expect(errorMessage.className).not.toContain('text-danger-600')
   })
 })
@@ -480,9 +480,9 @@ describe('AtsScorePanel missing-keyword overflow label', () => {
     await goToStep2()
 
     const overflowLabel = await screen.findByText('+5 more')
-    // Sits in the same bg-danger-50 container as the other fixed instances —
+    // Sits in the same surface-danger container as the other fixed instances —
     // text-danger-500 fails AA there (~3.44:1 against #fef2f2); must be danger-700 (~5.92:1).
-    expect(overflowLabel.className).toContain('text-danger-700')
+    expect(overflowLabel.className).toContain('text-fg-danger')
     expect(overflowLabel.className).not.toContain('text-danger-500')
   })
 })

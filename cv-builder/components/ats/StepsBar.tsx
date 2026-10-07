@@ -1,4 +1,5 @@
 'use client'
+import { cn } from '@/lib/utils'
 import { handleTablistKeyDown, tabIndexFor } from '@/lib/tablist-keys'
 
 export type WizardStep = 1 | 2 | 3
@@ -20,7 +21,7 @@ const STEPS: WizardStep[] = [1, 2, 3]
 export function StepsBar({ current, maxUnlocked, onStepClick }: StepsBarProps) {
   return (
     <div
-      className="flex bg-accent-50 rounded-full p-1 gap-1"
+      className="flex gap-1 rounded-full bg-surface-subtle p-1"
       role="tablist"
       aria-label="ATS analysis steps"
       onKeyDown={handleTablistKeyDown}
@@ -30,17 +31,20 @@ export function StepsBar({ current, maxUnlocked, onStepClick }: StepsBarProps) {
         const isLocked = step > maxUnlocked
         const isDone = !isCurrent && !isLocked
 
-        const buttonClass = isCurrent
-          ? 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium bg-accent-600 text-white shadow-md transition-colors'
-          : isDone
-          ? 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium text-accent-700 hover:bg-accent-100 transition-colors'
-          : 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium text-fg-subtle cursor-not-allowed'
+        const buttonClass = cn(
+          'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition-colors min-h-10',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          isCurrent
+            ? 'bg-primary text-primary-fg'
+            : isDone
+            ? 'bg-surface-success text-fg-success hover:bg-surface-subtle'
+            : 'bg-surface-muted text-fg-muted cursor-not-allowed'
+        )
 
-        const badgeClass = isCurrent
-          ? 'flex items-center justify-center h-4 w-4 rounded-full bg-white/25 text-[10px]'
-          : isDone
-          ? 'flex items-center justify-center h-4 w-4 rounded-full bg-accent-200 text-[10px]'
-          : 'flex items-center justify-center h-4 w-4 rounded-full bg-accent-100 text-[10px]'
+        const badgeClass = cn(
+          'flex h-4 w-4 items-center justify-center rounded-full text-[10px]',
+          isCurrent ? 'bg-primary-fg/25' : 'bg-surface/70'
+        )
 
         return (
           <button

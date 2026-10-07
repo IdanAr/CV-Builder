@@ -393,7 +393,7 @@ export function AtsScorePanel() {
                         aria-expanded={helpOpen}
                         aria-haspopup="dialog"
                         aria-label="What do Semantic Match and Tailor with AI do?"
-                        className="flex items-center justify-center h-11 w-11 shrink-0 rounded-full bg-secondary text-secondary-fg text-sm font-medium hover:brightness-95 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="flex items-center justify-center h-11 w-11 shrink-0 rounded-full bg-secondary text-secondary-fg text-sm font-medium hover:bg-accent-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         ?
                       </button>
@@ -465,10 +465,10 @@ export function AtsScorePanel() {
                     }
                     className={
                       excluded
-                        ? CHIP + 'bg-surface-muted text-fg-muted line-through hover:brightness-95'
+                        ? CHIP + 'bg-surface-muted text-fg-muted line-through hover:bg-neutral-300'
                         : isNiceToHave
-                        ? CHIP + 'bg-surface-warning text-fg-warning hover:brightness-95'
-                        : CHIP + 'bg-surface-danger text-fg-danger hover:brightness-95'
+                        ? CHIP + 'bg-surface-warning text-fg-warning hover:bg-warning-100'
+                        : CHIP + 'bg-surface-danger text-fg-danger hover:bg-danger-100'
                     }
                   >
                     {kw}
@@ -506,10 +506,10 @@ export function AtsScorePanel() {
                     title={semantic ? 'Matched via AI semantic analysis (not an exact keyword match)' : undefined}
                     className={
                       excluded
-                        ? CHIP + 'bg-surface-muted text-fg-muted line-through hover:brightness-95'
+                        ? CHIP + 'bg-surface-muted text-fg-muted line-through hover:bg-neutral-300'
                         : semantic
                         ? CHIP + 'bg-surface-selected text-fg-body hover:bg-secondary'
-                        : CHIP + 'bg-surface-success text-fg-success hover:brightness-95'
+                        : CHIP + 'bg-surface-success text-fg-success hover:bg-success-100'
                     }
                   >
                     {kw}
