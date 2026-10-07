@@ -25,7 +25,7 @@ export function FirstRun({ hasCvs, hasProfiles }: { hasCvs: boolean; hasProfiles
         <p className="mb-4 mt-1 flex-1 text-sm text-fg-muted">
           Tell us which companies to watch and we find roles that fit your CV.
         </p>
-        <Link href="/dashboard/jobsearch" className="text-sm text-accent-700 underline">
+        <Link href="/dashboard/jobsearch" className="text-sm text-fg-body underline underline-offset-4">
           Set up a job search
         </Link>
       </Card>

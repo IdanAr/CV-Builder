@@ -1,4 +1,4 @@
-// Ratchet: counts legacy utility classes per source file under components/ and app/. A file may never
+// Ratchet: counts legacy utility classes per source file under components/, app/ and lib/ (.tsx only). A file may never
 // use MORE than its baseline, and a baseline may never be left higher than reality, so the
 // numbers below only ever move down. New files must be clean (absent from BASELINE = 0).
 import { describe, it, expect } from 'vitest'
@@ -6,10 +6,10 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const ROOT = join(__dirname, '..', '..', '..')
-const SCAN_DIRS = ['components', 'app']
+const SCAN_DIRS = ['components', 'app', 'lib']
 // Matched against the repo-relative path (forward slashes). Plasma is a WebGL effect with its
 // own palette; tests and API routes carry no UI classes.
-const EXCLUDE = [/^components\/ui\/Plasma/, /\.test\.tsx?$/, /(^|\/)__tests__\//, /^app\/api\//]
+const EXCLUDE = [/^components\/ui\/Plasma/, /\.test\.tsx?$/, /(^|\/)__tests__\//, /^app\/api\//, /^lib\/design\//]
 
 // One regex per rule so a failure names the offending rule.
 const RULES: Record<string, RegExp> = {
@@ -56,10 +56,7 @@ const BASELINE: Record<string, number> = {
   'app/(auth)/signin/page.tsx': 24,
   'app/privacy/page.tsx': 36,
   'app/terms/page.tsx': 34,
-  'components/cvs/CvLibrary.tsx': 1,
   'components/editor/design/SegmentedControl.tsx': 1,
-  'components/jobsearch/JobSearchShell.tsx': 1,
-  'components/jobsearch/ProfileList.tsx': 1,
   'components/marketing/FaqSection.tsx': 8,
   'components/marketing/FeaturesSection.tsx': 12,
   'components/marketing/FinalCtaSection.tsx': 13,
@@ -72,16 +69,7 @@ const BASELINE: Record<string, number> = {
   'components/marketing/TemplateThumbnail.tsx': 3,
   'components/marketing/TemplatesShowcaseSection.tsx': 9,
   'components/marketing/TestimonialsSection.tsx': 13,
-  'components/overview/FirstRun.tsx': 1,
-  'components/overview/NeedsYou.tsx': 1,
-  'components/overview/RecentCvs.tsx': 1,
-  'components/shell/SidebarNav.tsx': 1,
-  'components/shell/SidebarUserMenu.tsx': 1,
   'components/ui/AppNavbar.tsx': 1,
-  'components/ui/Badge.tsx': 3,
-  'components/ui/Button.tsx': 3,
-  'components/ui/SkipLink.tsx': 4,
-  'components/ui/progress.tsx': 1,
 }
 
 const actual: Record<string, number> = {}
@@ -90,6 +78,8 @@ for (const d of SCAN_DIRS) {
   for (const file of walk(join(ROOT, d))) {
     const rel = relative(ROOT, file).split('\\').join('/')
     if (EXCLUDE.some((re) => re.test(rel))) continue
+    // lib carries UI classes only in .tsx components; its .ts files are logic and data.
+    if (rel.startsWith('lib/') && !rel.endsWith('.tsx')) continue
     const b = breakdown(readFileSync(file, 'utf8'))
     const n = Object.values(b).reduce((x, y) => x + y, 0)
     if (n > 0) {

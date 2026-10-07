@@ -35,7 +35,7 @@ export function SidebarUserMenu({ user, collapsed }: { user: ShellUser; collapse
           ) : (
             <span
               aria-hidden="true"
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-selected text-xs font-medium text-accent-700"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-selected text-xs font-medium text-fg-body"
             >
               {initials(user)}
             </span>

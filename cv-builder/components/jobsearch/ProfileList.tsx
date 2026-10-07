@@ -309,7 +309,7 @@ export function ProfileList({ initialProfiles }: ProfileListProps = {}) {
                     <span
                       aria-hidden="true"
                       className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                        profile.isActive ? 'bg-success-500' : 'bg-neutral-400'
+                        profile.isActive ? 'bg-success-500' : 'bg-fg-muted'
                       }`}
                     />
                     <Link

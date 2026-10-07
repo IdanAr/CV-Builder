@@ -17,7 +17,7 @@ export function RecentCvs({ cvs }: { cvs: RecentCv[] }) {
         <h2 id="overview-recent-cvs" className="text-base font-medium text-fg-heading">
           Recent CVs
         </h2>
-        <Link href="/dashboard/cvs" className="text-sm text-accent-700 underline">
+        <Link href="/dashboard/cvs" className="text-sm text-fg-body underline underline-offset-4">
           View all CVs
         </Link>
       </div>

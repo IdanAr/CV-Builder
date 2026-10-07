@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
  * original notes (the hallucination guard's pendingApprovals). The `role`
  * + `aria-label` on the <mark> itself (not just a `title` tooltip) is what
  * makes this discoverable to screen-reader users, not just sighted users
- * relying on the amber background color.
+ * relying on the highlight colour alone.
  */
 export function highlightApprovals(text: string, approvals: string[]): ReactNode {
   if (approvals.length === 0) return <>{text}</>
@@ -31,7 +31,7 @@ export function highlightApprovals(text: string, approvals: string[]): ReactNode
           role="note"
           aria-label={`Unverified: not in your original notes, please check before using — ${node.slice(idx, idx + phrase.length)}`}
           title="Not in your original notes - please verify before accepting"
-          className="rounded bg-amber-200 px-0.5 text-amber-900"
+          className="rounded-chip bg-surface-attention px-0.5 text-fg-attention underline decoration-dotted underline-offset-2"
         >
           {node.slice(idx, idx + phrase.length)}
         </mark>

@@ -35,16 +35,16 @@ export type ButtonSize = 'xs' | 'sm' | 'md' | 'icon'
 
 const VARIANT: Record<ButtonVariant, string> = {
   /** The page's main action. One per view, ideally. */
-  primary: 'bg-primary text-primary-fg shadow-sm hover:bg-primary-hover',
+  primary: 'bg-primary text-primary-fg hover:bg-primary-hover',
   /** Sits beside a primary without competing with it. */
   secondary:
     'border border-border bg-surface text-fg-body hover:bg-surface-subtle hover:border-input',
   /** A filled but quiet action — toolbars, chips, segmented controls. */
-  soft: 'bg-secondary text-secondary-fg hover:bg-accent-200',
+  soft: 'bg-secondary text-secondary-fg hover:bg-primary/20',
   /** No chrome until you touch it. Icon buttons and tertiary actions. */
   ghost: 'text-fg-muted hover:bg-surface-subtle hover:text-fg-body',
   /** Destructive and unmistakable. */
-  danger: 'bg-danger-600 text-primary-fg shadow-sm hover:bg-danger-700',
+  danger: 'bg-danger-600 text-primary-fg hover:bg-danger-700',
   /** Destructive, but not the loudest thing on screen. */
   dangerGhost: 'text-fg-danger hover:bg-surface-danger',
   /**

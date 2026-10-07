@@ -103,7 +103,7 @@ function NavLink({
         'relative flex items-center gap-3 rounded-control px-2.5 py-2 text-sm font-medium transition',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         collapsed && 'justify-center',
-        active ? 'bg-surface-selected text-accent-700' : 'text-fg-body hover:bg-surface-subtle hover:text-fg-heading'
+        active ? 'bg-surface-selected text-fg-body' : 'text-fg-body hover:bg-surface-subtle hover:text-fg-heading'
       )}
     >
       <Icon aria-hidden="true" strokeWidth={1.75} className="h-[18px] w-[18px] shrink-0" />

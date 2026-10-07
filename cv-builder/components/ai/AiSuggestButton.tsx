@@ -113,7 +113,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
             className="w-56 rounded-card border border-border-danger bg-surface-danger p-2 shadow-popover"
           >
             <p className="text-xs text-fg-danger">{error}</p>
-            <Button size="xs" variant="dangerGhost" className="mt-1" onClick={() => setError(null)}>
+            <Button size="xs" variant="ghost" className="mt-1" onClick={() => setError(null)}>
               Dismiss
             </Button>
           </div>
