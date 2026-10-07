@@ -110,6 +110,20 @@ describe('PipelineInbox', () => {
     expect(replace).toHaveBeenCalledWith('/dashboard/jobsearch?stage=found&job=b')
   })
 
+  it('uses the shared page-title scale, with and without profiles', () => {
+    const { unmount } = setup(initial('found', [mk('a')]))
+    expect(screen.getByRole('heading', { level: 1, name: 'Job search' })).toHaveAttribute(
+      'class',
+      'text-xl font-medium text-fg-heading',
+    )
+    unmount()
+    setup(initial('found', []), { profiles: [] })
+    expect(screen.getByRole('heading', { level: 1, name: 'Job search' })).toHaveAttribute(
+      'class',
+      'text-xl font-medium text-fg-heading',
+    )
+  })
+
   it('clicking a stage tab replaces the URL with that stage and no job', () => {
     setup(initial('found', [mk('a')]), { params: 'stage=found&job=a' })
     fireEvent.click(screen.getByRole('tab', { name: /Drafted/ }))

@@ -36,6 +36,14 @@ describe('JobSearchShell', () => {
     expect(screen.getByText('content')).toBeInTheDocument()
   })
 
+  it('uses the shared page-title scale', () => {
+    renderShell()
+    expect(screen.getByRole('heading', { level: 1, name: 'Job Search' })).toHaveAttribute(
+      'class',
+      'text-xl font-medium text-fg-heading',
+    )
+  })
+
   it('renders every segment as a real link, so any view opens in a new tab', () => {
     renderShell()
 

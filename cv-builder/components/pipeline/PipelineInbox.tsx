@@ -192,7 +192,7 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
 
   const header = (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h1 className="text-xl font-semibold text-fg-body">Job search</h1>
+      <h1 className="text-xl font-medium text-fg-heading">Job search</h1>
       <Link
         href={SOURCES_HREF}
         className="inline-flex min-h-10 items-center rounded-md px-2 text-sm text-fg-muted underline-offset-4 hover:text-fg-body hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
@@ -223,7 +223,7 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
   return (
     <div data-pipeline-root="" className="space-y-4 mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold text-fg-body">Job search</h1>
+        <h1 className="text-xl font-medium text-fg-heading">Job search</h1>
         <div className="flex items-center gap-1">
           <ShortcutsHelp />
           <Link

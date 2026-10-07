@@ -30,7 +30,7 @@ export default async function CvsPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-medium text-fg-heading">CVs</h1>
+        <h1 className="text-xl font-medium text-fg-heading">CVs</h1>
         {/* The default (compact) variants: the hero ones are full-width,
             built for the empty-state cards. */}
         <div className="flex items-center gap-2">
