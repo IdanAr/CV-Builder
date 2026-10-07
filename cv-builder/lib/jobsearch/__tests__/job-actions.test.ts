@@ -41,7 +41,8 @@ describe('planActions (spec 7.4 table)', () => {
 
 describe('isOneStep', () => {
   it('is true only for actions that complete without leaving the page', () => {
-    for (const id of ['approve', 'mark-applied', 'restore', 'find-again', 'track'] as const) expect(isOneStep(id)).toBe(true)
-    for (const id of ['open-posting', 'open-cv', 'open-applications', 'dismiss', 'delete'] as const) expect(isOneStep(id)).toBe(false)
+    for (const id of ['approve', 'mark-applied', 'restore', 'find-again'] as const) expect(isOneStep(id)).toBe(true)
+    // track is not idempotent: a repeated A on a no-URL job created duplicate Applications.
+    for (const id of ['track', 'open-posting', 'open-cv', 'open-applications', 'dismiss', 'delete'] as const) expect(isOneStep(id)).toBe(false)
   })
 })

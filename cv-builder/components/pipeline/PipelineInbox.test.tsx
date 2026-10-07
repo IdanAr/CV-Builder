@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, act, waitFor, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, act, waitFor, cleanup, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PipelineInbox } from './PipelineInbox'
 import type { PipelineJob, PipelineCountsDto } from '@/lib/jobsearch/pipeline-types'
@@ -206,15 +206,44 @@ describe('PipelineInbox', () => {
     expect(init).toMatchObject({ method: 'PATCH', body: JSON.stringify({ dismissed: true }) })
   })
 
+  it('after D on the first row, focus moves to the next row; after removing the only row, to the list', async () => {
+    setup(initial('found', [mk('a'), mk('b')]), { params: 'stage=found&job=a' })
+    fireEvent.keyDown(document.body, { key: 'd' })
+    await waitFor(() => expect(screen.getByRole('button', { name: /Job b/ })).toHaveFocus())
+    cleanup()
+
+    setup(initial('found', [mk('only')]), { params: 'stage=found&job=only' })
+    fireEvent.keyDown(document.body, { key: 'd' })
+    await waitFor(() => expect(screen.queryByRole('button', { name: /Job only/ })).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(document.querySelector('[data-pipeline-list]')))
+  })
+
+  it('after removing the last row of several, focus falls back to the previous row', async () => {
+    setup(initial('found', [mk('a'), mk('b')]), { params: 'stage=found&job=b' })
+    fireEvent.keyDown(document.body, { key: 'd' })
+    await waitFor(() => expect(screen.getByRole('button', { name: /Job a/ })).toHaveFocus())
+  })
+
+  it('offers a Dismiss button on the action error banner that clears it', async () => {
+    fetchMock.mockImplementation((url: string) =>
+      String(url).includes('/convert') ? ok({ error: 'Nope' }, 500) : ok()
+    )
+    setup(initial('ready', [mk('r', { stage: 'ready', status: 'queued' })]), { params: 'stage=ready&job=r' })
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as applied' }))
+    const alert = await screen.findByRole('alert')
+    fireEvent.click(within(alert).getByRole('button', { name: 'Dismiss' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+  })
+
   it('swaps list and detail with CSS-only classes and Back to list drops ?job=', () => {
     const { container, unmount } = setup(initial('found', [mk('a')]))
     expect(container.querySelector('[data-pipeline-detail]')?.className).toContain('hidden min-w-0 lg:block')
-    expect(container.querySelector('[data-pipeline-list]')?.className).toBe('block min-w-0')
+    expect(container.querySelector('[data-pipeline-list]')?.className).toContain('block min-w-0')
     unmount()
 
     const second = setup(initial('found', [mk('a')]), { params: 'stage=found&job=a' })
     expect(second.container.querySelector('[data-pipeline-list]')?.className).toContain('hidden min-w-0 lg:block')
-    expect(second.container.querySelector('[data-pipeline-detail]')?.className).toBe('block min-w-0')
+    expect(second.container.querySelector('[data-pipeline-detail]')?.className).toContain('block min-w-0')
     fireEvent.click(screen.getByRole('button', { name: 'Back to list' }))
     expect(replace).toHaveBeenCalledWith('/dashboard/jobsearch?stage=found')
   })

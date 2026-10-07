@@ -4,12 +4,15 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
-import { planActions, isOneStep } from '@/lib/jobsearch/job-actions'
+import { planActions, isOneStep, type JobActionId } from '@/lib/jobsearch/job-actions'
 import { parsePipelineView, pipelineHref, type PipelineView } from '@/lib/jobsearch/pipeline-url'
 import type { PipelineFilter } from '@/lib/jobsearch/stages'
+import type { PipelineJob } from '@/lib/jobsearch/pipeline-types'
 import { notifyScrapedJobsChanged } from '@/lib/stores/scraped-jobs.store'
 import { toast } from '@/lib/stores/toast.store'
+import { cn } from '@/lib/utils'
 import { JobDetail } from './JobDetail'
 import { PipelineFilters, type ProfileOption } from './PipelineFilters'
 import { PipelineList } from './PipelineList'
@@ -132,12 +135,47 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
   }, [view.job, jobs.status, jobs.items, setView])
 
   const detailRef = useRef<HTMLDivElement>(null)
+  const listWrapRef = useRef<HTMLDivElement>(null)
   const itemsRef = useRef(jobs.items)
   const selectedRef = useRef(selected)
   useEffect(() => {
     itemsRef.current = jobs.items
     selectedRef.current = selected
   })
+
+  // When dismiss or delete removes the row, focus would fall to <body>. Remember the
+  // neighbours before the removal and move focus once the row has left the list.
+  const focusAfterRef = useRef<{ removed: string; fallbacks: string[] } | null>(null)
+  const runAction = useCallback(
+    (action: JobActionId, job: PipelineJob) => {
+      if (action === 'dismiss' || action === 'delete') {
+        const items = itemsRef.current
+        const idx = items.findIndex((j) => j._id === job._id)
+        focusAfterRef.current = {
+          removed: job._id,
+          fallbacks: [items[idx + 1]?._id, items[idx - 1]?._id].filter((id): id is string => Boolean(id)),
+        }
+      }
+      actions.run(action, job)
+    },
+    [actions]
+  )
+  useEffect(() => {
+    const pending = focusAfterRef.current
+    if (!pending || jobs.items.some((j) => j._id === pending.removed)) return
+    focusAfterRef.current = null
+    const wrap = listWrapRef.current
+    if (!wrap) return
+    for (const id of pending.fallbacks) {
+      const btn = wrap.querySelector<HTMLElement>(`[data-job-id="${CSS.escape(id)}"]`)
+      if (btn) {
+        btn.focus()
+        return
+      }
+    }
+    // No rows left: the list (or its wrapper when the empty message replaces it).
+    ;(wrap.querySelector<HTMLElement>('ul[aria-label="Jobs"]') ?? wrap).focus()
+  }, [jobs.items])
 
   usePipelineShortcuts(
     {
@@ -165,7 +203,7 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
       dismissSelected() {
         const job = selectedRef.current
         if (!job || actions.busyId) return
-        if (planActions(job).secondary.includes('dismiss')) actions.run('dismiss', job)
+        if (planActions(job).secondary.includes('dismiss')) runAction('dismiss', job)
       },
     },
     profiles.length > 0
@@ -195,7 +233,7 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
       <h1 className="text-xl font-medium text-fg-heading">Job search</h1>
       <Link
         href={SOURCES_HREF}
-        className="inline-flex min-h-10 items-center rounded-md px-2 text-sm text-fg-muted underline-offset-4 hover:text-fg-body hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
+        className="inline-flex min-h-10 items-center rounded-control px-2 text-sm text-fg-muted underline-offset-4 hover:text-fg-body hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
       >
         Sources and rules
       </Link>
@@ -228,7 +266,7 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
           <ShortcutsHelp />
           <Link
             href={SOURCES_HREF}
-            className="inline-flex min-h-10 items-center rounded-md px-2 text-sm text-fg-muted underline-offset-4 hover:text-fg-body hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
+            className="inline-flex min-h-10 items-center rounded-control px-2 text-sm text-fg-muted underline-offset-4 hover:text-fg-body hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
           >
             Sources and rules
           </Link>
@@ -261,6 +299,14 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
       {bannerError && (
         <ErrorBanner>
           {bannerError}
+          {actions.error && (
+            <>
+              {' '}
+              <Button variant="ghost" size="sm" onClick={actions.clearError}>
+                Dismiss
+              </Button>
+            </>
+          )}
           {!actions.error && (
             <>
               {' '}
@@ -277,7 +323,12 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
       )}
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]">
-        <div data-pipeline-list="" className={view.job ? 'hidden min-w-0 lg:block' : 'block min-w-0'}>
+        <div
+          ref={listWrapRef}
+          tabIndex={-1}
+          data-pipeline-list=""
+          className={cn('focus:outline-none', view.job ? 'hidden min-w-0 lg:block' : 'block min-w-0')}
+        >
           <PipelineList
             stage={view.stage}
             status={jobs.status}
@@ -297,7 +348,7 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
           <JobDetail
             job={selected}
             busy={actions.busyId !== null}
-            onAction={actions.run}
+            onAction={runAction}
             onBack={() => setView({ job: null })}
           />
         </div>

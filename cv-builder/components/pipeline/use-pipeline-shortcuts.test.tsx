@@ -12,6 +12,9 @@ function Harness({ enabled }: { enabled?: boolean }) {
       <input aria-label="field" />
       <textarea aria-label="area" />
       <button>btn</button>
+      <div role="menu"><div role="menuitem" tabIndex={0}>item</div></div>
+      <div role="dialog"><span>in dialog</span></div>
+      <div role="listbox"><span>in listbox</span></div>
     </div>
   )
 }
@@ -65,6 +68,32 @@ describe('usePipelineShortcuts', () => {
     const e = new KeyboardEvent('keydown', { key: 'j', bubbles: true, cancelable: true })
     document.addEventListener('keydown', (ev) => ev.preventDefault(), { once: true, capture: true })
     document.body.dispatchEvent(e)
+    expect(total()).toBe(0)
+  })
+
+  it('ignores keys from inside an open menu, dialog or listbox', () => {
+    const { getByText } = render(<Harness />)
+    fireEvent.keyDown(getByText('item'), { key: 'd' })
+    fireEvent.keyDown(getByText('in dialog'), { key: 'a' })
+    fireEvent.keyDown(getByText('in listbox'), { key: 'j' })
+    expect(total()).toBe(0)
+  })
+
+  it('does not repeat a / d while a key is held, but J / K still repeat', () => {
+    render(<Harness />)
+    fireEvent.keyDown(document.body, { key: 'a', repeat: true })
+    fireEvent.keyDown(document.body, { key: 'D', repeat: true })
+    expect(handlers.runPrimary).not.toHaveBeenCalled()
+    expect(handlers.dismissSelected).not.toHaveBeenCalled()
+    fireEvent.keyDown(document.body, { key: 'j', repeat: true })
+    fireEvent.keyDown(document.body, { key: 'k', repeat: true })
+    expect(handlers.move).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores keys while an IME composition is in progress', () => {
+    render(<Harness />)
+    fireEvent.keyDown(document.body, { key: 'j', isComposing: true })
+    fireEvent.keyDown(document.body, { key: 'a', isComposing: true })
     expect(total()).toBe(0)
   })
 

@@ -46,6 +46,7 @@ export function PipelineRow({ job, selected, isNew, onSelect }: PipelineRowProps
     >
       <button
         type="button"
+        data-job-id={job._id}
         tabIndex={0}
         aria-current={selected ? 'true' : undefined}
         onClick={onSelect}

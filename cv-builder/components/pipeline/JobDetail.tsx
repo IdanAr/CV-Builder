@@ -8,7 +8,6 @@ import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/Menu'
 import { planActions, type JobActionId } from '@/lib/jobsearch/job-actions'
 import type { PipelineJob } from '@/lib/jobsearch/pipeline-types'
 import { FILTER_LABELS } from '@/lib/jobsearch/stages'
-import { cn } from '@/lib/utils'
 import { FitScore } from './FitScore'
 
 export const ACTION_LABELS: Record<JobActionId, string> = {
@@ -58,16 +57,14 @@ function ActionControl({
   const label = ACTION_LABELS[action]
   const target = hrefFor(action, job)
   if (target) {
-    const className = buttonClasses({
-      variant, size: 'md', className: cn('sm:min-h-8', busy && 'pointer-events-none opacity-60'),
-    })
+    // Opening a link does not conflict with an in-flight request, so links stay live while busy.
+    const className = buttonClasses({ variant, size: 'md', className: 'sm:min-h-8' })
     if (target.external) {
       return (
         <a
           href={target.href}
           target="_blank"
           rel="noreferrer"
-          aria-disabled={busy || undefined}
           className={className}
         >
           {label}
@@ -76,7 +73,7 @@ function ActionControl({
       )
     }
     return (
-      <Link href={target.href} aria-disabled={busy || undefined} className={className}>
+      <Link href={target.href} className={className}>
         {label}
       </Link>
     )

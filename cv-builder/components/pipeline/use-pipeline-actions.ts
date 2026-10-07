@@ -192,6 +192,8 @@ export function usePipelineActions(deps: PipelineActionsDeps): UsePipelineAction
           if (!res.ok) {
             const body = await res.json().catch(() => ({}))
             setError((body as { error?: string }).error ?? fallback)
+            // A 409 means the row is stale; re-read the list.
+            void depsRef.current.reload()
             return
           }
           notifyScrapedJobsChanged()
