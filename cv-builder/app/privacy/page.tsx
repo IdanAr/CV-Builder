@@ -20,7 +20,7 @@ export default function PrivacyPolicyPage() {
       </p>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900">1. Information We Collect</h2>
+        <h2 className="text-base font-medium text-fg-heading">1. Information We Collect</h2>
         <p className="mt-2">
           <strong>Account information.</strong> We do not support password-based accounts. When you sign in with
           Google or GitHub, we receive your name, email address, and profile picture from that provider.
@@ -49,7 +49,7 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900">2. How We Use Your Information</h2>
+        <h2 className="text-base font-medium text-fg-heading">2. How We Use Your Information</h2>
         <p className="mt-2">We use the information above to:</p>
         <ul className="mt-2 list-disc space-y-1 pl-6">
           <li>Provide, maintain, and operate the résumé-building and application-tracking features of the Service;</li>
@@ -65,7 +65,7 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900">3. AI-Assisted Features</h2>
+        <h2 className="text-base font-medium text-fg-heading">3. AI-Assisted Features</h2>
         <p className="mt-2">
           Certain features - writing suggestions, ATS scoring and keyword matching, ATS-format rewrites, and cover
           letter generation - send the relevant text of your résumé and, where applicable, any job description you
@@ -77,7 +77,7 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900">4. How We Share Your Information</h2>
+        <h2 className="text-base font-medium text-fg-heading">4. How We Share Your Information</h2>
         <p className="mt-2">
           We do not sell your personal information. We share information only with the service providers who help
           us operate the Service, each acting on our behalf and only to the extent needed to provide their part of
@@ -97,7 +97,7 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900">5. Cookies &amp; Local Storage</h2>
+        <h2 className="text-base font-medium text-fg-heading">5. Cookies &amp; Local Storage</h2>
         <p className="mt-2">
           We use only the cookies necessary to keep you signed in: a session cookie set by our authentication
           system, and short-lived cookies used during the Google/GitHub sign-in process itself. We do not use
@@ -108,17 +108,17 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900">6. Data Retention &amp; Deletion</h2>
+        <h2 className="text-base font-medium text-fg-heading">6. Data Retention &amp; Deletion</h2>
         <p className="mt-2">
           We retain your account, résumé, and application data for as long as your account exists, so that the
           Service remains available to you. You can permanently delete an individual résumé or job application at
           any time from your dashboard; deleting a job application also deletes its associated activity log. You
           can also delete your entire account and all associated data yourself, immediately, from{' '}
-          <Link href="/dashboard/settings" className="text-indigo-600 hover:text-indigo-800">
+          <Link href="/dashboard/settings" className="rounded-chip text-fg-body underline underline-offset-4 hover:text-fg-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             your account settings
           </Link>
           . If you would rather we did it for you, contact us at{' '}
-          <a href="mailto:idan.rbel@gmail.com" className="text-indigo-600 hover:text-indigo-800">
+          <a href="mailto:idan.rbel@gmail.com" className="rounded-chip text-fg-body underline underline-offset-4 hover:text-fg-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             idan.rbel@gmail.com
           </a>
           .
@@ -126,18 +126,18 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900">7. Your Privacy Rights</h2>
+        <h2 className="text-base font-medium text-fg-heading">7. Your Privacy Rights</h2>
         <p className="mt-2">
           Subject to applicable law, you have the right to access the personal data we hold about you, request
           correction of inaccurate data, request deletion of your data, and object to certain processing. You can
           exercise these rights directly within the Service: download a complete copy of your data, or delete
           your account outright, from{' '}
-          <Link href="/dashboard/settings" className="text-indigo-600 hover:text-indigo-800">
+          <Link href="/dashboard/settings" className="rounded-chip text-fg-body underline underline-offset-4 hover:text-fg-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             your account settings
           </Link>
           , and edit or delete individual résumés and applications from your dashboard. For anything else,
           contact us at{' '}
-          <a href="mailto:idan.rbel@gmail.com" className="text-indigo-600 hover:text-indigo-800">
+          <a href="mailto:idan.rbel@gmail.com" className="rounded-chip text-fg-body underline underline-offset-4 hover:text-fg-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             idan.rbel@gmail.com
           </a>
           .
@@ -145,7 +145,7 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900">8. Data Security</h2>
+        <h2 className="text-base font-medium text-fg-heading">8. Data Security</h2>
         <p className="mt-2">
           We do not store passwords - sign-in is handled entirely through Google and GitHub&apos;s own OAuth
           systems. Data is transmitted over encrypted (HTTPS) connections, and we apply reasonable technical and
@@ -155,7 +155,7 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900">9. International Data Transfers</h2>
+        <h2 className="text-base font-medium text-fg-heading">9. International Data Transfers</h2>
         <p className="mt-2">
           Our service providers (including Anthropic, MongoDB Atlas, and Vercel) may process and store data on
           servers located outside of your country of residence, including outside of Israel. By using the Service,
@@ -164,7 +164,7 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900">10. Children&apos;s Privacy</h2>
+        <h2 className="text-base font-medium text-fg-heading">10. Children&apos;s Privacy</h2>
         <p className="mt-2">
           The Service is not directed to, and is not intended for use by, individuals under the age of 16. We do
           not knowingly collect personal information from children under 16. If you believe a child has provided us
@@ -173,7 +173,7 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900">11. Governing Law</h2>
+        <h2 className="text-base font-medium text-fg-heading">11. Governing Law</h2>
         <p className="mt-2">
           This Privacy Policy is governed by the laws of the State of Israel, including the Protection of Privacy
           Law, 5741-1981, and its regulations and amendments, without regard to conflict-of-law principles.
@@ -181,7 +181,7 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900">12. Changes to This Policy</h2>
+        <h2 className="text-base font-medium text-fg-heading">12. Changes to This Policy</h2>
         <p className="mt-2">
           We may update this Privacy Policy from time to time. If we make material changes, we will update the
           &ldquo;Last updated&rdquo; date above. Your continued use of the Service after a change becomes effective
@@ -190,10 +190,10 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900">13. Contact Us</h2>
+        <h2 className="text-base font-medium text-fg-heading">13. Contact Us</h2>
         <p className="mt-2">
           If you have questions about this Privacy Policy or how we handle your information, contact us at{' '}
-          <a href="mailto:idan.rbel@gmail.com" className="text-indigo-600 hover:text-indigo-800">
+          <a href="mailto:idan.rbel@gmail.com" className="rounded-chip text-fg-body underline underline-offset-4 hover:text-fg-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             idan.rbel@gmail.com
           </a>
           .
