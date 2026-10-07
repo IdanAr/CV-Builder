@@ -94,7 +94,7 @@ function ToastItem({ toast: t }: { toast: Toast }) {
       <button
         aria-label="Dismiss notification"
         onClick={() => dismiss(t.id)}
-        className="inline-flex h-6 w-6 items-center justify-center rounded-control opacity-60 transition-opacity hover:opacity-100"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-control opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:h-10 max-sm:w-10"
       >
         <X aria-hidden="true" className="h-3.5 w-3.5" />
       </button>

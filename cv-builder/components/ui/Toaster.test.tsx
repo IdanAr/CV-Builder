@@ -121,4 +121,13 @@ describe('Toaster', () => {
     act(() => { vi.advanceTimersByTime(1100) })
     expect(screen.queryByText('Saved')).not.toBeInTheDocument()
   })
+
+  it('gives the dismiss button a mobile touch target and a focus ring', () => {
+    render(<Toaster />)
+    act(() => { toast.success('Saved') })
+    const cls = screen.getByRole('button', { name: 'Dismiss notification' }).className
+    expect(cls).toContain('max-sm:h-10')
+    expect(cls).toContain('max-sm:w-10')
+    expect(cls).toContain('focus-visible:ring-2')
+  })
 })

@@ -26,21 +26,21 @@ export default function GlobalError({
           alignItems: 'center',
           justifyContent: 'center',
           padding: '1rem',
-          backgroundColor: '#f5f3ff',
-          color: '#1e1b4b',
+          backgroundColor: '#F6F7F9',
+          color: '#14161B',
           fontFamily: 'system-ui, Arial, Helvetica, sans-serif',
           textAlign: 'center',
         }}
       >
         <div style={{ maxWidth: '28rem' }}>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 500, margin: 0 }}>
             CV Builder ran into a problem
           </h1>
-          <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#3730a3' }}>
+          <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#424855' }}>
             The app failed to start. Your saved CVs and applications are unaffected.
           </p>
           {error.digest && (
-            <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#4338ca' }}>
+            <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#424855' }}>
               Reference: <span style={{ fontFamily: 'monospace' }}>{error.digest}</span>
             </p>
           )}
@@ -53,8 +53,8 @@ export default function GlobalError({
               padding: '0.5rem 1rem',
               fontSize: '0.875rem',
               fontWeight: 500,
-              color: '#ffffff',
-              backgroundColor: '#4f46e5',
+              color: '#FFFFFF',
+              backgroundColor: '#2457F5',
               border: 'none',
               borderRadius: '0.5rem',
               cursor: 'pointer',
