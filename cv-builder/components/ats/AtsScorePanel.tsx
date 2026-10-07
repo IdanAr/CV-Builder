@@ -352,7 +352,7 @@ export function AtsScorePanel() {
                     >
                       {semanticStatus === 'loading' ? (
                         <>
-                          <span className="animate-spin inline-block">⟳</span>
+                          <span className="motion-safe:animate-spin inline-block">⟳</span>
                           Checking…
                         </>
                       ) : (
@@ -368,7 +368,7 @@ export function AtsScorePanel() {
                     >
                       {fixStatus === 'loading' ? (
                         <>
-                          <span className="animate-spin inline-block">⟳</span>
+                          <span className="motion-safe:animate-spin inline-block">⟳</span>
                           Generating…
                         </>
                       ) : (
@@ -549,7 +549,7 @@ export function AtsScorePanel() {
           ) : fixStatus === 'loading' ? (
             <div className="rounded-xl border border-accent-100 bg-accent-50 p-6 text-center">
               <p className="text-sm text-fg-muted">
-                <span className="animate-spin inline-block mr-1">⟳</span>
+                <span className="motion-safe:animate-spin inline-block mr-1">⟳</span>
                 Generating fixes…
               </p>
             </div>
