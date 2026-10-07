@@ -1,22 +1,55 @@
 import { auth } from '@/lib/auth'
 import { NextResponse } from 'next/server'
-import { listScrapedJobs } from '@/lib/api/scraped-jobs'
+import {
+  listScrapedJobs,
+  listPipelineJobs,
+  countPipelineStages,
+  InvalidCursorError,
+} from '@/lib/api/scraped-jobs'
+import { parsePipelineFilter } from '@/lib/jobsearch/stages'
 import { apiError, handleRouteError } from '@/lib/api/route-errors'
 
 export const GET = auth(async function GET(req) {
   if (!req.auth?.user?.id) {
     return apiError('UNAUTHORIZED', 'Unauthorized', 401)
   }
+  const userId = req.auth.user.id
   try {
     const { searchParams } = new URL(req.url)
-    const profileId = searchParams.get('profileId')
+    const profileId = searchParams.get('profileId') ?? undefined
+
+    const stageParam = searchParams.get('stage')
+    if (stageParam !== null) {
+      const stage = parsePipelineFilter(stageParam)
+      if (!stage) return apiError('VALIDATION_ERROR', 'stage is not a pipeline stage', 400)
+      const limitParam = searchParams.get('limit')
+      const limit = limitParam === null ? undefined : Number(limitParam)
+      if (limit !== undefined && !Number.isInteger(limit)) {
+        return apiError('VALIDATION_ERROR', 'limit must be an integer', 400)
+      }
+      const [page, counts] = await Promise.all([
+        listPipelineJobs(userId, {
+          stage,
+          profileId,
+          q: searchParams.get('q') ?? undefined,
+          cursor: searchParams.get('cursor') ?? undefined,
+          limit,
+        }),
+        countPipelineStages(userId, { profileId }),
+      ])
+      return NextResponse.json({ items: page.items, nextCursor: page.nextCursor, counts })
+    }
+
     if (!profileId) {
       return apiError('VALIDATION_ERROR', 'profileId is required', 400)
     }
     const includeDeleted = searchParams.get('includeDeleted') === '1'
-    const scrapedJobs = await listScrapedJobs(req.auth.user.id, profileId, { includeDeleted })
+    const scrapedJobs = await listScrapedJobs(userId, profileId, { includeDeleted })
     return NextResponse.json({ scrapedJobs })
   } catch (err) {
+    if (err instanceof InvalidCursorError) {
+      return apiError('VALIDATION_ERROR', 'cursor is not valid', 400)
+    }
     return handleRouteError(err, 'GET /api/jobsearch/scraped-jobs')
   }
 })
