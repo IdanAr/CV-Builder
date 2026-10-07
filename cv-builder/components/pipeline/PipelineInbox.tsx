@@ -204,7 +204,7 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
 
   if (profiles.length === 0) {
     return (
-      <div className="space-y-4">
+      <div data-pipeline-root="" className="space-y-4 mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         {header}
         <Card tone="outline" padding="lg" className="text-center">
           <p className="text-sm text-fg-body">Set up a profile to start finding jobs.</p>
@@ -221,7 +221,7 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
   const hasFilters = Boolean(view.profile || view.q.trim())
 
   return (
-    <div className="space-y-4">
+    <div data-pipeline-root="" className="space-y-4 mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold text-fg-body">Job search</h1>
         <div className="flex items-center gap-1">

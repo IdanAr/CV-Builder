@@ -214,6 +214,15 @@ describe('PipelineInbox', () => {
     expect(detail.className).toContain('min-w-0')
   })
 
+  it('wraps both the inbox and the first-run card in the page frame', () => {
+    const frame = ['mx-auto', 'w-full', 'max-w-6xl', 'px-4', 'py-6', 'sm:px-6', 'sm:py-8']
+    const { container, unmount } = setup(initial('found', [mk('a')]))
+    for (const c of frame) expect(container.firstElementChild?.className).toContain(c)
+    unmount()
+    const empty = setup(initial('found', []), { profiles: [] })
+    for (const c of frame) expect(empty.container.firstElementChild?.className).toContain(c)
+  })
+
   it('scan with a profile filter posts that profile once', async () => {
     setup(initial('found', [mk('a')]), { params: 'stage=found&profile=p2' })
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Scan now' })) })

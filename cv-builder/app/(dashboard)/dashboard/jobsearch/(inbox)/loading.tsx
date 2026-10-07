@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 /** Shown while `JobSearchPage` awaits its profiles, counts and first page of jobs. */
 export default function JobSearchLoading() {
   return (
-    <div role="status" aria-live="polite" className="mx-auto max-w-6xl px-4 py-8">
+    <div role="status" aria-live="polite" className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <span className="sr-only">Loading your pipeline</span>
 
       <div aria-hidden="true" className="flex flex-col gap-5">
