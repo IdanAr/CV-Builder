@@ -244,8 +244,8 @@ export function ListFieldManager<T>({
                 <div
                   ref={(el) => { setNodeRef(el); itemRefs.current[i] = el }}
                   style={style}
-                  className={`flex items-start gap-1.5 border border-accent-100 rounded-lg p-3 bg-surface${
-                    isDragging ? ' opacity-60 border-dashed border-accent-400' : ''
+                  className={`flex items-start gap-1.5 border border-border rounded-control p-3 bg-surface${
+                    isDragging ? ' opacity-60 border-dashed border-primary' : ''
                   }`}
                 >
                   <button
@@ -268,7 +268,7 @@ export function ListFieldManager<T>({
         </SortableContext>
       </DndContext>
       <button type="button" onClick={add}
-        className="text-sm text-accent-600 hover:text-accent-800 font-medium">
+        className="text-sm text-fg-body underline underline-offset-4 hover:text-fg-heading font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10">
         + {addLabel}
       </button>
     </div>

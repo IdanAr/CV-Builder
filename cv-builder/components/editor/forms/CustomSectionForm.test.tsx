@@ -45,12 +45,12 @@ describe('CustomSectionForm', () => {
 
   it('active toggle (summary→Text) has indigo background class', () => {
     render(<CustomSectionForm sectionId="sec1" />)
-    expect(screen.getByRole('button', { name: /^text$/i }).className).toContain('bg-accent-500')
+    expect(screen.getByRole('button', { name: /^text$/i }).className).toContain('bg-primary')
   })
 
   it('inactive toggle does not have indigo background', () => {
     render(<CustomSectionForm sectionId="sec1" />)
-    expect(screen.getByRole('button', { name: /^subtitle$/i }).className).not.toContain('bg-accent-500')
+    expect(screen.getByRole('button', { name: /^subtitle$/i }).className).not.toContain('bg-primary')
   })
 
   it('clicking inactive toggle calls updateCustomSection with the field added', () => {

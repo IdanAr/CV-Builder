@@ -116,7 +116,7 @@ function WorkItemForm({
         <button type="button" onClick={onRemove} aria-label="Remove work entry"
           className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'mt-1 h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
       </div>
-      <div className="pl-3 border-l-2 border-accent-100">
+      <div className="pl-3 border-l-2 border-border">
         <ListFieldManager<WorkRole>
           items={roles}
           onChange={setRoles}
