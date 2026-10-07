@@ -56,8 +56,6 @@ const BASELINE: Record<string, number> = {
   'app/(auth)/signin/page.tsx': 24,
   'app/privacy/page.tsx': 36,
   'app/terms/page.tsx': 34,
-  'components/ai/AiSuggestButton.tsx': 14,
-  'components/coverletter/CoverLetterPanel.tsx': 23,
   'components/cvs/CvLibrary.tsx': 1,
   'components/editor/design/SegmentedControl.tsx': 1,
   'components/jobsearch/JobSearchShell.tsx': 1,

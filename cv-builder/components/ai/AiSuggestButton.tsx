@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react'
 import { Sparkles, Loader2 } from 'lucide-react'
 import type { SuggestionField, PipelineResult } from '@/lib/ai/pipeline'
 import { Popover } from '@/components/ui/Popover'
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
 import { fetchWithTimeout, requestErrorMessage } from '@/lib/fetch-with-timeout'
 import { highlightApprovals } from '@/lib/ai/highlight-approvals'
 import { apiErrorMessage } from '@/lib/api/client-errors'
@@ -50,13 +52,13 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
 
   const open = !!error || !!result
 
-  // A pending suggestion requires an explicit user decision — Popover's own
+  // A pending suggestion requires an explicit user decision - Popover's own
   // Escape handling still routes through `onOpenChange(false)` below, but
   // that intentionally no-ops for `result` (see comment there), so wire a
   // dedicated Escape dismissal here. Unlike a stray outside click, Escape is
   // an unambiguous, deliberate "close this" gesture with no other purpose in
   // this UI, and matches the Escape-always-closes-overlays convention users
-  // already expect from Popover — so it stays a valid way to dismiss a
+  // already expect from Popover - so it stays a valid way to dismiss a
   // pending suggestion even though outside clicks no longer are.
   useEffect(() => {
     if (!result) return
@@ -77,7 +79,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
           // panel is just a dismissible message, so it can keep closing on
           // an outside click. A pending `result`, though, is a rate-limited,
           // paid AI generation the user hasn't explicitly accepted or
-          // dismissed yet — and when `result.pendingApprovals` is non-empty,
+          // dismissed yet - and when `result.pendingApprovals` is non-empty,
           // the hallucination guard requires the user to actually look at
           // and act on it. A stray outside click (e.g. clicking back into
           // the nearby textarea to compare the suggestion against the
@@ -88,35 +90,32 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
           setError(null)
         }}
         trigger={
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="icon"
             onClick={handleClick}
             disabled={loading || !currentValue.trim() || !resumeId}
             title={loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'}
             aria-label={loading ? 'Generating AI suggestion…' : 'Generate an AI-written suggestion for this field'}
-            className="px-1.5 py-1 text-sm text-fg-muted hover:text-fg-body hover:bg-accent-50 rounded transition-colors disabled:opacity-30"
           >
             {loading ? (
-              <Loader2 aria-hidden="true" data-testid="ai-suggest-loading-icon" className="h-4 w-4 animate-spin" strokeWidth={1.75} />
+              <Loader2 aria-hidden="true" data-testid="ai-suggest-loading-icon" className="h-4 w-4 motion-safe:animate-spin" strokeWidth={1.75} />
             ) : (
               <Sparkles aria-hidden="true" data-testid="ai-suggest-icon" className="h-4 w-4" strokeWidth={1.75} />
             )}
-          </button>
+          </Button>
         }
       >
         {error && (
           <div
             role="status"
             aria-live="polite"
-            className="w-56 rounded-lg border border-danger-200 bg-danger-50 p-2 shadow-sm"
+            className="w-56 rounded-card border border-border-danger bg-surface-danger p-2 shadow-popover"
           >
-            <p className="text-xs text-danger-600">{error}</p>
-            <button
-              onClick={() => setError(null)}
-              className="mt-1 text-xs text-danger-400 hover:text-danger-600"
-            >
+            <p className="text-xs text-fg-danger">{error}</p>
+            <Button size="xs" variant="dangerGhost" className="mt-1" onClick={() => setError(null)}>
               Dismiss
-            </button>
+            </Button>
           </div>
         )}
 
@@ -124,29 +123,26 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
           <div
             role="status"
             aria-live="polite"
-            className="flex max-h-[60vh] w-[min(20rem,calc(100vw-2rem))] flex-col overflow-y-auto rounded-xl border border-accent-200 bg-surface p-3 shadow-xl"
+            className="flex max-h-[60vh] w-[min(20rem,calc(100vw-2rem))] flex-col overflow-y-auto rounded-card border border-border bg-surface p-3 shadow-popover"
           >
             {result.pendingApprovals.length > 0 && (
-              <p className="mb-2 rounded border border-warning-200 bg-warning-50 px-2 py-1 text-xs text-warning-700">
+              <Badge
+                tone="attention"
+                className="mb-2 block overflow-visible whitespace-normal text-clip rounded-chip border border-border-attention px-2 py-1"
+              >
                 Highlighted items were not in your original notes - verify before accepting.
-              </p>
+              </Badge>
             )}
-            <p className="mb-3 text-sm leading-relaxed text-neutral-800">
+            <p className="mb-3 text-sm leading-relaxed text-fg-body">
               {highlightApprovals(result.suggestion, result.pendingApprovals)}
             </p>
             <div className="flex gap-2">
-              <button
-                onClick={handleAccept}
-                className="rounded-lg bg-accent-600 px-3 py-1 text-xs text-white transition-colors hover:bg-accent-700"
-              >
+              <Button size="xs" onClick={handleAccept}>
                 Use this
-              </button>
-              <button
-                onClick={() => setResult(null)}
-                className="rounded px-3 py-1 text-xs text-fg-muted transition-colors hover:text-fg-body"
-              >
+              </Button>
+              <Button size="xs" variant="ghost" onClick={() => setResult(null)}>
                 Dismiss
-              </button>
+              </Button>
             </div>
           </div>
         )}
