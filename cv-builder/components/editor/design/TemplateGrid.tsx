@@ -61,6 +61,7 @@ function LiveCards({ templateId }: { templateId: string }) {
   // Key on everything except templateId so that picking a template does not
   // hand every memoised thumbnail a fresh meta object.
   const { templateId: _ignored, ...rest } = debouncedMeta
+  void _ignored
   const restKey = JSON.stringify(rest)
   const metaByTemplate = useMemo(() => {
     const base = JSON.parse(restKey) as Record<string, unknown>
