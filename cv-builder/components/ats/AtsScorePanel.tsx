@@ -39,13 +39,13 @@ function getScoreStatusLabel(score: number): { colorClass: string; tone: BadgeTo
   }
 }
 
+const CHIP = 'inline-flex items-center rounded-chip border px-2 py-0.5 text-xs transition-colors max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring '
+
 /**
  * Orders `must`/`ambiguous` keywords before `nice-to-have` ones so the most
  * important gaps are visually first, without changing which keywords are
  * shown. Stable: keywords within the same tier keep their original order.
  */
-const CHIP = 'inline-flex items-center rounded-chip px-2 py-0.5 text-xs transition-colors max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring '
-
 export function sortByPriority(keywords: string[], priorities: Record<string, KeywordPriority>): string[] {
   const rank = (kw: string): number => (priorities[kw] === 'nice-to-have' ? 1 : 0)
   return keywords
@@ -62,7 +62,7 @@ function ScoreBar({ value, max }: { value: number; max: number }) {
   return (
     <div className="h-2 w-full rounded-full bg-secondary">
       <div
-        className={`h-2 rounded-full transition-colors ${
+        className={`h-2 rounded-full transition-[width] duration-300 ${
           pct >= 70 ? 'bg-fg-success' : pct >= 40 ? 'bg-fg-warning' : 'bg-fg-danger'
         }`}
         style={{ width: `${pct}%` }}
@@ -355,7 +355,6 @@ export function AtsScorePanel() {
                       size="md"
                       onClick={handleSemanticMatch}
                       disabled={semanticStatus === 'loading'}
-                      className="min-h-[44px]"
                     >
                       {semanticStatus === 'loading' ? (
                         <>
@@ -372,7 +371,6 @@ export function AtsScorePanel() {
                       size="md"
                       onClick={handleFixAll}
                       disabled={fixStatus === 'loading'}
-                      className="min-h-[44px]"
                     >
                       {fixStatus === 'loading' ? (
                         <>
@@ -465,10 +463,10 @@ export function AtsScorePanel() {
                     }
                     className={
                       excluded
-                        ? CHIP + 'bg-surface-muted text-fg-muted line-through hover:brightness-95'
+                        ? CHIP + 'border-border bg-surface-muted text-fg-muted line-through hover:brightness-95'
                         : isNiceToHave
-                        ? CHIP + 'bg-surface-warning text-fg-warning hover:brightness-95'
-                        : CHIP + 'bg-surface-danger text-fg-danger hover:brightness-95'
+                        ? CHIP + 'border-border-warning bg-surface text-fg-warning hover:brightness-95'
+                        : CHIP + 'border-border-danger bg-surface text-fg-danger hover:brightness-95'
                     }
                   >
                     {kw}
@@ -506,10 +504,10 @@ export function AtsScorePanel() {
                     title={semantic ? 'Matched via AI semantic analysis (not an exact keyword match)' : undefined}
                     className={
                       excluded
-                        ? CHIP + 'bg-surface-muted text-fg-muted line-through hover:brightness-95'
+                        ? CHIP + 'border-border bg-surface-muted text-fg-muted line-through hover:brightness-95'
                         : semantic
-                        ? CHIP + 'bg-surface-selected text-fg-body hover:bg-secondary'
-                        : CHIP + 'bg-surface-success text-fg-success hover:brightness-95'
+                        ? CHIP + 'border-border bg-surface-selected text-fg-body hover:brightness-95'
+                        : CHIP + 'border-border-success bg-surface text-fg-success hover:brightness-95'
                     }
                   >
                     {kw}

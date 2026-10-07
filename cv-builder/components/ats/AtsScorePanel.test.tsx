@@ -137,9 +137,9 @@ describe('AtsScorePanel help popover for Semantic Match / Tailor with AI', () =>
     const semanticButton = screen.getByRole('button', { name: '🔎 Semantic Match' })
     const tailorButton = screen.getByText(/tailor with ai/i).closest('button')
     expect(semanticButton?.className).toContain('bg-primary')
-    expect(semanticButton?.className).toContain('min-h-[44px]')
+    expect(semanticButton?.className).toContain('min-h-10')
     expect(tailorButton?.className).toContain('bg-primary')
-    expect(tailorButton?.className).toContain('min-h-[44px]')
+    expect(tailorButton?.className).toContain('min-h-10')
   })
 })
 

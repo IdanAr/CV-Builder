@@ -153,7 +153,7 @@ export function AtsFixReviewPanel({
                         <p className="text-fg-body leading-relaxed">
                           {before.map((seg, i) =>
                             seg.changed ? (
-                              <span key={i} className="line-through text-fg-danger bg-surface-danger rounded-chip">{seg.text}</span>
+                              <span key={i} className="line-through text-fg-danger bg-surface rounded-chip px-0.5">{seg.text}</span>
                             ) : (
                               <span key={i}>{seg.text}</span>
                             )
@@ -165,7 +165,7 @@ export function AtsFixReviewPanel({
                         <p className="text-fg-body leading-relaxed">
                           {after.map((seg, i) =>
                             seg.changed ? (
-                              <span key={i} className="font-medium text-fg-success bg-surface-success rounded-chip">{seg.text}</span>
+                              <span key={i} className="font-medium underline text-fg-success bg-surface rounded-chip px-0.5">{seg.text}</span>
                             ) : (
                               <span key={i}>{seg.text}</span>
                             )
@@ -184,7 +184,7 @@ export function AtsFixReviewPanel({
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {fix.pendingApprovals.map((claim) => (
-                      <Badge key={claim} tone="warning" className="rounded-full">
+                      <Badge key={claim} tone="attention" className="rounded-full border border-border-attention">
                         {claim}
                       </Badge>
                     ))}
