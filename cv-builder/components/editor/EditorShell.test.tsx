@@ -286,6 +286,62 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
       expect(localStorage.getItem('cv-builder:panel-width')).toBe('320')
     })
 
+    describe('pointer drag relative to the panel left edge', () => {
+      function mockLeft(left: number) {
+        return vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ left } as DOMRect)
+      }
+      function startDrag() {
+        const d = divider()
+        d.setPointerCapture = vi.fn()
+        fireEvent.pointerDown(d, { pointerId: 1, clientX: 436 })
+        return d
+      }
+      afterEach(() => vi.restoreAllMocks())
+
+      it('subtracts the panel left offset (56): clientX 456 -> width 400', () => {
+        setViewport(1280)
+        mockLeft(56)
+        renderShell()
+        const d = startDrag()
+        fireEvent.pointerMove(d, { pointerId: 1, clientX: 456 })
+        expect(Number(d.getAttribute('aria-valuenow'))).toBe(400)
+        expect(d.previousElementSibling).toHaveStyle({ width: '400px' })
+        fireEvent.pointerUp(d, { pointerId: 1 })
+        expect(localStorage.getItem('cv-builder:panel-width')).toBe('400')
+      })
+
+      it('with offset 0 clientX is the width', () => {
+        setViewport(1280)
+        mockLeft(0)
+        renderShell()
+        const d = startDrag()
+        fireEvent.pointerMove(d, { pointerId: 1, clientX: 400 })
+        expect(Number(d.getAttribute('aria-valuenow'))).toBe(400)
+      })
+
+      it('still clamps to bounds', () => {
+        setViewport(1280)
+        mockLeft(56)
+        renderShell()
+        const d = startDrag()
+        fireEvent.pointerMove(d, { pointerId: 1, clientX: 56 + 900 })
+        expect(Number(d.getAttribute('aria-valuenow'))).toBe(480)
+        fireEvent.pointerMove(d, { pointerId: 1, clientX: 56 + 10 })
+        expect(Number(d.getAttribute('aria-valuenow'))).toBe(320)
+      })
+
+      it('pointercancel restores the starting width', () => {
+        setViewport(1280)
+        mockLeft(56)
+        renderShell()
+        const d = startDrag()
+        fireEvent.pointerMove(d, { pointerId: 1, clientX: 56 + 450 })
+        expect(Number(d.getAttribute('aria-valuenow'))).toBe(450)
+        fireEvent.pointerCancel(d, { pointerId: 1 })
+        expect(Number(d.getAttribute('aria-valuenow'))).toBe(380)
+      })
+    })
+
     it('keeps its accessible name', () => {
       renderShell()
       expect(divider()).toHaveAttribute('aria-label', 'Resize editor panel')

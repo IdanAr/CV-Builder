@@ -79,6 +79,9 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
   const [mounted, setMounted] = useState(false)
   const [mobileView, setMobileView] = useState<MobileView>('edit')
   const draggingRef = useRef(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+  // The panel's left edge in viewport coordinates (the app shell's sidebar rail sits to its left).
+  const dragOffsetRef = useRef(0)
   const dragStartWidthRef = useRef(DEFAULT_PANEL_WIDTH)
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT_QUERY)
   const reduceMotion = useReducedMotion()
@@ -125,6 +128,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
 
   function handleDividerPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     dragStartWidthRef.current = panelWidth
+    dragOffsetRef.current = panelRef.current?.getBoundingClientRect().left ?? 0
     e.currentTarget.setPointerCapture(e.pointerId)
     draggingRef.current = true
     setDividerActive(true)
@@ -132,7 +136,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
 
   function handleDividerPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!draggingRef.current) return
-    setPanelWidth(clampPanelWidth(e.clientX))
+    setPanelWidth(clampPanelWidth(e.clientX - dragOffsetRef.current))
   }
 
   function handleDividerPointerUp() {
@@ -436,6 +440,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
               </div>
             ) : (
               <div
+                ref={panelRef}
                 className="flex flex-col border-r border-border bg-surface shrink-0"
                 style={{ width: panelWidth }}
               >
