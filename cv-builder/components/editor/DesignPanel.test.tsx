@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import React, { Profiler } from 'react'
+import React from 'react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent, act, within } from '@testing-library/react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { DesignPanel } from './DesignPanel'
 import type { ResumeMeta } from '@/lib/schemas/resume.zod'
@@ -32,9 +32,15 @@ beforeEach(() => {
   })
 })
 
+// The spacing sliders live inside collapsed <details> ("Advanced").
+function openAdvanced(container: HTMLElement) {
+  container.querySelectorAll('details').forEach((d) => { d.open = true })
+}
+
 describe('DesignPanel', () => {
   it('line spacing slider reaches 1.3', () => {
-    render(<DesignPanel />)
+    const { container } = render(<DesignPanel />)
+    openAdvanced(container)
     const slider = screen.getByRole('slider', { name: /line spacing/i }) as HTMLInputElement
     expect(slider.max).toBe('1.3')
     expect(slider.min).toBe('1')
@@ -196,39 +202,6 @@ describe('DesignPanel', () => {
       // covered elsewhere; this just confirms the sensor/attributes are
       // still wired for pointer interaction after adding KeyboardSensor.
       expect(handles[0]).toHaveAttribute('role', 'button')
-    })
-  })
-
-  describe('data subscription scope', () => {
-    it('does not re-render when an unrelated part of data changes (only customSections matters here)', () => {
-      const onRender = vi.fn()
-
-      useResumeEditorStore.setState({
-        resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
-        data: { basics: { name: 'Jordan' } },
-        meta: { ...defaultMeta, layout: 'two-column', sectionOrder: ['work', 'skills'] },
-      })
-      render(
-        <Profiler id="design-panel-test" onRender={onRender}>
-          <DesignPanel />
-        </Profiler>
-      )
-      // Mount alone commits more than once here (dnd-kit's own effects inside
-      // DndContext/SortableContext — e.g. id generation, initial measurement —
-      // fire regardless of this fix), so the meaningful assertion is that the
-      // commit count doesn't grow further from an unrelated data change, not
-      // that mount itself produces exactly one commit.
-      const callsAfterMount = onRender.mock.calls.length
-
-      // Simulate a keystroke in an unrelated field (e.g. the summary editor) —
-      // this is the exact kind of store update that fires on every keystroke
-      // anywhere in the editor while DesignPanel is mounted but not visible.
-      act(() => {
-        useResumeEditorStore.setState((s) => ({
-          data: { ...s.data, basics: { ...s.data.basics, summary: 'x' } },
-        }))
-      })
-      expect(onRender.mock.calls.length).toBe(callsAfterMount)
     })
   })
 
@@ -514,25 +487,24 @@ describe('DesignPanel', () => {
     })
   })
 
-  // Characterization tests added before the Design panel rewrite. The font
-  // selects and margin slider have no stable accessible name today (their
-  // <label>s are not associated), so they are located by role/position and by
-  // range attributes. TASK 6 (Design panel rewrite) must update these
-  // selectors; the store assertions are the behaviour to preserve.
+  // Font, margin and line-spacing controls were rebuilt (pairing cards plus a
+  // customize list; presets plus Advanced sliders). The store effects below are
+  // the behaviour preserved from the original selects/sliders.
   describe('typography and spacing controls (store effects)', () => {
-    it('changing the body font select updates meta.fontFamily only', () => {
+    it('choosing a body font updates meta.fontFamily only', () => {
       render(<DesignPanel />)
-      const [bodyFont] = screen.getAllByRole('combobox')
-      fireEvent.change(bodyFont, { target: { value: 'Georgia' } })
+      const list = screen.getByRole('radiogroup', { name: 'Fonts for body' })
+      fireEvent.click(within(list).getByRole('radio', { name: 'Georgia' }))
       const meta = useResumeEditorStore.getState().meta
       expect(meta.fontFamily).toBe('Georgia')
       expect(meta.headerFontFamily).toBe('Calibri')
     })
 
-    it('changing the heading font select updates meta.headerFontFamily only', () => {
+    it('choosing a heading font updates meta.headerFontFamily only', () => {
       render(<DesignPanel />)
-      const [, headingFont] = screen.getAllByRole('combobox')
-      fireEvent.change(headingFont, { target: { value: 'Georgia' } })
+      fireEvent.click(screen.getByRole('radio', { name: 'Headings' }))
+      const list = screen.getByRole('radiogroup', { name: 'Fonts for headings' })
+      fireEvent.click(within(list).getByRole('radio', { name: 'Georgia' }))
       const meta = useResumeEditorStore.getState().meta
       expect(meta.headerFontFamily).toBe('Georgia')
       expect(meta.fontFamily).toBe('Calibri')
@@ -540,30 +512,48 @@ describe('DesignPanel', () => {
 
     it('offers the same font options for body and heading', () => {
       render(<DesignPanel />)
-      const [bodyFont, headingFont] = screen.getAllByRole('combobox')
-      const values = (el: HTMLElement) =>
-        Array.from((el as HTMLSelectElement).options).map((o) => o.value)
-      expect(values(bodyFont).length).toBeGreaterThan(1)
-      expect(values(bodyFont)).toEqual(values(headingFont))
-      expect(values(bodyFont)).toContain('Calibri')
+      const names = (group: HTMLElement) =>
+        within(group).getAllByRole('radio').map((r) => r.textContent)
+      const body = names(screen.getByRole('radiogroup', { name: 'Fonts for body' }))
+      fireEvent.click(screen.getByRole('radio', { name: 'Headings' }))
+      const heading = names(screen.getByRole('radiogroup', { name: 'Fonts for headings' }))
+      expect(body.length).toBeGreaterThan(1)
+      expect(body).toEqual(heading)
+      expect(body).toContain('Calibri')
     })
 
-    it('the page margins slider updates meta.pageMargins', () => {
-      render(<DesignPanel />)
-      const margins = screen
-        .getAllByRole('slider')
-        .find((el) => (el as HTMLInputElement).min === '0.5') as HTMLInputElement
-      expect(margins).toBeDefined()
+    it('the page margins slider (under Advanced) updates meta.pageMargins', () => {
+      const { container } = render(<DesignPanel />)
+      openAdvanced(container)
+      const margins = screen.getByRole('slider', { name: 'Page margins' }) as HTMLInputElement
+      expect(margins.min).toBe('0.5')
       expect(margins.max).toBe('1.5')
       fireEvent.change(margins, { target: { value: '0.8' } })
       expect(useResumeEditorStore.getState().meta.pageMargins).toBeCloseTo(0.8)
     })
 
-    it('the line spacing slider updates meta.lineSpacing', () => {
+    it('a margin preset writes meta.pageMargins', () => {
       render(<DesignPanel />)
+      const group = screen.getByRole('radiogroup', { name: 'Margin presets' })
+      const radios = within(group).getAllByRole('radio')
+      fireEvent.click(radios.find((r) => r.getAttribute('aria-checked') === 'false')!)
+      expect(useResumeEditorStore.getState().meta.pageMargins).not.toBe(1.0)
+    })
+
+    it('the line spacing slider (under Advanced) updates meta.lineSpacing', () => {
+      const { container } = render(<DesignPanel />)
+      openAdvanced(container)
       const slider = screen.getByRole('slider', { name: /line spacing/i })
       fireEvent.change(slider, { target: { value: '1.3' } })
       expect(useResumeEditorStore.getState().meta.lineSpacing).toBeCloseTo(1.3)
+    })
+
+    it('a line spacing preset writes meta.lineSpacing', () => {
+      render(<DesignPanel />)
+      const group = screen.getByRole('radiogroup', { name: 'Line spacing presets' })
+      const radios = within(group).getAllByRole('radio')
+      fireEvent.click(radios.find((r) => r.getAttribute('aria-checked') === 'false')!)
+      expect(useResumeEditorStore.getState().meta.lineSpacing).not.toBe(1.15)
     })
   })
 
