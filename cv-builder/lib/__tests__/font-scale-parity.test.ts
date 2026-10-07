@@ -14,7 +14,7 @@ vi.setConfig({ testTimeout: 60_000 })
 
 const TEMPLATES = ['classic', 'modern', 'minimal', 'executive', 'sidebar'] as const
 const SCALES = [0.95, 1, 1.05] as const
-const SPACINGS = [1.0, 1.08, 1.2] as const
+const SPACINGS = [1.0, 1.08, 1.2, 1.3] as const
 const MODES: ExportMode[] = ['designed', 'ats']
 
 const fixture: ResumeData = {

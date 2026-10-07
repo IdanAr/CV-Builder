@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { PreviewTab } from './PreviewTab'
+import { PreviewTab, fitScaleFor } from './PreviewTab'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { ResumeMetaSchema } from '@/lib/schemas/resume.zod'
 
@@ -95,24 +95,71 @@ describe('PreviewTab — zoom controls', () => {
     expect(getScale()).toBeCloseTo(0.75)
   })
 
-  it('clamps zoom-in at 200%', () => {
+  it('clamps zoom-in at 150% and disables the button there', () => {
     render(<PreviewTab />)
     const zoomIn = screen.getByTestId('zoom-in')
     for (let i = 0; i < 20; i++) fireEvent.click(zoomIn)
-    expect(screen.getByTestId('zoom-percentage')).toHaveTextContent('200%')
-    expect(getScale()).toBeCloseTo(2.0)
-    fireEvent.click(zoomIn)
-    expect(screen.getByTestId('zoom-percentage')).toHaveTextContent('200%')
+    expect(screen.getByTestId('zoom-percentage')).toHaveTextContent('150%')
+    expect(getScale()).toBeCloseTo(1.5)
+    expect(zoomIn).toBeDisabled()
   })
 
-  it('clamps zoom-out at 25%', () => {
+  it('clamps zoom-out at 50% and disables the button there', () => {
     render(<PreviewTab />)
     const zoomOut = screen.getByTestId('zoom-out')
     for (let i = 0; i < 20; i++) fireEvent.click(zoomOut)
-    expect(screen.getByTestId('zoom-percentage')).toHaveTextContent('25%')
-    expect(getScale()).toBeCloseTo(0.25)
-    fireEvent.click(zoomOut)
-    expect(screen.getByTestId('zoom-percentage')).toHaveTextContent('25%')
+    expect(screen.getByTestId('zoom-percentage')).toHaveTextContent('50%')
+    expect(getScale()).toBeCloseTo(0.5)
+    expect(zoomOut).toBeDisabled()
+  })
+
+  it('clamps a stored zoom from the old 25-200% range on load', () => {
+    localStorage.setItem(ZOOM_KEY, '2')
+    const { unmount } = render(<PreviewTab />)
+    expect(screen.getByTestId('zoom-percentage')).toHaveTextContent('150%')
+    unmount()
+    localStorage.setItem(ZOOM_KEY, '0.25')
+    render(<PreviewTab />)
+    expect(screen.getByTestId('zoom-percentage')).toHaveTextContent('50%')
+  })
+
+  it('Fit width clears the override, persists fit and is pressed only in Fit mode', () => {
+    render(<PreviewTab />)
+    const fit = screen.getByRole('button', { name: /fit width/i })
+    expect(fit).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByTestId('zoom-in'))
+    expect(fit).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(fit)
+    expect(screen.getByTestId('zoom-percentage')).toHaveTextContent('Fit')
+    expect(getScale()).toBeCloseTo(0.75)
+    expect(localStorage.getItem(ZOOM_KEY)).toBe('fit')
+    expect(fit).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('auto-fit keeps its own 0.25 floor, independent of the 50% user floor', () => {
+    expect(fitScaleFor(100)).toBe(0.25)
+    expect(fitScaleFor(5000)).toBe(1)
+  })
+
+  it('renders the preview toolbar with the ATS format chip and no expand toggle by default', () => {
+    render(<PreviewTab />)
+    expect(screen.getByRole('toolbar', { name: 'Preview controls' })).toBeInTheDocument()
+    expect(screen.getByText(/^ATS format score \d+ out of 100$/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /expand preview/i })).toBeNull()
+  })
+
+  it('forwards the expand toggle props to the toolbar', () => {
+    const onToggleExpand = vi.fn()
+    render(<PreviewTab expandable expanded={false} onToggleExpand={onToggleExpand} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Expand preview' }))
+    expect(onToggleExpand).toHaveBeenCalledOnce()
+  })
+
+  it('uses a muted canvas with a white page wrapper', () => {
+    render(<PreviewTab />)
+    const page = screen.getByTestId('preview-scaled-content').parentElement as HTMLElement
+    expect(page).toHaveClass('bg-white')
+    expect(page.parentElement).toHaveClass('bg-surface-muted')
   })
 
   it('restores a previously-persisted zoom level on mount', () => {
@@ -229,5 +276,45 @@ describe('PreviewEditOverlay integration', () => {
     await new Promise((resolve) => setTimeout(resolve, 400))
     expect(screen.queryByTestId('pv-handle-section|work')).toBeNull()
     expect(screen.queryByTestId('pv-add-section-toggle')).toBeNull()
+  })
+})
+
+describe('PreviewTab — page count badge states', () => {
+  beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+    localStorage.clear()
+    useResumeEditorStore.setState({
+      data: {},
+      meta: ResumeMetaSchema.parse({}),
+    })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('shows "Calculating pages…" while the server pagination is still pending', () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
+    render(<PreviewTab />)
+    expect(screen.getAllByText('Calculating pages…').length).toBeGreaterThan(0)
+  })
+
+  it('shows "N page(s) · matches PDF" once the server pagination syncs', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => okResponse({ pageCount: 2, anchors: [] })))
+    render(<PreviewTab />)
+    expect((await screen.findAllByText('2 pages · matches PDF', {}, { timeout: 4000 })).length).toBeGreaterThan(0)
+  })
+
+  it('uses the singular form for a one-page résumé', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => okResponse({ pageCount: 1, anchors: [] })))
+    render(<PreviewTab />)
+    expect((await screen.findAllByText('1 page · matches PDF', {}, { timeout: 4000 })).length).toBeGreaterThan(0)
+  })
+
+  it('falls back to an "(estimated)" page count when the pagination request fails', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 500 })))
+    render(<PreviewTab />)
+    expect((await screen.findAllByText(/^\d+ pages? \(estimated\)$/, {}, { timeout: 4000 })).length).toBeGreaterThan(0)
   })
 })

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, useReducedMotion } from 'framer-motion'
 import { handleTablistKeyDown, tabIndexFor } from '@/lib/tablist-keys'
@@ -13,9 +12,7 @@ import { DesignPanel } from './DesignPanel'
 import { AtsScorePanel } from '@/components/ats/AtsScorePanel'
 import { CoverLetterPanel } from '@/components/coverletter/CoverLetterPanel'
 import { EditorErrorBoundary } from './EditorErrorBoundary'
-import { AppNavbar } from '@/components/ui/AppNavbar'
-import { UserProfileButton } from '@/components/ui/UserProfileButton'
-import { ExportMenu } from './ExportMenu'
+import { EditorTopBar } from './EditorTopBar'
 import { toast } from '@/lib/stores/toast.store'
 import type { ExportMode } from '@/lib/export-mode'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
@@ -27,7 +24,9 @@ type Tab = 'edit' | 'design' | 'ats' | 'coverLetter'
 const TAB_LABELS: Record<Tab, string> = { edit: 'Edit', design: 'Design', ats: 'ATS', coverLetter: 'Cover Letter' }
 
 const PANEL_WIDTH_KEY = 'cv-builder:panel-width'
-const DEFAULT_PANEL_WIDTH = 500 // Increased to give the UI breathing room initially
+const PANEL_MIN = 320
+const PANEL_MAX = 480
+const DEFAULT_PANEL_WIDTH = 380
 
 // Below this width, the resizable side-by-side layout is replaced by a
 // single full-width panel with an Edit/Preview switcher (matches Tailwind's `md`).
@@ -38,14 +37,12 @@ type MobileView = 'edit' | 'preview'
 /** The effective min/max a panel width can be clamped to, given the current viewport. */
 function getPanelWidthBounds(): { min: number; max: number } {
   // Safety check for Next.js SSR
-  if (typeof window === 'undefined') return { min: DEFAULT_PANEL_WIDTH, max: DEFAULT_PANEL_WIDTH }
+  if (typeof window === 'undefined') return { min: PANEL_MIN, max: PANEL_MAX }
 
-  // 1. Prevent squishing on desktop: hard minimum of 500px.
-  // 2. Prevent breaking on mobile: if screen is < 500px, limit the minimum to the screen width.
-  const min = Math.min(500, window.innerWidth)
-
-  // 3. Max width: 60% of the screen, but ensure it never drops below the minimum width.
-  const max = Math.max(min, Math.floor(window.innerWidth * 0.6))
+  // Never wider than the screen on tiny viewports; never above 60% of the
+  // screen or PANEL_MAX, but never below the minimum either.
+  const min = Math.min(PANEL_MIN, window.innerWidth)
+  const max = Math.min(PANEL_MAX, Math.max(min, Math.floor(window.innerWidth * 0.6)))
 
   return { min, max }
 }
@@ -67,7 +64,7 @@ export interface EditorShellProps {
   user?: { name?: string | null; email?: string | null; image?: string | null }
 }
 
-export function EditorShell({ resumeId, title, data, meta, user }: EditorShellProps) {
+export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
   const [activeTab, setActiveTab] = useState<Tab>('edit')
   const [previewExpanded, setPreviewExpanded] = useState(false)
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
@@ -82,6 +79,9 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
   const [mounted, setMounted] = useState(false)
   const [mobileView, setMobileView] = useState<MobileView>('edit')
   const draggingRef = useRef(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+  // The panel's left edge in viewport coordinates (the app shell's sidebar rail sits to its left).
+  const dragOffsetRef = useRef(0)
   const dragStartWidthRef = useRef(DEFAULT_PANEL_WIDTH)
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT_QUERY)
   const reduceMotion = useReducedMotion()
@@ -91,14 +91,8 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
   const router = useRouter()
   const [isExporting, setIsExporting] = useState(false)
   const [isLeaving, setIsLeaving] = useState(false)
-  const isSaving = useResumeEditorStore((s) => s.isSaving)
   const saveError = useResumeEditorStore((s) => s.saveError)
-  const setTitle = useResumeEditorStore((s) => s.setTitle)
   const hydrate = useResumeEditorStore((s) => s.hydrate)
-  const undo = useResumeEditorStore((s) => s.undo)
-  const redo = useResumeEditorStore((s) => s.redo)
-  const canUndo = useResumeEditorStore((s) => s.canUndo)
-  const canRedo = useResumeEditorStore((s) => s.canRedo)
   const pendingFocus = useResumeEditorStore((s) => s.pendingFocus)
 
   useEffect(() => {
@@ -134,6 +128,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
 
   function handleDividerPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     dragStartWidthRef.current = panelWidth
+    dragOffsetRef.current = panelRef.current?.getBoundingClientRect().left ?? 0
     e.currentTarget.setPointerCapture(e.pointerId)
     draggingRef.current = true
     setDividerActive(true)
@@ -141,7 +136,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
 
   function handleDividerPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!draggingRef.current) return
-    setPanelWidth(clampPanelWidth(e.clientX))
+    setPanelWidth(clampPanelWidth(e.clientX - dragOffsetRef.current))
   }
 
   function handleDividerPointerUp() {
@@ -268,30 +263,17 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
     }
   }
 
-  const saveStatus = isSaving ? 'Saving…' : isDirty ? '● Unsaved' : 'Saved'
-
   // Shared between the desktop side-by-side layout and the mobile
   // single-panel view — the editor panel's contents never change,
   // only how much of the screen it occupies.
   const editPanelBody = (
     <>
-      {/* Title */}
-      <div className="flex items-center gap-3 px-4 h-12 border-b border-accent-100 shrink-0 bg-surface">
-        <input
-          type="text"
-          value={storeTitle}
-          onChange={(e) => setTitle(e.target.value)}
-          aria-label="Resume title"
-          className="font-semibold text-sm bg-transparent border-none outline-none focus:ring-1 focus:ring-accent-400 rounded px-1 min-w-0 flex-1 text-fg"
-        />
-      </div>
-
       {/* Tab bar */}
       <div
         role="tablist"
         aria-label="Editor sections"
         onKeyDown={handleTablistKeyDown}
-        className="flex border-b border-accent-100 shrink-0 bg-surface"
+        className="flex border-b border-border shrink-0 bg-surface"
       >
         {(['edit', 'design', 'ats', 'coverLetter'] as Tab[]).map((tab) => (
           <button
@@ -319,34 +301,13 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
         ))}
       </div>
 
-      {/* Sticky Undo/Redo — on Edit and Design tabs (both mutate the shared
-          data/meta history; ATS is read-only and has nothing to undo) */}
-      {(activeTab === 'edit' || activeTab === 'design') && (
-        <div className="flex items-center gap-1 px-3 py-1.5 border-b border-accent-100 shrink-0 bg-accent-50/60">
-          <button
-            onClick={undo}
-            disabled={!canUndo}
-            className="flex items-center justify-center gap-1 min-h-[40px] px-2 py-1 text-xs rounded-lg shadow-sm border border-accent-200 text-accent-600 hover:bg-accent-50 hover:shadow disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
-          >
-            ↩ Undo
-          </button>
-          <button
-            onClick={redo}
-            disabled={!canRedo}
-            className="flex items-center justify-center gap-1 min-h-[40px] px-2 py-1 text-xs rounded-lg shadow-sm border border-accent-200 text-accent-600 hover:bg-accent-50 hover:shadow disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
-          >
-            Redo ↪
-          </button>
-        </div>
-      )}
-
       {/* Tab content */}
       <div className="flex-1 overflow-auto">
         <div role="tabpanel" id="editor-panel-edit" aria-labelledby="editor-tab-edit" className={activeTab === 'edit' ? 'block' : 'hidden'}>
           <EditorErrorBoundary><EditTab /></EditorErrorBoundary>
         </div>
         <div role="tabpanel" id="editor-panel-design" aria-labelledby="editor-tab-design" className={activeTab === 'design' ? 'block' : 'hidden'}>
-          <EditorErrorBoundary><DesignPanel /></EditorErrorBoundary>
+          <EditorErrorBoundary><DesignPanel active={activeTab === 'design'} /></EditorErrorBoundary>
         </div>
         <div role="tabpanel" id="editor-panel-ats" aria-labelledby="editor-tab-ats" className={activeTab === 'ats' ? 'block' : 'hidden'}>
           <EditorErrorBoundary><AtsScorePanel /></EditorErrorBoundary>
@@ -363,25 +324,13 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
   function renderPreviewPanelBody(showExpandToggle: boolean) {
     return (
       <>
-        <div className="flex items-center gap-2 px-3 h-12 border-b border-accent-100 bg-surface shrink-0">
-          <span className="text-xs font-medium text-fg-muted flex-1">Live Preview</span>
-          {showExpandToggle && (
-            <button
-              onClick={() => setPreviewExpanded((v) => !v)}
-              title={previewExpanded ? 'Collapse preview' : 'Expand preview'}
-              aria-label={previewExpanded ? 'Collapse preview' : 'Expand preview'}
-              className={`flex items-center justify-center min-h-[40px] min-w-[40px] text-sm border rounded px-2 py-1 transition-colors ${
-                previewExpanded
-                  ? 'border-accent-400 bg-accent-50 text-accent-600'
-                  : 'border-accent-200 text-fg-muted hover:bg-accent-50'
-              }`}
-            >
-              ⛶
-            </button>
-          )}
-        </div>
         <div className="flex-1 overflow-hidden flex flex-col">
-          <EditorErrorBoundary><PreviewTab interactive={!previewExpanded} /></EditorErrorBoundary>
+          <EditorErrorBoundary><PreviewTab
+              interactive={!previewExpanded}
+              expandable={showExpandToggle}
+              expanded={previewExpanded}
+              onToggleExpand={() => setPreviewExpanded((v) => !v)}
+            /></EditorErrorBoundary>
         </div>
       </>
     )
@@ -395,48 +344,18 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
         screen reader listing headings here found nothing to orient by.
 
         Visually hidden rather than drawn, because the résumé's name is already
-        on screen as an editable input in the panel below, and rendering it
+        on screen as an editable input in the top bar, and rendering it
         twice would be redundant to sighted users. The input keeps its own
         `aria-label`; this names the page, not the field.
       */}
       <h1 className="sr-only">{storeTitle ? `Editing ${storeTitle}` : 'CV editor'}</h1>
 
-      {/* Top navbar */}
-      <AppNavbar
-        actions={
-          <div className="flex flex-1 flex-wrap items-center gap-3">
-            <Link
-              href="/dashboard/cvs"
-              onClick={handleLeaveEditor}
-              aria-busy={isLeaving}
-              className="mr-auto text-lg font-medium text-accent-600 hover:text-accent-800 transition-colors"
-            >
-              ← My CVs
-            </Link>
-            <span className="text-fg-muted">|</span>
-            <span
-              role="status"
-              aria-live="polite"
-              className={`text-xs ${saveError ? 'text-fg-danger' : 'text-fg-muted'}`}
-            >
-              {saveError ?? saveStatus}
-            </span>
-            <div className="w-px h-4 bg-accent-200 mx-1" />
-            <button
-              onClick={handleJsonExport}
-              className="flex items-center justify-center min-h-[40px] text-xs border border-accent-200 text-accent-600 rounded-lg px-3 hover:bg-accent-50 hover:shadow-sm transition-all"
-            >
-              JSON
-            </button>
-            <ExportMenu onExport={handleExport} busy={isExporting} />
-            {user && (
-              <>
-                <div className="w-px h-4 bg-accent-200" />
-                <UserProfileButton user={user} />
-              </>
-            )}
-          </div>
-        }
+      <EditorTopBar
+        onLeave={handleLeaveEditor}
+        onExport={handleExport}
+        onJsonExport={handleJsonExport}
+        exporting={isExporting}
+        leaving={isLeaving}
       />
 
       {/* Editor body */}
@@ -448,7 +367,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
               role="tablist"
               aria-label="View"
               onKeyDown={handleTablistKeyDown}
-              className="flex gap-1 p-1 border-b border-accent-100 bg-surface shrink-0"
+              className="flex gap-1 p-1 border-b border-border bg-surface shrink-0"
             >
               <button
                 type="button"
@@ -459,7 +378,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
                 className={`flex-1 min-h-[40px] rounded text-sm font-medium transition-colors ${
                   mobileView === 'edit'
                     ? 'bg-accent-600 text-white'
-                    : 'text-fg-muted hover:bg-accent-50'
+                    : 'text-fg-muted hover:bg-surface-subtle'
                 }`}
               >
                 Edit
@@ -473,7 +392,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
                 className={`flex-1 min-h-[40px] rounded text-sm font-medium transition-colors ${
                   mobileView === 'preview'
                     ? 'bg-accent-600 text-white'
-                    : 'text-fg-muted hover:bg-accent-50'
+                    : 'text-fg-muted hover:bg-surface-subtle'
                 }`}
               >
                 Preview
@@ -494,19 +413,13 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
           <>
             {/* Left panel */}
             {previewExpanded ? (
-              <div className="w-9 min-w-[36px] bg-accent-900 flex flex-col items-center py-3 gap-4 border-r border-accent-800 shrink-0">
+              <div className="w-9 min-w-[36px] bg-surface-subtle flex flex-col items-center py-3 gap-4 border-r border-border shrink-0">
                 {(['edit', 'design', 'ats', 'coverLetter'] as Tab[]).map((tab) => (
                   <button
                     key={tab}
                     type="button"
                     onClick={() => { setPreviewExpanded(false); setActiveTab(tab) }}
-                    // Deliberately still a raw accent-300, not the fg-subtle
-                    // token every other muted label moved to. This rail is
-                    // bg-accent-900, so this is light-on-dark: accent-300
-                    // measures 5.73:1 here and already clears AA, while the
-                    // token (a dark grey tuned for light surfaces) would be
-                    // near-invisible. Do not "fix" it to match its siblings.
-                    className="text-xs text-accent-300 hover:text-white transition-colors"
+                    className="text-xs text-fg-muted hover:text-fg transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
                   >
                     {TAB_LABELS[tab]}
@@ -515,7 +428,8 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
               </div>
             ) : (
               <div
-                className="flex flex-col border-r border-border-subtle bg-surface shadow-md shrink-0"
+                ref={panelRef}
+                className="flex flex-col border-r border-border bg-surface shrink-0"
                 style={{ width: panelWidth }}
               >
                 {editPanelBody}
@@ -530,11 +444,11 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
                 aria-orientation="vertical"
                 aria-label="Resize editor panel"
                 aria-valuenow={panelWidth}
-                aria-valuemin={mounted ? getPanelWidthBounds().min : DEFAULT_PANEL_WIDTH}
-                aria-valuemax={mounted ? getPanelWidthBounds().max : DEFAULT_PANEL_WIDTH}
+                aria-valuemin={mounted ? getPanelWidthBounds().min : PANEL_MIN}
+                aria-valuemax={mounted ? getPanelWidthBounds().max : PANEL_MAX}
                 tabIndex={0}
                 className={`group/divider w-1.5 shrink-0 cursor-col-resize select-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
-                  dividerActive ? 'bg-accent-400/60' : 'hover:bg-accent-400/40 bg-accent-200/30'
+                  dividerActive ? 'bg-accent-400/60' : 'bg-border hover:bg-accent-400/40'
                 }`}
                 onPointerDown={handleDividerPointerDown}
                 onPointerMove={handleDividerPointerMove}
@@ -545,7 +459,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
             )}
 
             {/* Right panel — preview */}
-            <div className="flex-1 flex flex-col min-w-0 bg-neutral-100/60">
+            <div className="flex-1 flex flex-col min-w-0 bg-surface-muted">
               {renderPreviewPanelBody(true)}
             </div>
           </>
