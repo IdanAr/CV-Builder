@@ -66,7 +66,7 @@ export function UnverifiedClaimsBanner({
           </p>
           <p className="mt-1 text-sm">
             This résumé was tailored automatically. These phrases could not be matched to anything
-            in your own text — check them before you send it anywhere.
+            in your own text. Check them before you send it anywhere.
           </p>
           <ul className="mt-2 flex flex-wrap gap-1.5">
             {claims.map((claim) => (

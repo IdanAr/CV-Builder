@@ -53,7 +53,22 @@ const fmt = (b: Record<string, number>) =>
 
 // Keys are repo-relative with forward slashes. Copy counts from the test output; never hand-edit.
 const BASELINE: Record<string, number> = {
+  // kept: the single allowed active-segment shadow-sm, the one raised surface a segmented control is meant to have.
   'components/editor/design/SegmentedControl.tsx': 1,
+}
+
+// Returns the baseline entries ('path': N, with N > 0) whose previous non-empty line is not a `// kept:` comment.
+export function undocumentedEntries(src: string): string[] {
+  const lines = src.split('\n')
+  const out: string[] = []
+  lines.forEach((line, i) => {
+    const m = line.match(/^\s*'([^']+)':\s*(\d+),\s*$/)
+    if (!m || Number(m[2]) === 0) return
+    let j = i - 1
+    while (j >= 0 && lines[j].trim() === '') j--
+    if (j < 0 || !lines[j].trim().startsWith('// kept:')) out.push(m[1])
+  })
+  return out
 }
 
 const actual: Record<string, number> = {}
@@ -85,5 +100,18 @@ describe('legacy utility ratchet', () => {
       .filter(([f, n]) => (actual[f] ?? 0) < n)
       .map(([f, n]) => [f, n, `now ${actual[f] ?? 0}`])
     expect(stale).toEqual([])
+  })
+  it('every non-zero BASELINE entry carries a kept: comment', () => {
+    // Scope the scan to the BASELINE literal so the synthetic strings below are not picked up.
+    const src = readFileSync(__filename, 'utf8')
+    const start = src.indexOf('const BASELINE')
+    const end = src.indexOf('\n}\n', start)
+    expect(undocumentedEntries(src.slice(start, end))).toEqual([])
+  })
+  it('undocumentedEntries flags an entry without a kept: comment', () => {
+    const documented = ["{", "  // kept: reason", "  'a/b.tsx': 1,", "}"].join('\n')
+    const bare = ["{", "  'a/b.tsx': 1,", "  'c/d.tsx': 2,", "}"].join('\n')
+    expect(undocumentedEntries(documented)).toEqual([])
+    expect(undocumentedEntries(bare)).toEqual(['a/b.tsx', 'c/d.tsx'])
   })
 })

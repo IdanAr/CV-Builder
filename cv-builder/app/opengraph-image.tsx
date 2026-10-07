@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og'
 import { BRAND_MARK_DATA_URI, brandGradient } from '@/lib/brand/mark'
 
 // Next reads these three exports to build the <meta property="og:*"> tags.
-export const alt = 'CV Builder — AI-assisted résumé builder with ATS optimisation'
+export const alt = 'CV Builder: AI-assisted résumé builder with ATS optimisation'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
