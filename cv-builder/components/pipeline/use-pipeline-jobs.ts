@@ -115,6 +115,9 @@ export function usePipelineJobs(view: ViewKey, initial?: PipelineInitial): UsePi
       .catch(() => {})
   }, [])
 
+  // Lets loadFirstPage replay a queued refresh without referencing itself.
+  const loadFirstPageRef = useRef<((t: ViewKey, fromView: boolean, signal?: AbortSignal) => Promise<void>) | null>(null)
+
   /** Page 1. `fromView` is true when the view itself changed (vs. a background refresh). */
   const loadFirstPage = useCallback(
     async (target: ViewKey, fromView: boolean, signal?: AbortSignal) => {
@@ -168,7 +171,7 @@ export function usePipelineJobs(view: ViewKey, initial?: PipelineInitial): UsePi
           // Replay a refresh that was skipped while this load was pending. A refresh never marks read.
           if (refreshQueuedRef.current) {
             refreshQueuedRef.current = false
-            void loadFirstPage(target, false)
+            void loadFirstPageRef.current?.(target, false)
           }
         }
       } catch (err) {
@@ -183,6 +186,10 @@ export function usePipelineJobs(view: ViewKey, initial?: PipelineInitial): UsePi
     },
     [markRead]
   )
+
+  useEffect(() => {
+    loadFirstPageRef.current = loadFirstPage
+  }, [loadFirstPage])
 
   useEffect(() => {
     // Seeded first render: the server already read this view.
