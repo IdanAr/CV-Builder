@@ -46,8 +46,8 @@ export function SegmentedControl({ label, options, value, onChange }: SegmentedC
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cn(
               'min-h-10 flex-1 rounded-chip sm:min-h-[32px] px-2 text-xs font-medium transition-colors',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              checked ? 'bg-surface text-accent-700 shadow-sm ring-1 ring-border' : 'text-fg-muted hover:text-fg-body'
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              checked ? 'bg-surface text-fg-heading shadow-sm ring-1 ring-border' : 'text-fg-muted hover:text-fg-body'
             )}
           >
             {o.label}

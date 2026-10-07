@@ -91,8 +91,8 @@ describe('TemplateGrid', () => {
 
   it('gives the selected card the cobalt ring', () => {
     render(<TemplateGrid />)
-    expect(screen.getByRole('button', { name: 'Classic' }).className).toContain('ring-accent-600')
-    expect(screen.getByRole('button', { name: 'Modern' }).className).not.toContain('ring-accent-600')
+    expect(screen.getByRole('button', { name: 'Classic' }).className).toContain('border-primary')
+    expect(screen.getByRole('button', { name: 'Modern' }).className).not.toContain('border-primary')
   })
 
   it('does not re-render thumbnails when only the selected template changes', () => {

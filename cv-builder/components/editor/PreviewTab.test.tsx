@@ -158,7 +158,7 @@ describe('PreviewTab — zoom controls', () => {
   it('uses a muted canvas with a white page wrapper', () => {
     render(<PreviewTab />)
     const page = screen.getByTestId('preview-scaled-content').parentElement as HTMLElement
-    expect(page).toHaveClass('bg-white')
+    expect(page).toHaveClass('bg-surface')
     expect(page.parentElement).toHaveClass('bg-surface-muted')
   })
 

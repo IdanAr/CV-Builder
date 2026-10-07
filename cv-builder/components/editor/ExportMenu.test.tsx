@@ -152,7 +152,7 @@ describe('ExportMenu', () => {
   it('renders the trigger as the primary button', () => {
     render(<ExportMenu onExport={vi.fn()} />)
     const cls = screen.getByRole('button', { name: /export/i }).className
-    expect(cls).toContain('bg-accent-600')
+    expect(cls).toContain('bg-primary')
     expect(cls).toContain('min-h-10')
   })
 })

@@ -207,7 +207,7 @@ export function PreviewTab({
     <div
       role="listbox"
       data-testid="zoom-menu"
-      className="min-w-[80px] rounded-control border border-border bg-surface py-1 shadow-md"
+      className="min-w-[80px] rounded-control border border-border bg-surface py-1 shadow-popover"
     >
       {ZOOM_PRESETS.map((p) => (
         <button
@@ -260,7 +260,7 @@ export function PreviewTab({
           {/* Outer wrapper sized to post-scale visual dimensions so the scroll container tracks content correctly */}
           <div
             ref={wrapperRef}
-            className="shadow-sm ring-1 ring-black/5 bg-white"
+            className="ring-1 ring-black/5 bg-surface"
             style={{
               position: 'relative',
               width: A4_WIDTH_PX * scale,
@@ -301,16 +301,16 @@ export function PreviewTab({
                 style={{
                   borderTop:
                     source === 'pdf'
-                      ? '2px solid rgb(var(--color-accent-500) / 0.55)'
-                      : '2px dashed rgb(var(--color-accent-500) / 0.4)',
+                      ? '2px solid rgb(var(--color-ring) / 0.55)'
+                      : '2px dashed rgb(var(--color-ring) / 0.4)',
                   display: 'flex',
                   justifyContent: 'center',
                 }}
               >
                 <span
                   style={{
-                    background: 'rgb(var(--color-accent-500) / 0.08)',
-                    color: 'rgb(var(--color-accent-500) / 0.6)',
+                    background: 'rgb(var(--color-ring) / 0.08)',
+                    color: 'rgb(var(--color-ring) / 0.6)',
                     fontSize: '10px',
                     padding: '1px 8px',
                     borderRadius: '0 0 4px 4px',

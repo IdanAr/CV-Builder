@@ -16,8 +16,8 @@ const TARGET_OPTIONS = [
 ]
 
 const OPTION_BASE =
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors'
-const SELECTED = 'border-accent-600 ring-1 ring-accent-600 bg-surface'
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors'
+const SELECTED = 'border-primary ring-1 ring-ring bg-surface'
 const UNSELECTED = 'border-border bg-surface hover:bg-surface-subtle'
 
 export function FontSection() {
