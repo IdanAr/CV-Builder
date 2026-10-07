@@ -32,6 +32,19 @@ beforeEach(() => {
 })
 
 describe('EditorTopBar', () => {
+  it('exposes a long save error as a title tooltip on the status element', () => {
+    useResumeEditorStore.setState({ saveError: 'Could not save: network request failed' })
+    setup()
+    expect(screen.getByRole('status').getAttribute('title')).toBe(
+      'Could not save: network request failed',
+    )
+  })
+
+  it('has no title on the status element without an error', () => {
+    setup()
+    expect(screen.getByRole('status').hasAttribute('title')).toBe(false)
+  })
+
   it('renders the back link to the CV library and forwards clicks', () => {
     const p = setup()
     const link = screen.getByRole('link', { name: /my cvs/i })

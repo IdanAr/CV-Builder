@@ -53,6 +53,7 @@ export function EditorTopBar({ onLeave, onExport, onJsonExport, exporting, leavi
       <div
         role="status"
         aria-live="polite"
+        title={saveError ?? undefined}
         className={`max-w-[7rem] shrink-0 truncate text-xs ${saveError ? 'text-fg-danger' : 'text-fg-muted'}`}
       >
         {saveError ??
