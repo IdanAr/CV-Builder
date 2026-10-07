@@ -26,7 +26,7 @@ export function StageTabs({ active, counts, onSelect }: StageTabsProps) {
       role="tablist"
       aria-label="Pipeline stage"
       onKeyDown={handleTablistKeyDown}
-      className="flex items-center gap-1 overflow-x-auto"
+      className="relative flex items-center gap-1 overflow-x-auto"
     >
       {PIPELINE_FILTERS.map((filter) => {
         const selected = filter === active

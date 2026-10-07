@@ -24,6 +24,13 @@ describe('StageTabs', () => {
     expect(screen.queryByText('0 waiting')).toBeNull()
   })
 
+  it('is the containing block for its sr-only spans so they cannot widen the page', () => {
+    render(<StageTabs active="matched" counts={counts} onSelect={() => {}} />)
+    const cls = screen.getByRole('tablist').className
+    expect(cls).toContain('relative')
+    expect(cls).toContain('overflow-x-auto')
+  })
+
   it('marks the active tab and roves tabIndex', () => {
     render(<StageTabs active="matched" counts={counts} onSelect={() => {}} />)
     const tab = screen.getByRole('tab', { name: /^Matched/ })

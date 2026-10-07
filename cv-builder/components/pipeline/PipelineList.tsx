@@ -79,7 +79,7 @@ export function PipelineList({
       )}
       <ul
         aria-label="Jobs"
-        className="overflow-hidden rounded-card border border-border bg-surface"
+        className="relative overflow-hidden rounded-card border border-border bg-surface"
       >
         {items.map((job) => (
           <PipelineRow
