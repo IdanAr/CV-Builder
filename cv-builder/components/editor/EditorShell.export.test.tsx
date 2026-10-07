@@ -15,7 +15,6 @@ vi.mock('./PreviewTab', () => ({ PreviewTab: () => <div /> }))
 vi.mock('./DesignPanel', () => ({ DesignPanel: () => <div /> }))
 vi.mock('@/components/ats/AtsScorePanel', () => ({ AtsScorePanel: () => <div /> }))
 vi.mock('@/components/coverletter/CoverLetterPanel', () => ({ CoverLetterPanel: () => <div /> }))
-vi.mock('@/components/ui/UserProfileButton', () => ({ UserProfileButton: () => <div /> }))
 
 const meta: ResumeMeta = {
   templateId: 'classic',

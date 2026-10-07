@@ -37,11 +37,19 @@ vi.mock('./DesignPanel', async () => {
 })
 vi.mock('@/components/ats/AtsScorePanel', () => ({ AtsScorePanel: () => <div>AtsScorePanelContent</div> }))
 vi.mock('./ExportMenu', () => ({
-  ExportMenu: ({ onExport }: { onExport: (format: 'pdf' | 'docx', mode: 'designed' | 'ats') => void }) => (
-    <button onClick={() => onExport('pdf', 'designed')}>Export</button>
+  ExportMenu: ({
+    onExport,
+    onJsonExport,
+  }: {
+    onExport: (format: 'pdf' | 'docx', mode: 'designed' | 'ats') => void
+    onJsonExport?: () => void
+  }) => (
+    <>
+      <button onClick={() => onExport('pdf', 'designed')}>Export</button>
+      <button onClick={onJsonExport}>JSON</button>
+    </>
   ),
 }))
-vi.mock('@/components/ui/UserProfileButton', () => ({ UserProfileButton: () => <div>Profile</div> }))
 
 const defaultMeta: ResumeMeta = {
   templateId: 'classic',
@@ -133,11 +141,11 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
     expect(screen.getByRole('button', { name: /Redo/i })).toBeInTheDocument()
   })
 
-  it('hides the Undo/Redo controls on the ATS tab', () => {
+  it('keeps the Undo/Redo controls in the top bar on the ATS tab', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
     fireEvent.click(screen.getByRole('tab', { name: 'ATS' }))
-    expect(screen.queryByRole('button', { name: /Undo/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Redo/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Undo/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Redo/i })).toBeInTheDocument()
   })
 
   it('still supports the preview expand/collapse toggle', () => {

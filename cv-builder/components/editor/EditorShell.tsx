@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, useReducedMotion } from 'framer-motion'
 import { handleTablistKeyDown, tabIndexFor } from '@/lib/tablist-keys'
@@ -13,9 +12,7 @@ import { DesignPanel } from './DesignPanel'
 import { AtsScorePanel } from '@/components/ats/AtsScorePanel'
 import { CoverLetterPanel } from '@/components/coverletter/CoverLetterPanel'
 import { EditorErrorBoundary } from './EditorErrorBoundary'
-import { AppNavbar } from '@/components/ui/AppNavbar'
-import { UserProfileButton } from '@/components/ui/UserProfileButton'
-import { ExportMenu } from './ExportMenu'
+import { EditorTopBar } from './EditorTopBar'
 import { toast } from '@/lib/stores/toast.store'
 import type { ExportMode } from '@/lib/export-mode'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
@@ -67,7 +64,7 @@ export interface EditorShellProps {
   user?: { name?: string | null; email?: string | null; image?: string | null }
 }
 
-export function EditorShell({ resumeId, title, data, meta, user }: EditorShellProps) {
+export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
   const [activeTab, setActiveTab] = useState<Tab>('edit')
   const [previewExpanded, setPreviewExpanded] = useState(false)
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
@@ -91,14 +88,8 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
   const router = useRouter()
   const [isExporting, setIsExporting] = useState(false)
   const [isLeaving, setIsLeaving] = useState(false)
-  const isSaving = useResumeEditorStore((s) => s.isSaving)
   const saveError = useResumeEditorStore((s) => s.saveError)
-  const setTitle = useResumeEditorStore((s) => s.setTitle)
   const hydrate = useResumeEditorStore((s) => s.hydrate)
-  const undo = useResumeEditorStore((s) => s.undo)
-  const redo = useResumeEditorStore((s) => s.redo)
-  const canUndo = useResumeEditorStore((s) => s.canUndo)
-  const canRedo = useResumeEditorStore((s) => s.canRedo)
   const pendingFocus = useResumeEditorStore((s) => s.pendingFocus)
 
   useEffect(() => {
@@ -268,24 +259,11 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
     }
   }
 
-  const saveStatus = isSaving ? 'Saving…' : isDirty ? '● Unsaved' : 'Saved'
-
   // Shared between the desktop side-by-side layout and the mobile
   // single-panel view — the editor panel's contents never change,
   // only how much of the screen it occupies.
   const editPanelBody = (
     <>
-      {/* Title */}
-      <div className="flex items-center gap-3 px-4 h-12 border-b border-accent-100 shrink-0 bg-surface">
-        <input
-          type="text"
-          value={storeTitle}
-          onChange={(e) => setTitle(e.target.value)}
-          aria-label="Resume title"
-          className="font-semibold text-sm bg-transparent border-none outline-none focus:ring-1 focus:ring-accent-400 rounded px-1 min-w-0 flex-1 text-fg"
-        />
-      </div>
-
       {/* Tab bar */}
       <div
         role="tablist"
@@ -318,27 +296,6 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
           </button>
         ))}
       </div>
-
-      {/* Sticky Undo/Redo — on Edit and Design tabs (both mutate the shared
-          data/meta history; ATS is read-only and has nothing to undo) */}
-      {(activeTab === 'edit' || activeTab === 'design') && (
-        <div className="flex items-center gap-1 px-3 py-1.5 border-b border-accent-100 shrink-0 bg-accent-50/60">
-          <button
-            onClick={undo}
-            disabled={!canUndo}
-            className="flex items-center justify-center gap-1 min-h-[40px] px-2 py-1 text-xs rounded-lg shadow-sm border border-accent-200 text-accent-600 hover:bg-accent-50 hover:shadow disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
-          >
-            ↩ Undo
-          </button>
-          <button
-            onClick={redo}
-            disabled={!canRedo}
-            className="flex items-center justify-center gap-1 min-h-[40px] px-2 py-1 text-xs rounded-lg shadow-sm border border-accent-200 text-accent-600 hover:bg-accent-50 hover:shadow disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
-          >
-            Redo ↪
-          </button>
-        </div>
-      )}
 
       {/* Tab content */}
       <div className="flex-1 overflow-auto">
@@ -395,48 +352,18 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
         screen reader listing headings here found nothing to orient by.
 
         Visually hidden rather than drawn, because the résumé's name is already
-        on screen as an editable input in the panel below, and rendering it
+        on screen as an editable input in the top bar, and rendering it
         twice would be redundant to sighted users. The input keeps its own
         `aria-label`; this names the page, not the field.
       */}
       <h1 className="sr-only">{storeTitle ? `Editing ${storeTitle}` : 'CV editor'}</h1>
 
-      {/* Top navbar */}
-      <AppNavbar
-        actions={
-          <div className="flex flex-1 flex-wrap items-center gap-3">
-            <Link
-              href="/dashboard/cvs"
-              onClick={handleLeaveEditor}
-              aria-busy={isLeaving}
-              className="mr-auto text-lg font-medium text-accent-600 hover:text-accent-800 transition-colors"
-            >
-              ← My CVs
-            </Link>
-            <span className="text-fg-muted">|</span>
-            <span
-              role="status"
-              aria-live="polite"
-              className={`text-xs ${saveError ? 'text-fg-danger' : 'text-fg-muted'}`}
-            >
-              {saveError ?? saveStatus}
-            </span>
-            <div className="w-px h-4 bg-accent-200 mx-1" />
-            <button
-              onClick={handleJsonExport}
-              className="flex items-center justify-center min-h-[40px] text-xs border border-accent-200 text-accent-600 rounded-lg px-3 hover:bg-accent-50 hover:shadow-sm transition-all"
-            >
-              JSON
-            </button>
-            <ExportMenu onExport={handleExport} busy={isExporting} />
-            {user && (
-              <>
-                <div className="w-px h-4 bg-accent-200" />
-                <UserProfileButton user={user} />
-              </>
-            )}
-          </div>
-        }
+      <EditorTopBar
+        onLeave={handleLeaveEditor}
+        onExport={handleExport}
+        onJsonExport={handleJsonExport}
+        exporting={isExporting}
+        leaving={isLeaving}
       />
 
       {/* Editor body */}

@@ -131,4 +131,28 @@ describe('ExportMenu', () => {
       expect(screen.getByRole('menu')).toBeInTheDocument()
     })
   })
+
+  it('omits the JSON item without onJsonExport', () => {
+    render(<ExportMenu onExport={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: /export/i }))
+    expect(screen.queryByText('JSON - Raw data')).toBeNull()
+  })
+
+  it('adds a JSON item that calls onJsonExport and closes the menu', () => {
+    const onJsonExport = vi.fn()
+    render(<ExportMenu onExport={vi.fn()} onJsonExport={onJsonExport} />)
+    fireEvent.click(screen.getByRole('button', { name: /export/i }))
+    expect(screen.getAllByRole('menuitem')).toHaveLength(5)
+    expect(screen.getByText('Resume data and design settings')).toBeTruthy()
+    fireEvent.click(screen.getByText('JSON - Raw data'))
+    expect(onJsonExport).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('renders the trigger as the primary button', () => {
+    render(<ExportMenu onExport={vi.fn()} />)
+    const cls = screen.getByRole('button', { name: /export/i }).className
+    expect(cls).toContain('bg-accent-600')
+    expect(cls).toContain('min-h-10')
+  })
 })
