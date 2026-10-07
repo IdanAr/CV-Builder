@@ -73,6 +73,10 @@ ScrapedJobSchema.index({ userId: 1, draftedAt: 1 })
 // prefix without these as scraped-job history accumulates per profile.
 ScrapedJobSchema.index({ userId: 1, profileId: 1, createdAt: -1 })
 ScrapedJobSchema.index({ userId: 1, profileId: 1, status: 1 })
+// Covers the pipeline inbox's {userId, status} stage queries sorted by createdAt
+// desc. The (userId, profileId, ...) indexes above cannot serve a query with no
+// profile filter without scanning the user's whole set.
+ScrapedJobSchema.index({ userId: 1, status: 1, createdAt: -1 })
 
 // Tombstone retention: 90 days (product decision).
 //

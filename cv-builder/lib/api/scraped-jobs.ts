@@ -1,5 +1,6 @@
 // Data access for scraped job postings. Every query is scoped to the
 // requesting userId, matching every other service in lib/api/.
+import mongoose from 'mongoose'
 import dbConnect from '@/lib/db'
 import ScrapedJob from '@/models/ScrapedJob'
 import Resume from '@/models/Resume'
@@ -14,7 +15,8 @@ import type {
   WorkMode,
 } from '@/lib/schemas/jobsearch.zod'
 import type { CustomFieldValue } from '@/lib/schemas/application.zod'
-import { stageOf, type PipelineStage } from '@/lib/jobsearch/stages'
+import { stageOf, stageQuery, type PipelineFilter } from '@/lib/jobsearch/stages'
+import type { PipelineCountsDto, PipelineJob } from '@/lib/jobsearch/pipeline-types'
 
 // Tombstoned postings are excluded by default; the list's "Deleted" filter
 // passes includeDeleted so it can show and restore them.
@@ -462,30 +464,154 @@ export async function countUnreadNotifyMatches(
   })
 }
 
-export interface PipelineCounts extends Record<PipelineStage, number> {
-  /** Matches still unread (status 'new'); `matched` is every match, read or not. */
-  matchedUnread: number
-  /** Items waiting on the user: matchedUnread + drafted + ready. */
-  waiting: number
+export type PipelineCounts = PipelineCountsDto
+
+export const PIPELINE_PAGE_SIZE = 30
+export const PIPELINE_MAX_PAGE_SIZE = 50
+const MAX_QUERY_LENGTH = 100
+
+export class InvalidCursorError extends Error {
+  constructor() {
+    super('Invalid cursor')
+    this.name = 'InvalidCursorError'
+  }
 }
 
-/** One aggregation for every stage count. Tombstoned jobs are excluded. */
-export async function countPipelineStages(userId: string): Promise<PipelineCounts> {
+function encodeCursor(createdAt: Date, id: string): string {
+  return Buffer.from(`${createdAt.getTime()}:${id}`).toString('base64url')
+}
+
+function decodeCursor(cursor: string): { createdAt: Date; id: string } {
+  const raw = Buffer.from(cursor, 'base64url').toString('utf8')
+  const sep = raw.indexOf(':')
+  const ms = Number(raw.slice(0, sep))
+  const id = raw.slice(sep + 1)
+  if (sep < 1 || !Number.isFinite(ms) || !mongoose.isValidObjectId(id)) throw new InvalidCursorError()
+  return { createdAt: new Date(ms), id }
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+type PipelineDoc = {
+  _id: unknown
+  profileId: string
+  title: string
+  company: string
+  location?: string
+  url: string
+  workMode?: string
+  atsScore?: number
+  postTailorScore?: number
+  matchedRules?: string[]
+  pendingApprovals?: string[]
+  tailoredKeywords?: string[]
+  resolvedActions?: string[]
+  draftResumeId?: string
+  status: ScrapedJobStatus
+  postedAt?: Date
+  createdAt: Date
+  deletedAt?: Date
+}
+
+function toPipelineJob(doc: PipelineDoc, names: Map<string, string>): PipelineJob {
+  return {
+    _id: String(doc._id),
+    profileId: doc.profileId,
+    profileName: names.get(doc.profileId),
+    title: doc.title,
+    company: doc.company,
+    location: doc.location,
+    url: doc.url,
+    workMode: doc.workMode,
+    atsScore: doc.atsScore,
+    postTailorScore: doc.postTailorScore,
+    matchedRules: doc.matchedRules ?? [],
+    pendingApprovals: doc.pendingApprovals ?? [],
+    tailoredKeywords: doc.tailoredKeywords ?? [],
+    draftResumeId: doc.draftResumeId,
+    status: doc.status,
+    stage: stageOf({ status: doc.status, resolvedActions: doc.resolvedActions, deletedAt: doc.deletedAt }),
+    postedAt: doc.postedAt?.toISOString(),
+    createdAt: doc.createdAt.toISOString(),
+    deletedAt: doc.deletedAt?.toISOString(),
+  }
+}
+
+export interface ListPipelineOptions {
+  stage: PipelineFilter
+  profileId?: string
+  q?: string
+  cursor?: string
+  limit?: number
+}
+
+/**
+ * The inbox's one read model: a single stage, optionally one profile and a
+ * title/company search, newest first, cursor-paginated. `description` is
+ * excluded -- it is the heaviest field and no list view renders it.
+ */
+export async function listPipelineJobs(
+  userId: string,
+  options: ListPipelineOptions
+): Promise<{ items: PipelineJob[]; nextCursor: string | null }> {
   await dbConnect()
-  const rows = await ScrapedJob.aggregate<{
-    _id: { status: ScrapedJobStatus; notify: boolean }
-    n: number
-  }>([
-    { $match: { userId, deletedAt: { $exists: false } } },
-    {
-      $group: {
-        _id: {
-          status: '$status',
-          notify: { $in: ['notify', { $ifNull: ['$resolvedActions', []] }] },
+  const limit = Math.min(Math.max(Math.trunc(options.limit ?? PIPELINE_PAGE_SIZE), 1), PIPELINE_MAX_PAGE_SIZE)
+  const and: Record<string, unknown>[] = [stageQuery(options.stage)]
+  if (options.cursor) {
+    const { createdAt, id } = decodeCursor(options.cursor)
+    and.push({
+      $or: [
+        { createdAt: { $lt: createdAt } },
+        { createdAt, _id: { $lt: new mongoose.Types.ObjectId(id) } },
+      ],
+    })
+  }
+  const q = options.q?.trim().slice(0, MAX_QUERY_LENGTH)
+  if (q) {
+    const pattern = new RegExp(escapeRegExp(q), 'i')
+    and.push({ $or: [{ title: pattern }, { company: pattern }] })
+  }
+  const query = { userId, ...(options.profileId ? { profileId: options.profileId } : {}), $and: and }
+
+  const [docs, names] = await Promise.all([
+    ScrapedJob.find(query, '-description').sort({ createdAt: -1, _id: -1 }).limit(limit + 1).lean() as unknown as Promise<PipelineDoc[]>,
+    getProfileNameMap(userId),
+  ])
+  const page = docs.slice(0, limit)
+  const last = page[page.length - 1]
+  return {
+    items: page.map((doc) => toPipelineJob(doc, names)),
+    nextCursor: docs.length > limit && last ? encodeCursor(last.createdAt, String(last._id)) : null,
+  }
+}
+
+/** One aggregation for every live stage count plus the archive count. Tombstoned jobs are excluded from the stages. */
+export async function countPipelineStages(
+  userId: string,
+  options: { profileId?: string } = {}
+): Promise<PipelineCounts> {
+  await dbConnect()
+  const profileScope = options.profileId ? { profileId: options.profileId } : {}
+  const archiveFilter = { userId, ...profileScope, ...stageQuery('archive') }
+  const [rows, archive] = await Promise.all([
+    ScrapedJob.aggregate<{
+      _id: { status: ScrapedJobStatus; notify: boolean }
+      n: number
+    }>([
+      { $match: { userId, deletedAt: { $exists: false }, ...profileScope } },
+      {
+        $group: {
+          _id: {
+            status: '$status',
+            notify: { $in: ['notify', { $ifNull: ['$resolvedActions', []] }] },
+          },
+          n: { $sum: 1 },
         },
-        n: { $sum: 1 },
       },
-    },
+    ]),
+    ScrapedJob.countDocuments(archiveFilter),
   ])
 
   const counts: PipelineCounts = {
@@ -494,6 +620,7 @@ export async function countPipelineStages(userId: string): Promise<PipelineCount
     drafted: 0,
     ready: 0,
     applied: 0,
+    archive,
     matchedUnread: 0,
     waiting: 0,
   }
