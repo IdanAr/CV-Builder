@@ -12,7 +12,6 @@ import type {
   CreateScrapedJobInput,
   ScrapeSource,
   ScrapedJobStatus,
-  WorkMode,
 } from '@/lib/schemas/jobsearch.zod'
 import type { CustomFieldValue } from '@/lib/schemas/application.zod'
 import { stageOf, stageQuery, type PipelineFilter } from '@/lib/jobsearch/stages'
@@ -405,49 +404,6 @@ export async function deleteScrapedJobsByIds(userId: string, ids: string[]): Pro
   await dbConnect()
   const result = await ScrapedJob.deleteMany({ _id: { $in: ids }, userId })
   return result.deletedCount ?? 0
-}
-
-export interface NotifyMatchSummary {
-  _id: unknown
-  profileId: string
-  /** Resolved from the profile, not stored on the job — the feed is
-   *  cross-profile, so a card has to say which profile found it. */
-  profileName?: string
-  title: string
-  company: string
-  location?: string
-  url: string
-  atsScore?: number
-  workMode?: WorkMode
-  /** Names, not ids — lib/jobsearch/rules.ts stores `rule.name`, so these
-   *  render as-is. */
-  matchedRules: string[]
-  postedAt?: Date
-  status: string
-  createdAt: Date
-}
-
-// Cross-profile: the Matched stage of the pipeline inbox (design spec §9) shows every 'notify' rule
-// match for this user regardless of which profile it came from, so this
-// intentionally omits the profileId scoping every other scraped-jobs query
-// in this file uses.
-export async function listNotifyMatches(userId: string): Promise<NotifyMatchSummary[]> {
-  await dbConnect()
-  const [matches, names] = await Promise.all([
-    ScrapedJob.find(
-      {
-        userId,
-        resolvedActions: 'notify',
-        status: { $in: ['new', 'notified'] },
-        deletedAt: { $exists: false },
-      },
-      'profileId title company location url atsScore workMode matchedRules postedAt status createdAt'
-    )
-      .sort({ createdAt: -1 })
-      .lean() as unknown as Promise<NotifyMatchSummary[]>,
-    getProfileNameMap(userId),
-  ])
-  return matches.map((match) => ({ ...match, profileName: names.get(match.profileId) }))
 }
 
 export async function countUnreadNotifyMatches(

@@ -8,9 +8,8 @@ import { cn } from '@/lib/utils'
  * The app's dropdown-menu primitive, wrapping Radix's DropdownMenu with the
  * styling and behaviour both navbar menus already had.
  *
- * It replaces two near-identical hand-rolled implementations (UserProfileButton
- * and JobSearchNav) that each carried ~60 lines of portal, scroll/resize
- * repositioning, outside-click, Escape and roving-focus code. Three things the
+ * It replaced two near-identical hand-rolled navbar menus that each carried
+ * ~60 lines of portal, scroll/resize repositioning, outside-click, Escape and roving-focus code. Three things the
  * hand-rolled versions got wrong and this does not:
  *
  *  - Dismissal listened for `mousedown`, a mouse-only event. Radix listens for
@@ -19,7 +18,7 @@ import { cn } from '@/lib/utils'
  *    with a vertical flip only. Nothing corrected horizontal overflow, so a
  *    menu with no room to its left ran off the edge of a narrow viewport.
  *    Radix collision-detects on both axes — hence `collisionPadding`.
- *  - JobSearchNav had no arrow-key navigation at all: its items were
+ *  - One of them had no arrow-key navigation at all: its items were
  *    `tabIndex={-1}` with only the first focused, so a keyboard user could open
  *    the menu and reach exactly one of its two items.
  *
