@@ -30,7 +30,7 @@ export function ShortcutsHelp() {
           {SHORTCUTS.map((s) => (
             <div key={s.keys} className="flex items-center justify-between gap-3">
               <dt>
-                <kbd className="rounded border border-border bg-surface-subtle px-1.5 py-0.5 font-mono text-xs text-fg-body">
+                <kbd className="rounded-chip border border-border bg-surface-subtle px-1.5 py-0.5 font-mono text-xs text-fg-body">
                   {s.keys}
                 </kbd>
               </dt>

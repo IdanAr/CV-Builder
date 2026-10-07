@@ -128,7 +128,7 @@ function EditableCell({
       type="button"
       aria-label={`Edit ${ariaLabel}`}
       onClick={() => setEditing(true)}
-      className="block w-full truncate rounded-chip px-1.5 py-0.5 text-left text-sm text-fg hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
+      className="block w-full truncate rounded-chip px-1.5 py-0.5 text-left text-sm text-fg hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
     >
       {display ?? <span className="text-fg-subtle">-</span>}
     </button>
@@ -229,7 +229,7 @@ export function UrlCell(props: CellProps) {
           title={fullUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="min-w-0 flex-1 truncate text-sm text-fg-body underline underline-offset-4 hover:text-fg-heading focus-visible:rounded-chip focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-w-0 flex-1 truncate text-sm text-fg-body underline underline-offset-4 hover:text-fg-heading focus-visible:rounded-chip focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {displayUrl}
         </a>
@@ -241,7 +241,7 @@ export function UrlCell(props: CellProps) {
         type="button"
         aria-label={`Edit ${props.ariaLabel}`}
         onClick={() => setEditing(true)}
-        className="shrink-0 rounded-chip px-1 text-xs text-fg-muted opacity-0 transition group-hover/cell:opacity-100 hover:bg-surface-subtle hover:text-fg-body focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10"
+        className="shrink-0 rounded-chip px-1 text-xs text-fg-muted opacity-0 transition group-hover/cell:opacity-100 hover:bg-surface-subtle hover:text-fg-body focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10"
       >
         <Pencil className="h-3 w-3" aria-hidden="true" />
       </button>
@@ -313,11 +313,11 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-1.5 rounded-chip px-1 py-0.5 text-left hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
+        className="flex w-full items-center gap-1.5 rounded-chip px-1 py-0.5 text-left hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
       >
         {selected ? (
           <span
-            className="inline-flex max-w-full items-center truncate rounded-chip px-2 py-0.5 text-xs font-medium text-primary-fg"
+            className="inline-flex max-w-full items-center truncate rounded-chip px-2 py-0.5 text-xs font-medium text-fg-on-accent"
             style={{ backgroundColor: selected.color }}
           >
             {selected.label}
@@ -346,7 +346,7 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
                 if (option.id !== props.value) props.onCommit(option.id)
                 ;(ref.current?.firstElementChild as HTMLElement | null)?.focus()
               }}
-              className="flex w-full items-center gap-2 rounded-chip px-2 py-1 text-left text-sm hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
+              className="flex w-full items-center gap-2 rounded-chip px-2 py-1 text-left text-sm hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
             >
               <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: option.color }} />
               <span className="truncate text-fg">{option.label}</span>
@@ -360,7 +360,7 @@ export function SelectCell(props: CellProps & { options: ColumnOption[] }) {
               if (props.value !== null && props.value !== '') props.onCommit(null)
               ;(ref.current?.firstElementChild as HTMLElement | null)?.focus()
             }}
-            className="flex w-full items-center gap-2 rounded-chip px-2 py-1 text-left text-sm text-fg-muted hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
+            className="flex w-full items-center gap-2 rounded-chip px-2 py-1 text-left text-sm text-fg-muted hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
           >
             Clear
           </button>

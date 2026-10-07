@@ -127,7 +127,7 @@ export function ColumnForm({
                       opts.map((o) => (o.id === option.id ? { ...o, color: e.target.value } : o))
                     )
                   }
-                  className="h-8 w-8 shrink-0 cursor-pointer rounded-chip border border-input bg-surface p-0.5 focus-visible:ring-2 focus-visible:ring-ring max-sm:h-10 max-sm:w-10"
+                  className="h-8 w-8 shrink-0 cursor-pointer rounded-chip border border-input bg-surface p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:h-10 max-sm:w-10"
                 />
                 <input
                   aria-label={`Label for option ${i + 1}`}
@@ -145,7 +145,7 @@ export function ColumnForm({
                   aria-label={`Move option ${i + 1} up`}
                   onClick={() => reorderOption(i, 'up')}
                   disabled={i === 0}
-                  className="shrink-0 rounded-chip px-1 text-sm text-fg-subtle hover:text-fg-body focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 max-sm:min-h-10 max-sm:min-w-10"
+                  className="shrink-0 rounded-chip px-1 text-sm text-fg-subtle hover:text-fg-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 max-sm:min-h-10 max-sm:min-w-10"
                 >
                   ↑
                 </button>
@@ -154,7 +154,7 @@ export function ColumnForm({
                   aria-label={`Move option ${i + 1} down`}
                   onClick={() => reorderOption(i, 'down')}
                   disabled={i === options.length - 1}
-                  className="shrink-0 rounded-chip px-1 text-sm text-fg-subtle hover:text-fg-body focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 max-sm:min-h-10 max-sm:min-w-10"
+                  className="shrink-0 rounded-chip px-1 text-sm text-fg-subtle hover:text-fg-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 max-sm:min-h-10 max-sm:min-w-10"
                 >
                   ↓
                 </button>
@@ -182,7 +182,7 @@ export function ColumnForm({
                       )
                     }
                     style={{ backgroundColor: color }}
-                    className="h-8 w-8 shrink-0 cursor-pointer rounded-chip border border-border focus-visible:ring-2 focus-visible:ring-ring max-sm:h-10 max-sm:w-10"
+                    className="h-8 w-8 shrink-0 cursor-pointer rounded-chip border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:h-10 max-sm:w-10"
                   />
                 ))}
               </div>
@@ -191,7 +191,7 @@ export function ColumnForm({
           <button
             type="button"
             onClick={() => setOptions((opts) => [...opts, newOption(opts.length)])}
-            className="self-start rounded-chip px-1 py-0.5 text-xs font-medium text-fg-muted hover:text-fg-body focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
+            className="self-start rounded-chip px-1 py-0.5 text-xs font-medium text-fg-muted hover:text-fg-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
           >
             + Add option
           </button>

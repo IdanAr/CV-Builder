@@ -35,7 +35,7 @@ export function ColumnHeader({
           entry ? ` (currently ${entry.direction === 'asc' ? 'ascending' : 'descending'})` : ''
         }`}
         title="Click to sort · Shift-click to add a sort level"
-        className="flex min-w-0 flex-1 items-center gap-1 rounded-chip px-0.5 text-left text-xs font-medium uppercase tracking-wide text-fg-muted hover:text-fg-body focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
+        className="flex min-w-0 flex-1 items-center gap-1 rounded-chip px-0.5 text-left text-xs font-medium uppercase tracking-wide text-fg-muted hover:text-fg-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
       >
         <span className="truncate">{column.label}</span>
         {entry && (
@@ -53,7 +53,7 @@ export function ColumnHeader({
           aria-label={`Edit ${column.label} column`}
           title="Edit column"
           onClick={() => onEdit(column)}
-          className="shrink-0 rounded-chip px-0.5 text-[11px] text-fg-subtle opacity-0 transition group-hover/header:opacity-100 hover:text-fg-body focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10"
+          className="shrink-0 rounded-chip px-0.5 text-[11px] text-fg-subtle opacity-0 transition group-hover/header:opacity-100 hover:text-fg-body focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10"
         >
           <Pencil className="h-3 w-3" aria-hidden="true" />
         </button>
@@ -64,7 +64,7 @@ export function ColumnHeader({
           aria-label={`Delete ${column.label} column`}
           title="Delete column"
           onClick={() => onDelete(column)}
-          className="shrink-0 rounded-chip px-0.5 text-[11px] text-fg-subtle opacity-0 transition group-hover/header:opacity-100 hover:text-fg-danger focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10"
+          className="shrink-0 rounded-chip px-0.5 text-[11px] text-fg-subtle opacity-0 transition group-hover/header:opacity-100 hover:text-fg-danger focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10"
         >
           <X className="h-3 w-3" aria-hidden="true" />
         </button>

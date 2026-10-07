@@ -35,6 +35,13 @@ describe('AppShell', () => {
   })
   afterEach(() => vi.unstubAllGlobals())
 
+  it('keeps the mobile hamburger at a 40px touch target', () => {
+    setup()
+    const btn = screen.getByRole('button', { name: 'Open navigation' })
+    expect(btn.className).toContain('max-md:min-h-10')
+    expect(btn.className).toContain('max-md:min-w-10')
+  })
+
   it('renders children inside the skip-link target', () => {
     setup()
     const main = document.getElementById('main-content')

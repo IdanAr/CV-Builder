@@ -335,7 +335,7 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
           ref={listWrapRef}
           tabIndex={-1}
           data-pipeline-list=""
-          className={cn('focus:outline-none', view.job ? 'hidden min-w-0 lg:block' : 'block min-w-0')}
+          className={cn('rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', view.job ? 'hidden min-w-0 lg:block' : 'block min-w-0')}
         >
           <PipelineList
             stage={view.stage}

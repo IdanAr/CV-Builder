@@ -81,7 +81,7 @@ export function PipelineList({
         role="list"
         aria-label="Jobs"
         tabIndex={-1}
-        className="relative overflow-hidden rounded-card border border-border bg-surface focus:outline-none"
+        className="relative overflow-hidden rounded-card border border-border bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {items.map((job) => (
           <PipelineRow

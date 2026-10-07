@@ -206,7 +206,7 @@ function SortableHeaderCell({
         title="Drag to reorder column"
         {...attributes}
         {...listeners}
-        className="shrink-0 cursor-grab touch-none rounded-chip px-0.5 max-sm:min-h-10 max-sm:min-w-10 text-fg-subtle hover:text-fg-body focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+        className="shrink-0 cursor-grab touch-none rounded-chip px-0.5 max-sm:min-h-10 max-sm:min-w-10 text-fg-subtle hover:text-fg-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
       >
         <GripVertical className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -255,7 +255,7 @@ function SortableRow({
           className={`touch-none rounded-chip px-0.5 text-sm max-sm:min-h-10 max-sm:min-w-10 ${
             dragDisabled
               ? 'cursor-not-allowed text-fg-muted'
-              : 'cursor-grab text-fg-subtle opacity-0 transition group-hover/row:opacity-100 hover:text-fg-body focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing'
+              : 'cursor-grab text-fg-subtle opacity-0 transition group-hover/row:opacity-100 hover:text-fg-body focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing'
           }`}
         >
           <GripVertical className="h-4 w-4" aria-hidden="true" />
@@ -396,7 +396,7 @@ export default function ApplicationsTable({
                     type="button"
                     aria-label={`Delete application at ${app.company || 'unknown company'}`}
                     onClick={() => onDeleteRow(app._id)}
-                    className="rounded-chip px-1.5 py-0.5 text-xs text-fg-danger opacity-0 transition group-hover/row:opacity-100 hover:bg-surface-danger focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10"
+                    className="rounded-chip px-1.5 py-0.5 text-xs text-fg-danger opacity-0 transition group-hover/row:opacity-100 hover:bg-surface-danger focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10"
                     title="Delete"
                   >
                     <X className="h-3.5 w-3.5" aria-hidden="true" />
