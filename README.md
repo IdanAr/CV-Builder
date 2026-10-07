@@ -305,7 +305,7 @@ cv-builder/
 - **Type:** Geist Sans and Geist Mono, loaded from the `geist` package.
 - **Motion:** a global `prefers-reduced-motion` rule in `app/globals.css` collapses animations and transitions to near zero, so components do not need their own checks.
 - **Touch targets:** `Button` floors every size at 40px below the `sm` breakpoint.
-- **Legacy-utility ratchet:** `lib/design/__tests__/legacy-utilities.test.ts` counts legacy utility classes (`bg-white`, `text-white`, off-scale radii, in-flow shadows, raw `bg-accent-600/700`, `focus:ring/border`) per file under `components/` and `app/(dashboard)/`. A file may never exceed its recorded baseline, and new files must be clean. When you clean a file, lower its entry in the test's `BASELINE` map (the test also fails if a baseline is higher than reality).
+- **Legacy-utility ratchet:** `lib/design/__tests__/legacy-utilities.test.ts` scans every `.tsx`/`.ts` file under `components/` and `app/` (plus `.tsx` under `lib/`, excluding `lib/design/`, `app/api/`, tests and `Plasma`) for legacy classes: `bg-white`, `text-white`, off-scale radii and bare `rounded`, shadows other than `shadow-popover`, `accent-*` utilities, heavy font weights, gradients, raw palette colours, inline accent variables and `focus:ring/border`. New files must be clean. The `BASELINE` map is empty except `SegmentedControl.tsx` (one active-segment shadow), and each non-zero entry needs a `// kept:` reason comment. Marketing, sign-in and legal pages use the same tokens; the marketing hero keeps its Plasma background and marquee. Product copy uses only font weights 400 and 500 and no em-dashes.
 
 ---
 
