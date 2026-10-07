@@ -136,7 +136,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
   }, [profileId])
 
   useEffect(() => {
-    // Initial fetch-on-mount, same pattern/suppression as ScrapedJobsList.tsx's load effect.
+    // Initial fetch-on-mount, same pattern/suppression as the load effects in ProfileList.tsx.
     // Aborted on unmount/profileId-change so a stale response can't setState
     // on a component that no longer cares.
     const controller = new AbortController()
@@ -165,7 +165,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
 
   async function deleteRule(rule: RuleSummary) {
     // Every other destructive action in this subsystem confirms first
-    // (ProfileList, ScrapedJobsList, QueuedApplicationsPanel). Deleting a rule
+    // (ProfileList, the pipeline inbox). Deleting a rule
     // was the one exception, so a misclick silently discarded it — and the
     // inconsistency itself misleads, since users learn "delete asks first".
     if (!window.confirm(`Delete rule "${rule.name}"? This can't be undone.`)) return
@@ -217,8 +217,7 @@ export function RuleBuilder({ profileId }: RuleBuilderProps) {
   }
 
   // Only fully replace the view with an error screen when the very first
-  // load failed and there's nothing to show yet — mirrors ProfileList.tsx
-  // and ScrapedJobsList.tsx's convention.
+  // load failed and there's nothing to show yet — mirrors ProfileList.tsx's convention.
   if (error && rules === null) {
     return (
       <div className="flex flex-col items-center gap-3 py-8">

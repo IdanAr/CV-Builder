@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 export default function JobSearchProfileLoading() {
   return (
     <div role="status" aria-live="polite" className="mx-auto max-w-5xl px-4 py-8">
-      <span className="sr-only">Loading this job search profile</span>
+      <span className="sr-only">Loading profile</span>
 
       <div aria-hidden="true" className="mb-6 flex flex-col gap-5">
         <div className="space-y-2">

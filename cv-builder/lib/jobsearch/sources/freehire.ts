@@ -46,7 +46,7 @@ function parsePostedAt(value: unknown): Date | undefined {
 }
 
 // freehire's `url` field is rendered verbatim as an <a href> in the UI
-// (components/jobsearch/ScrapedJobsList.tsx). Only accept it if it parses
+// (the pipeline inbox's job detail). Only accept it if it parses
 // as an absolute http(s) URL — anything else (a `javascript:` URL, a bare
 // string, etc.) becomes an empty string rather than a stored XSS vector.
 function safeUrl(value: unknown): string {

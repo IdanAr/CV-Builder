@@ -8,7 +8,6 @@ import type { WorkMode, Seniority, JobLocation, ComeetCompanyWatch } from '@/lib
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { fitBand } from './FitMeter'
 
 interface FullProfile {
   _id: string
@@ -91,7 +90,7 @@ export function ProfileSettings({ profileId, initialProfile }: ProfileSettingsPr
   }, [profileId])
 
   useEffect(() => {
-    // Initial fetch-on-mount, same pattern/suppression as ScrapedJobsList.tsx's load effect.
+    // Initial fetch-on-mount, same pattern/suppression as the load effects in ProfileList.tsx.
     // Skipped when the server already handed us the profile.
     if (initialProfile) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -136,9 +135,9 @@ export function ProfileSettings({ profileId, initialProfile }: ProfileSettingsPr
         <Indicator
           label="Min fit"
           value={`${profile.minAtsScore}%`}
-          // The threshold is coloured by the same bands the fit meter uses, so
+          // The threshold is coloured by fit bands (85+ strong, 70+ fair), so
           // a demanding floor and a lenient one are told apart at a glance.
-          tone={fitBand(profile.minAtsScore).text === 'text-fg-success' ? 'success' : fitBand(profile.minAtsScore).text === 'text-fg-warning' ? 'warning' : 'accent'}
+          tone={profile.minAtsScore >= 85 ? 'success' : profile.minAtsScore >= 70 ? 'accent' : 'warning'}
         />
       </dl>
       <Button variant="secondary" size="xs" className="shrink-0" onClick={() => setEditing(true)}>

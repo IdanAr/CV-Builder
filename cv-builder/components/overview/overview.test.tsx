@@ -9,8 +9,8 @@ import { NeedsYou } from './NeedsYou'
 import { RecentCvs } from './RecentCvs'
 import { FirstRun } from './FirstRun'
 
-const counts = { found: 12, matched: 5, drafted: 0, ready: 2, applied: 7, matchedUnread: 3, waiting: 5 }
-const zero = { found: 0, matched: 0, drafted: 0, ready: 0, applied: 0, matchedUnread: 0, waiting: 0 }
+const counts = { found: 12, matched: 5, drafted: 0, ready: 2, applied: 7, archive: 0, matchedUnread: 3, waiting: 5 }
+const zero = { found: 0, matched: 0, drafted: 0, ready: 0, applied: 0, archive: 0, matchedUnread: 0, waiting: 0 }
 
 describe('PipelineStrip', () => {
   it('renders five stage links with counts', () => {

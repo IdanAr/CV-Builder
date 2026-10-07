@@ -79,6 +79,10 @@ BoardConfig         { userId, columns: BoardColumn[], sort: SortEntry[] }    // 
 
 `BoardColumn` mixes built-in fields (`company`, `role`, `status`, `resumeId`, `createdAt` — reorderable, not deletable) with unlimited custom columns (`text | number | date | url | select | status | checkbox`). Every `PATCH` to an application row is diffed and appended to `ApplicationActivity` — when adding a new editable field, wire it into the diff-and-log path, not just the update handler.
 
+### Job search pipeline
+
+Scraped jobs flow through one funnel (Found, Matched, Drafted, Ready, Applied, plus Archive) rendered by the pipeline inbox at `/dashboard/jobsearch`. A job's stage is derived only by `stageOf` / `stageQuery` (`lib/jobsearch/stages.ts`), never stored or re-implemented per component. The inbox reads `GET /api/jobsearch/scraped-jobs?stage=` (cursor-paginated), and every mutation announces itself through `notifyScrapedJobsChanged` so the list and the sidebar count re-read. Profiles, rules and settings live under `/dashboard/jobsearch/sources`; the old per-profile and notifications routes redirect.
+
 ### Auth & route protection
 
 `proxy.ts` (Next.js 16's rename of the old `middleware.ts`) uses Auth.js's `authorized` callback (`auth.config.ts`) gated on `matcher: ['/dashboard/:path*', '/api/resumes/:path*', '/api/applications/:path*', '/api/preview/:path*']`. All API routes under those prefixes are expected to be session-scoped via the `auth()` wrapper and filtered to the requesting user — new routes under these paths must follow the same pattern, and `middleware.test.ts` should be extended when matcher coverage changes.
@@ -89,7 +93,7 @@ BoardConfig         { userId, columns: BoardColumn[], sort: SortEntry[] }    // 
 cv-builder/
 ├── app/
 │   ├── (auth)/signin/                       # GitHub / Google sign-in
-│   ├── (dashboard)/dashboard/                # Résumé library, applications view, editor ([id]/)
+│   ├── (dashboard)/dashboard/                # Résumé library, applications view, jobsearch/ (pipeline inbox, sources/), editor ([id]/)
 │   └── api/                                  # resumes/, applications/, jobsearch/, preview/pagination/, auth/
 ├── components/
 │   ├── editor/       # EditorShell, EditorTopBar, PreviewToolbar, EditTab, DesignPanel, PreviewTab, forms/, design/ (TemplateGrid, FontSection, SpacingControls, ColorField, ColumnsSection, SegmentedControl)
@@ -98,7 +102,8 @@ cv-builder/
 │   ├── ai/              # AiSuggestButton
 │   ├── coverletter/      # CoverLetterPanel
 │   ├── applications/      # ApplicationsView, Board, Table, Filters, ActivityLog, ColumnForm
-│   ├── jobsearch/           # ProfileWizard and watched-company/scraped-job UI
+│   ├── jobsearch/           # ProfileList, ProfileWizard, ProfileSettings, RuleBuilder (Sources and rules)
+│   ├── pipeline/            # PipelineInbox, StageTabs, PipelineList, JobDetail, hooks (usePipelineJobs, usePipelineActions)
 │   └── ui/                  # AppNavbar, PlasmaBackground, Toaster, UserProfileButton
 ├── lib/
 │   ├── ai/             # pipeline.ts, ats-fix-pipeline.ts, cover-letter-pipeline.ts, jd-extraction-pipeline.ts, keyword-analysis-pipeline.ts, hallucination-guard.ts, models.ts
@@ -106,6 +111,7 @@ cv-builder/
 │   ├── api/              # data-access layer used by app/api/** routes: resumes.ts, applications.ts, board-config.ts, jobsearch-profiles.ts, jobsearch-rules.ts, scraped-jobs.ts
 │   ├── applications/       # cells.ts, filter.ts, order.ts, sort.ts, types.ts
 │   ├── jobsearch/            # apply.ts, scan.ts, rules.ts, queue.ts, sources/ (Comeet adapter+resolver)
+│   │                         # stages.ts, pipeline-url.ts, job-actions.ts  # the funnel: stageOf/stageQuery, inbox URL state, action table
 │   ├── docx/                   # resume-docx.ts
 │   ├── pdf/templates/           # 6 @react-pdf/renderer templates incl. AtsPdfTemplate
 │   ├── schemas/                   # resume.zod.ts, application.zod.ts, jobsearch.zod.ts — single source of truth

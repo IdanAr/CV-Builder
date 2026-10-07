@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button, buttonClasses } from '@/components/ui/Button'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/Menu'
 import { toast, useToastStore } from '@/lib/stores/toast.store'
+import { pipelineHref } from '@/lib/jobsearch/pipeline-url'
 import { formatRelativeTime } from '@/lib/format-relative-time'
 import type { JobLocation, WorkMode } from '@/lib/schemas/jobsearch.zod'
 
@@ -312,7 +313,7 @@ export function ProfileList({ initialProfiles }: ProfileListProps = {}) {
                       }`}
                     />
                     <Link
-                      href={`/dashboard/jobsearch/${profile._id}`}
+                      href={`/dashboard/jobsearch/sources/${profile._id}`}
                       className="truncate font-semibold text-fg-body hover:underline"
                     >
                       {profile.name}
@@ -378,7 +379,14 @@ export function ProfileList({ initialProfiles }: ProfileListProps = {}) {
                       {isScanning ? 'Scanning…' : 'Scan now'}
                     </Button>
                     <Link
-                      href={`/dashboard/jobsearch/${profile._id}`}
+                      href={pipelineHref({ profile: profile._id })}
+                      aria-label={`View jobs for ${profile.name}`}
+                      className={buttonClasses({ variant: 'secondary', size: 'xs' })}
+                    >
+                      View jobs
+                    </Link>
+                    <Link
+                      href={`/dashboard/jobsearch/sources/${profile._id}`}
                       className={buttonClasses({ variant: 'secondary', size: 'xs' })}
                     >
                       Open

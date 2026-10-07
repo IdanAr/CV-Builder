@@ -1,21 +1,17 @@
 import { create } from 'zustand'
 
 /**
- * A change signal for scraped jobs, shared by the two lists that render them.
+ * A change signal for scraped jobs, shared by every consumer of the collection.
  *
- * QueuedApplicationsPanel and ScrapedJobsList are sibling client components on
- * the profile page with no state between them, but they read overlapping slices
- * of the same collection: dismissing, deleting or submitting a posting in one
- * changes what the other should show. Without a signal, the second list keeps
- * rendering what it fetched on mount until the page is reloaded — which is how
- * a freshly created tombstone could exist server-side while the "Deleted" filter
- * still reported none.
+ * The pipeline inbox (its actions and its list) and the sidebar's stage count
+ * read overlapping slices of the same data: dismissing, deleting, approving or
+ * marking a posting applied in the inbox changes what the sidebar badge and the
+ * other stages should show. Without a signal they would keep rendering what
+ * they fetched on mount until the page is reloaded.
  *
- * Deliberately just a counter rather than a cache of the jobs themselves. The
- * two lists want different queries (one filters to queued/needs_review, the
- * other paginates every status), so sharing fetched data would mean reconciling
- * two shapes; sharing "something changed, re-read" costs one GET and keeps each
- * list the owner of its own query.
+ * Deliberately just a counter rather than a cache of the jobs themselves:
+ * "something changed, re-read" costs one GET and keeps each consumer the owner
+ * of its own query.
  */
 interface ScrapedJobsSyncState {
   /** Bumped on every mutation. Consumers reload when it changes. */

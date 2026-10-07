@@ -263,7 +263,8 @@ cv-builder/
 │   ├── ai/                                  # AiSuggestButton
 │   ├── coverletter/                         # CoverLetterPanel
 │   ├── applications/                        # ApplicationsView, Board, Table, Filters, ActivityLog, ColumnForm
-│   ├── jobsearch/                           # ProfileWizard, ProfileSettings, RuleBuilder, ScrapedJobsList, QueuedApplicationsPanel, JobMatchesFeed
+│   ├── jobsearch/                           # ProfileList, ProfileWizard, ProfileSettings, RuleBuilder
+│   ├── pipeline/                            # PipelineInbox, StageTabs, PipelineList, JobDetail
 │   └── ui/                                  # AppNavbar, PlasmaBackground, Toaster, UserProfileButton
 ├── lib/
 │   ├── ai/                                  # pipeline.ts, ats-fix-pipeline.ts, cover-letter-pipeline.ts, hallucination-guard.ts, models.ts

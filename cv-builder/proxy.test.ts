@@ -43,6 +43,26 @@ describe('proxy matcher', () => {
     expect(config.matcher).toContain('/dashboard/:path*')
   })
 
+  // Tiny stand-in for Next's path-to-regexp: `/x/:path*` matches `/x` and
+  // anything beneath it.
+  const matcherToRegExp = (pattern: string) =>
+    new RegExp(`^${pattern.replace('/:path*', '(?:/.*)?')}$`)
+
+  it.each(['/dashboard/jobsearch/sources', '/dashboard/jobsearch/sources/abc123'])(
+    'the matcher covers %s',
+    async (path) => {
+      const { config } = await import('./proxy')
+      const covered = (config.matcher as string[]).some((m) => matcherToRegExp(m).test(path))
+      expect(covered).toBe(true)
+    }
+  )
+
+  it.each(['/signin', '/api/auth/session'])('the matcher leaves %s public', async (path) => {
+    const { config } = await import('./proxy')
+    const covered = (config.matcher as string[]).some((m) => matcherToRegExp(m).test(path))
+    expect(covered).toBe(false)
+  })
+
   it('keeps /dashboard/:path* as the only dashboard entry, so /dashboard/cvs is covered', async () => {
     const { config } = await import('./proxy')
     const dashboard = (config.matcher as string[]).filter((m) => m.startsWith('/dashboard'))

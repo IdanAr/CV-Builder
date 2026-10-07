@@ -1,23 +1,10 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
-import { countUnreadNotifyMatches } from '@/lib/api/scraped-jobs'
-import { JobMatchesFeed } from '@/components/jobsearch/JobMatchesFeed'
-import { JobSearchShell, topLevelSegments } from '@/components/jobsearch/JobSearchShell'
+import { pipelineHref } from '@/lib/jobsearch/pipeline-url'
 
-export default async function JobMatchesPage() {
+/** Legacy URL: matches now live in the pipeline's Matched stage. */
+export default async function JobMatchesRedirectPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/signin')
-
-  const unreadCount = await countUnreadNotifyMatches(session.user.id)
-
-  return (
-    <JobSearchShell
-      segments={topLevelSegments(unreadCount)}
-      active="matches"
-      title="Job Matches"
-      description="Every posting your notify rules flagged, across all profiles."
-    >
-      <JobMatchesFeed />
-    </JobSearchShell>
-  )
+  redirect(pipelineHref({ stage: 'matched' }))
 }

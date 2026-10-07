@@ -195,7 +195,23 @@ describe('ProfileList', () => {
     render(<ProfileList />)
 
     const link = await screen.findByRole('link', { name: 'Frontend, Remote EU' })
-    expect(link).toHaveAttribute('href', '/dashboard/jobsearch/p1')
+    expect(link).toHaveAttribute('href', '/dashboard/jobsearch/sources/p1')
+    expect(screen.getByRole('link', { name: 'Open' })).toHaveAttribute(
+      'href',
+      '/dashboard/jobsearch/sources/p1'
+    )
+  })
+
+  it('offers a View jobs link into the pipeline filtered to the profile', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({ profiles: [{ _id: 'p1', name: 'Frontend, Remote EU', isActive: true }] }),
+    } as Response)
+
+    render(<ProfileList />)
+
+    const link = await screen.findByRole('link', { name: 'View jobs for Frontend, Remote EU' })
+    expect(link).toHaveAttribute('href', '/dashboard/jobsearch?profile=p1')
   })
 
   it('summarises what a profile watches as chips', async () => {

@@ -1,8 +1,9 @@
 'use client'
 
+import { Fragment } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Briefcase, Columns3, FileText, LayoutDashboard, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react'
+import { Briefcase, Columns3, FileText, LayoutDashboard, PanelLeftClose, PanelLeftOpen, Settings, SlidersHorizontal } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { cn } from '@/lib/utils'
@@ -35,7 +36,7 @@ const ITEMS: Item[] = [
     href: '/dashboard/jobsearch',
     label: 'Job search',
     icon: Briefcase,
-    isActive: (p) => p.startsWith('/dashboard/jobsearch'),
+    isActive: (p) => p === '/dashboard/jobsearch',
     showWaiting: true,
   },
   {
@@ -45,6 +46,14 @@ const ITEMS: Item[] = [
     isActive: (p) => p.startsWith('/dashboard/applications'),
   },
 ]
+
+/** Shown under Job search only while the sidebar is expanded. */
+const JOBSEARCH_CHILD: Item = {
+  href: '/dashboard/jobsearch/sources',
+  label: 'Sources and rules',
+  icon: SlidersHorizontal,
+  isActive: (p) => p.startsWith('/dashboard/jobsearch/sources'),
+}
 
 const SETTINGS: Item = {
   href: '/dashboard/settings',
@@ -176,14 +185,26 @@ export function SidebarNav({
 
       <nav aria-label="Primary" className="flex flex-col gap-0.5">
         {ITEMS.map((item) => (
-          <NavLink
-            key={item.href}
-            item={item}
-            active={item.isActive(pathname)}
-            collapsed={collapsed}
-            waiting={waiting}
-            onNavigate={onNavigate}
-          />
+          <Fragment key={item.href}>
+            <NavLink
+              item={item}
+              active={item.isActive(pathname)}
+              collapsed={collapsed}
+              waiting={waiting}
+              onNavigate={onNavigate}
+            />
+            {item.href === '/dashboard/jobsearch' && !collapsed && (
+              <div className="ml-4 flex flex-col">
+                <NavLink
+                  item={JOBSEARCH_CHILD}
+                  active={JOBSEARCH_CHILD.isActive(pathname)}
+                  collapsed={false}
+                  waiting={0}
+                  onNavigate={onNavigate}
+                />
+              </div>
+            )}
+          </Fragment>
         ))}
       </nav>
 

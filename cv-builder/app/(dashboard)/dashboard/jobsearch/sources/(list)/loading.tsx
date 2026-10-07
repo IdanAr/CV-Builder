@@ -1,17 +1,17 @@
 import { Skeleton } from '@/components/ui/Skeleton'
 
 /**
- * Shown while `JobSearchPage` awaits its profiles and unread count.
+ * Shown while the sources page awaits its profiles.
  *
  * Without this the section fell back to the dashboard's "My CVs" skeleton on
  * the way to a different layout, and `ProfileList` itself rendered `null`
  * while fetching — so a slow load and an account with no profiles looked
  * exactly alike.
  */
-export default function JobSearchLoading() {
+export default function SourcesLoading() {
   return (
     <div role="status" aria-live="polite" className="mx-auto max-w-5xl px-4 py-8">
-      <span className="sr-only">Loading your job search profiles</span>
+      <span className="sr-only">Loading your profiles</span>
 
       <div aria-hidden="true" className="mb-6 flex flex-col gap-5">
         <div className="space-y-2">
