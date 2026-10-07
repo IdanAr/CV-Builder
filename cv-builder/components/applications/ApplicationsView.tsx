@@ -493,7 +493,7 @@ export default function ApplicationsView({
                 aria-pressed={view === mode}
                 onClick={() => handleViewChange(mode)}
                 className={cn(
-                  'rounded-chip px-2.5 py-1 text-xs font-medium capitalize transition-colors',
+                  'rounded-chip px-2.5 py-1 text-xs font-medium capitalize transition-colors max-sm:min-h-10',
                   'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   view === mode
                     ? 'bg-primary text-primary-fg'
@@ -554,7 +554,7 @@ export default function ApplicationsView({
           role="dialog"
           aria-modal="true"
           aria-label={columnModal.mode === 'add' ? 'Add column' : 'Edit column'}
-          className="fixed inset-0 z-40 flex items-center justify-center bg-accent-950/30 p-4"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-fg-heading/40 p-4"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setColumnModal(null)
           }}

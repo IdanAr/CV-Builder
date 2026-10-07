@@ -80,6 +80,13 @@ describe('ApplicationsView view toggle', () => {
     expect(localStorage.getItem('cv-builder:applications-view')).toBe('kanban')
   })
 
+  it('keeps a 40px touch floor on the view-switch segments below sm', () => {
+    renderView()
+    for (const name of ['Table', 'Board']) {
+      expect(screen.getByRole('button', { name })).toHaveClass('max-sm:min-h-10')
+    }
+  })
+
   it('restores the persisted kanban preference on mount', () => {
     localStorage.setItem('cv-builder:applications-view', 'kanban')
     renderView()
