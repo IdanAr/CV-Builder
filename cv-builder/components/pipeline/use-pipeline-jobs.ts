@@ -74,6 +74,10 @@ export function usePipelineJobs(view: ViewKey, initial?: PipelineInitial): UsePi
   // Bumped by every page-1 load, view change and loadMore so out-of-order
   // responses are dropped.
   const requestIdRef = useRef(0)
+  // Refreshes (revision reloads) have their own id so they never invalidate a
+  // pending view load; a view load does invalidate refreshes.
+  const refreshIdRef = useRef(0)
+  const viewPendingRef = useRef(false)
   const controllerRef = useRef<AbortController | null>(null)
   // The view whose data `items` currently holds; lets a seeded first render skip the fetch.
   const loadedKeyRef = useRef<string | null>(seeded ? viewKey : null)
@@ -108,17 +112,25 @@ export function usePipelineJobs(view: ViewKey, initial?: PipelineInitial): UsePi
   /** Page 1. `fromView` is true when the view itself changed (vs. a background refresh). */
   const loadFirstPage = useCallback(
     async (target: ViewKey, fromView: boolean, signal?: AbortSignal) => {
-      const requestId = ++requestIdRef.current
+      // A refresh while a view load is pending would only fetch the same page.
+      if (!fromView && viewPendingRef.current) return
+      const viewId = fromView ? ++requestIdRef.current : requestIdRef.current
+      const refreshId = ++refreshIdRef.current
+      if (fromView) viewPendingRef.current = true
+      const stale = () =>
+        requestIdRef.current !== viewId || (!fromView && refreshIdRef.current !== refreshId)
       try {
         const res = await fetch(buildUrl(target), { signal })
-        if (requestId !== requestIdRef.current) return
+        if (stale()) return
         if (!res.ok) {
+          if (fromView) viewPendingRef.current = false
           setError(LOAD_ERROR)
           if (fromView || itemsRef.current.length === 0) setStatus('error')
           return
         }
         const body = (await res.json()) as PipelinePageDto
-        if (requestId !== requestIdRef.current) return
+        if (stale()) return
+        if (fromView) viewPendingRef.current = false
         setItems(body.items)
         setNextCursor(body.nextCursor)
         setCounts(body.counts)
@@ -136,7 +148,8 @@ export function usePipelineJobs(view: ViewKey, initial?: PipelineInitial): UsePi
           if (unread.length) markRead(target.profile)
         }
       } catch (err) {
-        if (isAbort(err) || requestId !== requestIdRef.current) return
+        if (isAbort(err) || stale()) return
+        if (fromView) viewPendingRef.current = false
         setError(LOAD_ERROR)
         if (fromView || itemsRef.current.length === 0) setStatus('error')
       }
@@ -162,6 +175,8 @@ export function usePipelineJobs(view: ViewKey, initial?: PipelineInitial): UsePi
     setLoadingMore(false)
     loadingMoreRef.current = false
     setUnreadIds(EMPTY_SET)
+    loadedKeyRef.current = null
+    viewPendingRef.current = false
     setStatus('loading')
     void loadFirstPage(viewRef.current, true, controller.signal)
     return () => {

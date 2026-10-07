@@ -48,7 +48,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-function urlsOf(prefix = '/api/jobsearch/scraped-jobs') {
+function urlsOf(prefix = '/api/jobsearch/scraped-jobs?') {
   return fetchMock.mock.calls.map((c) => c[0] as string).filter((u) => u.startsWith(prefix))
 }
 
@@ -235,5 +235,55 @@ describe('usePipelineJobs', () => {
     expect(result.current.status).toBe('ready')
     expect(result.current.error).toBe('Failed to load jobs.')
     expect(result.current.items).toHaveLength(1)
+  })
+
+  it('does not get stuck loading when the view goes A -> B -> A', async () => {
+    fetchMock.mockResolvedValueOnce(ok(page([job('a')])))
+    const b = defer()
+    fetchMock.mockReturnValueOnce(b.promise)
+    fetchMock.mockResolvedValueOnce(ok(page([job('a')])))
+    const { result, rerender } = renderHook(({ v }) => usePipelineJobs(v), { initialProps: { v: view({ q: 'ab' }) } })
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    rerender({ v: view({ q: 'abc' }) })
+    rerender({ v: view({ q: 'ab' }) })
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    expect(result.current.items.map((j) => j._id)).toEqual(['a'])
+    await act(async () => { b.resolve(ok(page([job('stale')]))) })
+    expect(result.current.items.map((j) => j._id)).toEqual(['a'])
+  })
+
+  it('applies a pending view load (snapshot + mark-read) when a revision tick lands meanwhile', async () => {
+    const pending = defer()
+    fetchMock.mockImplementation((u: string) =>
+      u.includes('mark-read') ? Promise.resolve(ok({})) : pending.promise)
+    const { result } = renderHook(() => usePipelineJobs(view({ stage: 'matched' })))
+    act(() => { notifyScrapedJobsChanged() })
+    await act(async () => { pending.resolve(ok(page([job('a', { status: 'new' })]))) })
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    expect(result.current.items.map((j) => j._id)).toEqual(['a'])
+    expect([...result.current.unreadIds]).toEqual(['a'])
+    const marks = () => fetchMock.mock.calls.filter((c) => String(c[0]).includes('mark-read'))
+    await waitFor(() => expect(marks()).toHaveLength(1))
+    await act(async () => {})
+    expect(marks()).toHaveLength(1)
+  })
+
+  it('seeded matched view snapshots unread ids from initial and POSTs mark-read once, no data fetch', async () => {
+    fetchMock.mockResolvedValue(ok({}))
+    const initial: PipelineInitial = {
+      view: view({ stage: 'matched' }),
+      items: [job('a', { status: 'new' }), job('b')],
+      nextCursor: null,
+      counts: COUNTS,
+    }
+    const { result } = renderHook(() => usePipelineJobs(view({ stage: 'matched' }), initial))
+    expect([...result.current.unreadIds]).toEqual(['a'])
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/jobsearch/notifications/mark-read')
+    await waitFor(() => expect(useScrapedJobsSync.getState().revision).toBe(1))
+    await act(async () => {})
+    // no mount fetch: the only data fetch is the revision reload after mark-read
+    expect(urlsOf()).toHaveLength(1)
+    expect(fetchMock.mock.calls.filter((c) => String(c[0]).includes('mark-read'))).toHaveLength(1)
   })
 })
