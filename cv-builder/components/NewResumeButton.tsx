@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { toast } from '@/lib/stores/toast.store'
+import { Button } from '@/components/ui/Button'
 
 interface NewResumeButtonProps {
   variant?: 'navbar' | 'hero'
@@ -31,13 +32,14 @@ export default function NewResumeButton({ variant = 'navbar' }: NewResumeButtonP
     }
   }
 
-  const className =
-    variant === 'hero'
-      ? 'w-full rounded-lg bg-accent-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-700 disabled:opacity-50'
-      : 'rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-accent-700 disabled:opacity-50'
-
   return (
-    <button onClick={handleCreate} disabled={loading} className={className} aria-label={loading ? 'Creating…' : 'New CV'}>
+    <Button
+      onClick={handleCreate}
+      disabled={loading}
+      size="md"
+      className={variant === 'hero' ? 'w-full' : undefined}
+      aria-label={loading ? 'Creating…' : 'New CV'}
+    >
       {loading ? (
         'Creating…'
       ) : (
@@ -46,6 +48,6 @@ export default function NewResumeButton({ variant = 'navbar' }: NewResumeButtonP
           New CV
         </span>
       )}
-    </button>
+    </Button>
   )
 }

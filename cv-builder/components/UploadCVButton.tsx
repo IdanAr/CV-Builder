@@ -6,6 +6,7 @@ import { Upload } from 'lucide-react'
 import UploadProgressModal, { type UploadStage } from './UploadProgressModal'
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB_LABEL } from '@/lib/upload/limits'
 import { apiErrorMessage } from '@/lib/api/client-errors'
+import { Button } from '@/components/ui/Button'
 
 type Stage = 'idle' | UploadStage
 
@@ -111,11 +112,6 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
     }
   }
 
-  const triggerClassName =
-    variant === 'hero'
-      ? 'w-full rounded-lg border border-accent-300 bg-white px-4 py-2.5 text-sm font-semibold text-accent-700 shadow-sm transition hover:bg-accent-50 disabled:opacity-50'
-      : 'rounded-lg border border-accent-300 bg-surface px-4 py-2 text-sm font-medium text-accent-700 shadow-sm transition hover:bg-accent-50'
-
   const requirementsText = `PDF or DOCX, up to ${MAX_UPLOAD_MB_LABEL}`
 
   return (
@@ -123,20 +119,21 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
       <input ref={inputRef} type="file" accept=".pdf,.docx" className="hidden" onChange={handleFileChange} />
       {variant === 'hero' ? (
         <span className="block w-full">
-          <button onClick={() => inputRef.current?.click()} className={triggerClassName}>
+          <Button variant="secondary" size="md" onClick={() => inputRef.current?.click()} className="w-full">
             <span className="inline-flex items-center gap-1.5">
               <Upload className="h-4 w-4" aria-hidden="true" />
               Upload CV
             </span>
-          </button>
+          </Button>
           <span className="mt-1.5 block text-center text-xs text-fg-muted">{requirementsText}</span>
         </span>
       ) : (
         <>
-          <button
+          <Button
             ref={buttonRef}
+            variant="secondary"
+            size="md"
             onClick={() => inputRef.current?.click()}
-            className={triggerClassName}
             aria-describedby={requirementsId}
             onMouseEnter={showTooltipAtCursor}
             onMouseMove={showTooltipAtCursor}
@@ -148,7 +145,7 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
               <Upload className="h-4 w-4" aria-hidden="true" />
               Upload CV
             </span>
-          </button>
+          </Button>
           {/* Always in the DOM so screen readers announce it via aria-describedby
               regardless of hover/focus; visually it only appears in the tooltip
               below, since an always-visible caption here breaks the navbar row's
@@ -158,7 +155,7 @@ export default function UploadCVButton({ variant = 'navbar' }: UploadCVButtonPro
             <span
               role="tooltip"
               style={{ left: tooltipPos.x, top: tooltipPos.y }}
-              className="pointer-events-none fixed z-50 -translate-x-1/2 translate-y-3 whitespace-nowrap rounded-md bg-neutral-800 px-2 py-1 text-xs text-white shadow-lg"
+              className="pointer-events-none fixed z-50 -translate-x-1/2 translate-y-3 whitespace-nowrap rounded-chip bg-fg-heading px-2 py-1 text-xs text-primary-fg shadow-popover"
             >
               {requirementsText}
             </span>

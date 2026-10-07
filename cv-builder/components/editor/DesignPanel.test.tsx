@@ -435,13 +435,13 @@ describe('DesignPanel', () => {
       })
       render(<DesignPanel />)
       // SortableColumnRow always renders both "Left" and "Right" buttons, styling
-      // whichever is the current side with the active (bg-white) class. Skills has
+      // whichever is the current side with the active (text-fg-heading) class. Skills has
       // no LEFT_DEFAULTS entry, so this only passes when the sidebar's own column
       // defaults (SIDEBAR_COLUMN_DEFAULTS) are threaded through getColumnSide.
       const leftBtn = screen.getByRole('button', { name: 'Left' })
       const rightBtn = screen.getByRole('button', { name: 'Right' })
-      expect(leftBtn.className).toContain('bg-white')
-      expect(rightBtn.className).not.toContain('bg-white')
+      expect(leftBtn.className).toContain('text-fg-heading')
+      expect(rightBtn.className).not.toContain('text-fg-heading')
     })
   })
 

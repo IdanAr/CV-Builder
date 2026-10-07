@@ -36,10 +36,6 @@ function countHits(src: string): number {
 
 // Filled in by Step 2. Keys are repo-relative with forward slashes.
 const BASELINE: Record<string, number> = {
-  'components/EmptyDashboardState.tsx': 3,
-  'components/NewResumeButton.tsx': 8,
-  'components/UploadCVButton.tsx': 6,
-  'components/UploadProgressModal.tsx': 9,
   'components/ai/AiSuggestButton.tsx': 7,
   'components/ats/AtsFixReviewPanel.tsx': 11,
   'components/ats/AtsScorePanel.tsx': 39,
@@ -52,8 +48,6 @@ const BASELINE: Record<string, number> = {
   'components/editor/ExportMenu.tsx': 5,
   'components/editor/PreviewTab.tsx': 2,
   'components/editor/UnverifiedClaimsBanner.tsx': 3,
-  'components/editor/design/ColorField.tsx': 4,
-  'components/editor/design/ColumnsSection.tsx': 6,
   'components/editor/forms/CustomSectionForm.tsx': 2,
   'components/editor/forms/ListFieldManager.tsx': 1,
   'components/editor/forms/MonthYearPicker.tsx': 2,
