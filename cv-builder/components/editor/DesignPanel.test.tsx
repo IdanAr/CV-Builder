@@ -38,6 +38,15 @@ function openAdvanced(container: HTMLElement) {
 }
 
 describe('DesignPanel', () => {
+  it('titles its sections with h2 headings and no h3', () => {
+    render(<DesignPanel />)
+    const h2 = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+    for (const t of ['Template', 'Layout', 'Fonts', 'Colors', 'Size and spacing']) {
+      expect(h2).toContain(t)
+    }
+    expect(screen.queryAllByRole('heading', { level: 3 })).toHaveLength(0)
+  })
+
   it('line spacing slider reaches 1.3', () => {
     const { container } = render(<DesignPanel />)
     openAdvanced(container)

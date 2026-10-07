@@ -16,7 +16,7 @@ export interface EditorTopBarProps {
 }
 
 const ICON_BUTTON =
-  'flex min-h-10 min-w-10 items-center justify-center rounded-control text-fg-body transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent'
+  'flex min-h-10 min-w-10 items-center justify-center rounded-control text-fg-body transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-disabled:cursor-not-allowed aria-disabled:opacity-40 aria-disabled:hover:bg-transparent'
 
 /** Slim editor header: back link, title, save status, undo/redo, export. */
 export function EditorTopBar({ onLeave, onExport, onJsonExport, exporting, leaving }: EditorTopBarProps) {
@@ -47,7 +47,7 @@ export function EditorTopBar({ onLeave, onExport, onJsonExport, exporting, leavi
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         aria-label="Resume title"
-        className="min-w-0 flex-1 rounded-control bg-transparent px-2 py-1 text-sm font-semibold text-fg outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="min-w-0 flex-1 rounded-control bg-transparent px-2 py-1 text-sm font-medium text-fg outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
 
       <div
@@ -68,13 +68,29 @@ export function EditorTopBar({ onLeave, onExport, onJsonExport, exporting, leavi
           ))}
       </div>
 
-      <Tooltip content="Undo" side="bottom">
-        <button type="button" onClick={undo} disabled={!canUndo} aria-label="Undo" className={ICON_BUTTON}>
+      <Tooltip content={canUndo ? 'Undo' : 'Nothing to undo'} side="bottom">
+        <button
+          type="button"
+          onClick={() => {
+            if (canUndo) undo()
+          }}
+          aria-disabled={!canUndo}
+          aria-label="Undo"
+          className={ICON_BUTTON}
+        >
           <Undo2 className="h-4 w-4" aria-hidden="true" />
         </button>
       </Tooltip>
-      <Tooltip content="Redo" side="bottom">
-        <button type="button" onClick={redo} disabled={!canRedo} aria-label="Redo" className={ICON_BUTTON}>
+      <Tooltip content={canRedo ? 'Redo' : 'Nothing to redo'} side="bottom">
+        <button
+          type="button"
+          onClick={() => {
+            if (canRedo) redo()
+          }}
+          aria-disabled={!canRedo}
+          aria-label="Redo"
+          className={ICON_BUTTON}
+        >
           <Redo2 className="h-4 w-4" aria-hidden="true" />
         </button>
       </Tooltip>

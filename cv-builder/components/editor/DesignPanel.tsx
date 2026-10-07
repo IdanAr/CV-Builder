@@ -7,7 +7,7 @@ import { FontSection } from './design/FontSection'
 import { ColorField } from './design/ColorField'
 import { SpacingControls } from './design/SpacingControls'
 
-const sectionTitle = 'mb-3 text-xs font-semibold uppercase tracking-wide text-fg-subtle'
+const sectionTitle = 'mb-3 text-xs font-medium uppercase tracking-wide text-fg-subtle'
 
 /**
  * `active` is false while the Design tab is hidden (EditorShell keeps all tab
@@ -21,16 +21,16 @@ export function DesignPanel({ active = true }: { active?: boolean }) {
   return (
     <div className="mx-auto max-w-sm space-y-7 px-4 py-6">
       <section aria-labelledby="design-template">
-        <h3 id="design-template" className={sectionTitle}>Template</h3>
+        <h2 id="design-template" className={sectionTitle}>Template</h2>
         <TemplateGrid active={active} />
       </section>
       <ColumnsSection />
       <section aria-labelledby="design-fonts">
-        <h3 id="design-fonts" className={sectionTitle}>Fonts</h3>
+        <h2 id="design-fonts" className={sectionTitle}>Fonts</h2>
         <FontSection />
       </section>
       <section aria-labelledby="design-colors">
-        <h3 id="design-colors" className={sectionTitle}>Colors</h3>
+        <h2 id="design-colors" className={sectionTitle}>Colors</h2>
         {/* Stacked vertically so each picker's swatch row and preset palette
             get the panel's full width. */}
         <div className="space-y-5">
@@ -53,7 +53,7 @@ export function DesignPanel({ active = true }: { active?: boolean }) {
         </div>
       </section>
       <section aria-labelledby="design-spacing">
-        <h3 id="design-spacing" className={sectionTitle}>Size and spacing</h3>
+        <h2 id="design-spacing" className={sectionTitle}>Size and spacing</h2>
         <SpacingControls />
       </section>
     </div>

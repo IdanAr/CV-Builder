@@ -98,19 +98,18 @@ function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumn
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    boxShadow: isDragging ? '0 4px 12px rgb(var(--color-accent-700) / 0.15)' : undefined,
   }
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 px-2.5 py-1.5 border-b border-border last:border-b-0 transition-colors hover:bg-surface-subtle"
+      className={`flex items-center gap-2 px-2.5 py-1.5 border-b border-border last:border-b-0 transition-colors hover:bg-surface-subtle${isDragging ? ' shadow-popover' : ''}`}
     >
       <span
         {...attributes}
         {...listeners}
-        className="text-fg-subtle cursor-grab active:cursor-grabbing text-base select-none"
+        className="rounded text-fg-subtle cursor-grab active:cursor-grabbing text-base select-none outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:flex max-sm:min-h-10 max-sm:min-w-10 max-sm:items-center max-sm:justify-center"
         aria-label="Drag to reorder"
       >
         ⠿
@@ -180,7 +179,7 @@ export function ColumnsSection() {
   }
   return (
     <section aria-labelledby="design-layout">
-      <h3 id="design-layout" className={sectionTitle}>Layout</h3>
+      <h2 id="design-layout" className={sectionTitle}>Layout</h2>
       <div className="space-y-5">
       {/* Layout toggle — Minimal is single-column only; Sidebar always uses a
           rail + main layout, so the toggle is meaningless there and hidden. */}

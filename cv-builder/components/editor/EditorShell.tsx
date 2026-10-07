@@ -61,7 +61,6 @@ export interface EditorShellProps {
   title: string
   data: ResumeData
   meta: ResumeMeta
-  user?: { name?: string | null; email?: string | null; image?: string | null }
 }
 
 export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
@@ -124,6 +123,14 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
         setPanelWidth(clampPanelWidth(w))
       }
     }
+  }, [])
+
+  useEffect(() => {
+    function onResize() {
+      setPanelWidth((w) => clampPanelWidth(w))
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
   }, [])
 
   function handleDividerPointerDown(e: React.PointerEvent<HTMLDivElement>) {
