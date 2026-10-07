@@ -71,7 +71,7 @@ function LiveCards({ templateId }: { templateId: string }) {
   return (
     <Cards
       templateId={templateId}
-      renderThumb={(id) => <CvThumbnail data={debouncedData} meta={metaByTemplate[id]} />}
+      renderThumb={(id) => <CvThumbnail data={debouncedData} meta={metaByTemplate[id]} scale={0.15} />}
     />
   )
 }

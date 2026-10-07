@@ -146,4 +146,11 @@ describe('TemplateGrid', () => {
       expect(onRender.mock.calls.length).toBe(after)
     })
   })
+
+  it('renders thumbnails at the narrow 0.15 scale so the page is not cropped', () => {
+    const { container } = render(<TemplateGrid />)
+    const pages = container.querySelectorAll<HTMLElement>('[data-testid="cv-thumbnail-page"]')
+    expect(pages.length).toBeGreaterThan(0)
+    pages.forEach((p) => expect(p.style.transform).toBe('scale(0.15)'))
+  })
 })

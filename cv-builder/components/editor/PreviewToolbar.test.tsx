@@ -22,11 +22,26 @@ function setup(overrides: Partial<PreviewToolbarProps> = {}) {
 }
 
 describe('PreviewToolbar', () => {
+  it('keeps the narrow-width class contract (lg-only text, compact chip, scroll safety net)', () => {
+    setup({ expandable: true })
+    const toolbar = screen.getByRole('toolbar', { name: 'Preview controls' })
+    expect(toolbar.className).toContain('overflow-x-auto')
+    expect(toolbar.className).toContain('min-w-0')
+    const pageTextEl = screen.getAllByText('2 pages · matches PDF').find((e) => !e.classList.contains('sr-only'))!
+    expect(pageTextEl.className).toContain('hidden')
+    expect(pageTextEl.className).toContain('lg:block')
+    expect(pageTextEl.className).not.toContain('sm:')
+    expect(screen.getByText('Fit width', { selector: 'span' }).className).toContain('hidden lg:inline')
+    expect(screen.getByText('ATS 87').className).toContain('lg:hidden')
+    expect(screen.getByText('ATS format 87').className).toContain('hidden lg:inline')
+    expect(screen.getByRole('button', { name: 'Expand preview' })).not.toHaveAttribute('aria-pressed')
+  })
+
   it('renders a labelled toolbar with page text, score chip and zoom label', () => {
     setup()
     expect(screen.getByRole('toolbar', { name: 'Preview controls' })).toBeInTheDocument()
     expect(screen.getAllByText('2 pages · matches PDF').length).toBeGreaterThan(0)
-    expect(screen.getByLabelText('ATS format score 87 out of 100')).toHaveTextContent('ATS format 87')
+    expect(screen.getByText('ATS format score 87 out of 100').parentElement).toHaveTextContent('ATS 87')
     expect(screen.getByTestId('zoom-percentage')).toHaveTextContent('Fit')
   })
 
@@ -64,7 +79,7 @@ describe('PreviewToolbar', () => {
       return r
     })()
     const btn = screen.getByRole('button', { name: 'Expand preview' })
-    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    expect(btn).not.toHaveAttribute('aria-pressed')
     fireEvent.click(btn)
     expect(onToggleExpand).toHaveBeenCalledOnce()
     unmount()

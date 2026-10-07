@@ -19,7 +19,6 @@ const TEMPLATES: Record<string, React.ComponentType<{ data: ResumeData; meta: Re
 }
 
 export const THUMBNAIL_SCALE = 0.24
-const SCALED_WIDTH = A4_WIDTH_PX * THUMBNAIL_SCALE
 
 const META_DEFAULTS = ResumeMetaSchema.parse({})
 
@@ -36,7 +35,16 @@ const META_DEFAULTS = ResumeMetaSchema.parse({})
  * links, and a decorative picture must not add tab stops or announce a
  * second copy of the CV to a screen reader.
  */
-function CvThumbnailImpl({ data, meta }: { data: unknown; meta: unknown }) {
+function CvThumbnailImpl({
+  data,
+  meta,
+  scale = THUMBNAIL_SCALE,
+}: {
+  data: unknown
+  meta: unknown
+  scale?: number
+}) {
+  const scaledWidth = A4_WIDTH_PX * scale
   // Older documents can predate newer meta fields; fill them from the schema
   // defaults rather than letting a template read `undefined`.
   const fullMeta = { ...META_DEFAULTS, ...((meta ?? {}) as Partial<ResumeMeta>) } as ResumeMeta
@@ -51,11 +59,11 @@ function CvThumbnailImpl({ data, meta }: { data: unknown; meta: unknown }) {
             position: 'absolute',
             top: 12,
             left: '50%',
-            marginLeft: -SCALED_WIDTH / 2,
+            marginLeft: -scaledWidth / 2,
             width: A4_WIDTH_PX,
             // Intentional token exception: CV paper is always white, in every theme.
             background: '#fff',
-            transform: `scale(${THUMBNAIL_SCALE})`,
+            transform: `scale(${scale})`,
             transformOrigin: 'top left',
           }}
         >

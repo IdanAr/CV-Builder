@@ -18,6 +18,13 @@ describe('CvThumbnail', () => {
     expect(page.style.width).toBe('794px')
   })
 
+  it('honours a custom scale and centres the page for it', () => {
+    render(<CvThumbnail data={data} meta={{}} scale={0.15} />)
+    const page = screen.getByTestId('cv-thumbnail-page')
+    expect(page.style.transform).toBe('scale(0.15)')
+    expect(page.style.marginLeft).toBe(`${-(794 * 0.15) / 2}px`)
+  })
+
   it('is decorative: hidden from assistive tech and out of the tab order', () => {
     const { container } = render(<CvThumbnail data={data} meta={{}} />)
     const wrapper = container.querySelector('[aria-hidden="true"]') as HTMLElement

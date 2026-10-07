@@ -47,21 +47,24 @@ export function PreviewToolbar({
     <div
       role="toolbar"
       aria-label="Preview controls"
-      className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface px-3"
+      className="flex h-12 min-w-0 shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-surface px-3 lg:gap-2"
     >
-      {/* Visible text hides below sm so the controls fit a phone; the
+      {/* Visible text hides below lg so the controls fit a phone; the
           live-region mirror stays for screen readers at every width. */}
-      <span className="hidden min-w-0 truncate text-xs font-medium text-fg-muted sm:block">
+      <span className="hidden min-w-0 truncate text-xs font-medium text-fg-muted lg:block">
         {pageText}
       </span>
       <span aria-live="polite" className="sr-only">
         {pageText}
       </span>
-      <span
-        aria-label={`ATS format score ${formatScore} out of 100`}
-        className="shrink-0 whitespace-nowrap rounded-chip bg-surface-subtle px-2 py-0.5 text-xs font-medium text-fg-body"
-      >
-        ATS format {formatScore}
+      <span className="shrink-0 whitespace-nowrap rounded-chip bg-surface-subtle px-2 py-0.5 text-xs font-medium text-fg-body">
+        <span className="sr-only">ATS format score {formatScore} out of 100</span>
+        <span aria-hidden="true" className="lg:hidden">
+          ATS {formatScore}
+        </span>
+        <span aria-hidden="true" className="hidden lg:inline">
+          ATS format {formatScore}
+        </span>
       </span>
       <div className="flex-1" />
       <button
@@ -109,10 +112,10 @@ export function PreviewToolbar({
         onClick={onFit}
         className={`${BTN} px-2 text-xs ${fitActive ? 'bg-surface-subtle font-medium' : ''}`}
       >
-        <span aria-hidden="true" className="sm:hidden">
+        <span aria-hidden="true" className="lg:hidden">
           ↔
         </span>
-        <span aria-hidden="true" className="hidden sm:inline">
+        <span aria-hidden="true" className="hidden lg:inline">
           Fit width
         </span>
       </button>
@@ -120,7 +123,6 @@ export function PreviewToolbar({
         <button
           type="button"
           onClick={onToggleExpand}
-          aria-pressed={expanded}
           title={expanded ? 'Collapse preview' : 'Expand preview'}
           aria-label={expanded ? 'Collapse preview' : 'Expand preview'}
           className={`${BTN} ${expanded ? 'bg-surface-subtle' : ''}`}

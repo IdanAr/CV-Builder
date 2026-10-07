@@ -61,6 +61,20 @@ describe('DesignPanel', () => {
     expect(twoColumnBtn).toHaveAttribute('aria-pressed', 'false')
   })
 
+  it('design controls write only meta: data keeps the same object identity', () => {
+    const before = useResumeEditorStore.getState().data
+    const { container } = render(<DesignPanel />)
+    fireEvent.click(screen.getByText('Modern'))
+    fireEvent.click(screen.getByRole('radio', { name: /Editorial/ }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Relaxed' }))
+    const primaryGroup = screen.getByRole('group', { name: /primary color presets/i })
+    fireEvent.click(primaryGroup.querySelector('button[title="Navy"]') as HTMLButtonElement)
+    expect(useResumeEditorStore.getState().meta.templateId).toBe('modern')
+    expect(useResumeEditorStore.getState().meta.primaryColor).toBe('#1e3a8a')
+    expect(useResumeEditorStore.getState().data).toBe(before)
+    expect(container).toBeTruthy()
+  })
+
   it('renders template options', () => {
     render(<DesignPanel />)
     expect(screen.getByText('Classic')).toBeTruthy()

@@ -36,7 +36,7 @@ export function EditorTopBar({ onLeave, onExport, onJsonExport, exporting, leavi
         href="/dashboard/cvs"
         onClick={onLeave}
         aria-busy={leaving}
-        className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-control px-1 text-sm font-medium text-fg-muted transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center gap-1.5 rounded-control px-1 text-sm font-medium text-fg-muted transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         <span className="sr-only sm:not-sr-only">My CVs</span>

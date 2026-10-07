@@ -111,7 +111,7 @@ cv-builder/
 │   ├── schemas/                   # resume.zod.ts, application.zod.ts, jobsearch.zod.ts — single source of truth
 │   ├── stores/                      # resume-editor.store.ts, toast.store.ts (Zustand)
 │   ├── upload/                        # parse-file.ts, extract-resume.ts
-│   ├── editor/design-presets.ts, fonts/pairings.ts   # spacing/margin presets, font pairings for the Design panel
+│   ├── editor/design-presets.ts, editor/use-format-score.ts, fonts/pairings.ts   # spacing/margin presets, font pairings for the Design panel
 │   └── rate-limit.ts, export-mode.ts, preview-pagination.ts, mongodb.ts, auth.ts, db.ts
 ├── models/                # Mongoose models: Resume.ts, Application.ts, ApplicationActivity.ts, BoardConfig.ts, JobSearchProfile.ts, JobSearchRule.ts, ScrapedJob.ts
 └── docs/superpowers/       # sprint-by-sprint specs/ and plans/ — git-ignored, local only

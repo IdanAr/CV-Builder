@@ -216,7 +216,7 @@ export function PreviewTab({
           role="option"
           aria-selected={zoomOverride === p}
           onClick={() => handlePresetSelect(p)}
-          className="block min-h-8 w-full px-3 py-1 text-left text-xs text-fg-body hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="block min-h-10 w-full px-3 py-1 text-left text-xs text-fg-body hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {Math.round(p * 100)}%
         </button>
@@ -226,7 +226,7 @@ export function PreviewTab({
         role="option"
         aria-selected={zoomOverride === null}
         onClick={() => handlePresetSelect(null)}
-        className="block min-h-8 w-full border-t border-border px-3 py-1 text-left text-xs text-fg-body hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="block min-h-10 w-full border-t border-border px-3 py-1 text-left text-xs text-fg-body hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         Fit
       </button>
