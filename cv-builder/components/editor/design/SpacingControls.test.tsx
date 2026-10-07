@@ -26,6 +26,7 @@ beforeEach(() => {
   useResumeEditorStore.setState({
     resumeId: 'r1', title: 'CV', data: {}, meta: defaultMeta,
     isDirty: false, isSaving: false, saveError: null,
+    _history: [], _future: [], canUndo: false, canRedo: false,
   })
 })
 
@@ -50,7 +51,7 @@ describe('SpacingControls', () => {
   it('shows Custom when no preset matches', () => {
     useResumeEditorStore.setState({ meta: { ...defaultMeta, lineSpacing: 1.2 } })
     render(<SpacingControls />)
-    const group = screen.getByRole('radiogroup', { name: 'Line spacing' })
+    const group = screen.getByRole('radiogroup', { name: 'Line spacing presets' })
     for (const r of group.querySelectorAll('[role="radio"]')) expect(r).toHaveAttribute('aria-checked', 'false')
     expect(screen.getByText(/Custom \(1\.20\)/)).toBeTruthy()
   })
@@ -59,11 +60,20 @@ describe('SpacingControls', () => {
     const { container } = render(<SpacingControls />)
     const details = container.querySelectorAll('details')
     expect(details).toHaveLength(3)
-    const slider = screen.getByLabelText('Line spacing', { selector: 'input' }) as HTMLInputElement
+    const slider = screen.getByRole('slider', { name: 'Line spacing' }) as HTMLInputElement
     expect(slider.min).toBe('1')
     expect(slider.max).toBe('1.3')
     fireEvent.change(slider, { target: { value: '1.25' } })
     expect(meta().lineSpacing).toBe(1.25)
+  })
+
+  it('clicking the already-selected preset records nothing', () => {
+    render(<SpacingControls />)
+    fireEvent.click(screen.getByRole('radio', { name: 'Normal' }))
+    const st = useResumeEditorStore.getState()
+    expect(st._history).toHaveLength(0)
+    expect(st.canUndo).toBe(false)
+    expect(st.isDirty).toBe(false)
   })
 
   it('one undo reverts one preset click', () => {

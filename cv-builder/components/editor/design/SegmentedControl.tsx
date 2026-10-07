@@ -19,7 +19,7 @@ export function SegmentedControl({ label, options, value, onChange }: SegmentedC
 
   function move(to: number) {
     const next = (to + options.length) % options.length
-    onChange(options[next].id)
+    if (next !== selectedIndex) onChange(options[next].id)
     refs.current[next]?.focus()
   }
 
@@ -42,10 +42,10 @@ export function SegmentedControl({ label, options, value, onChange }: SegmentedC
             role="radio"
             aria-checked={checked}
             tabIndex={i === tabbable ? 0 : -1}
-            onClick={() => onChange(o.id)}
+            onClick={() => { if (!checked) onChange(o.id) }}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cn(
-              'min-h-[32px] flex-1 rounded-[6px] px-2 text-xs font-medium transition-colors',
+              'min-h-10 flex-1 rounded-chip sm:min-h-[32px] px-2 text-xs font-medium transition-colors',
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               checked ? 'bg-surface text-accent-700 shadow-sm ring-1 ring-border' : 'text-fg-muted hover:text-fg-body'
             )}

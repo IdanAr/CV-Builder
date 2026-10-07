@@ -33,11 +33,19 @@ describe('SegmentedControl', () => {
     expect(onChange).toHaveBeenCalledWith('c')
   })
 
+  it('does not call onChange for the already-selected option', () => {
+    const onChange = setup('b')
+    fireEvent.click(screen.getByRole('radio', { name: 'Beta' }))
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('ArrowRight and ArrowLeft wrap, call onChange and move focus', () => {
-    const onChange = setup('c')
+    const onChange = vi.fn()
+    const { rerender } = render(<SegmentedControl label="Pick" options={options} value="c" onChange={onChange} />)
     fireEvent.keyDown(screen.getByRole('radio', { name: 'Gamma' }), { key: 'ArrowRight' })
     expect(onChange).toHaveBeenLastCalledWith('a')
     expect(document.activeElement).toBe(screen.getByRole('radio', { name: 'Alpha' }))
+    rerender(<SegmentedControl label="Pick" options={options} value="a" onChange={onChange} />)
     fireEvent.keyDown(screen.getByRole('radio', { name: 'Alpha' }), { key: 'ArrowLeft' })
     expect(onChange).toHaveBeenLastCalledWith('c')
     expect(document.activeElement).toBe(screen.getByRole('radio', { name: 'Gamma' }))

@@ -13,6 +13,7 @@ import { SegmentedControl } from './SegmentedControl'
 
 interface GroupProps {
   title: string
+  groupLabel: string
   presets: Preset[]
   value: number
   format: (v: number) => string
@@ -20,7 +21,7 @@ interface GroupProps {
   slider: { label: string; min: number; max: number; step: number }
 }
 
-function Group({ title, presets, value, format, onSet, slider }: GroupProps) {
+function Group({ title, groupLabel, presets, value, format, onSet, slider }: GroupProps) {
   const matched = matchPreset(presets, value)
   const readout = matched ? matched.label : `Custom (${format(value)})`
   return (
@@ -29,7 +30,7 @@ function Group({ title, presets, value, format, onSet, slider }: GroupProps) {
         {title} <span className="font-mono text-fg-subtle">{readout}</span>
       </p>
       <SegmentedControl
-        label={title}
+        label={groupLabel}
         options={presets.map((p) => ({ id: p.id, label: p.label }))}
         value={matched?.id}
         onChange={(id) => onSet(presets.find((p) => p.id === id)!.value)}
@@ -60,6 +61,7 @@ export function SpacingControls() {
     <div className="space-y-3">
       <Group
         title="Text size"
+        groupLabel="Text size presets"
         presets={TEXT_SIZE_PRESETS}
         value={meta.fontScale ?? 1}
         format={(v) => v.toFixed(2)}
@@ -68,6 +70,7 @@ export function SpacingControls() {
       />
       <Group
         title="Line spacing"
+        groupLabel="Line spacing presets"
         presets={LINE_SPACING_PRESETS}
         value={meta.lineSpacing}
         format={(v) => v.toFixed(2)}
@@ -76,6 +79,7 @@ export function SpacingControls() {
       />
       <Group
         title="Margins"
+        groupLabel="Margin presets"
         presets={MARGIN_PRESETS}
         value={meta.pageMargins}
         format={(v) => `${v.toFixed(1)}"`}
