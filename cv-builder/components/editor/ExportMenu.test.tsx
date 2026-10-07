@@ -14,6 +14,20 @@ describe('ExportMenu', () => {
     expect(onExport).toHaveBeenCalledWith('pdf', 'ats')
   })
 
+  it.each([
+    ['PDF - Designed', 'pdf', 'designed'],
+    ['PDF - ATS-optimized', 'pdf', 'ats'],
+    ['DOCX - Designed', 'docx', 'designed'],
+    ['DOCX - ATS-optimized', 'docx', 'ats'],
+  ])('item "%s" fires onExport(%s, %s)', (label, format, mode) => {
+    const onExport = vi.fn()
+    render(<ExportMenu onExport={onExport} />)
+    fireEvent.click(screen.getByRole('button', { name: /export/i }))
+    fireEvent.click(screen.getByText(label))
+    expect(onExport).toHaveBeenCalledTimes(1)
+    expect(onExport).toHaveBeenCalledWith(format, mode)
+  })
+
   it('offers designed and ats variants for both formats', () => {
     render(<ExportMenu onExport={vi.fn()} />)
     fireEvent.click(screen.getByRole('button', { name: /export/i }))

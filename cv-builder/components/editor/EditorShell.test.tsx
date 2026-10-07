@@ -417,3 +417,211 @@ describe('EditorShell pendingFocus', () => {
     expect(screen.queryByText('PreviewTabContent')).not.toBeInTheDocument()
   })
 })
+
+describe('EditorShell — preserved capabilities (characterization)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  describe('Undo / Redo', () => {
+    it('starts disabled, enables after an edit, and Undo then Redo walk the history', () => {
+      render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+      const undo = screen.getByRole('button', { name: /Undo/i })
+      const redo = screen.getByRole('button', { name: /Redo/i })
+      expect(undo).toBeDisabled()
+      expect(redo).toBeDisabled()
+
+      act(() => {
+        useResumeEditorStore.getState().setMeta({ templateId: 'modern' })
+      })
+      expect(undo).toBeEnabled()
+      expect(redo).toBeDisabled()
+
+      fireEvent.click(undo)
+      expect(useResumeEditorStore.getState().meta.templateId).toBe('classic')
+      expect(undo).toBeDisabled()
+      expect(redo).toBeEnabled()
+
+      fireEvent.click(redo)
+      expect(useResumeEditorStore.getState().meta.templateId).toBe('modern')
+      expect(redo).toBeDisabled()
+    })
+  })
+
+  describe('tab keyboard navigation', () => {
+    it('ArrowRight/ArrowLeft/End/Home move selection across Edit, Design, ATS and Cover Letter', () => {
+      render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+      const tab = (name: string) => screen.getByRole('tab', { name })
+      const selected = () =>
+        screen
+          .getAllByRole('tab')
+          .filter((t) => t.getAttribute('aria-selected') === 'true')
+          .map((t) => t.textContent)
+
+      expect(selected()).toEqual(['Edit'])
+      tab('Edit').focus()
+      fireEvent.keyDown(tab('Edit'), { key: 'ArrowRight' })
+      expect(selected()).toEqual(['Design'])
+      fireEvent.keyDown(tab('Design'), { key: 'ArrowRight' })
+      expect(selected()).toEqual(['ATS'])
+      fireEvent.keyDown(tab('ATS'), { key: 'ArrowRight' })
+      expect(selected()).toEqual(['Cover Letter'])
+      fireEvent.keyDown(tab('Cover Letter'), { key: 'ArrowLeft' })
+      expect(selected()).toEqual(['ATS'])
+      fireEvent.keyDown(tab('ATS'), { key: 'Home' })
+      expect(selected()).toEqual(['Edit'])
+      fireEvent.keyDown(tab('Edit'), { key: 'End' })
+      expect(selected()).toEqual(['Cover Letter'])
+    })
+
+    it('clicking the Cover Letter tab selects it', () => {
+      render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+      fireEvent.click(screen.getByRole('tab', { name: 'Cover Letter' }))
+      expect(screen.getByRole('tab', { name: 'Cover Letter' })).toHaveAttribute('aria-selected', 'true')
+    })
+  })
+
+  describe('panel divider pointer resize and persistence', () => {
+    function boundsOf(divider: HTMLElement) {
+      return {
+        min: Number(divider.getAttribute('aria-valuemin')),
+        max: Number(divider.getAttribute('aria-valuemax')),
+      }
+    }
+
+    it('dragging the divider resizes within bounds and persists the width on release', () => {
+      render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+      const divider = screen.getByTestId('panel-resize-divider')
+      divider.setPointerCapture = vi.fn()
+      const { min, max } = boundsOf(divider)
+      const target = Math.floor((min + max) / 2)
+
+      fireEvent.pointerDown(divider, { pointerId: 1, clientX: min })
+      fireEvent.pointerMove(divider, { pointerId: 1, clientX: target })
+      expect(Number(divider.getAttribute('aria-valuenow'))).toBe(target)
+      // Not persisted until release.
+      fireEvent.pointerUp(divider, { pointerId: 1 })
+      expect(localStorage.getItem('cv-builder:panel-width')).toBe(String(target))
+
+      // Dragging far past either edge clamps to the bounds.
+      fireEvent.pointerDown(divider, { pointerId: 1, clientX: target })
+      fireEvent.pointerMove(divider, { pointerId: 1, clientX: 100000 })
+      expect(Number(divider.getAttribute('aria-valuenow'))).toBe(max)
+      fireEvent.pointerMove(divider, { pointerId: 1, clientX: -100000 })
+      expect(Number(divider.getAttribute('aria-valuenow'))).toBe(min)
+      fireEvent.pointerUp(divider, { pointerId: 1 })
+    })
+
+    it('cancelling a drag restores the width from before the drag', () => {
+      render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+      const divider = screen.getByTestId('panel-resize-divider')
+      divider.setPointerCapture = vi.fn()
+      const { min, max } = boundsOf(divider)
+      const before = Number(divider.getAttribute('aria-valuenow'))
+      const moved = before === max ? min : max
+
+      fireEvent.pointerDown(divider, { pointerId: 1, clientX: before })
+      fireEvent.pointerMove(divider, { pointerId: 1, clientX: moved })
+      expect(Number(divider.getAttribute('aria-valuenow'))).toBe(moved)
+      fireEvent.pointerCancel(divider, { pointerId: 1 })
+      expect(Number(divider.getAttribute('aria-valuenow'))).toBe(before)
+    })
+
+    it('restores a persisted panel width on mount', () => {
+      const first = render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+      const { min, max } = boundsOf(screen.getByTestId('panel-resize-divider'))
+      first.unmount()
+      const saved = Math.floor((min + max) / 2) + 1
+      localStorage.setItem('cv-builder:panel-width', String(saved))
+
+      render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+      expect(Number(screen.getByTestId('panel-resize-divider').getAttribute('aria-valuenow'))).toBe(saved)
+    })
+  })
+
+  describe('leaving via the back link when the save fails', () => {
+    function stubFailingSave() {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => ({ ok: false, status: 500, json: async () => ({}) }))
+      )
+    }
+
+    it('asks for confirmation and stays put when the user declines', async () => {
+      stubFailingSave()
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+      routerMock.push.mockClear()
+      render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+      act(() => {
+        useResumeEditorStore.setState({ isDirty: true })
+      })
+
+      fireEvent.click(screen.getByRole('link', { name: /my cvs/i }))
+
+      await waitFor(() => expect(confirmSpy).toHaveBeenCalledTimes(1))
+      expect(routerMock.push).not.toHaveBeenCalled()
+    })
+
+    it('navigates anyway when the user accepts losing the unsaved changes', async () => {
+      stubFailingSave()
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+      routerMock.push.mockClear()
+      render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+      act(() => {
+        useResumeEditorStore.setState({ isDirty: true })
+      })
+
+      fireEvent.click(screen.getByRole('link', { name: /my cvs/i }))
+
+      await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith('/dashboard/cvs'))
+      expect(confirmSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('never asks for confirmation when the save succeeds', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({}) })))
+      const confirmSpy = vi.spyOn(window, 'confirm')
+      routerMock.push.mockClear()
+      render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+      act(() => {
+        useResumeEditorStore.setState({ isDirty: true })
+      })
+
+      fireEvent.click(screen.getByRole('link', { name: /my cvs/i }))
+
+      await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith('/dashboard/cvs'))
+      expect(confirmSpy).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('JSON export', () => {
+    it('downloads { data, meta } as <title>.json without hitting the network', async () => {
+      const fetchMock = vi.fn()
+      vi.stubGlobal('fetch', fetchMock)
+      let blob: Blob | undefined
+      vi.stubGlobal('URL', {
+        ...URL,
+        createObjectURL: vi.fn((b: Blob) => {
+          blob = b
+          return 'blob:mock'
+        }),
+        revokeObjectURL: vi.fn(),
+      })
+      const clicked: string[] = []
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+        clicked.push(this.download)
+      })
+
+      render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+      act(() => {
+        useResumeEditorStore.getState().setTitle('My Great CV')
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'JSON' }))
+
+      expect(clicked).toEqual(['My-Great-CV.json'])
+      expect(fetchMock).not.toHaveBeenCalled()
+      const parsed = JSON.parse(await blob!.text())
+      expect(Object.keys(parsed).sort()).toEqual(['data', 'meta'])
+      expect(parsed.meta.templateId).toBe('classic')
+    })
+  })
+})

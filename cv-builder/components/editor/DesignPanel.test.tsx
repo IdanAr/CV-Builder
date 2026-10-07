@@ -513,4 +513,84 @@ describe('DesignPanel', () => {
       expect(slider.max).toBe('40')
     })
   })
+
+  // Characterization tests added before the Design panel rewrite. The font
+  // selects and margin slider have no stable accessible name today (their
+  // <label>s are not associated), so they are located by role/position and by
+  // range attributes. TASK 6 (Design panel rewrite) must update these
+  // selectors; the store assertions are the behaviour to preserve.
+  describe('typography and spacing controls (store effects)', () => {
+    it('changing the body font select updates meta.fontFamily only', () => {
+      render(<DesignPanel />)
+      const [bodyFont] = screen.getAllByRole('combobox')
+      fireEvent.change(bodyFont, { target: { value: 'Georgia' } })
+      const meta = useResumeEditorStore.getState().meta
+      expect(meta.fontFamily).toBe('Georgia')
+      expect(meta.headerFontFamily).toBe('Calibri')
+    })
+
+    it('changing the heading font select updates meta.headerFontFamily only', () => {
+      render(<DesignPanel />)
+      const [, headingFont] = screen.getAllByRole('combobox')
+      fireEvent.change(headingFont, { target: { value: 'Georgia' } })
+      const meta = useResumeEditorStore.getState().meta
+      expect(meta.headerFontFamily).toBe('Georgia')
+      expect(meta.fontFamily).toBe('Calibri')
+    })
+
+    it('offers the same font options for body and heading', () => {
+      render(<DesignPanel />)
+      const [bodyFont, headingFont] = screen.getAllByRole('combobox')
+      const values = (el: HTMLElement) =>
+        Array.from((el as HTMLSelectElement).options).map((o) => o.value)
+      expect(values(bodyFont).length).toBeGreaterThan(1)
+      expect(values(bodyFont)).toEqual(values(headingFont))
+      expect(values(bodyFont)).toContain('Calibri')
+    })
+
+    it('the page margins slider updates meta.pageMargins', () => {
+      render(<DesignPanel />)
+      const margins = screen
+        .getAllByRole('slider')
+        .find((el) => (el as HTMLInputElement).min === '0.5') as HTMLInputElement
+      expect(margins).toBeDefined()
+      expect(margins.max).toBe('1.5')
+      fireEvent.change(margins, { target: { value: '0.8' } })
+      expect(useResumeEditorStore.getState().meta.pageMargins).toBeCloseTo(0.8)
+    })
+
+    it('the line spacing slider updates meta.lineSpacing', () => {
+      render(<DesignPanel />)
+      const slider = screen.getByRole('slider', { name: /line spacing/i })
+      fireEvent.change(slider, { target: { value: '1.3' } })
+      expect(useResumeEditorStore.getState().meta.lineSpacing).toBeCloseTo(1.3)
+    })
+  })
+
+  describe('section reorder screen-reader announcements', () => {
+    it('announces the dragged section and its position while moving and on drop', async () => {
+      useResumeEditorStore.setState({
+        resumeId: 'r1', title: 'CV', isDirty: false, isSaving: false, saveError: null,
+        data: {},
+        meta: { ...defaultMeta, layout: 'two-column', sectionOrder: ['work', 'education', 'skills'] },
+      })
+      const rectSpy = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockImplementation(function (this: HTMLElement) {
+          const index = this.parentElement ? Array.from(this.parentElement.children).indexOf(this) : 0
+          const top = Math.max(index, 0) * 60
+          return { top, left: 0, right: 240, bottom: top + 56, width: 240, height: 56, x: 0, y: top, toJSON() { return {} } } as DOMRect
+        })
+      render(<DesignPanel />)
+      const handles = screen.getAllByRole('button', { name: /drag to reorder/i })
+      handles[0].focus()
+      fireEvent.keyDown(handles[0], { key: ' ', code: 'Space' })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(document.body.textContent).toMatch(/Work is over position 1 of 3/)
+      fireEvent.keyDown(handles[0], { key: 'ArrowDown', code: 'ArrowDown' })
+      fireEvent.keyDown(handles[0], { key: ' ', code: 'Space' })
+      expect(document.body.textContent).toMatch(/Work was moved to position 2 of 3/)
+      rectSpy.mockRestore()
+    })
+  })
 })

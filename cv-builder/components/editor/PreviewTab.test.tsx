@@ -231,3 +231,43 @@ describe('PreviewEditOverlay integration', () => {
     expect(screen.queryByTestId('pv-add-section-toggle')).toBeNull()
   })
 })
+
+describe('PreviewTab — page count badge states', () => {
+  beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+    localStorage.clear()
+    useResumeEditorStore.setState({
+      data: {},
+      meta: ResumeMetaSchema.parse({}),
+    })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('shows "Calculating pages…" while the server pagination is still pending', () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
+    render(<PreviewTab />)
+    expect(screen.getAllByText('Calculating pages…').length).toBeGreaterThan(0)
+  })
+
+  it('shows "N page(s) · matches PDF" once the server pagination syncs', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => okResponse({ pageCount: 2, anchors: [] })))
+    render(<PreviewTab />)
+    expect((await screen.findAllByText('2 pages · matches PDF', {}, { timeout: 4000 })).length).toBeGreaterThan(0)
+  })
+
+  it('uses the singular form for a one-page résumé', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => okResponse({ pageCount: 1, anchors: [] })))
+    render(<PreviewTab />)
+    expect((await screen.findAllByText('1 page · matches PDF', {}, { timeout: 4000 })).length).toBeGreaterThan(0)
+  })
+
+  it('falls back to an "(estimated)" page count when the pagination request fails', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 500 })))
+    render(<PreviewTab />)
+    expect((await screen.findAllByText(/^\d+ pages? \(estimated\)$/, {}, { timeout: 4000 })).length).toBeGreaterThan(0)
+  })
+})
