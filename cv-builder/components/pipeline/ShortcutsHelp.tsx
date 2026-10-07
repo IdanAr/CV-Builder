@@ -19,13 +19,13 @@ export function ShortcutsHelp() {
       trigger={
         <button
           type="button"
-          className="min-h-10 sm:min-h-6 rounded-md px-2 text-xs text-fg-subtle hover:bg-surface-subtle hover:text-fg-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-10 sm:min-h-6 rounded-control px-2 text-xs text-fg-subtle hover:bg-surface-subtle hover:text-fg-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Keyboard shortcuts
         </button>
       }
     >
-      <div className="w-64 rounded-lg border border-border bg-surface p-3 shadow-lg">
+      <div className="w-64 rounded-card border border-border bg-surface p-3 shadow-popover">
         <dl className="space-y-1.5 text-sm">
           {SHORTCUTS.map((s) => (
             <div key={s.keys} className="flex items-center justify-between gap-3">

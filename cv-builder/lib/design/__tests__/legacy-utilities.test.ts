@@ -52,13 +52,6 @@ const BASELINE: Record<string, number> = {
   'components/editor/forms/ListFieldManager.tsx': 1,
   'components/editor/forms/MonthYearPicker.tsx': 2,
   'components/editor/forms/RichTextField.tsx': 7,
-  'components/jobsearch/JobSearchShell.tsx': 2,
-  'components/jobsearch/ProfileList.tsx': 1,
-  'components/jobsearch/ProfileWizard.tsx': 6,
-  'components/jobsearch/ProfileWizardSteps.tsx': 5,
-  'components/jobsearch/RuleBuilder.tsx': 6,
-  'components/pipeline/PipelineInbox.tsx': 2,
-  'components/pipeline/ShortcutsHelp.tsx': 3,
   'components/ui/SkipLink.tsx': 4,
 }
 

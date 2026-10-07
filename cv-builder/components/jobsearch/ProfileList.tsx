@@ -88,7 +88,7 @@ function Metric({ value, label }: { value: number; label: string }) {
       <span
         className={
           value > 0
-            ? 'text-[15px] font-bold tabular-nums text-fg-heading'
+            ? 'text-[15px] font-medium tabular-nums text-fg-heading'
             : 'text-[15px] tabular-nums text-fg-subtle'
         }
       >
@@ -271,7 +271,7 @@ export function ProfileList({ initialProfiles }: ProfileListProps = {}) {
           padding="lg"
           className="flex flex-col items-center gap-2 border-dashed py-10 text-center"
         >
-          <p className="font-semibold text-fg-heading">No profiles yet</p>
+          <p className="font-medium text-fg-heading">No profiles yet</p>
           <p className="max-w-sm text-sm text-fg-subtle">
             A profile describes the roles you want. It polls the job boards you pick on a
             schedule, and your rules decide which results reach you.
@@ -314,7 +314,7 @@ export function ProfileList({ initialProfiles }: ProfileListProps = {}) {
                     />
                     <Link
                       href={`/dashboard/jobsearch/sources/${profile._id}`}
-                      className="truncate font-semibold text-fg-body hover:underline"
+                      className="truncate font-medium text-fg-body hover:underline"
                     >
                       {profile.name}
                     </Link>
@@ -341,12 +341,12 @@ export function ProfileList({ initialProfiles }: ProfileListProps = {}) {
                       aria-label="Active"
                       onClick={() => toggleActive(profile)}
                       className={`relative h-[18px] w-8 shrink-0 rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-surface-page ${
-                        profile.isActive ? 'bg-primary' : 'bg-accent-200'
+                        profile.isActive ? 'bg-primary' : 'bg-border'
                       }`}
                     >
                       <span
                         aria-hidden="true"
-                        className={`absolute top-0.5 h-3.5 w-3.5 rounded-full bg-white transition-all ${
+                        className={`absolute top-0.5 h-3.5 w-3.5 rounded-full bg-primary-fg transition-all ${
                           profile.isActive ? 'left-[16px]' : 'left-0.5'
                         }`}
                       />

@@ -22,11 +22,6 @@ export interface JobSearchSegment {
   href: string
   /** Rendered as a badge beside the label. Omitted at zero. */
   count?: number
-  /**
-   * `alert` is the unread treatment — it means "this many things are waiting
-   * for you". `neutral` just sizes the tab's contents.
-   */
-  tone?: 'alert' | 'neutral'
 }
 
 export interface JobSearchShellProps {
@@ -48,30 +43,17 @@ export interface JobSearchShellProps {
   children: ReactNode
 }
 
-function SegmentBadge({
-  count,
-  tone,
-  isActive,
-}: {
-  count: number
-  tone: 'alert' | 'neutral'
-  isActive: boolean
-}) {
+function SegmentBadge({ count, isActive }: { count: number; isActive: boolean }) {
   const label = count > 99 ? '99+' : String(count)
   return (
     <span
       className={cn(
         'inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1',
-        'text-[10px] font-bold tabular-nums',
-        isActive
-          ? 'bg-white/25 text-primary-fg'
-          : tone === 'alert'
-          ? 'bg-danger-600 text-white'
-          : 'bg-secondary text-secondary-fg'
+        'text-[10px] font-medium tabular-nums',
+        isActive ? 'bg-primary-fg/25 text-primary-fg' : 'bg-secondary text-secondary-fg'
       )}
     >
       {label}
-      {tone === 'alert' && <span className="sr-only"> unread matches</span>}
     </span>
   )
 }
@@ -131,25 +113,21 @@ export function JobSearchShell({
                 >
                   {segment.label}
                   {segment.count !== undefined && segment.count > 0 && (
-                    <SegmentBadge
-                      count={segment.count}
-                      tone={segment.tone ?? 'neutral'}
-                      isActive={isActive}
-                    />
+                    <SegmentBadge count={segment.count} isActive={isActive} />
                   )}
                 </Link>
               )
             })}
-          </nav> : <span />}
+          </nav> : null}
 
           {stats && stats.length > 0 && (
-            <dl className="flex flex-wrap items-center text-xs text-fg-subtle">
+            <dl className="ml-auto flex flex-wrap items-center text-xs text-fg-subtle">
               {stats.map((stat) => (
                 <div
                   key={stat.label}
                   className="mr-3.5 flex items-baseline gap-1.5 border-r border-border-subtle pr-3.5 last:mr-0 last:border-r-0 last:pr-0"
                 >
-                  <dd className="text-sm font-bold tabular-nums text-fg-heading">{stat.value}</dd>
+                  <dd className="text-sm font-medium tabular-nums text-fg-heading">{stat.value}</dd>
                   <dt>{stat.label}</dt>
                 </div>
               ))}
