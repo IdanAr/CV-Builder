@@ -86,7 +86,7 @@ function InlineTextInput({
         if (e.key === 'Enter') commitOnce(() => onDone(draft))
         if (e.key === 'Escape') commitOnce(() => onDone(null))
       }}
-      className="w-full rounded-control border border-input bg-surface px-2 py-1.5 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:bg-surface-subtle"
+      className="w-full rounded-control border border-input bg-surface px-2 py-1.5 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
     />
   )
 }
@@ -229,7 +229,7 @@ export function UrlCell(props: CellProps) {
           title={fullUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="min-w-0 flex-1 truncate text-sm text-fg-body underline underline-offset-4 hover:text-fg-heading"
+          className="min-w-0 flex-1 truncate text-sm text-fg-body underline underline-offset-4 hover:text-fg-heading focus-visible:rounded-chip focus-visible:ring-2 focus-visible:ring-ring"
         >
           {displayUrl}
         </a>

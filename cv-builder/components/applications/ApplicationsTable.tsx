@@ -206,7 +206,7 @@ function SortableHeaderCell({
         title="Drag to reorder column"
         {...attributes}
         {...listeners}
-        className="shrink-0 cursor-grab touch-none rounded-chip px-0.5 max-sm:min-h-10 max-sm:min-w-10 text-fg-subtle hover:text-fg-body active:cursor-grabbing"
+        className="shrink-0 cursor-grab touch-none rounded-chip px-0.5 max-sm:min-h-10 max-sm:min-w-10 text-fg-subtle hover:text-fg-body focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
       >
         <GripVertical className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -255,7 +255,7 @@ function SortableRow({
           className={`touch-none rounded-chip px-0.5 text-sm max-sm:min-h-10 max-sm:min-w-10 ${
             dragDisabled
               ? 'cursor-not-allowed text-fg-muted'
-              : 'cursor-grab text-fg-subtle opacity-0 transition group-hover/row:opacity-100 hover:text-fg-body focus-visible:opacity-100 active:cursor-grabbing'
+              : 'cursor-grab text-fg-subtle opacity-0 transition group-hover/row:opacity-100 hover:text-fg-body focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing'
           }`}
         >
           <GripVertical className="h-4 w-4" aria-hidden="true" />
