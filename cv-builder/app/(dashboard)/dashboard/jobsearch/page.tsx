@@ -1,37 +1,39 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { listJobSearchProfiles } from '@/lib/api/jobsearch-profiles'
-import { countUnreadNotifyMatches } from '@/lib/api/scraped-jobs'
-import { ProfileList } from '@/components/jobsearch/ProfileList'
-import { JobSearchShell, topLevelSegments } from '@/components/jobsearch/JobSearchShell'
+import { countPipelineStages, listPipelineJobs } from '@/lib/api/scraped-jobs'
+import { parsePipelineFilter } from '@/lib/jobsearch/stages'
+import { defaultStage } from '@/lib/jobsearch/pipeline-url'
+import { PipelineInbox } from '@/components/pipeline/PipelineInbox'
 
-export default async function JobSearchPage() {
+interface PageProps {
+  searchParams: Promise<{ stage?: string; profile?: string; q?: string; job?: string }>
+}
+
+export default async function JobSearchPage({ searchParams }: PageProps) {
   const session = await auth()
   if (!session?.user?.id) redirect('/signin')
+  const userId = session.user.id
 
-  const [profiles, unreadCount] = await Promise.all([
-    listJobSearchProfiles(session.user.id),
-    countUnreadNotifyMatches(session.user.id),
+  const params = await searchParams
+  const profile = params.profile || null
+  const q = params.q ?? ''
+
+  const [profiles, counts] = await Promise.all([
+    listJobSearchProfiles(userId),
+    countPipelineStages(userId, { profileId: profile ?? undefined }),
   ])
-
-  const activeCount = profiles.filter((p) => p.isActive).length
-  const queuedCount = profiles.reduce((sum, p) => sum + (p.queuedCount ?? 0), 0)
+  const stage = parsePipelineFilter(params.stage) ?? defaultStage(counts)
+  const { items, nextCursor } = await listPipelineJobs(userId, {
+    stage,
+    profileId: profile ?? undefined,
+    q,
+  })
 
   return (
-    <JobSearchShell
-      segments={topLevelSegments(unreadCount)}
-      active="profiles"
-      title="Job Search"
-      description="Profiles watch job boards on a schedule. Rules decide what reaches you."
-      stats={[
-        { value: String(activeCount), label: 'active' },
-        { value: String(unreadCount), label: 'new matches' },
-        { value: String(queuedCount), label: 'queued drafts' },
-      ]}
-    >
-      <ProfileList
-        initialProfiles={JSON.parse(JSON.stringify(profiles))}
-      />
-    </JobSearchShell>
+    <PipelineInbox
+      initial={JSON.parse(JSON.stringify({ view: { stage, profile, q }, items, nextCursor, counts }))}
+      profiles={profiles.map(({ _id, name, isActive }) => ({ _id: String(_id), name, isActive }))}
+    />
   )
 }

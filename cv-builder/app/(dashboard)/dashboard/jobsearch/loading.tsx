@@ -1,52 +1,37 @@
 import { Skeleton } from '@/components/ui/Skeleton'
 
-/**
- * Shown while `JobSearchPage` awaits its profiles and unread count.
- *
- * Without this the section fell back to the dashboard's "My CVs" skeleton on
- * the way to a different layout, and `ProfileList` itself rendered `null`
- * while fetching — so a slow load and an account with no profiles looked
- * exactly alike.
- */
+/** Shown while `JobSearchPage` awaits its profiles, counts and first page of jobs. */
 export default function JobSearchLoading() {
   return (
-    <div role="status" aria-live="polite" className="mx-auto max-w-5xl px-4 py-8">
-      <span className="sr-only">Loading your job search profiles</span>
+    <div role="status" aria-live="polite" className="mx-auto max-w-6xl px-4 py-8">
+      <span className="sr-only">Loading your pipeline</span>
 
-      <div aria-hidden="true" className="mb-6 flex flex-col gap-5">
+      <div aria-hidden="true" className="flex flex-col gap-5">
         <div className="space-y-2">
           <Skeleton className="h-8 w-44" />
-          <Skeleton className="h-4 w-96 max-w-full" />
+          <Skeleton className="h-4 w-80 max-w-full" />
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <Skeleton className="h-9 w-52" />
-          <Skeleton className="h-4 w-64 max-w-full" />
+        <div className="flex flex-wrap gap-2">
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="h-8 w-24 rounded-full" />
+          ))}
         </div>
-      </div>
-
-      <div aria-hidden="true" className="flex flex-col gap-2">
-        {Array.from({ length: 3 }, (_, i) => (
-          <div
-            key={i}
-            className="flex flex-col gap-2.5 rounded-card border border-border bg-surface p-4"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <Skeleton className="h-4 w-48" />
-              <Skeleton className="h-4 w-24" />
-            </div>
-            {/* The chip run is what makes this read as a profile card rather
-                than as a paragraph. */}
-            <div className="flex gap-1">
-              {['w-20', 'w-14', 'w-24', 'w-16'].map((w) => (
-                <Skeleton key={w} className={`h-[18px] ${w} rounded-full`} />
-              ))}
-            </div>
-            <div className="flex justify-between gap-3 border-t border-border-subtle pt-2.5">
-              <Skeleton className="h-3 w-28" />
-              <Skeleton className="h-6 w-32" />
-            </div>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="flex flex-col gap-2 rounded-card border border-border bg-surface p-4">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            ))}
           </div>
-        ))}
+          <div className="hidden flex-col gap-3 rounded-card border border-border bg-surface p-6 lg:flex">
+            <Skeleton className="h-6 w-2/3" />
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-9 w-48" />
+          </div>
+        </div>
       </div>
     </div>
   )
