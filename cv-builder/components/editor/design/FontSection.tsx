@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { PAIRINGS, matchPairing } from '@/lib/fonts/pairings'
-import { FONT_SUBSTITUTES, webFontFamily } from '@/lib/fonts/families'
+import { DEFAULT_PICKER_FONT, FONT_SUBSTITUTES, webFontFamily } from '@/lib/fonts/families'
 import { SegmentedControl } from './SegmentedControl'
 
 type Target = 'body' | 'headings'
@@ -26,7 +26,7 @@ export function FontSection() {
   const setMeta = useResumeEditorStore((s) => s.setMeta)
   const [target, setTarget] = useState<Target>('body')
 
-  const heading = headerFontFamily ?? fontFamily
+  const heading = headerFontFamily ?? DEFAULT_PICKER_FONT
   const body = fontFamily
   const matched = matchPairing(heading, body)
   const current = target === 'body' ? body : heading

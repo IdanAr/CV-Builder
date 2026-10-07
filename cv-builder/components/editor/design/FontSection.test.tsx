@@ -156,12 +156,18 @@ describe('FontSection', () => {
       expect(within(fontList()).getByRole('radio', { name: 'Calibri' })).toHaveAttribute('aria-checked', 'true')
     })
 
-    it('legacy CV without headerFontFamily falls back to the body font', () => {
-      useResumeEditorStore.setState({
-        meta: { ...defaultMeta, headerFontFamily: undefined as unknown as string, fontFamily: 'Calibri' },
-      })
-      render(<FontSection />)
+    it('legacy CV without headerFontFamily draws headings in the default font', () => {
+      const legacy = (fontFamily: string) =>
+        useResumeEditorStore.setState({ meta: { ...defaultMeta, headerFontFamily: undefined as unknown as string, fontFamily } })
+      legacy('Calibri')
+      const { unmount } = render(<FontSection />)
       expect(screen.getByRole('radio', { name: /Clean/ })).toHaveAttribute('aria-checked', 'true')
+      fireEvent.click(screen.getByRole('radio', { name: 'Headings' }))
+      expect(within(fontList('Fonts for headings')).getByRole('radio', { name: 'Calibri' })).toHaveAttribute('aria-checked', 'true')
+      unmount()
+      legacy('Cambria')
+      render(<FontSection />)
+      expect(screen.getByRole('radio', { name: /Editorial/ })).toHaveAttribute('aria-checked', 'false')
       fireEvent.click(screen.getByRole('radio', { name: 'Headings' }))
       expect(within(fontList('Fonts for headings')).getByRole('radio', { name: 'Calibri' })).toHaveAttribute('aria-checked', 'true')
     })
