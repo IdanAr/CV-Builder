@@ -74,9 +74,7 @@ const BASELINE: Record<string, number> = {
   'components/jobsearch/RuleBuilder.tsx': 6,
   'components/pipeline/PipelineInbox.tsx': 2,
   'components/pipeline/ShortcutsHelp.tsx': 3,
-  'components/ui/Menu.tsx': 1,
   'components/ui/SkipLink.tsx': 4,
-  'components/ui/Toaster.tsx': 1,
 }
 
 const actual: Record<string, number> = {}

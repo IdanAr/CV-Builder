@@ -110,3 +110,18 @@ describe('buttonClasses', () => {
     expect(buttonClasses()).toContain('disabled:opacity-60')
   })
 })
+
+describe('mobile touch-target floors', () => {
+  it.each([
+    ['xs', 'max-sm:min-h-10'],
+    ['sm', 'max-sm:min-h-10'],
+    ['icon', 'max-sm:h-10'],
+  ] as const)('size %s clears 40px on mobile (%s)', (size, cls) => {
+    render(<Button size={size}>x</Button>)
+    expect(screen.getByRole('button')).toHaveClass(cls)
+  })
+  it('icon size is also 40px wide on mobile', () => {
+    render(<Button size="icon" aria-label="x" />)
+    expect(screen.getByRole('button')).toHaveClass('max-sm:w-10')
+  })
+})

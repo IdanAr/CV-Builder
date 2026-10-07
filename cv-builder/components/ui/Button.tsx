@@ -59,13 +59,14 @@ const VARIANT: Record<ButtonVariant, string> = {
  * Heights are floors, not fixed values, so a button that wraps or carries a
  * two-line label still grows. `min-h-6` is 24px — the SC 2.5.8 target floor —
  * and applies even to `xs`, whose padding alone would leave it at 22px.
+ * Below `sm` every size is floored at 40px (`max-sm:`) for touch targets.
  */
 const SIZE: Record<ButtonSize, string> = {
-  xs: 'min-h-6 gap-1 rounded-control px-2.5 py-1 text-xs',
-  sm: 'min-h-8 gap-1.5 rounded-control px-3 py-1.5 text-sm',
+  xs: 'min-h-6 max-sm:min-h-10 gap-1 rounded-control px-2.5 py-1 text-xs',
+  sm: 'min-h-8 max-sm:min-h-10 gap-1.5 rounded-control px-3 py-1.5 text-sm',
   md: 'min-h-10 gap-1.5 rounded-control px-4 py-2 text-sm',
   /** Square, for a button whose whole label is an icon. */
-  icon: 'h-8 w-8 rounded-control',
+  icon: 'h-8 w-8 max-sm:h-10 max-sm:w-10 rounded-control',
 }
 
 export interface ButtonOptions {

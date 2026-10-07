@@ -86,7 +86,7 @@ function ToastItem({ toast: t }: { toast: Toast }) {
       {t.actionLabel && (
         <button
           onClick={() => { t.onAction?.(); dismiss(t.id) }}
-          className="rounded-md border border-current px-2 py-1 text-xs font-semibold hover:opacity-80"
+          className="rounded-control border border-current px-2 py-1 text-xs font-semibold hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {t.actionLabel}
         </button>
