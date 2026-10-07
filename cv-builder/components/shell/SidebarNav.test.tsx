@@ -47,7 +47,9 @@ describe('SidebarNav', () => {
     ['/dashboard', /overview/i],
     ['/dashboard/cvs', /^cvs/i],
     ['/dashboard/resumes/abc123', /^cvs/i],
-    ['/dashboard/jobsearch/notifications', /job search/i],
+    ['/dashboard/jobsearch', /^job search/i],
+    ['/dashboard/jobsearch/sources', /sources and rules/i],
+    ['/dashboard/jobsearch/sources/abc', /sources and rules/i],
     ['/dashboard/applications', /applications/i],
     ['/dashboard/settings', /settings/i],
   ])('marks %s as the current page', (path, name) => {
@@ -55,6 +57,25 @@ describe('SidebarNav', () => {
     setup()
     expect(screen.getByRole('link', { name })).toHaveAttribute('aria-current', 'page')
     expect(screen.getAllByRole('link').filter((l) => l.getAttribute('aria-current') === 'page')).toHaveLength(1)
+  })
+
+  it('lists Sources and rules under Job search when expanded', () => {
+    setup()
+    expect(screen.getByRole('link', { name: /sources and rules/i })).toHaveAttribute(
+      'href',
+      '/dashboard/jobsearch/sources'
+    )
+  })
+
+  it('hides Sources and rules when collapsed', () => {
+    setup({ collapsed: true })
+    expect(screen.queryByRole('link', { name: /sources and rules/i })).not.toBeInTheDocument()
+  })
+
+  it('keeps Job search active on the pipeline only, never both with Sources', () => {
+    mockPathname = '/dashboard/jobsearch/sources/abc'
+    setup()
+    expect(screen.getByRole('link', { name: /^job search/i })).not.toHaveAttribute('aria-current')
   })
 
   it('shows the waiting count as an amber chip with text for screen readers', () => {

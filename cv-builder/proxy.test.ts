@@ -43,6 +43,14 @@ describe('proxy matcher', () => {
     expect(config.matcher).toContain('/dashboard/:path*')
   })
 
+  it.each(['/dashboard/jobsearch/sources', '/dashboard/jobsearch/sources/abc123'])(
+    'covers %s via the /dashboard/:path* wildcard',
+    async () => {
+      const { config } = await import('./proxy')
+      expect(config.matcher).toContain('/dashboard/:path*')
+    }
+  )
+
   it('keeps /dashboard/:path* as the only dashboard entry, so /dashboard/cvs is covered', async () => {
     const { config } = await import('./proxy')
     const dashboard = (config.matcher as string[]).filter((m) => m.startsWith('/dashboard'))
