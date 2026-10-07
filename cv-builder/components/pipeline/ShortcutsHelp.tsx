@@ -19,7 +19,7 @@ export function ShortcutsHelp() {
       trigger={
         <button
           type="button"
-          className="min-h-6 rounded-md px-2 text-xs text-fg-subtle hover:bg-surface-subtle hover:text-fg-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-10 sm:min-h-6 rounded-md px-2 text-xs text-fg-subtle hover:bg-surface-subtle hover:text-fg-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Keyboard shortcuts
         </button>
