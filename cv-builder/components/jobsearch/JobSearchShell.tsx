@@ -6,10 +6,9 @@ import { cn } from '@/lib/utils'
  * The job-search section's page frame: title, purpose, primary action, and a
  * segmented tab row.
  *
- * The row is caller-supplied rather than fixed, because the section has two
- * of them: a top-level pair (Profiles / Matches) and, inside a profile
- * record, a profile-scoped trio (Jobs / Matches / Rules). Both are pairs of
- * real links, not buttons, so any view stays openable in a new tab.
+ * The row is caller-supplied and optional: the sources list has none, a
+ * profile record has Rules / Settings. They are real links, not buttons, so
+ * any view stays openable in a new tab.
  */
 
 export interface JobSearchStat {
@@ -31,9 +30,10 @@ export interface JobSearchSegment {
 }
 
 export interface JobSearchShellProps {
-  segments: JobSearchSegment[]
+  /** Omit for a page with no tab row. */
+  segments?: JobSearchSegment[]
   /** The `key` of the segment being viewed. */
-  active: string
+  active?: string
   title: string
   description: string
   /** The page's primary action, rendered opposite the title. */
@@ -46,20 +46,6 @@ export interface JobSearchShellProps {
   /** Sits between the tab row and the content — the profile preferences bar. */
   banner?: ReactNode
   children: ReactNode
-}
-
-/** The section's top-level tab row, shared by the two list pages. */
-export function topLevelSegments(unreadCount: number): JobSearchSegment[] {
-  return [
-    { key: 'profiles', label: 'Profiles', href: '/dashboard/jobsearch' },
-    {
-      key: 'matches',
-      label: 'Matches',
-      href: '/dashboard/jobsearch/notifications',
-      count: unreadCount,
-      tone: 'alert',
-    },
-  ]
 }
 
 function SegmentBadge({
@@ -122,8 +108,9 @@ export function JobSearchShell({
           {action}
         </div>
 
+        {(segments?.length || (stats && stats.length > 0)) && (
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <nav
+          {segments?.length ? <nav
             aria-label="Job search views"
             className="inline-flex gap-0.5 rounded-control border border-border bg-surface p-0.5"
           >
@@ -153,7 +140,7 @@ export function JobSearchShell({
                 </Link>
               )
             })}
-          </nav>
+          </nav> : <span />}
 
           {stats && stats.length > 0 && (
             <dl className="flex flex-wrap items-center text-xs text-fg-subtle">
@@ -169,6 +156,7 @@ export function JobSearchShell({
             </dl>
           )}
         </div>
+        )}
 
         {banner}
       </div>

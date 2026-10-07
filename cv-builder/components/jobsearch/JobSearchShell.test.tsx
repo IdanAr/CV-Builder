@@ -1,9 +1,16 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { JobSearchShell, topLevelSegments, type JobSearchShellProps } from './JobSearchShell'
+import { JobSearchShell, type JobSearchSegment, type JobSearchShellProps } from './JobSearchShell'
 
 type Overrides = Partial<Omit<JobSearchShellProps, 'children'>>
+
+function topLevelSegments(unreadCount: number): JobSearchSegment[] {
+  return [
+    { key: 'profiles', label: 'Profiles', href: '/dashboard/jobsearch' },
+    { key: 'matches', label: 'Matches', href: '/dashboard/jobsearch/notifications', count: unreadCount, tone: 'alert' },
+  ]
+}
 
 function renderShell(props: Overrides = {}) {
   const { segments, active, title, description, ...rest } = props
@@ -19,15 +26,6 @@ function renderShell(props: Overrides = {}) {
     </JobSearchShell>
   )
 }
-
-describe('topLevelSegments', () => {
-  it('is the section pair, with Matches carrying the unread count', () => {
-    const segments = topLevelSegments(7)
-
-    expect(segments.map((s) => s.key)).toEqual(['profiles', 'matches'])
-    expect(segments[1]).toMatchObject({ count: 7, tone: 'alert' })
-  })
-})
 
 describe('JobSearchShell', () => {
   it('renders the title, description and its children', () => {
@@ -139,5 +137,16 @@ describe('JobSearchShell', () => {
     renderShell()
 
     expect(screen.queryByRole('link', { name: /All profiles/ })).not.toBeInTheDocument()
+  })
+
+  it('renders no tab row when no segments are given', () => {
+    render(
+      <JobSearchShell title="Sources and rules" description="d">
+        <p>content</p>
+      </JobSearchShell>
+    )
+
+    expect(screen.queryByRole('navigation', { name: 'Job search views' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Sources and rules' })).toBeInTheDocument()
   })
 })
