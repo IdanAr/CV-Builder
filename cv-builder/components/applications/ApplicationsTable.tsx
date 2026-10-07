@@ -196,8 +196,8 @@ function SortableHeaderCell({
         transform: CSS.Transform.toString(transform),
         transition,
       }}
-      className={`flex shrink-0 items-center gap-0.5 border-r border-accent-50 px-1 py-2 ${
-        isDragging ? 'z-10 rounded bg-accent-50 opacity-80 shadow' : ''
+      className={`flex shrink-0 items-center gap-0.5 border-r border-border-subtle px-1 py-2 ${
+        isDragging ? 'z-10 rounded-chip bg-surface-subtle opacity-80' : ''
       }`}
     >
       <button
@@ -206,7 +206,7 @@ function SortableHeaderCell({
         title="Drag to reorder column"
         {...attributes}
         {...listeners}
-        className="shrink-0 cursor-grab touch-none rounded px-0.5 text-fg-subtle hover:text-fg-body active:cursor-grabbing"
+        className="shrink-0 cursor-grab touch-none rounded-chip px-0.5 max-sm:min-h-10 max-sm:min-w-10 text-fg-subtle hover:text-fg-body active:cursor-grabbing"
       >
         <GripVertical className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -233,8 +233,8 @@ function SortableRow({
       ref={setNodeRef}
       role="row"
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`group/row flex border-b border-accent-50 transition hover:bg-accent-50/40 ${
-        isDragging ? 'relative z-10 rounded bg-white opacity-90 shadow-lg' : ''
+      className={`group/row flex border-b border-border-subtle transition hover:bg-surface-subtle ${
+        isDragging ? 'relative z-10 rounded-chip bg-surface opacity-90' : ''
       }`}
     >
       <div
@@ -252,10 +252,10 @@ function SortableRow({
               : 'Drag to reorder'
           }
           {...(dragDisabled ? {} : { ...attributes, ...listeners })}
-          className={`touch-none rounded px-0.5 text-sm ${
+          className={`touch-none rounded-chip px-0.5 text-sm max-sm:min-h-10 max-sm:min-w-10 ${
             dragDisabled
               ? 'cursor-not-allowed text-fg-muted'
-              : 'cursor-grab text-fg-subtle opacity-0 transition group-hover/row:opacity-100 hover:text-fg-body focus:opacity-100 active:cursor-grabbing'
+              : 'cursor-grab text-fg-subtle opacity-0 transition group-hover/row:opacity-100 hover:text-fg-body focus-visible:opacity-100 active:cursor-grabbing'
           }`}
         >
           <GripVertical className="h-4 w-4" aria-hidden="true" />
@@ -317,7 +317,7 @@ export default function ApplicationsTable({
   }
 
   return (
-    <div className="min-h-[28rem] overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-lg">
+    <div className="min-h-[28rem] overflow-x-auto rounded-card border border-border bg-surface">
       <div role="table" aria-label="Applications" className="min-w-max">
         {/* Header (columns are drag-reorderable) */}
         <DndContext
@@ -330,7 +330,7 @@ export default function ApplicationsTable({
           }}
         >
           <SortableContext items={ordered.map((c) => c.id)} strategy={horizontalListSortingStrategy}>
-            <div role="row" className="sticky top-0 z-10 flex border-b border-accent-100 bg-white">
+            <div role="row" className="sticky top-0 z-10 flex border-b border-border bg-surface-subtle">
               <div role="columnheader" style={{ width: GRIP_COLUMN_WIDTH }} className="shrink-0" />
               {ordered.map((column) => (
                 <SortableHeaderCell
@@ -341,7 +341,7 @@ export default function ApplicationsTable({
                   {renderHeaderCell ? (
                     renderHeaderCell(column)
                   ) : (
-                    <span className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
+                    <span className="text-xs font-medium uppercase tracking-wide text-fg-muted">
                       {column.label}
                     </span>
                   )}
@@ -375,7 +375,7 @@ export default function ApplicationsTable({
                     key={column.id}
                     role="cell"
                     style={{ width: columnWidth(column) }}
-                    className="group/cell flex shrink-0 items-center border-r border-accent-50 px-0.5 py-1"
+                    className="group/cell flex shrink-0 items-center border-r border-border-subtle px-0.5 py-1"
                   >
                     <div className="min-w-0 flex-1">
                       <ApplicationCell
@@ -396,7 +396,7 @@ export default function ApplicationsTable({
                     type="button"
                     aria-label={`Delete application at ${app.company || 'unknown company'}`}
                     onClick={() => onDeleteRow(app._id)}
-                    className="rounded px-1.5 py-0.5 text-xs text-danger-400 opacity-0 transition group-hover/row:opacity-100 hover:bg-danger-50 hover:text-danger-600 focus:opacity-100"
+                    className="rounded-chip px-1.5 py-0.5 text-xs text-fg-danger opacity-0 transition group-hover/row:opacity-100 hover:bg-surface-danger focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10"
                     title="Delete"
                   >
                     <X className="h-3.5 w-3.5" aria-hidden="true" />

@@ -7,7 +7,7 @@
 import { useState } from 'react'
 import type { BoardColumn, ColumnOption, ColumnType } from '@/lib/schemas/application.zod'
 import { X } from 'lucide-react'
-import { buttonClasses } from '@/components/ui/Button'
+import { Button } from '@/components/ui/Button'
 
 const TYPE_LABELS: Record<ColumnType, string> = {
   text: 'Text',
@@ -89,7 +89,7 @@ export function ColumnForm({
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="e.g. Recruiter, Salary, Source"
-          className="rounded-md border border-accent-200 bg-white px-2 py-1.5 text-sm text-fg outline-none focus:border-accent-400"
+          className="rounded-control border border-input bg-surface px-2 py-1.5 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:bg-surface-subtle"
         />
       </label>
 
@@ -100,7 +100,7 @@ export function ColumnForm({
             value={type}
             disabled={isEdit}
             onChange={(e) => setType(e.target.value as ColumnType)}
-            className="mt-1 block w-full rounded-md border border-accent-200 bg-white px-2 py-1.5 text-sm text-fg outline-none focus:border-accent-400 disabled:bg-accent-50 disabled:text-accent-400"
+            className="mt-1 block w-full rounded-control border border-input bg-surface px-2 py-1.5 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:bg-surface-subtle disabled:text-fg-subtle"
           >
             {(Object.keys(TYPE_LABELS) as ColumnType[]).map((t) => (
               <option key={t} value={t}>
@@ -127,7 +127,7 @@ export function ColumnForm({
                       opts.map((o) => (o.id === option.id ? { ...o, color: e.target.value } : o))
                     )
                   }
-                  className="h-8 w-8 shrink-0 cursor-pointer rounded border border-accent-200 bg-white p-0.5"
+                  className="h-8 w-8 shrink-0 cursor-pointer rounded-chip border border-input bg-surface p-0.5 focus-visible:ring-2 focus-visible:ring-ring max-sm:h-10 max-sm:w-10"
                 />
                 <input
                   aria-label={`Label for option ${i + 1}`}
@@ -138,14 +138,14 @@ export function ColumnForm({
                       opts.map((o) => (o.id === option.id ? { ...o, label: e.target.value } : o))
                     )
                   }
-                  className="min-w-0 flex-1 rounded-md border border-accent-200 bg-white px-2 py-1 text-sm text-fg outline-none focus:border-accent-400"
+                  className="min-w-0 flex-1 rounded-control border border-input bg-surface px-2 py-1 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:bg-surface-subtle"
                 />
                 <button
                   type="button"
                   aria-label={`Move option ${i + 1} up`}
                   onClick={() => reorderOption(i, 'up')}
                   disabled={i === 0}
-                  className="shrink-0 rounded px-1 text-sm text-fg-subtle hover:text-fg-body disabled:opacity-40"
+                  className="shrink-0 rounded-chip px-1 text-sm text-fg-subtle hover:text-fg-body focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 max-sm:min-h-10 max-sm:min-w-10"
                 >
                   ↑
                 </button>
@@ -154,17 +154,21 @@ export function ColumnForm({
                   aria-label={`Move option ${i + 1} down`}
                   onClick={() => reorderOption(i, 'down')}
                   disabled={i === options.length - 1}
-                  className="shrink-0 rounded px-1 text-sm text-fg-subtle hover:text-fg-body disabled:opacity-40"
+                  className="shrink-0 rounded-chip px-1 text-sm text-fg-subtle hover:text-fg-body focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 max-sm:min-h-10 max-sm:min-w-10"
                 >
                   ↓
                 </button>
-                <button
+                <Button
                   type="button"
+                  variant="dangerGhost"
+                  size="icon"
                   aria-label={`Remove option ${i + 1}`}
                   onClick={() => setOptions((opts) => opts.filter((o) => o.id !== option.id))}
                   disabled={options.length === 1}
-                  className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'h-6 w-6 shrink-0 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}
-                ><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
+                  className="shrink-0"
+                >
+                  <X aria-hidden="true" className="h-3.5 w-3.5" />
+                </Button>
               </div>
               <div className="ml-1 flex flex-wrap gap-1">
                 {OPTION_COLOR_PRESETS.map((color) => (
@@ -178,7 +182,7 @@ export function ColumnForm({
                       )
                     }
                     style={{ backgroundColor: color }}
-                    className="h-8 w-8 shrink-0 cursor-pointer rounded border border-accent-200"
+                    className="h-8 w-8 shrink-0 cursor-pointer rounded-chip border border-border focus-visible:ring-2 focus-visible:ring-ring max-sm:h-10 max-sm:w-10"
                   />
                 ))}
               </div>
@@ -187,7 +191,7 @@ export function ColumnForm({
           <button
             type="button"
             onClick={() => setOptions((opts) => [...opts, newOption(opts.length)])}
-            className="self-start rounded px-1 py-0.5 text-xs font-medium text-fg-muted hover:text-fg-body"
+            className="self-start rounded-chip px-1 py-0.5 text-xs font-medium text-fg-muted hover:text-fg-body focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
           >
             + Add option
           </button>
@@ -195,20 +199,12 @@ export function ColumnForm({
       )}
 
       <div className="mt-1 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md border border-accent-200 bg-white px-3 py-1.5 text-xs font-medium text-accent-600 hover:bg-accent-50"
-        >
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className="rounded-md bg-accent-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-700 disabled:opacity-50"
-        >
+        </Button>
+        <Button type="submit" disabled={!canSubmit}>
           {isEdit ? 'Save column' : 'Add column'}
-        </button>
+        </Button>
       </div>
     </form>
   )
