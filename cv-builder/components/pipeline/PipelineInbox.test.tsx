@@ -6,12 +6,12 @@ import { PipelineInbox } from './PipelineInbox'
 import type { PipelineJob, PipelineCountsDto } from '@/lib/jobsearch/pipeline-types'
 import type { PipelineInitial } from './use-pipeline-jobs'
 import { useToastStore } from '@/lib/stores/toast.store'
+import { useScrapedJobsSync } from '@/lib/stores/scraped-jobs.store'
 
 const nav = vi.hoisted(() => {
   const state = {
     current: new URLSearchParams(),
     listeners: new Set<() => void>(),
-    replace: undefined as unknown as (href: string, opts?: unknown) => void,
     push: undefined as unknown as (href: string) => void,
   }
   return state
@@ -20,7 +20,7 @@ const nav = vi.hoisted(() => {
 vi.mock('next/navigation', async () => {
   const React = await import('react')
   return {
-    useRouter: () => ({ replace: nav.replace, push: nav.push }),
+    useRouter: () => ({ push: nav.push }),
     usePathname: () => '/dashboard/jobsearch',
     useSearchParams: () =>
       React.useSyncExternalStore(
@@ -31,16 +31,24 @@ vi.mock('next/navigation', async () => {
   }
 })
 
-const replace = vi.fn()
 const push = vi.fn()
-nav.replace = (href, opts) => {
-  replace(href, opts)
-  act(() => {
-    nav.current = new URLSearchParams(href.split('?')[1] ?? '')
-    nav.listeners.forEach((l) => l())
+nav.push = push
+
+// setView writes the URL with window.history.replaceState; mirror it into the
+// mocked useSearchParams store so URL-driven behaviour still runs for real.
+const replace = vi.fn()
+const realReplaceState = window.history.replaceState.bind(window.history)
+function installHistorySpy() {
+  vi.spyOn(window.history, 'replaceState').mockImplementation((data, unused, url) => {
+    const href = String(url)
+    replace(href)
+    realReplaceState(data, unused, href)
+    act(() => {
+      nav.current = new URLSearchParams(href.split('?')[1] ?? '')
+      nav.listeners.forEach((l) => l())
+    })
   })
 }
-nav.push = push
 
 const counts = (over: Partial<PipelineCountsDto> = {}): PipelineCountsDto => ({
   found: 0, matched: 0, drafted: 0, ready: 0, applied: 0, archive: 0, matchedUnread: 0, waiting: 0, ...over,
@@ -78,6 +86,7 @@ function setup(init: PipelineInitial, opts: { params?: string; profiles?: typeof
 const calls = (needle: string) => fetchMock.mock.calls.filter(([u]) => String(u).includes(needle))
 
 beforeEach(() => {
+  installHistorySpy()
   replace.mockClear()
   push.mockClear()
   fetchMock.mockReset()
@@ -88,6 +97,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   vi.useRealTimers()
   vi.unstubAllGlobals()
 })
@@ -97,13 +107,13 @@ describe('PipelineInbox', () => {
     setup(initial('found', [mk('a'), mk('b')]))
     expect(fetchMock).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: /Job b/ }))
-    expect(replace).toHaveBeenCalledWith('/dashboard/jobsearch?stage=found&job=b', { scroll: false })
+    expect(replace).toHaveBeenCalledWith('/dashboard/jobsearch?stage=found&job=b')
   })
 
   it('clicking a stage tab replaces the URL with that stage and no job', () => {
     setup(initial('found', [mk('a')]), { params: 'stage=found&job=a' })
     fireEvent.click(screen.getByRole('tab', { name: /Drafted/ }))
-    expect(replace).toHaveBeenCalledWith('/dashboard/jobsearch?stage=drafted', { scroll: false })
+    expect(replace).toHaveBeenCalledWith('/dashboard/jobsearch?stage=drafted')
   })
 
   it('debounces search into the URL by 250ms', () => {
@@ -117,7 +127,7 @@ describe('PipelineInbox', () => {
     expect(replace).not.toHaveBeenCalled()
     act(() => { vi.advanceTimersByTime(2) })
     expect(replace).toHaveBeenCalledTimes(1)
-    expect(replace).toHaveBeenCalledWith('/dashboard/jobsearch?stage=found&q=react', { scroll: false })
+    expect(replace).toHaveBeenCalledWith('/dashboard/jobsearch?stage=found&q=react')
   })
 
   it('keeps a trailing space in the search box after the debounce writes the trimmed q', () => {
@@ -126,7 +136,7 @@ describe('PipelineInbox', () => {
     const input = screen.getByRole('searchbox') as HTMLInputElement
     fireEvent.change(input, { target: { value: 'foo ' } })
     act(() => { vi.advanceTimersByTime(250) })
-    expect(replace).toHaveBeenLastCalledWith('/dashboard/jobsearch?stage=found&q=foo', { scroll: false })
+    expect(replace).toHaveBeenLastCalledWith('/dashboard/jobsearch?stage=found&q=foo')
     expect(input.value).toBe('foo ')
   })
 
@@ -144,11 +154,11 @@ describe('PipelineInbox', () => {
   it('J/K move the selection and are ignored while typing in search', () => {
     setup(initial('found', [mk('a'), mk('b'), mk('c')]))
     fireEvent.keyDown(document.body, { key: 'j' })
-    expect(replace).toHaveBeenLastCalledWith('/dashboard/jobsearch?stage=found&job=a', { scroll: false })
+    expect(replace).toHaveBeenLastCalledWith('/dashboard/jobsearch?stage=found&job=a')
     fireEvent.keyDown(document.body, { key: 'j' })
-    expect(replace).toHaveBeenLastCalledWith('/dashboard/jobsearch?stage=found&job=b', { scroll: false })
+    expect(replace).toHaveBeenLastCalledWith('/dashboard/jobsearch?stage=found&job=b')
     fireEvent.keyDown(document.body, { key: 'k' })
-    expect(replace).toHaveBeenLastCalledWith('/dashboard/jobsearch?stage=found&job=a', { scroll: false })
+    expect(replace).toHaveBeenLastCalledWith('/dashboard/jobsearch?stage=found&job=a')
 
     replace.mockClear()
     const input = screen.getByRole('searchbox') as HTMLInputElement
@@ -192,14 +202,14 @@ describe('PipelineInbox', () => {
     expect(second.container.querySelector('[data-pipeline-list]')?.className).toContain('hidden lg:block')
     expect(second.container.querySelector('[data-pipeline-detail]')?.className).toBe('block')
     fireEvent.click(screen.getByRole('button', { name: 'Back to list' }))
-    expect(replace).toHaveBeenCalledWith('/dashboard/jobsearch?stage=found', { scroll: false })
+    expect(replace).toHaveBeenCalledWith('/dashboard/jobsearch?stage=found')
   })
 
   it('scan with a profile filter posts that profile once', async () => {
     setup(initial('found', [mk('a')]), { params: 'stage=found&profile=p2' })
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Scan now' })) })
-    await waitFor(() => expect(calls('/api/jobsearch/scan')).toHaveLength(1))
-    expect(JSON.parse(calls('/api/jobsearch/scan')[0][1].body)).toEqual({ profileId: 'p2' })
+    await screen.findByRole('button', { name: 'Scan now' })
+    expect(calls('/api/jobsearch/scan').map(([, i]) => JSON.parse(i.body))).toEqual([{ profileId: 'p2' }])
   })
 
   it('scan without a filter loops active profiles in order and stops on a 429', async () => {
@@ -207,17 +217,23 @@ describe('PipelineInbox', () => {
       String(url).includes('/api/jobsearch/scan') ? ok({}, 429) : ok()
     )
     setup(initial('found', [mk('a')]))
+    const before = useScrapedJobsSync.getState().revision
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Scan all' })) })
-    await waitFor(() => expect(calls('/api/jobsearch/scan')).toHaveLength(1))
-    expect(JSON.parse(calls('/api/jobsearch/scan')[0][1].body)).toEqual({ profileId: 'p1' })
+    // Scanning finished once the button reads "Scan all" again; only then is "stops after the 429" provable.
+    await screen.findByRole('button', { name: 'Scan all' })
+    expect(calls('/api/jobsearch/scan').map(([, i]) => JSON.parse(i.body))).toEqual([{ profileId: 'p1' }])
+    expect(useScrapedJobsSync.getState().revision).toBeGreaterThan(before)
     expect(useToastStore.getState().toasts.map((t) => t.message)).toContain('Too many scans. Wait a minute and try again.')
   })
 
   it('scan without a filter posts each active profile', async () => {
     setup(initial('found', [mk('a')]))
+    const before = useScrapedJobsSync.getState().revision
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Scan all' })) })
-    await waitFor(() => expect(calls('/api/jobsearch/scan')).toHaveLength(2))
+    await screen.findByRole('button', { name: 'Scan all' })
+    // The inactive profile p3 is never scanned.
     expect(calls('/api/jobsearch/scan').map(([, i]) => JSON.parse(i.body).profileId)).toEqual(['p1', 'p2'])
+    expect(useScrapedJobsSync.getState().revision).toBeGreaterThan(before)
   })
 
   it('surfaces a degraded scan message through a toast', async () => {
@@ -251,7 +267,7 @@ describe('PipelineInbox', () => {
   it('drops an unknown ?job= from the URL once loaded', async () => {
     setup(initial('found', [mk('a')]), { params: 'stage=found&job=ghost' })
     await waitFor(() =>
-      expect(replace).toHaveBeenCalledWith('/dashboard/jobsearch?stage=found', { scroll: false })
+      expect(replace).toHaveBeenCalledWith('/dashboard/jobsearch?stage=found')
     )
   })
 
@@ -263,6 +279,17 @@ describe('PipelineInbox', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mark as applied' }))
     expect(await screen.findByRole('alert')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Job r/ })).toBeTruthy()
+  })
+
+  it('clears the action error banner when the stage changes', async () => {
+    fetchMock.mockImplementation((url: string) =>
+      String(url).includes('/convert') ? ok({ error: 'Nope' }, 500) : ok()
+    )
+    setup(initial('ready', [mk('r', { stage: 'ready', status: 'queued' })]), { params: 'stage=ready&job=r' })
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as applied' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: /Drafted/ }))
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
   })
 
   describe('ported behaviours', () => {
@@ -293,6 +320,9 @@ describe('PipelineInbox', () => {
       const job = mk('m', { stage: 'matched', status: 'new' })
       setup(initial('matched', [job]), { params: 'stage=matched' })
       await waitFor(() => expect(calls('mark-read')).toHaveLength(1))
+      // mark-read bumps the revision, which reloads the (now read) page; let that second matched fetch land.
+      await waitFor(() => expect(calls('stage=matched')).toHaveLength(1))
+      await act(async () => { await Promise.resolve() })
       expect(screen.getByText('New')).toBeTruthy()
     })
 

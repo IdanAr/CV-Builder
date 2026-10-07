@@ -73,6 +73,12 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
     navigate: router.push,
   })
 
+  const { clearError } = actions
+  // A banner for a failed action belongs to the view it happened in.
+  useEffect(() => {
+    clearError()
+  }, [view.stage, view.profile, view.q, view.job, clearError])
+
   const viewRef = useRef(view)
   useEffect(() => {
     viewRef.current = view
@@ -83,9 +89,11 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
     (patch: Partial<PipelineView>) => {
       const next = { ...viewRef.current, ...patch }
       if (!('job' in patch) && ('stage' in patch || 'profile' in patch || 'q' in patch)) next.job = null
-      router.replace(pipelineHref(next), { scroll: false })
+      // Native history call: Next syncs useSearchParams with it and, unlike
+      // router.replace, makes no server request to re-render the dynamic page.
+      window.history.replaceState(null, '', pipelineHref(next))
     },
-    [router]
+    []
   )
 
   // Search: controlled locally, pushed to the URL after a pause.
