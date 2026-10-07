@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-/** At or above this a match reads as worth acting on. Re-declared from FitMeter, which is deleted later. */
+/** At or above this a match reads as worth acting on. */
 export const STRONG_FIT = 80
 
 /** The fit score as a bare number, coloured only when strong. */

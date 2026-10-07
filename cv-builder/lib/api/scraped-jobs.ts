@@ -284,7 +284,7 @@ export async function approveScrapedJob(userId: string, id: string): Promise<App
 }
 
 // Toggles a scraped job listing between visible ('new') and dismissed
-// ('dismissed') — the "Active"/"Non-Active" control on ScrapedJobsList.
+// ('dismissed') — the dismiss/restore action in the pipeline inbox.
 // Never overwrites 'submitted' (a terminal, already-applied state — nothing
 // useful comes from dismissing/restoring it) so the toggle only applies to
 // listings still mid-pipeline or not yet acted on.
@@ -427,7 +427,7 @@ export interface NotifyMatchSummary {
   createdAt: Date
 }
 
-// Cross-profile: JobMatchesFeed (design spec §9) shows every 'notify' rule
+// Cross-profile: the Matched stage of the pipeline inbox (design spec §9) shows every 'notify' rule
 // match for this user regardless of which profile it came from, so this
 // intentionally omits the profileId scoping every other scraped-jobs query
 // in this file uses.
@@ -638,7 +638,7 @@ export async function countPipelineStages(
 }
 
 // Marks currently-unread notify matches as seen (status 'new' -> 'notified')
-// — called once JobMatchesFeed has actually loaded the list, so the AppNavbar
+// — called once the inbox has actually loaded the Matched stage the list, so the AppNavbar
 // badge count drops without requiring a per-item action.
 //
 // `profileId` scopes it to one profile's matches. The feed inside a profile
