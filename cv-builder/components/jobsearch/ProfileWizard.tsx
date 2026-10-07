@@ -563,7 +563,7 @@ export function ProfileWizard({ onCreated, onUpdated, existingProfile, onCancel 
           <p className="text-sm text-fg-muted">
             Optional: track specific companies that use Comeet for hiring (common among
             Israeli high-tech employers). Comeet has no keyword search across companies,
-            so postings are fetched per company — paste that company&apos;s own public
+            so postings are fetched per company. Paste that company&apos;s own public
             Comeet careers page URL (e.g. comeet.com/jobs/company-name/uid) and we&apos;ll
             look it up for you.
           </p>

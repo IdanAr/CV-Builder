@@ -109,7 +109,7 @@ function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumn
       <span
         {...attributes}
         {...listeners}
-        className="rounded text-fg-subtle cursor-grab active:cursor-grabbing text-base select-none outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:flex max-sm:min-h-10 max-sm:min-w-10 max-sm:items-center max-sm:justify-center"
+        className="rounded-chip text-fg-subtle cursor-grab active:cursor-grabbing text-base select-none outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:flex max-sm:min-h-10 max-sm:min-w-10 max-sm:items-center max-sm:justify-center"
         aria-label="Drag to reorder"
       >
         ⠿
@@ -194,7 +194,7 @@ export function ColumnsSection() {
                 vanished from the exported PDF — so the guidance below is
                 preference, not a constraint. */}
             <p className="text-xs text-fg-subtle mt-1">
-              Every section can go in either column — set them under{' '}
+              Every section can go in either column. Set them under{' '}
               <span className="font-medium">Section columns</span> below. Skills and Languages start in
               the rail. The rail is only {meta.sidebarRailWidth ?? 33}% of the page width, so short
               sections suit it best; longer ones like Work Experience read better in the main column.

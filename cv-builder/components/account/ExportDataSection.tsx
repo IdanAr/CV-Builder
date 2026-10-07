@@ -48,7 +48,7 @@ export function ExportDataSection() {
       <div>
         <h2 className="text-base font-medium text-fg-heading">Export your data</h2>
         <p className="mt-1 text-sm text-fg-muted">
-          Downloads everything stored in your account as a single JSON file — résumés, cover letters,
+          Downloads everything stored in your account as a single JSON file: résumés, cover letters,
           job applications and their history, board setup, and job-search profiles and rules.
         </p>
         {/* Stated plainly rather than buried: someone exporting their data

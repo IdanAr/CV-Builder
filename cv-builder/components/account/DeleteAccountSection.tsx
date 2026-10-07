@@ -91,7 +91,7 @@ export function DeleteAccountSection({ email }: { email: string }) {
         <div className="space-y-3">
           <div>
             <label htmlFor="confirm-delete-email" className="block text-sm font-medium text-fg">
-              Type <span className="font-semibold">{email}</span> to confirm
+              Type <span className="font-medium">{email}</span> to confirm
             </label>
             <input
               ref={inputRef}

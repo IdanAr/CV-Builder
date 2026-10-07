@@ -85,7 +85,7 @@ Scraped jobs flow through one funnel (Found, Matched, Drafted, Ready, Applied, p
 
 ### Auth & route protection
 
-`proxy.ts` (Next.js 16's rename of the old `middleware.ts`) uses Auth.js's `authorized` callback (`auth.config.ts`) gated on `matcher: ['/dashboard/:path*', '/api/resumes/:path*', '/api/applications/:path*', '/api/preview/:path*']`. All API routes under those prefixes are expected to be session-scoped via the `auth()` wrapper and filtered to the requesting user — new routes under these paths must follow the same pattern, and `proxy.test.ts` should be extended when matcher coverage changes.
+`proxy.ts` (Next.js 16's rename of the old `middleware.ts`) uses Auth.js's `authorized` callback (`auth.config.ts`) gated on `matcher: ['/dashboard/:path*', '/api/resumes/:path*', '/api/applications/:path*', '/api/preview/:path*', '/api/jobsearch/:path*', '/api/account/:path*']`. All API routes under those prefixes are expected to be session-scoped via the `auth()` wrapper and filtered to the requesting user — new routes under these paths must follow the same pattern, and `proxy.test.ts` should be extended when matcher coverage changes.
 
 ### Directory map
 
