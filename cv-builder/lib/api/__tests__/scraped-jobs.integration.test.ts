@@ -156,6 +156,13 @@ describe('listPipelineJobs', () => {
     expect(items[0]).not.toHaveProperty('description')
     await expect(listPipelineJobs('u1', { stage: 'found', cursor: 'not-a-cursor' })).rejects.toBeInstanceOf(InvalidCursorError)
   })
+
+  it('rejects a cursor whose timestamp is out of Date range or whose id is not a 24-hex ObjectId', async () => {
+    const enc = (raw: string) => Buffer.from(raw).toString('base64url')
+    const id = '507f1f77bcf86cd799439011'
+    await expect(listPipelineJobs('u1', { stage: 'found', cursor: enc(`1e20:${id}`) })).rejects.toBeInstanceOf(InvalidCursorError)
+    await expect(listPipelineJobs('u1', { stage: 'found', cursor: enc('1700000000000:short12chars') })).rejects.toBeInstanceOf(InvalidCursorError)
+  })
 })
 
 describe('countPipelineStages options and archive', () => {

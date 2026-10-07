@@ -486,7 +486,9 @@ function decodeCursor(cursor: string): { createdAt: Date; id: string } {
   const sep = raw.indexOf(':')
   const ms = Number(raw.slice(0, sep))
   const id = raw.slice(sep + 1)
-  if (sep < 1 || !Number.isFinite(ms) || !mongoose.isValidObjectId(id)) throw new InvalidCursorError()
+  if (sep < 1 || !Number.isFinite(ms) || Number.isNaN(new Date(ms).getTime()) || !/^[0-9a-f]{24}$/i.test(id)) {
+    throw new InvalidCursorError()
+  }
   return { createdAt: new Date(ms), id }
 }
 
@@ -638,8 +640,8 @@ export async function countPipelineStages(
 }
 
 // Marks currently-unread notify matches as seen (status 'new' -> 'notified')
-// — called once the inbox has actually loaded the Matched stage the list, so the AppNavbar
-// badge count drops without requiring a per-item action.
+// — called once the inbox has loaded the Matched stage, so the AppNavbar badge
+// count drops without requiring a per-item action.
 //
 // `profileId` scopes it to one profile's matches. The feed inside a profile
 // record shows only that profile, and marking the whole account read from

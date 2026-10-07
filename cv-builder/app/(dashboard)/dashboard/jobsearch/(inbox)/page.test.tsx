@@ -33,7 +33,7 @@ const counts = (over: Record<string, number> = {}) => ({
   found: 0, matched: 0, matchedUnread: 0, drafted: 0, ready: 0, applied: 0, archive: 0, ...over,
 })
 
-async function renderPage(searchParams: Record<string, string> = {}) {
+async function renderPage(searchParams: Record<string, string | string[]> = {}) {
   const { default: Page } = await import('./page')
   return render(await Page({ searchParams: Promise.resolve(searchParams) }))
 }
@@ -71,6 +71,15 @@ describe('jobsearch pipeline page', () => {
   it('falls back to the default stage for an invalid ?stage', async () => {
     await renderPage({ stage: 'bogus' })
     expect(listJobsMock).toHaveBeenCalledWith('user-1', expect.objectContaining({ stage: 'matched' }))
+  })
+
+  it('ignores array-valued params instead of throwing', async () => {
+    await renderPage({ stage: ['found', 'applied'], profile: ['p1', 'p2'], q: ['a', 'b'], job: ['j1', 'j2'] })
+    expect(countMock).toHaveBeenCalledWith('user-1', { profileId: undefined })
+    expect(listJobsMock).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ stage: 'matched', profileId: undefined, q: '' })
+    )
   })
 
   it('scopes every data call to the session user', async () => {

@@ -7,7 +7,7 @@ import { defaultStage } from '@/lib/jobsearch/pipeline-url'
 import { PipelineInbox } from '@/components/pipeline/PipelineInbox'
 
 interface PageProps {
-  searchParams: Promise<{ stage?: string; profile?: string; q?: string; job?: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 export default async function JobSearchPage({ searchParams }: PageProps) {
@@ -16,14 +16,16 @@ export default async function JobSearchPage({ searchParams }: PageProps) {
   const userId = session.user.id
 
   const params = await searchParams
-  const profile = params.profile || null
-  const q = params.q ?? ''
+  // A repeated key (?q=a&q=b) arrives as an array; treat anything but a string as absent.
+  const str = (v: string | string[] | undefined) => (typeof v === 'string' ? v : undefined)
+  const profile = str(params.profile) || null
+  const q = str(params.q) ?? ''
 
   const [profiles, counts] = await Promise.all([
     listJobSearchProfiles(userId),
     countPipelineStages(userId, { profileId: profile ?? undefined }),
   ])
-  const stage = parsePipelineFilter(params.stage) ?? defaultStage(counts)
+  const stage = parsePipelineFilter(str(params.stage) ?? null) ?? defaultStage(counts)
   const { items, nextCursor } = await listPipelineJobs(userId, {
     stage,
     profileId: profile ?? undefined,
