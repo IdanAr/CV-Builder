@@ -144,7 +144,7 @@ describe('PreviewTab — zoom controls', () => {
   it('renders the preview toolbar with the ATS format chip and no expand toggle by default', () => {
     render(<PreviewTab />)
     expect(screen.getByRole('toolbar', { name: 'Preview controls' })).toBeInTheDocument()
-    expect(screen.getByLabelText(/^ATS format score \d+ out of 100$/)).toBeInTheDocument()
+    expect(screen.getByText(/^ATS format score \d+ out of 100$/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /expand preview/i })).toBeNull()
   })
 
