@@ -11,8 +11,6 @@ interface PipelineRowProps {
   selected: boolean
   isNew: boolean
   onSelect(): void
-  /** Roving tabindex: the list passes 0 for the selected (or first) row. Defaults to -1. */
-  tabIndex?: 0 | -1
 }
 
 function AttentionChip({ job, isNew }: { job: PipelineJob; isNew: boolean }) {
@@ -37,12 +35,10 @@ function AttentionChip({ job, isNew }: { job: PipelineJob; isNew: boolean }) {
   )
 }
 
-export function PipelineRow({ job, selected, isNew, onSelect, tabIndex = -1 }: PipelineRowProps) {
+export function PipelineRow({ job, selected, isNew, onSelect }: PipelineRowProps) {
   const meta = [job.company, job.location].filter(Boolean).join(' · ')
   return (
     <li
-      role="option"
-      aria-selected={selected}
       className={cn(
         'border-b border-border last:border-b-0',
         selected ? 'bg-surface-selected' : 'bg-surface motion-safe:transition-colors hover:bg-surface-subtle'
@@ -50,7 +46,8 @@ export function PipelineRow({ job, selected, isNew, onSelect, tabIndex = -1 }: P
     >
       <button
         type="button"
-        tabIndex={tabIndex}
+        tabIndex={0}
+        aria-current={selected ? 'true' : undefined}
         onClick={onSelect}
         className="flex min-h-10 w-full items-start gap-3 px-3 py-2.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >

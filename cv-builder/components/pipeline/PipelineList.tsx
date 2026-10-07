@@ -71,7 +71,6 @@ export function PipelineList({
   }
 
   const hasTombstones = stage === 'archive' && items.some((j) => j.deletedAt)
-  const activeId = items.some((j) => j._id === selectedId) ? selectedId : items[0]._id
 
   return (
     <div className="space-y-3">
@@ -79,9 +78,7 @@ export function PipelineList({
         <p className="text-xs text-fg-subtle">Scans skip these, so they are never tailored again.</p>
       )}
       <ul
-        role="listbox"
         aria-label="Jobs"
-        aria-live="polite"
         className="overflow-hidden rounded-card border border-border bg-surface"
       >
         {items.map((job) => (
@@ -90,7 +87,6 @@ export function PipelineList({
             job={job}
             selected={job._id === selectedId}
             isNew={unreadIds.has(job._id)}
-            tabIndex={job._id === activeId ? 0 : -1}
             onSelect={() => onSelect(job._id)}
           />
         ))}

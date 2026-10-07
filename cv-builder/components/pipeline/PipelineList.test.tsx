@@ -22,17 +22,17 @@ function setup(over: Partial<React.ComponentProps<typeof PipelineList>> = {}) {
 }
 
 describe('PipelineList', () => {
-  it('renders a labelled live listbox with roving tabIndex (first row when none selected)', () => {
+  it('renders a labelled plain list with every row button tabbable and no live region', () => {
     setup()
-    const lb = screen.getByRole('listbox', { name: 'Jobs' })
-    expect(lb.getAttribute('aria-live')).toBe('polite')
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.map((b) => b.tabIndex)).toEqual([0, -1])
+    const list = screen.getByRole('list', { name: 'Jobs' })
+    expect(list.getAttribute('aria-live')).toBeNull()
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.getAllByRole('button').map((b) => b.tabIndex)).toEqual([0, 0])
   })
 
-  it('gives the selected row tabIndex 0', () => {
+  it('marks only the selected row with aria-current', () => {
     setup({ selectedId: 'b' })
-    expect(screen.getAllByRole('button').map((b) => b.tabIndex)).toEqual([-1, 0])
+    expect(screen.getAllByRole('button').map((b) => b.getAttribute('aria-current'))).toEqual([null, 'true'])
   })
 
   it('calls onSelect with the id and flags unread rows as New', async () => {

@@ -14,7 +14,7 @@ const job: PipelineJob = {
 function setup(j: Partial<PipelineJob> = {}, selected = false, isNew = false) {
   const onSelect = vi.fn()
   render(
-    <ul role="listbox" aria-label="Jobs">
+    <ul aria-label="Jobs">
       <PipelineRow job={{ ...job, ...j }} selected={selected} isNew={isNew} onSelect={onSelect} />
     </ul>
   )
@@ -31,11 +31,12 @@ describe('PipelineRow', () => {
     expect(screen.getByText('85% match')).toBeTruthy()
   })
 
-  it('is an option reflecting selection and roving tabIndex', () => {
+  it('is a list item whose button reflects selection with aria-current', () => {
     setup({}, true)
-    const opt = screen.getByRole('option')
-    expect(opt.getAttribute('aria-selected')).toBe('true')
-    expect(opt.className).toContain('bg-surface-selected')
+    expect(screen.getByRole('listitem').className).toContain('bg-surface-selected')
+    const btn = screen.getByRole('button')
+    expect(btn.getAttribute('aria-current')).toBe('true')
+    expect(btn.tabIndex).toBe(0)
   })
 
   it('calls onSelect on click', async () => {
