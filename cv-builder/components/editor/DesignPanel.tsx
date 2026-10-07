@@ -9,7 +9,11 @@ import { SpacingControls } from './design/SpacingControls'
 
 const sectionTitle = 'mb-3 text-xs font-semibold uppercase tracking-wide text-fg-subtle'
 
-export function DesignPanel() {
+/**
+ * `active` is false while the Design tab is hidden (EditorShell keeps all tab
+ * panels mounted); it stops the template thumbnails doing work on every edit.
+ */
+export function DesignPanel({ active = true }: { active?: boolean }) {
   const primaryColor = useResumeEditorStore((s) => s.meta.primaryColor)
   const accentColor = useResumeEditorStore((s) => s.meta.accentColor)
   const setMeta = useResumeEditorStore((s) => s.setMeta)
@@ -18,7 +22,7 @@ export function DesignPanel() {
     <div className="mx-auto max-w-sm space-y-7 px-4 py-6">
       <section aria-labelledby="design-template">
         <h3 id="design-template" className={sectionTitle}>Template</h3>
-        <TemplateGrid />
+        <TemplateGrid active={active} />
       </section>
       <ColumnsSection />
       <section aria-labelledby="design-fonts">

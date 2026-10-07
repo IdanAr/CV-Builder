@@ -104,4 +104,46 @@ describe('TemplateGrid', () => {
     expect(screen.getByRole('button', { name: 'Modern' })).toHaveAttribute('aria-pressed', 'true')
     expect(renders).toEqual([])
   })
+
+  describe('active={false} (Design tab hidden)', () => {
+    it('renders the cards without any thumbnail', () => {
+      render(<TemplateGrid active={false} />)
+      expect(screen.queryAllByTestId('cv-thumbnail-page')).toHaveLength(0)
+      expect(screen.getByRole('group', { name: 'Template' }).querySelectorAll('button')).toHaveLength(5)
+      expect(screen.getByRole('button', { name: 'Classic' })).toHaveAttribute('aria-pressed', 'true')
+      expect(renders).toEqual([])
+    })
+
+    it('selecting a template still works and renders no thumbnails', () => {
+      render(<TemplateGrid active={false} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Modern' }))
+      expect(useResumeEditorStore.getState().meta.templateId).toBe('modern')
+      expect(screen.getByRole('button', { name: 'Modern' })).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.queryAllByTestId('cv-thumbnail-page')).toHaveLength(0)
+    })
+
+    it('shows thumbnails with the user data immediately when switched to active', () => {
+      const { rerender, container } = render(<TemplateGrid active={false} />)
+      rerender(<TemplateGrid active />)
+      expect(screen.getAllByTestId('cv-thumbnail-page')).toHaveLength(5)
+      expect(container.textContent).toContain('Zed Quill')
+    })
+
+    it('does not re-render at all on unrelated data or meta changes', () => {
+      const onRender = vi.fn()
+      render(
+        <React.Profiler id="grid" onRender={onRender}>
+          <TemplateGrid active={false} />
+        </React.Profiler>
+      )
+      const after = onRender.mock.calls.length
+      act(() => {
+        useResumeEditorStore.setState((s) => ({
+          data: { ...s.data, basics: { ...(s.data.basics ?? {}), summary: 'x' } } as never,
+          meta: { ...s.meta, primaryColor: '#ff0000' },
+        }))
+      })
+      expect(onRender.mock.calls.length).toBe(after)
+    })
+  })
 })

@@ -25,7 +25,16 @@ vi.mock('./PreviewTab', () => ({
     <div data-testid="preview-tab-mock" data-interactive={String(interactive)}>PreviewTabContent</div>
   ),
 }))
-vi.mock('./DesignPanel', () => ({ DesignPanel: () => <div>DesignPanelContent</div> }))
+// Real TemplateGrid, so the `active` wiring from the shell is observable as
+// thumbnail presence.
+vi.mock('./DesignPanel', async () => {
+  const { TemplateGrid } = await import('./design/TemplateGrid')
+  return {
+    DesignPanel: ({ active = true }: { active?: boolean }) => (
+      <div>DesignPanelContent<TemplateGrid active={active} /></div>
+    ),
+  }
+})
 vi.mock('@/components/ats/AtsScorePanel', () => ({ AtsScorePanel: () => <div>AtsScorePanelContent</div> }))
 vi.mock('./ExportMenu', () => ({
   ExportMenu: ({ onExport }: { onExport: (format: 'pdf' | 'docx', mode: 'designed' | 'ats') => void }) => (
@@ -95,6 +104,14 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
   it('does not render the mobile edit/preview switcher', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
     expect(screen.queryByRole('tablist', { name: /view/i })).not.toBeInTheDocument()
+  })
+
+  it('only renders template thumbnails once the Design tab is active', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    const panel = () => document.getElementById('editor-panel-design') as HTMLElement
+    expect(within(panel()).queryAllByTestId('cv-thumbnail-page')).toHaveLength(0)
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }))
+    expect(within(panel()).getAllByTestId('cv-thumbnail-page')).toHaveLength(5)
   })
 
   it('still switches between Edit/Design/ATS tabs', () => {

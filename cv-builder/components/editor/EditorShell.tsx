@@ -346,7 +346,7 @@ export function EditorShell({ resumeId, title, data, meta, user }: EditorShellPr
           <EditorErrorBoundary><EditTab /></EditorErrorBoundary>
         </div>
         <div role="tabpanel" id="editor-panel-design" aria-labelledby="editor-tab-design" className={activeTab === 'design' ? 'block' : 'hidden'}>
-          <EditorErrorBoundary><DesignPanel /></EditorErrorBoundary>
+          <EditorErrorBoundary><DesignPanel active={activeTab === 'design'} /></EditorErrorBoundary>
         </div>
         <div role="tabpanel" id="editor-panel-ats" aria-labelledby="editor-tab-ats" className={activeTab === 'ats' ? 'block' : 'hidden'}>
           <EditorErrorBoundary><AtsScorePanel /></EditorErrorBoundary>

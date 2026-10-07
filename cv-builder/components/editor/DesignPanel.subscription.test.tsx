@@ -6,11 +6,6 @@ import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { DesignPanel } from './DesignPanel'
 import type { ResumeMeta } from '@/lib/schemas/resume.zod'
 
-// TemplateGrid deliberately subscribes to all of `data` (it renders thumbnails
-// of the user's CV, debounced), so it is stubbed here: this file guards that
-// the rest of the panel only cares about customSections.
-vi.mock('./design/TemplateGrid', () => ({ TemplateGrid: () => null }))
-
 const defaultMeta: ResumeMeta = {
   templateId: 'classic',
   fontFamily: 'Calibri',
@@ -36,7 +31,7 @@ describe('DesignPanel data subscription scope', () => {
     })
     render(
       <Profiler id="design-panel-test" onRender={onRender}>
-        <DesignPanel />
+        <DesignPanel active={false} />
       </Profiler>
     )
     // Mount alone commits more than once (dnd-kit's own effects inside
