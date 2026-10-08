@@ -13,8 +13,8 @@ import { BRAND_VIOLET } from '@/lib/brand/mark'
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'CV Builder',
-    short_name: 'CV Builder',
+    name: 'CVitae Studio',
+    short_name: 'CVitae Studio',
     description: 'AI-assisted résumé builder with ATS scoring and PDF/DOCX export.',
     start_url: '/dashboard',
     display: 'standalone',
@@ -22,7 +22,9 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: BRAND_VIOLET,
     icons: [
       { src: '/icon.svg', type: 'image/svg+xml', sizes: 'any' },
-      { src: '/apple-icon', type: 'image/png', sizes: '180x180' },
+      { src: '/brand/icon-192.png', type: 'image/png', sizes: '192x192' },
+      { src: '/brand/icon-512.png', type: 'image/png', sizes: '512x512' },
+      { src: '/apple-icon.png', type: 'image/png', sizes: '180x180' },
     ],
   }
 }

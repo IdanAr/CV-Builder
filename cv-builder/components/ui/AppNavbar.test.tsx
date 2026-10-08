@@ -4,9 +4,12 @@ import { render, screen } from '@testing-library/react'
 import { AppNavbar } from './AppNavbar'
 
 describe('AppNavbar', () => {
-  it('renders the logo mark', () => {
+  it('renders the brand logo inside the home link', () => {
     const { container } = render(<AppNavbar />)
-    expect(container.querySelector('a[aria-label="CV Builder home"] [aria-hidden="true"]')).toHaveTextContent('CV')
+    const imgs = container.querySelectorAll('a[aria-label="CVitae Studio home"] img')
+    const srcs = [...imgs].map(i => decodeURIComponent(i.getAttribute('src') ?? ''))
+    expect(srcs.some(s => s.includes('cvitae-mark-light.svg'))).toBe(true)
+    expect(srcs.some(s => s.includes('cvitae-studio-horizontal-light.svg'))).toBe(true)
   })
 
   it('renders provided actions', () => {
@@ -20,28 +23,22 @@ describe('AppNavbar', () => {
     expect(actionsRow?.className).toMatch(/flex-wrap/)
   })
 
-  it('hides the wordmark text below the narrow breakpoint but keeps it at wider sizes', () => {
-    render(<AppNavbar />)
-    const wordmark = screen.getByText('CV Builder')
-    expect(wordmark.className).toMatch(/hidden/)
-    // Some responsive prefix (e.g. sm:/md:) must re-show it at wider viewports.
-    expect(wordmark.className).toMatch(/:(inline|block|flex)/)
-  })
-
-  it('keeps the logo mark visible regardless of the wordmark visibility class', () => {
-    render(<AppNavbar />)
-    const mark = document.querySelector('a[aria-label="CV Builder home"] [aria-hidden="true"]')
-    expect(mark?.className ?? '').not.toMatch(/(^|\s)hidden(\s|$)/)
+  it('shows the compact mark below md and the full lockup from md up', () => {
+    const { container } = render(<AppNavbar />)
+    const [mark, lockup] = [...container.querySelectorAll('a[aria-label="CVitae Studio home"] img')]
+    expect(mark.className).toMatch(/(^|\s)md:hidden(\s|$)/)
+    expect(lockup.className).toMatch(/(^|\s)hidden(\s|$)/)
+    expect(lockup.className).toMatch(/md:block/)
   })
 
   it('defaults the logo link to /dashboard when homeHref is omitted', () => {
     render(<AppNavbar />)
-    expect(screen.getByLabelText('CV Builder home')).toHaveAttribute('href', '/dashboard')
+    expect(screen.getByLabelText('CVitae Studio home')).toHaveAttribute('href', '/dashboard')
   })
 
   it('points the logo link at homeHref when provided', () => {
     render(<AppNavbar homeHref="/" />)
-    expect(screen.getByLabelText('CV Builder home')).toHaveAttribute('href', '/')
+    expect(screen.getByLabelText('CVitae Studio home')).toHaveAttribute('href', '/')
   })
 })
 
@@ -58,7 +55,7 @@ describe('AppNavbar logo placement', () => {
   // `md` the logo joins the flow, and only from `md` up is it centred.
   it('joins the flow below md so it cannot overlap a wrapped actions row', () => {
     const { container } = render(<AppNavbar />)
-    const logo = container.querySelector('a[aria-label="CV Builder home"]')!
+    const logo = container.querySelector('a[aria-label="CVitae Studio home"]')!
     const classes = logo.className
 
     // Unprefixed absolute positioning is exactly what caused the overlap.
@@ -68,18 +65,18 @@ describe('AppNavbar logo placement', () => {
 
   it('is centred again from md up', () => {
     const { container } = render(<AppNavbar />)
-    const classes = container.querySelector('a[aria-label="CV Builder home"]')!.className
+    const classes = container.querySelector('a[aria-label="CVitae Studio home"]')!.className
     expect(classes).toMatch(/md:absolute/)
     expect(classes).toMatch(/md:left-1\/2/)
     expect(classes).toMatch(/md:-translate-x-1\/2/)
   })
 
-  // A tall mark in a short bar leaves no room once the actions wrap.
-  it('uses a compact mark below md and a slightly larger one above', () => {
+  // A tall logo in a short bar leaves no room once the actions wrap.
+  it('keeps the logo at a fixed 32px height', () => {
     const { container } = render(<AppNavbar />)
-    const mark = container.querySelector('a[aria-label="CV Builder home"] [aria-hidden="true"]')!
-    expect(mark.className).toMatch(/h-8 w-8/)
-    expect(mark.className).toMatch(/md:h-9 md:w-9/)
+    for (const img of container.querySelectorAll('a[aria-label="CVitae Studio home"] img')) {
+      expect(img.className).toMatch(/(^|\s)h-8(\s|$)/)
+    }
   })
 })
 

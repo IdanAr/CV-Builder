@@ -2,6 +2,7 @@ import { signIn } from '@/lib/auth'
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 import { PlasmaBackground } from '@/components/ui/PlasmaBackground'
 import { buttonClasses } from '@/components/ui/Button'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
@@ -36,35 +37,8 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         <div className="w-full max-w-sm rounded-card border border-border bg-surface/95 p-8 shadow-popover">
           {/* Logo */}
           <div className="mb-6 flex flex-col items-center gap-2">
-            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="h-12 w-12">
-              <defs>
-                <linearGradient id="sg1" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" style={{ stopColor: '#8B5CF6', stopOpacity: 1 }} />
-                  <stop offset="100%" style={{ stopColor: '#6366F1', stopOpacity: 1 }} />
-                </linearGradient>
-                <linearGradient id="sg2" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" style={{ stopColor: '#A78BFA', stopOpacity: 1 }} />
-                  <stop offset="100%" style={{ stopColor: '#8B5CF6', stopOpacity: 1 }} />
-                </linearGradient>
-              </defs>
-              <polygon points="50,25 65,35 65,55 50,65 35,55 35,35" fill="url(#sg1)" />
-              <circle cx="30" cy="30" r="4" fill="url(#sg2)" />
-              <circle cx="70" cy="30" r="4" fill="url(#sg2)" />
-              <circle cx="20" cy="50" r="4" fill="url(#sg2)" />
-              <circle cx="80" cy="50" r="4" fill="url(#sg2)" />
-              <circle cx="30" cy="70" r="4" fill="url(#sg2)" />
-              <circle cx="70" cy="70" r="4" fill="url(#sg2)" />
-              <line x1="30" y1="30" x2="42" y2="38" stroke="#A78BFA" strokeWidth="2" opacity="0.6" />
-              <line x1="70" y1="30" x2="58" y2="38" stroke="#A78BFA" strokeWidth="2" opacity="0.6" />
-              <line x1="20" y1="50" x2="35" y2="45" stroke="#A78BFA" strokeWidth="2" opacity="0.6" />
-              <line x1="80" y1="50" x2="65" y2="45" stroke="#A78BFA" strokeWidth="2" opacity="0.6" />
-              <line x1="30" y1="70" x2="42" y2="58" stroke="#A78BFA" strokeWidth="2" opacity="0.6" />
-              <line x1="70" y1="70" x2="58" y2="58" stroke="#A78BFA" strokeWidth="2" opacity="0.6" />
-              <path d="M 42 42 L 48 42 L 50 38 L 52 42 L 58 42 L 54 48 L 56 54 L 50 50 L 44 54 L 46 48 Z"
-                fill="#FFFFFF" opacity="0.9" />
-            </svg>
-            <h1 className="text-xl font-medium text-fg-heading">
-              CV Builder
+            <h1>
+              <BrandLogo className="h-10" priority />
             </h1>
             <p className="text-sm text-fg-muted">Sign in to continue</p>
           </div>

@@ -25,7 +25,7 @@ const FAQS = [
       'Your resume data is tied to your signed-in account and never shared with third parties. You can edit or delete your data at any time from your dashboard.',
   },
   {
-    question: 'Can CV Builder find job openings for me?',
+    question: 'Can CVitae Studio find job openings for me?',
     answer:
       "Yes - Job Search scans job boards and any companies you choose to watch, based on the roles, locations, and seniority you set, and scores every match against your résumé.",
   },

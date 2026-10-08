@@ -14,27 +14,27 @@ import { resolveSiteUrl } from '@/lib/site-url'
 export const metadata: Metadata = {
   metadataBase: new URL(resolveSiteUrl()),
   // `default` is what the marketing page and any route without its own title
-  // shows; `template` frames the rest, so the editor reads "My CV · CV Builder"
+  // shows; `template` frames the rest, so the editor reads "My CV · CVitae Studio"
   // in a tab strip rather than an unattributed document name.
   title: {
-    default: 'CV Builder: AI-assisted résumé builder',
-    template: '%s · CV Builder',
+    default: 'CVitae Studio: AI-assisted résumé builder',
+    template: '%s · CVitae Studio',
   },
   description:
     'Write a résumé that gets past the filter. AI drafting, ATS scoring against a real job description, and PDF or DOCX export.',
-  applicationName: 'CV Builder',
+  applicationName: 'CVitae Studio',
   keywords: ['resume builder', 'CV builder', 'ATS', 'cover letter', 'job application tracker'],
   openGraph: {
     type: 'website',
-    siteName: 'CV Builder',
-    title: 'CV Builder: AI-assisted résumé builder',
+    siteName: 'CVitae Studio',
+    title: 'CVitae Studio: AI-assisted résumé builder',
     description:
       'AI drafting, ATS scoring against a real job description, and PDF or DOCX export.',
     url: '/',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CV Builder: AI-assisted résumé builder',
+    title: 'CVitae Studio: AI-assisted résumé builder',
     description:
       'AI drafting, ATS scoring against a real job description, and PDF or DOCX export.',
   },

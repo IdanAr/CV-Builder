@@ -3,7 +3,7 @@ import { LegalPageShell } from '@/components/marketing/LegalPageShell'
 
 export const metadata: Metadata = {
   title: 'Terms of Use',
-  description: 'The terms that govern your use of the CV Builder service.',
+  description: 'The terms that govern your use of the CVitae Studio service.',
 }
 
 const LAST_UPDATED = 'August 9, 2026'
@@ -12,8 +12,8 @@ export default function TermsOfUsePage() {
   return (
     <LegalPageShell title="Terms of Use" lastUpdated={LAST_UPDATED}>
       <p>
-        These Terms of Use (&ldquo;Terms&rdquo;) govern your access to and use of CV Builder (&ldquo;CV
-        Builder,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) and the résumé-building and job
+        These Terms of Use (&ldquo;Terms&rdquo;) govern your access to and use of CVitae Studio (&ldquo;CVitae
+        Studio,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) and the résumé-building and job
         application tracking service available through it (the &ldquo;Service&rdquo;). By accessing or using the
         Service, you agree to be bound by these Terms. If you do not agree, do not use the Service.
       </p>
@@ -21,7 +21,7 @@ export default function TermsOfUsePage() {
       <section>
         <h2 className="text-base font-medium text-fg-heading">1. Description of the Service</h2>
         <p className="mt-2">
-          CV Builder is an AI-assisted résumé and cover letter builder. It lets you create and format a résumé
+          CVitae Studio is an AI-assisted résumé and cover letter builder. It lets you create and format a résumé
           using pre-built templates, upload an existing résumé to import its content, receive AI-generated writing
           suggestions and Applicant Tracking System (ATS) compatibility scoring, export your résumé as a PDF or
           Word document, and track the status of your job applications.
@@ -41,7 +41,7 @@ export default function TermsOfUsePage() {
         <p className="mt-2">
           You sign in to the Service using your existing Google or GitHub account; we do not maintain separate
           passwords. You are responsible for maintaining the security of that third-party account and for all
-          activity that occurs through your CV Builder account. Notify us promptly if you become aware of any
+          activity that occurs through your CVitae Studio account. Notify us promptly if you become aware of any
           unauthorized use.
         </p>
       </section>
@@ -88,9 +88,9 @@ export default function TermsOfUsePage() {
       <section>
         <h2 className="text-base font-medium text-fg-heading">7. Intellectual Property</h2>
         <p className="mt-2">
-          The Service, including its templates, design, software, and branding, is owned by CV Builder and
+          The Service, including its templates, design, software, and branding, is owned by CVitae Studio and
           protected by applicable intellectual property laws. Except for the limited license described in Section
-          4, nothing in these Terms grants you any right to CV Builder&apos;s intellectual property. Your Content
+          4, nothing in these Terms grants you any right to CVitae Studio&apos;s intellectual property. Your Content
           remains yours, as described in Section 4.
         </p>
       </section>
@@ -99,7 +99,7 @@ export default function TermsOfUsePage() {
         <h2 className="text-base font-medium text-fg-heading">8. Third-Party Services</h2>
         <p className="mt-2">
           The Service relies on third-party providers, including Google and GitHub for sign-in and Anthropic for
-          AI-assisted features. Your use of those providers&apos; services through CV Builder is also subject to
+          AI-assisted features. Your use of those providers&apos; services through CVitae Studio is also subject to
           their own terms and privacy policies. We are not responsible for the availability or conduct of
           third-party services.
         </p>
@@ -140,7 +140,7 @@ export default function TermsOfUsePage() {
       <section>
         <h2 className="text-base font-medium text-fg-heading">12. Limitation of Liability</h2>
         <p className="mt-2">
-          To the maximum extent permitted by applicable law, CV Builder shall not be liable for any indirect,
+          To the maximum extent permitted by applicable law, CVitae Studio shall not be liable for any indirect,
           incidental, special, consequential, or punitive damages, or any loss of employment opportunity, income,
           data, or goodwill, arising out of or related to your use of the Service, even if we have been advised of
           the possibility of such damages.
