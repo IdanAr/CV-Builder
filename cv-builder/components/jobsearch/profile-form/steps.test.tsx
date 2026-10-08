@@ -43,8 +43,6 @@ describe('StepWhere', () => {
     await userEvent.selectOptions(screen.getByLabelText('Country'), 'IL')
     await userEvent.type(screen.getByLabelText('City'), 'Tel Aviv')
     await userEvent.click(screen.getByRole('button', { name: 'Add location' }))
-    // Adding resets the row completely, so the country is chosen again.
-    await userEvent.selectOptions(screen.getByLabelText('Country'), 'IL')
     await userEvent.type(screen.getByLabelText('City'), 'Herzliya{Enter}')
     expect(screen.getByText('Tel Aviv, Israel')).toBeInTheDocument()
     expect(screen.getByText('Herzliya, Israel')).toBeInTheDocument()

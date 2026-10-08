@@ -257,6 +257,20 @@ describe('ProfileFormDialog create, hardening', () => {
     expect(readDraft()?.values.locations).toEqual([{ country: 'IL', city: 'Tel Aviv' }])
   })
 
+  it('keeps a changed, never-added country but not the consumed one', async () => {
+    mockApi()
+    setup()
+    await userEvent.type(screen.getByLabelText('Profile name'), 'Frontend')
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }))
+    await userEvent.selectOptions(screen.getByLabelText('Country'), 'IL')
+    await userEvent.type(screen.getByLabelText('City'), 'Tel Aviv')
+    await userEvent.click(screen.getByRole('button', { name: 'Add location' }))
+    await userEvent.selectOptions(screen.getByLabelText('Country'), 'FR')
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(readDraft()?.values.locations).toEqual([{ country: 'IL', city: 'Tel Aviv' }, { country: 'FR' }])
+  })
+
   it('PATCHes exactly one location after adding a city and saving', async () => {
     const calls = mockApi()
     const { onSaved } = setup({ mode: 'edit', existingProfile: { ...existing, locations: [] } })

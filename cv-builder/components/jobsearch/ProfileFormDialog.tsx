@@ -151,7 +151,12 @@ function ProfileFormDialogInner(props: ProfileFormDialogProps) {
   // is committed when the user leaves the Where step. If it cannot be added
   // (duplicate, cap, nothing usable) it is dropped without comment.
   function flushPending(): ProfileFormValues {
-    if (step !== WHERE_STEP || (!pending.country && !pending.city.trim())) return values
+    const hasCity = pending.city.trim() !== ''
+    const hasFreshCountry = pending.country !== '' && !pending.countryConsumed
+    if (step !== WHERE_STEP || (!hasCity && !hasFreshCountry)) {
+      if (step === WHERE_STEP) setPending(EMPTY_PENDING)
+      return values
+    }
     const result = addLocation(values.locations, pending)
     setPending(EMPTY_PENDING)
     if (!result.ok) return values

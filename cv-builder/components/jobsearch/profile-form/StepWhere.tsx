@@ -13,9 +13,11 @@ import type { StepProps } from './StepRole'
 export interface PendingLocation {
   country: string
   city: string
+  /** The selected country was already added together with a city; do not add it again on its own. */
+  countryConsumed: boolean
 }
 
-export const EMPTY_PENDING: PendingLocation = { country: '', city: '' }
+export const EMPTY_PENDING: PendingLocation = { country: '', city: '', countryConsumed: false }
 
 interface StepWhereProps extends StepProps {
   /**
@@ -50,8 +52,9 @@ export function StepWhere({ values, onChange, pending: controlled, onPendingChan
     }
     setError(null)
     onChange({ locations: result.locations })
-    // Reset fully: a leftover country would be auto-added as a second, country-wide entry on Next/Save.
-    setPending(EMPTY_PENDING)
+    // Keep the country for the next city, but remember it is spent so Next/Save
+    // does not add it again as a country-wide entry.
+    setPending({ ...pending, city: '', countryConsumed: true })
   }
 
   return (
@@ -79,7 +82,7 @@ export function StepWhere({ values, onChange, pending: controlled, onPendingChan
             <label htmlFor="location-country" className="text-xs text-fg-subtle">
               Country
             </label>
-            <select id="location-country" className={fieldClass} value={country} onChange={(e) => setPending({ ...pending, country: e.target.value })}>
+            <select id="location-country" className={fieldClass} value={country} onChange={(e) => setPending({ ...pending, country: e.target.value, countryConsumed: false })}>
               <option value="">Any country</option>
               {COUNTRIES.map((c) => (
                 <option key={c.code} value={c.code}>
