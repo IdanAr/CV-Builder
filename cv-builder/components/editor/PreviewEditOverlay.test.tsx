@@ -276,7 +276,7 @@ describe('PreviewEditOverlay add-section', () => {
 
   // EditTab.tsx's own "+ Add Section" button (the accordion's top-of-list
   // control) carries a deliberate dashed/bold emphasis treatment — border-2
-  // dashed ring-coloured border and font-medium —
+  // dashed input-coloured border and font-medium —
   // to make the entry point discoverable. This overlay control is the same
   // feature's second entry point and should read as visually the same
   // affordance, even though its placement (absolutely positioned after the

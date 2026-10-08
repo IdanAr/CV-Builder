@@ -120,7 +120,7 @@ export function CoverLetterPanel() {
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
             placeholder="Company name (optional)"
-            className={cn(inputClass, 'w-auto flex-1')}
+            className={cn(inputClass, 'w-auto min-w-0 flex-1')}
           />
           <label htmlFor={`${id}-role`} className="sr-only">Role title</label>
           <input
@@ -129,7 +129,7 @@ export function CoverLetterPanel() {
             value={roleName}
             onChange={(e) => setRoleName(e.target.value)}
             placeholder="Role title (optional)"
-            className={cn(inputClass, 'w-auto flex-1')}
+            className={cn(inputClass, 'w-auto min-w-0 flex-1')}
           />
         </div>
 

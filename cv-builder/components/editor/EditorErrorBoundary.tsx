@@ -26,7 +26,7 @@ export class EditorErrorBoundary extends React.Component<Props, State> {
         <div className="flex h-full items-center justify-center p-8">
           <Card padding="lg" className="flex flex-col items-center gap-4 text-center">
             <h2 className="text-xl font-medium text-fg-heading">Reload the editor?</h2>
-            <p className="text-base text-fg-muted">Any unsaved changes will be lost.</p>
+            <p className="text-sm text-fg-muted">Any unsaved changes will be lost.</p>
             <div className="flex gap-3">
               <Button variant="danger" size="md" onClick={() => window.location.reload()}>
                 Reload

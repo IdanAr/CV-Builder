@@ -32,12 +32,12 @@ export function StepsBar({ current, maxUnlocked, onStepClick }: StepsBarProps) {
         const isDone = !isCurrent && !isLocked
 
         const buttonClass = cn(
-          'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition-colors min-h-10',
+          'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition-colors max-sm:min-h-10',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           isCurrent
             ? 'bg-primary text-primary-fg'
             : isDone
-            ? 'bg-surface-success text-fg-success hover:bg-surface-subtle'
+            ? 'bg-surface-success text-fg-success hover:bg-surface-selected'
             : 'bg-surface-muted text-fg-muted cursor-not-allowed'
         )
 

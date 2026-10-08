@@ -29,7 +29,7 @@ export function highlightApprovals(text: string, approvals: string[]): ReactNode
         <mark
           key={`${i}-${phrase}`}
           role="note"
-          aria-label={`Unverified: not in your original notes, please check before using — ${node.slice(idx, idx + phrase.length)}`}
+          aria-label={`Unverified: not in your original notes, please check before using: ${node.slice(idx, idx + phrase.length)}`}
           title="Not in your original notes - please verify before accepting"
           className="rounded-chip bg-surface-attention px-0.5 text-fg-attention underline decoration-dotted underline-offset-2"
         >
