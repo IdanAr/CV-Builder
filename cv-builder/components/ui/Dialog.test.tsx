@@ -89,6 +89,34 @@ describe('Dialog', () => {
     opener.remove()
   })
 
+  it('falls back to fallbackReturnFocusTo when returnFocusTo has left the DOM', async () => {
+    const gone = document.createElement('button')
+    const fallback = document.createElement('button')
+    document.body.appendChild(fallback)
+    const ui = (open: boolean) => (
+      <Dialog open={open} onOpenChange={() => {}} title="T" returnFocusTo={gone} fallbackReturnFocusTo={fallback}>
+        <input aria-label="Name" />
+      </Dialog>
+    )
+    const { rerender } = render(ui(true))
+    rerender(ui(false))
+    await waitFor(() => expect(document.activeElement).toBe(fallback))
+    fallback.remove()
+  })
+
+  it('does not throw when neither return target is connected', async () => {
+    const a = document.createElement('button')
+    const b = document.createElement('button')
+    const ui = (open: boolean) => (
+      <Dialog open={open} onOpenChange={() => {}} title="T" returnFocusTo={a} fallbackReturnFocusTo={b}>
+        <input aria-label="Name" />
+      </Dialog>
+    )
+    const { rerender } = render(ui(true))
+    rerender(ui(false))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
   it('gives the sheet and card the sizing classes the mobile layout depends on', () => {
     setup()
     const dialog = screen.getByRole('dialog')

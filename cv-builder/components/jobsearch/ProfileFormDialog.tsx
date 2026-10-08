@@ -76,7 +76,6 @@ function ProfileFormDialogInner(props: ProfileFormDialogProps) {
   const [capturedOpener] = useState<HTMLElement | null>(() =>
     typeof document !== 'undefined' && document.activeElement instanceof HTMLElement ? document.activeElement : null
   )
-  const opener = props.returnFocusTo ?? capturedOpener
   const savedRef = useRef(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const prevStep = useRef(step)
@@ -271,7 +270,7 @@ function ProfileFormDialogInner(props: ProfileFormDialogProps) {
   const footer = confirmingClose ? (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="text-sm font-medium text-fg-heading">Discard your changes?</p>
-      <div className="flex flex-wrap gap-2">
+      <div className="ml-auto flex flex-wrap gap-2">
         <Button ref={keepEditingRef} type="button" variant="secondary" size="md" onClick={() => setConfirmingClose(false)}>
           Keep editing
         </Button>
@@ -285,7 +284,7 @@ function ProfileFormDialogInner(props: ProfileFormDialogProps) {
       <Button type="button" variant="ghost" size="md" disabled={submitting} onClick={requestClose}>
         Cancel
       </Button>
-      <div className="flex flex-wrap gap-2">
+      <div className="ml-auto flex flex-wrap gap-2">
         {step > 0 && (
           <Button type="button" variant="secondary" size="md" onClick={() => goTo(step - 1)}>
             Back
@@ -314,7 +313,8 @@ function ProfileFormDialogInner(props: ProfileFormDialogProps) {
       title={title}
       description={DESCRIPTIONS[step]}
       footer={footer}
-      returnFocusTo={opener}
+      returnFocusTo={props.returnFocusTo}
+      fallbackReturnFocusTo={capturedOpener}
       onOpenAutoFocus={(event) => {
         // Land on the first field rather than the Close button.
         event.preventDefault()

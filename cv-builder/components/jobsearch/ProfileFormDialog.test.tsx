@@ -411,3 +411,31 @@ describe('ProfileFormDialog returnFocusTo', () => {
     trigger.remove()
   })
 })
+
+describe('ProfileFormDialog footer', () => {
+  it('right-aligns the action group when the footer wraps', () => {
+    mockApi()
+    setup({ mode: 'edit', existingProfile: existing })
+    const group = screen.getByRole('button', { name: 'Save changes' }).parentElement!
+    expect(group).toHaveClass('ml-auto', 'flex-wrap')
+  })
+})
+
+describe('ProfileFormDialog focus fallback', () => {
+  it('falls back to the focused-at-mount element when returnFocusTo is disconnected', async () => {
+    mockApi()
+    const opener = document.createElement('button')
+    document.body.appendChild(opener)
+    opener.focus()
+    const gone = document.createElement('button')
+    function Host() {
+      const [open, setOpen] = useState(true)
+      return <ProfileFormDialog open={open} mode="create" returnFocusTo={gone} onOpenChange={setOpen} onSaved={() => {}} />
+    }
+    render(<Host />)
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(opener).toHaveFocus())
+    opener.remove()
+  })
+})
