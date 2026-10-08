@@ -40,7 +40,7 @@ const VARIANT: Record<ButtonVariant, string> = {
   secondary:
     'border border-border bg-surface text-fg-body hover:bg-surface-subtle hover:border-input',
   /** A filled but quiet action — toolbars, chips, segmented controls. */
-  soft: 'bg-secondary text-secondary-fg hover:bg-primary/20',
+  soft: 'bg-secondary text-secondary-fg hover:bg-surface-selected',
   /** No chrome until you touch it. Icon buttons and tertiary actions. */
   ghost: 'text-fg-muted hover:bg-surface-subtle hover:text-fg-body',
   /** Destructive and unmistakable. */

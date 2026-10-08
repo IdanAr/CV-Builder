@@ -29,7 +29,7 @@ function FiveStars() {
   return (
     <div className="mt-4 flex items-center gap-0.5" role="img" aria-label="5 out of 5 stars">
       {Array.from({ length: 5 }).map((_, i) => (
-        <Star key={i} className="h-4 w-4 fill-warning-400 text-warning-400" aria-hidden="true" />
+        <Star key={i} className="h-4 w-4 fill-fg-warning text-fg-warning" aria-hidden="true" />
       ))}
     </div>
   )

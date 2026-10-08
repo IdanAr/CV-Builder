@@ -69,7 +69,7 @@ export function DeleteAccountSection({ email }: { email: string }) {
   }
 
   return (
-    <Card padding="lg" className="space-y-3 border-danger-200">
+    <Card padding="lg" className="space-y-3 border-border-danger">
       <div>
         <h2 className="text-base font-medium text-fg-danger">Delete your account</h2>
         <p className="mt-1 text-sm text-fg-muted">

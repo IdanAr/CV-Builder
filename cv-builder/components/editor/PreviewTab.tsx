@@ -261,7 +261,7 @@ export function PreviewTab({
           {/* Outer wrapper sized to post-scale visual dimensions so the scroll container tracks content correctly */}
           <div
             ref={wrapperRef}
-            className="ring-1 ring-black/5 bg-surface"
+            className="ring-1 ring-border bg-surface"
             style={{
               position: 'relative',
               width: A4_WIDTH_PX * scale,

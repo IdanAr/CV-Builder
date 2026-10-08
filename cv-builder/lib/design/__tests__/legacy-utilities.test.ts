@@ -23,7 +23,7 @@ const RULES: Record<string, RegExp> = {
   'heavy weight': /\bfont-(semibold|bold|extrabold|black)\b/g,
   gradient: /\bbg-gradient-to-\w+|\b(?:from|via|to)-(?!transparent\b)[a-z]+-\d+/g,
   'raw palette':
-    /\b(?:bg|text|border|ring|fill|stroke)-(?:neutral|gray|slate|zinc|stone|red|orange|amber|yellow|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d+/g,
+    /\b(?:bg|text|border|ring|fill|stroke)-(?:(?:neutral|gray|slate|zinc|stone|red|orange|amber|yellow|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|danger|success|warning)-\d+|(?:black|white)\/\d+)/g,
   'inline accent var': /rgb\(var\(--color-accent-\d+\)/g,
   'focus: ring/border': /\bfocus:(border|ring)/g,
 }
@@ -53,6 +53,8 @@ const fmt = (b: Record<string, number>) =>
 
 // Keys are repo-relative with forward slashes. Copy counts from the test output; never hand-edit.
 const BASELINE: Record<string, number> = {
+  // kept: the danger variant has no semantic action-fill token (only fg-danger, surface-danger and border-danger exist), so it uses the danger palette steps directly.
+  'components/ui/Button.tsx': 2,
   // kept: the single allowed active-segment shadow-sm, the one raised surface a segmented control is meant to have.
   'components/editor/design/SegmentedControl.tsx': 1,
 }
@@ -62,7 +64,7 @@ export function undocumentedEntries(src: string): string[] {
   const lines = src.split('\n')
   const out: string[] = []
   lines.forEach((line, i) => {
-    const m = line.match(/^\s*'([^']+)':\s*(\d+),\s*$/)
+    const m = line.match(/^\s*['"]([^'"]+)['"]\s*:\s*(\d+)\s*,?\s*(\/\/.*)?$/)
     if (!m || Number(m[2]) === 0) return
     let j = i - 1
     while (j >= 0 && lines[j].trim() === '') j--
@@ -106,6 +108,8 @@ describe('legacy utility ratchet', () => {
     const src = readFileSync(__filename, 'utf8')
     const start = src.indexOf('const BASELINE')
     const end = src.indexOf('\n}\n', start)
+    expect(start).toBeGreaterThan(-1)
+    expect(end).toBeGreaterThan(start)
     expect(undocumentedEntries(src.slice(start, end))).toEqual([])
   })
   it('undocumentedEntries flags an entry without a kept: comment', () => {
@@ -113,5 +117,11 @@ describe('legacy utility ratchet', () => {
     const bare = ["{", "  'a/b.tsx': 1,", "  'c/d.tsx': 2,", "}"].join('\n')
     expect(undocumentedEntries(documented)).toEqual([])
     expect(undocumentedEntries(bare)).toEqual(['a/b.tsx', 'c/d.tsx'])
+  })
+  it('undocumentedEntries also catches a last entry without a comma, double-quoted keys and trailing comments', () => {
+    expect(undocumentedEntries(['{', "  'a/b.tsx': 1", '}'].join('\n'))).toEqual(['a/b.tsx'])
+    expect(undocumentedEntries(['{', '  "a/b.tsx": 1,', '}'].join('\n'))).toEqual(['a/b.tsx'])
+    expect(undocumentedEntries(['{', "  'a/b.tsx': 1, // why", '}'].join('\n'))).toEqual(['a/b.tsx'])
+    expect(undocumentedEntries(['{', '  // kept: ok', '  "a/b.tsx": 1 // note', '}'].join('\n'))).toEqual([])
   })
 })
