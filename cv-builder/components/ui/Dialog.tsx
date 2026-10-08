@@ -29,11 +29,13 @@ export interface DialogProps {
   footer?: ReactNode
   children: ReactNode
   returnFocusTo?: HTMLElement | null
+  /** Tried at close time when `returnFocusTo` is missing or has left the DOM. */
+  fallbackReturnFocusTo?: HTMLElement | null
   /** Override where focus lands on open (default: Radix focuses the first focusable). */
   onOpenAutoFocus?: (event: Event) => void
 }
 
-export function Dialog({ open, onOpenChange, title, description, footer, children, returnFocusTo, onOpenAutoFocus }: DialogProps) {
+export function Dialog({ open, onOpenChange, title, description, footer, children, returnFocusTo, fallbackReturnFocusTo, onOpenAutoFocus }: DialogProps) {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
@@ -42,9 +44,10 @@ export function Dialog({ open, onOpenChange, title, description, footer, childre
           {...(description ? {} : { 'aria-describedby': undefined })}
           onOpenAutoFocus={onOpenAutoFocus}
           onCloseAutoFocus={(event) => {
-            if (returnFocusTo && returnFocusTo.isConnected) {
+            const target = [returnFocusTo, fallbackReturnFocusTo].find((el) => el?.isConnected)
+            if (target) {
               event.preventDefault()
-              returnFocusTo.focus()
+              target.focus()
             }
           }}
           className={cn(

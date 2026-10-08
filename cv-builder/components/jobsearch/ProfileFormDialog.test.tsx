@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { useState } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ProfileFormDialog } from './ProfileFormDialog'
@@ -390,5 +391,51 @@ describe('ProfileFormDialog edit', () => {
     await userEvent.keyboard('{Escape}')
     await userEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+})
+
+describe('ProfileFormDialog returnFocusTo', () => {
+  it('focuses the given element when the dialog closes', async () => {
+    mockApi()
+    const trigger = document.createElement('button')
+    trigger.textContent = 'Opener'
+    document.body.appendChild(trigger)
+    function Host() {
+      const [open, setOpen] = useState(true)
+      return <ProfileFormDialog open={open} mode="create" returnFocusTo={trigger} onOpenChange={setOpen} onSaved={() => {}} />
+    }
+    render(<Host />)
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(trigger).toHaveFocus())
+    trigger.remove()
+  })
+})
+
+describe('ProfileFormDialog footer', () => {
+  it('right-aligns the action group when the footer wraps', () => {
+    mockApi()
+    setup({ mode: 'edit', existingProfile: existing })
+    const group = screen.getByRole('button', { name: 'Save changes' }).parentElement!
+    expect(group).toHaveClass('ml-auto', 'flex-wrap')
+  })
+})
+
+describe('ProfileFormDialog focus fallback', () => {
+  it('falls back to the focused-at-mount element when returnFocusTo is disconnected', async () => {
+    mockApi()
+    const opener = document.createElement('button')
+    document.body.appendChild(opener)
+    opener.focus()
+    const gone = document.createElement('button')
+    function Host() {
+      const [open, setOpen] = useState(true)
+      return <ProfileFormDialog open={open} mode="create" returnFocusTo={gone} onOpenChange={setOpen} onSaved={() => {}} />
+    }
+    render(<Host />)
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(opener).toHaveFocus())
+    opener.remove()
   })
 })

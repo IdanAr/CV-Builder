@@ -103,13 +103,13 @@ cv-builder/
 │   ├── ai/              # AiSuggestButton
 │   ├── coverletter/      # CoverLetterPanel
 │   ├── applications/      # ApplicationsView, Board, Table, Filters, ActivityLog, ColumnForm
-│   ├── jobsearch/           # ProfileList, ProfileWizard, ProfileSettings, RuleBuilder (Sources and rules)
+│   ├── jobsearch/           # ProfileList, ProfileFormDialog (+ profile-form/ steps), ProfileSettings, RuleBuilder (Sources and rules)
 │   ├── pipeline/            # PipelineInbox, StageTabs, PipelineList, JobDetail, hooks (usePipelineJobs, usePipelineActions)
 │   ├── shell/       # AppShell, SidebarNav, SidebarUserMenu: the authenticated app shell (collapsible sidebar, drawer below 768px)
 │   ├── overview/     # Overview page: NeedsYou, PipelineStrip, RecentCvs, FirstRun
 │   ├── cvs/           # CV library: CvLibrary, CvTable, CvCards, CvThumbnail
 │   ├── account/        # ExportDataSection, DeleteAccountSection (settings page)
-│   └── ui/              # Button, Card, Badge, Popover, Menu, Toaster, Skeleton, ...; AppNavbar and Plasma serve marketing/legal pages only
+│   └── ui/              # Button, Card, Badge, Popover, Menu, Dialog, Toaster, Skeleton, ...; AppNavbar and Plasma serve marketing/legal pages only
 ├── lib/
 │   ├── ai/             # pipeline.ts, ats-fix-pipeline.ts, cover-letter-pipeline.ts, jd-extraction-pipeline.ts, keyword-analysis-pipeline.ts, hallucination-guard.ts, models.ts
 │   ├── ats/             # scorer.ts, keywords.ts

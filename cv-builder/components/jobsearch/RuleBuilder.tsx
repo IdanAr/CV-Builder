@@ -43,7 +43,7 @@ interface RuleBuilderProps {
 // Draft state for the single-condition builder below. `companyText` is a
 // comma-separated free-text field bound to its own raw string, not derived
 // from a parsed-then-rejoined array — the same anti-pattern that stripped
-// spaces/commas mid-typing in ProfileWizard's tag fields applies here too.
+// spaces/commas mid-typing in the profile form's tag fields applies here too.
 interface ConditionDraft {
   field: RuleField
   atsOp: 'gte' | 'lte'

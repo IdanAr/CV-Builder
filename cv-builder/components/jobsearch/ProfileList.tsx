@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { MoreVertical, Search, Trash2 } from 'lucide-react'
-import { ProfileWizard } from './ProfileWizard'
+import { ProfileFormDialog } from './ProfileFormDialog'
+import { locationLabel } from './profile-form/model'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -39,10 +40,6 @@ async function loadProfilesData() {
   return { ok: res.ok, profiles: body.profiles }
 }
 
-function formatLocation(location: JobLocation): string {
-  return [location.city, location.region, location.country].filter(Boolean).join(', ')
-}
-
 /**
  * The one-line answer to "what does this profile actually watch?", assembled
  * from fields the record already carries. Ordered most- to least-identifying,
@@ -61,7 +58,7 @@ function watchChips(profile: ProfileSummary): Array<{ key: string; label: string
     chips.push({ key: 'modes', label: profile.workModes.join(' · '), tone: 'neutral' })
   }
   for (const location of profile.locations ?? []) {
-    const label = formatLocation(location)
+    const label = locationLabel(location)
     if (label) chips.push({ key: `loc-${label}`, label, tone: 'neutral' })
   }
   if (profile.comeetCompanies?.length) {
@@ -111,7 +108,10 @@ interface ProfileListProps {
 export function ProfileList({ initialProfiles }: ProfileListProps = {}) {
   const [profiles, setProfiles] = useState<ProfileSummary[] | null>(initialProfiles ?? null)
   const [error, setError] = useState<string | null>(null)
-  const [showWizard, setShowWizard] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  // The button that opened the dialog, so focus returns to it on close even
+  // where a tapped button never takes focus (iOS Safari).
+  const [opener, setOpener] = useState<HTMLElement | null>(null)
   const [scanningId, setScanningId] = useState<string | null>(null)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   // id -> pending DELETE timer. A profile in here is hidden from the list but
@@ -231,7 +231,7 @@ export function ProfileList({ initialProfiles }: ProfileListProps = {}) {
   // Only fully replace the view with an error screen when the very first load
   // failed and there's nothing to show yet. Once profiles have loaded
   // successfully, a later failed reload/toggle shows an inline banner above
-  // the still-intact list instead — mirrors ProfileWizard's error convention.
+  // the still-intact list instead — mirrors the profile form's error convention.
   if (error && profiles === null) {
     return (
       <div className="flex flex-col items-center gap-3 py-8">
@@ -247,19 +247,22 @@ export function ProfileList({ initialProfiles }: ProfileListProps = {}) {
 
   const errorBanner = error ? <ErrorBanner>{error}</ErrorBanner> : null
 
-  if (showWizard) {
-    return (
-      <div className="flex flex-col gap-4">
-        {errorBanner}
-        <ProfileWizard
-          onCreated={() => {
-            setShowWizard(false)
-            load()
-          }}
-          onCancel={() => setShowWizard(false)}
-        />
-      </div>
-    )
+  const dialog = (
+    <ProfileFormDialog
+      open={dialogOpen}
+      mode="create"
+      returnFocusTo={opener}
+      onOpenChange={setDialogOpen}
+      onSaved={() => {
+        setDialogOpen(false)
+        void load()
+      }}
+    />
+  )
+
+  function openDialog(event: React.MouseEvent<HTMLElement>) {
+    setOpener(event.currentTarget)
+    setDialogOpen(true)
   }
 
   if (profiles.length === 0) {
@@ -276,10 +279,11 @@ export function ProfileList({ initialProfiles }: ProfileListProps = {}) {
             A profile describes the roles you want. It polls the job boards you pick on a
             schedule, and your rules decide which results reach you.
           </p>
-          <Button size="md" className="mt-2" onClick={() => setShowWizard(true)}>
+          <Button size="md" className="mt-2" onClick={openDialog}>
             Create a profile
           </Button>
         </Card>
+        {dialog}
       </div>
     )
   }
@@ -288,7 +292,7 @@ export function ProfileList({ initialProfiles }: ProfileListProps = {}) {
     <div className="flex flex-col gap-4">
       {errorBanner}
       <div className="flex justify-end">
-        <Button size="md" onClick={() => setShowWizard(true)}>
+        <Button size="md" onClick={openDialog}>
           Create profile
         </Button>
       </div>
@@ -421,6 +425,7 @@ export function ProfileList({ initialProfiles }: ProfileListProps = {}) {
           )
         })}
       </ul>
+      {dialog}
     </div>
   )
 }

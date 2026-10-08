@@ -7,13 +7,17 @@ const ROOT = join(__dirname, '..', '..')
 /**
  * Panels that render inside a narrow surface — the editor's tab pane, which is
  * a single full-width column below the `md` breakpoint, and the job-search
- * wizard. Each was measured at 375px in a real browser; a fixed multi-column
+ * profile form. Each was measured at 375px in a real browser; a fixed multi-column
  * grid in any of them divides an already-narrow column again.
  */
 const NARROW_SURFACE_PANELS = [
   'components/ats/AtsScorePanel.tsx',
-  'components/jobsearch/ProfileWizard.tsx',
-  'components/jobsearch/ProfileWizardSteps.tsx',
+  'components/jobsearch/ProfileFormDialog.tsx',
+  'components/jobsearch/profile-form/StepRail.tsx',
+  'components/jobsearch/profile-form/StepRole.tsx',
+  'components/jobsearch/profile-form/StepWhere.tsx',
+  'components/jobsearch/profile-form/StepSources.tsx',
+  'components/jobsearch/profile-form/StepReview.tsx',
   'components/editor/forms/CustomSectionForm.tsx',
   'components/editor/DesignPanel.tsx',
 ]

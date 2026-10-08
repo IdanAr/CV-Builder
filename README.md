@@ -269,11 +269,11 @@ cv-builder/
 │   ├── ai/                                  # AiSuggestButton
 │   ├── coverletter/                         # CoverLetterPanel
 │   ├── applications/                        # ApplicationsView, Board, Table, Filters, ActivityLog, ColumnForm
-│   ├── jobsearch/                           # ProfileList, ProfileWizard, ProfileSettings, RuleBuilder
+│   ├── jobsearch/                           # ProfileList, ProfileFormDialog (+ profile-form/ steps), ProfileSettings, RuleBuilder
 │   ├── pipeline/                            # PipelineInbox, StageTabs, PipelineList, PipelineRow, JobDetail, keyboard shortcuts
 │   ├── account/                             # ExportDataSection, DeleteAccountSection
 │   ├── marketing/                           # Landing and legal page sections
-│   └── ui/                                  # Button, Card, Badge, Popover, Menu, Toaster, Skeleton, ... (AppNavbar, Plasma: marketing and legal pages only)
+│   └── ui/                                  # Button, Card, Badge, Popover, Menu, Dialog, Toaster, Skeleton, ... (AppNavbar, Plasma: marketing and legal pages only)
 ├── lib/
 │   ├── ai/                                  # pipeline.ts, ats-fix-pipeline.ts, cover-letter-pipeline.ts, hallucination-guard.ts, models.ts
 │   ├── api/                                 # Shared route handler logic: resumes.ts, applications.ts, board-config.ts, jobsearch-profiles.ts, jobsearch-rules.ts, scraped-jobs.ts, route-errors.ts
@@ -377,7 +377,7 @@ A dedicated `/dashboard/applications` view for managing every job application, i
 A dedicated `/dashboard/jobsearch` area that finds and pre-qualifies new openings instead of requiring the user to search manually. Profiles and rules are configured under Sources, and everything found lands in the pipeline inbox.
 
 ### Profiles
-Each **search profile** (`JobSearchProfile`) captures what "a good match" means for one line of search: target roles, work modes, locations (country/region/city), seniority levels, categories, industries, how recent a posting must be, a minimum ATS-score threshold, and an optional linked resume to score and tailor against. Profiles are created and edited through a multi-step wizard and can be toggled active/inactive without deleting them.
+Each **search profile** (`JobSearchProfile`) captures what "a good match" means for one line of search: target roles, work modes, locations (country/region/city), seniority levels, categories, industries, how recent a posting must be, a minimum ATS-score threshold, and an optional linked resume to score and tailor against. Profiles are created and edited in a four-step popup (Role, Where, Sources, Review) that opens over the profile list or settings bar. Locations are tags (up to 5), and each one is queried separately, so a profile can watch several cities at once; a city name shared by several countries can match both, which is a known limit. When creating, a checkbox adds a notify rule at the chosen minimum score. Profiles can be toggled active/inactive without deleting them.
 
 ### Rules
 **Rules** (`JobSearchRule`) sit on top of a profile's baseline filters and resolve every matching posting to one of three actions:
@@ -432,7 +432,7 @@ Keyboard shortcuts in the list: `J` / `K` move the selection, `Enter` opens the 
 Deleting a posting soft-deletes it as a tombstone so the next scan does not resurrect it; **Find again** removes the tombstone and lets a later scan pick the posting up fresh. The sidebar shows a **waiting** count (unread Matched postings plus everything in Drafted and Ready), which refreshes after every action.
 
 ### Sources and rules
-`/dashboard/jobsearch/sources` holds everything that feeds the pipeline: search **profiles** (created through the wizard, toggled active), **rules** (shared or per profile), and per-profile **settings** such as the minimum score and linked resume. The old per-profile and notifications URLs redirect into the pipeline or here.
+`/dashboard/jobsearch/sources` holds everything that feeds the pipeline: search **profiles** (created in the profile popup, toggled active), **rules** (shared or per profile), and per-profile **settings** such as the minimum score and linked resume. The old per-profile and notifications URLs redirect into the pipeline or here.
 
 ---
 

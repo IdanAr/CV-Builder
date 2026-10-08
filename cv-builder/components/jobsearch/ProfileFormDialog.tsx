@@ -30,6 +30,12 @@ interface ProfileFormDialogBaseProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSaved: (profile: { _id: string; name: string }) => void
+  /**
+   * Where focus goes when the dialog closes. Pass the button that opened it:
+   * on iOS Safari a tapped button is never focused, so the element active at
+   * mount cannot be relied on.
+   */
+  returnFocusTo?: HTMLElement | null
 }
 
 export type ProfileFormDialogProps = ProfileFormDialogBaseProps &
@@ -67,7 +73,7 @@ function ProfileFormDialogInner(props: ProfileFormDialogProps) {
   const [pending, setPending] = useState<PendingLocation>(EMPTY_PENDING)
   const [nameFocusTick, setNameFocusTick] = useState(0)
   const [resumeOptions, setResumeOptions] = useState<ResumeOption[]>([])
-  const [opener] = useState<HTMLElement | null>(() =>
+  const [capturedOpener] = useState<HTMLElement | null>(() =>
     typeof document !== 'undefined' && document.activeElement instanceof HTMLElement ? document.activeElement : null
   )
   const savedRef = useRef(false)
@@ -264,7 +270,7 @@ function ProfileFormDialogInner(props: ProfileFormDialogProps) {
   const footer = confirmingClose ? (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="text-sm font-medium text-fg-heading">Discard your changes?</p>
-      <div className="flex flex-wrap gap-2">
+      <div className="ml-auto flex flex-wrap gap-2">
         <Button ref={keepEditingRef} type="button" variant="secondary" size="md" onClick={() => setConfirmingClose(false)}>
           Keep editing
         </Button>
@@ -278,7 +284,7 @@ function ProfileFormDialogInner(props: ProfileFormDialogProps) {
       <Button type="button" variant="ghost" size="md" disabled={submitting} onClick={requestClose}>
         Cancel
       </Button>
-      <div className="flex flex-wrap gap-2">
+      <div className="ml-auto flex flex-wrap gap-2">
         {step > 0 && (
           <Button type="button" variant="secondary" size="md" onClick={() => goTo(step - 1)}>
             Back
@@ -307,7 +313,8 @@ function ProfileFormDialogInner(props: ProfileFormDialogProps) {
       title={title}
       description={DESCRIPTIONS[step]}
       footer={footer}
-      returnFocusTo={opener}
+      returnFocusTo={props.returnFocusTo}
+      fallbackReturnFocusTo={capturedOpener}
       onOpenAutoFocus={(event) => {
         // Land on the first field rather than the Close button.
         event.preventDefault()

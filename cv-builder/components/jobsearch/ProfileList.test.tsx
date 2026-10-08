@@ -5,7 +5,29 @@ import userEvent from '@testing-library/user-event'
 import { ProfileList } from './ProfileList'
 import { useToastStore } from '@/lib/stores/toast.store'
 
+type Call = { url: string; method: string }
+/** Routes fetch by URL so the dialog's own requests (resumes, POST) do not need ordered mocks. */
+function mockApi(profiles: unknown[]): Call[] {
+  const calls: Call[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET'
+      calls.push({ url, method })
+      if (url === '/api/resumes') return { ok: true, json: async () => ({ resumes: [] }) } as Response
+      if (url === '/api/jobsearch/profiles' && method === 'POST') {
+        return { ok: true, json: async () => ({ profile: { _id: 'p2', name: 'Backend' } }) } as Response
+      }
+      if (url === '/api/jobsearch/rules') return { ok: true, json: async () => ({}) } as Response
+      if (url === '/api/jobsearch/profiles') return { ok: true, json: async () => ({ profiles }) } as Response
+      throw new Error(`unexpected fetch ${url}`)
+    })
+  )
+  return calls
+}
+
 beforeEach(() => {
+  window.localStorage.clear()
   vi.stubGlobal('fetch', vi.fn())
   useToastStore.setState({ toasts: [] })
 })
@@ -34,6 +56,64 @@ describe('ProfileList', () => {
     render(<ProfileList />)
 
     expect(await screen.findByRole('button', { name: /create.*profile/i })).toBeInTheDocument()
+  })
+
+  it('opens the new-profile dialog from the header and from the empty state', async () => {
+    mockApi([{ _id: 'p1', name: 'Frontend', isActive: true }])
+    const { unmount } = render(<ProfileList />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Create profile' }))
+    expect(await screen.findByRole('dialog', { name: 'New profile' })).toBeInTheDocument()
+    expect(screen.getByText('Frontend')).toBeInTheDocument()
+    unmount()
+
+    mockApi([])
+    render(<ProfileList />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Create a profile' }))
+    expect(await screen.findByRole('dialog', { name: 'New profile' })).toBeInTheDocument()
+  })
+
+  it('closes on Cancel, keeps the list, and returns focus to the opener', async () => {
+    mockApi([{ _id: 'p1', name: 'Frontend', isActive: true }])
+    render(<ProfileList />)
+    const opener = await screen.findByRole('button', { name: 'Create profile' })
+    await userEvent.click(opener)
+    await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByText('Frontend')).toBeInTheDocument()
+    await waitFor(() => expect(opener).toHaveFocus())
+  })
+
+  it('closes and reloads the list after a successful create', async () => {
+    const calls = mockApi([{ _id: 'p1', name: 'Frontend', isActive: true }])
+    render(<ProfileList />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Create profile' }))
+    await userEvent.type(await screen.findByLabelText('Profile name'), 'Backend')
+    await userEvent.type(screen.getByLabelText('Target roles'), 'Node developer{Enter}')
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }))
+    const listGets = () => calls.filter((c) => c.url === '/api/jobsearch/profiles' && c.method === 'GET').length
+    expect(listGets()).toBe(1)
+    await userEvent.click(screen.getByRole('button', { name: 'Create profile' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(listGets()).toBe(2))
+  })
+
+  it('shows a chip for every location', async () => {
+    mockApi([
+      {
+        _id: 'p1',
+        name: 'Frontend',
+        isActive: true,
+        locations: [
+          { country: 'IL', city: 'Tel Aviv' },
+          { country: 'IL', city: 'Herzliya' },
+        ],
+      },
+    ])
+    render(<ProfileList />)
+    expect(await screen.findByText('Tel Aviv, Israel')).toBeInTheDocument()
+    expect(screen.getByText('Herzliya, Israel')).toBeInTheDocument()
   })
 
   it('toggles isActive via PATCH when the active switch is flipped', async () => {

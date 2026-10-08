@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Pencil } from 'lucide-react'
-import { ProfileWizard } from './ProfileWizard'
-import { COUNTRIES } from '@/lib/jobsearch/countries'
+import { ProfileFormDialog } from './ProfileFormDialog'
+import { locationLabel } from './profile-form/model'
 import type { WorkMode, Seniority, JobLocation, ComeetCompanyWatch } from '@/lib/schemas/jobsearch.zod'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
 import { Card } from '@/components/ui/Card'
@@ -74,6 +74,9 @@ export function ProfileSettings({ profileId, initialProfile }: ProfileSettingsPr
   const [profile, setProfile] = useState<FullProfile | null>(initialProfile ?? null)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
+  // The button that opened the dialog, so focus returns to it on close even
+  // where a tapped button never takes focus (iOS Safari).
+  const [opener, setOpener] = useState<HTMLElement | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -103,47 +106,50 @@ export function ProfileSettings({ profileId, initialProfile }: ProfileSettingsPr
 
   if (profile === null) return null
 
-  if (editing) {
-    return (
-      <Card padding="lg">
-        <ProfileWizard
-          existingProfile={profile}
-          onUpdated={() => {
-            setEditing(false)
-            load()
-          }}
-        />
-        <Button variant="ghost" className="mt-3" onClick={() => setEditing(false)}>
-          Cancel
-        </Button>
-      </Card>
-    )
-  }
-
-  const countryName = COUNTRIES.find((c) => c.code === profile.locations[0]?.country)?.name
   const companies = profile.comeetCompanies ?? []
-  const location = [countryName, profile.locations[0]?.city].filter(Boolean).join(', ')
+  const location = profile.locations.map(locationLabel).join('; ')
 
   return (
-    <Card padding="none" className="flex flex-wrap items-center gap-4 px-4 py-3">
-      <dl className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
-        <Indicator label="Roles" value={profile.roles.length > 0 ? profile.roles.join(', ') : '-'} />
-        <Indicator label="Work mode" value={profile.workModes.length > 0 ? profile.workModes.join(', ') : 'Any'} />
-        <Indicator label="Location" value={location || '-'} />
-        <Indicator label="Watched companies" value={companies.length > 0 ? companies.map((c) => c.name).join(', ') : '-'} />
-        <Indicator label="Recency" value={`${profile.recencyDays} days`} tone="accent" />
-        <Indicator
-          label="Min fit"
-          value={`${profile.minAtsScore}%`}
-          // The threshold is coloured by fit bands (85+ strong, 70+ fair), so
-          // a demanding floor and a lenient one are told apart at a glance.
-          tone={profile.minAtsScore >= 85 ? 'success' : profile.minAtsScore >= 70 ? 'accent' : 'warning'}
-        />
-      </dl>
-      <Button variant="secondary" size="xs" className="shrink-0" onClick={() => setEditing(true)}>
-        <Pencil aria-hidden="true" className="h-3 w-3" />
-        Edit preferences
-      </Button>
-    </Card>
+    <>
+      <Card padding="none" className="flex flex-wrap items-center gap-4 px-4 py-3">
+        <dl className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
+          <Indicator label="Roles" value={profile.roles.length > 0 ? profile.roles.join(', ') : '-'} />
+          <Indicator label="Work mode" value={profile.workModes.length > 0 ? profile.workModes.join(', ') : 'Any'} />
+          <Indicator label="Location" value={location || '-'} />
+          <Indicator label="Watched companies" value={companies.length > 0 ? companies.map((c) => c.name).join(', ') : '-'} />
+          <Indicator label="Recency" value={`${profile.recencyDays} days`} tone="accent" />
+          <Indicator
+            label="Min fit"
+            value={`${profile.minAtsScore}%`}
+            // The threshold is coloured by fit bands (85+ strong, 70+ fair), so
+            // a demanding floor and a lenient one are told apart at a glance.
+            tone={profile.minAtsScore >= 85 ? 'success' : profile.minAtsScore >= 70 ? 'accent' : 'warning'}
+          />
+        </dl>
+        <Button
+          variant="secondary"
+          size="xs"
+          className="shrink-0"
+          onClick={(event) => {
+            setOpener(event.currentTarget)
+            setEditing(true)
+          }}
+        >
+          <Pencil aria-hidden="true" className="h-3 w-3" />
+          Edit preferences
+        </Button>
+      </Card>
+      <ProfileFormDialog
+        open={editing}
+        mode="edit"
+        existingProfile={profile}
+        returnFocusTo={opener}
+        onOpenChange={setEditing}
+        onSaved={() => {
+          setEditing(false)
+          void load()
+        }}
+      />
+    </>
   )
 }
