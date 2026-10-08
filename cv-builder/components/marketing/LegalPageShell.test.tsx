@@ -31,7 +31,7 @@ describe('LegalPageShell', () => {
         <p>Body</p>
       </LegalPageShell>
     )
-    expect(screen.getByRole('link', { name: /cv builder home/i })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: /cvitae studio home/i })).toHaveAttribute('href', '/')
     expect(screen.getAllByRole('link', { name: /sign in/i }).length).toBeGreaterThan(0)
   })
 })

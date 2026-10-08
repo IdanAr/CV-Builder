@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { BRAND_MARK_SVG, BRAND_MARK_DATA_URI, BRAND_VIOLET } from '../mark'
+import { BRAND_MARK_SVG, BRAND_MARK_DATA_URI, BRAND_BLUE } from '../mark'
 
 /**
  * Pull the drawing instructions out of an SVG, ignoring comments, attribute
@@ -31,7 +31,7 @@ describe('brand mark', () => {
     expect(shapes(iconSvg)).toEqual(shapes(BRAND_MARK_SVG))
   })
 
-  it('draws a plate, a hexagon and a spark — nothing more', () => {
+  it('draws a plate, a "C" and a checkmark — nothing more', () => {
     expect(shapes(BRAND_MARK_SVG)).toHaveLength(3)
   })
 
@@ -39,7 +39,7 @@ describe('brand mark', () => {
   // opaque plate is the whole reason the favicon stays legible there, so its
   // absence is a real regression, not a styling preference.
   it('sits on an opaque plate rather than a transparent ground', () => {
-    expect(BRAND_MARK_SVG).toContain(`<rect width="100" height="100" rx="22" fill="${BRAND_VIOLET}"/>`)
+    expect(BRAND_MARK_SVG).toContain(`<rect width="64" height="64" rx="14" fill="${BRAND_BLUE}"/>`)
   })
 
   // Satori renders `<img src>` data URIs strictly; a percent-encoded SVG

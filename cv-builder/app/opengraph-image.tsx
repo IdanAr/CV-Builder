@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og'
 import { BRAND_MARK_DATA_URI, brandGradient } from '@/lib/brand/mark'
 
 // Next reads these three exports to build the <meta property="og:*"> tags.
-export const alt = 'CV Builder: AI-assisted résumé builder with ATS optimisation'
+export const alt = 'CVitae Studio: AI-assisted résumé builder with ATS optimisation'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -40,7 +40,7 @@ export default function OpengraphImage() {
         <div style={{ display: 'flex', alignItems: 'center' }}>
             <img src={BRAND_MARK_DATA_URI} width={104} height={104} alt="" />
           <div style={{ display: 'flex', marginLeft: 28, fontSize: 44, fontWeight: 600, letterSpacing: -1 }}>
-            CV Builder
+            CVitae Studio
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-# CV Builder - AI-Driven Resume, Cover Letter & Job-Application Platform
+# CVitae Studio - AI-Driven Resume, Cover Letter & Job-Application Platform
 
 > **Build resumes that beat ATS parsers and impress humans - then track every application from a spreadsheet-style board, or let the platform find and pre-tailor new matches for you automatically.**
 
@@ -11,7 +11,7 @@
 ![Vercel](https://img.shields.io/badge/deployed-Vercel-black?logo=vercel)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**Live:** [cv-builder-indol-zeta.vercel.app](https://cv-builder-indol-zeta.vercel.app)
+**Live:** [CVitaeStudio-indol-zeta.vercel.app](https://CVitaeStudio-indol-zeta.vercel.app)
 
 ---
 
@@ -40,7 +40,7 @@
 
 ## Overview
 
-CV Builder is a full-stack, AI-assisted resume platform for job seekers who need their CVs to pass Applicant Tracking System (ATS) filters **and** look polished to human eyes - and who then need somewhere to track every application they send out, or a way to have new matching openings found and pre-tailored for them. Career data is authored once against the [JSON Resume v1.0.0](https://jsonresume.org/schema/) standard, decoupled from a separate design/meta tree, so switching templates never touches the underlying facts.
+CVitae Studio is a full-stack, AI-assisted resume platform for job seekers who need their CVs to pass Applicant Tracking System (ATS) filters **and** look polished to human eyes - and who then need somewhere to track every application they send out, or a way to have new matching openings found and pre-tailored for them. Career data is authored once against the [JSON Resume v1.0.0](https://jsonresume.org/schema/) standard, decoupled from a separate design/meta tree, so switching templates never touches the underlying facts.
 
 Key differentiators:
 
@@ -688,7 +688,7 @@ npm run test:run    # single run, CI-friendly
 
 The app is deployed on **Vercel**, built from this repository's `main` branch - every push triggers an automatic deployment.
 
-**Live:** [cv-builder-indol-zeta.vercel.app](https://cv-builder-indol-zeta.vercel.app)
+**Live:** [CVitaeStudio-indol-zeta.vercel.app](https://CVitaeStudio-indol-zeta.vercel.app)
 
 ### Project settings
 

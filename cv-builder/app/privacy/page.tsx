@@ -4,7 +4,7 @@ import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
-  description: 'How CV Builder collects, uses, and protects your personal data.',
+  description: 'How CVitae Studio collects, uses, and protects your personal data.',
 }
 
 const LAST_UPDATED = 'August 9, 2026'
@@ -13,7 +13,7 @@ export default function PrivacyPolicyPage() {
   return (
     <LegalPageShell title="Privacy Policy" lastUpdated={LAST_UPDATED}>
       <p>
-        This Privacy Policy explains how CV Builder (&ldquo;CV Builder,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or
+        This Privacy Policy explains how CVitae Studio (&ldquo;CVitae Studio,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or
         &ldquo;our&rdquo;) collects, uses, discloses, and protects information when you use our website and
         résumé-building service (the &ldquo;Service&rdquo;). By creating an account or otherwise using the Service,
         you agree to the collection and use of information as described here.
@@ -92,7 +92,7 @@ export default function PrivacyPolicyPage() {
         <p className="mt-2">
           We do not use any advertising, analytics, or tracking services - the Service does not include any
           third-party analytics or tracking scripts. We may also disclose information if required to do so by law,
-          or to protect the rights, property, or safety of CV Builder, our users, or others.
+          or to protect the rights, property, or safety of CVitae Studio, our users, or others.
         </p>
       </section>
 

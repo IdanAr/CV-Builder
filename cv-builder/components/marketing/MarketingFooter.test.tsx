@@ -5,9 +5,10 @@ import { render, screen } from '@testing-library/react'
 import { MarketingFooter } from './MarketingFooter'
 
 describe('MarketingFooter', () => {
-  it('renders the brand name and current year copyright', () => {
+  it('renders the logo and current year copyright', () => {
     render(<MarketingFooter />)
-    expect(screen.getByText('CV Builder')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'CVitae Studio' })).toBeInTheDocument()
+    expect(screen.getByText(/CVitae Studio\. All rights reserved/)).toBeInTheDocument()
     expect(screen.getByText(new RegExp(String(new Date().getFullYear())))).toBeInTheDocument()
   })
 

@@ -34,7 +34,7 @@ export default function GlobalError({
       >
         <div style={{ maxWidth: '28rem' }}>
           <h1 style={{ fontSize: '1.25rem', fontWeight: 500, margin: 0 }}>
-            CV Builder ran into a problem
+            CVitae Studio ran into a problem
           </h1>
           <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#424855' }}>
             The app failed to start. Your saved CVs and applications are unaffected.

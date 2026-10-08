@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { Menu as MenuIcon } from 'lucide-react'
 import { Dialog } from 'radix-ui'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 import { cn } from '@/lib/utils'
 import { SIDEBAR_COOKIE, writePreference } from '@/lib/preferences'
 import { SidebarNav, type ShellUser } from './SidebarNav'
@@ -70,7 +71,7 @@ export function AppShell({ user, waiting, initialCollapsed, children }: AppShell
             >
               <MenuIcon aria-hidden="true" strokeWidth={1.75} className="h-5 w-5" />
             </button>
-            <span className="text-base font-medium text-fg-heading">CV Builder</span>
+            <BrandLogo className="h-7" />
           </div>
         )}
         <main id="main-content" className="min-w-0 flex-1">

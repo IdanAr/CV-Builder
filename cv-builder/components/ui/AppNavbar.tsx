@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 
 interface AppNavbarProps {
   actions?: ReactNode
@@ -45,18 +46,12 @@ export function AppNavbar({
               z-10 actions row, while the actions themselves sit on the sides and stay clickable. */}
           <Link
             href={homeHref}
-            aria-label="CV Builder home"
+            aria-label="CVitae Studio home"
             className="order-first mr-auto flex items-center gap-2 rounded-control pointer-events-auto transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:absolute md:left-1/2 md:top-1/2 md:order-none md:mr-0 md:-translate-x-1/2 md:-translate-y-1/2 md:z-20"
           >
-            <span
-              aria-hidden="true"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-primary text-sm font-medium text-primary-fg md:h-9 md:w-9"
-            >
-              CV
-            </span>
-            <span className="hidden text-base font-medium text-fg-heading md:inline whitespace-nowrap">
-              CV Builder
-            </span>
+            {/* Compact mark below md, full lockup from md up. */}
+            <BrandLogo variant="mark" alt="" className="h-8 shrink-0 md:hidden" />
+            <BrandLogo alt="" className="hidden h-8 shrink-0 md:block" />
           </Link>
 
         </div>

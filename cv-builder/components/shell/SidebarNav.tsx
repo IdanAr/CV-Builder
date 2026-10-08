@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Briefcase, Columns3, FileText, LayoutDashboard, PanelLeftClose, PanelLeftOpen, Settings, SlidersHorizontal } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { cn } from '@/lib/utils'
 import { SidebarUserMenu } from './SidebarUserMenu'
@@ -143,17 +144,11 @@ export function SidebarNav({
       <div className={cn('flex items-center gap-2 px-1 pb-3 pt-1', collapsed ? 'justify-center' : 'justify-between')}>
         <Link
           href="/dashboard"
-          aria-label="CV Builder home"
+          aria-label="CVitae Studio home"
           onClick={onNavigate}
           className="flex items-center gap-2 rounded-control focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <span
-            aria-hidden="true"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-primary text-sm font-medium text-primary-fg"
-          >
-            CV
-          </span>
-          {!collapsed && <span className="text-base font-medium text-fg-heading">CV Builder</span>}
+          <BrandLogo variant={collapsed ? 'mark' : 'horizontal'} alt="" className="h-8 shrink-0" />
         </Link>
         {showToggle && !collapsed && (
           <button
