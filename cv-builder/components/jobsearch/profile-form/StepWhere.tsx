@@ -50,7 +50,8 @@ export function StepWhere({ values, onChange, pending: controlled, onPendingChan
     }
     setError(null)
     onChange({ locations: result.locations })
-    setPending({ ...pending, city: '' })
+    // Reset fully: a leftover country would be auto-added as a second, country-wide entry on Next/Save.
+    setPending(EMPTY_PENDING)
   }
 
   return (

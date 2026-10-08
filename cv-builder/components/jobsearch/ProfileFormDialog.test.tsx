@@ -240,6 +240,36 @@ describe('ProfileFormDialog create, hardening', () => {
     expect(screen.getByText('Israel')).toBeInTheDocument()
   })
 
+  it.each([
+    ['the Add location button', async () => userEvent.click(screen.getByRole('button', { name: 'Add location' }))],
+    ['the Enter key', async () => userEvent.type(screen.getByLabelText('City'), '{Enter}')],
+  ])('does not add a second country-wide entry after adding a city with %s', async (_label, add) => {
+    mockApi()
+    setup()
+    await userEvent.type(screen.getByLabelText('Profile name'), 'Frontend')
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }))
+    await userEvent.selectOptions(screen.getByLabelText('Country'), 'IL')
+    await userEvent.type(screen.getByLabelText('City'), 'Tel Aviv')
+    await add()
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(screen.getByText('Tel Aviv, Israel')).toBeInTheDocument()
+    expect(readDraft()?.values.locations).toEqual([{ country: 'IL', city: 'Tel Aviv' }])
+  })
+
+  it('PATCHes exactly one location after adding a city and saving', async () => {
+    const calls = mockApi()
+    const { onSaved } = setup({ mode: 'edit', existingProfile: { ...existing, locations: [] } })
+    await userEvent.click(screen.getByRole('button', { name: /^2\. Where/ }))
+    await userEvent.selectOptions(screen.getByLabelText('Country'), 'IL')
+    await userEvent.type(screen.getByLabelText('City'), 'Tel Aviv')
+    await userEvent.click(screen.getByRole('button', { name: 'Add location' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(calls.find((c) => c.method === 'PATCH')?.body).toMatchObject({ locations: [{ country: 'IL', city: 'Tel Aviv' }] })
+    expect((calls.find((c) => c.method === 'PATCH')?.body as { locations: unknown[] }).locations).toHaveLength(1)
+  })
+
   it('drops a pending duplicate location without an error', async () => {
     const calls = mockApi()
     setup({ mode: 'edit', existingProfile: existing })
