@@ -20,7 +20,7 @@ import { matchesKeyword } from '@/lib/ats/keywords'
 import { evaluateRules } from './rules'
 import { runApplyPipeline, PER_PROFILE_DAILY_DRAFT_CAP, PER_USER_DAILY_DRAFT_CAP } from './apply'
 import Resume from '@/models/Resume'
-import type { CreateScrapedJobInput, ScrapeSource } from '@/lib/schemas/jobsearch.zod'
+import { MAX_LOCATIONS, type CreateScrapedJobInput, type ScrapeSource } from '@/lib/schemas/jobsearch.zod'
 import type { JobPosting, SourceSearchResult } from './sources/types'
 import { ResumeMetaSchema, type ResumeData, type ResumeMeta } from '@/lib/schemas/resume.zod'
 
@@ -110,6 +110,26 @@ function passesIndustryFilter(posting: { title: string; company: string; descrip
   return industries.some((tag) => matchesKeyword(haystack, tag))
 }
 
+type LocationFacet = { region?: string[]; country?: string[]; city?: string[] }
+
+/**
+ * The single most specific facet of one location tag.
+ *
+ * freehire ORs its location facets (probed 2026-10-08: countries=IL returns
+ * 8,606 postings, cities=Paris 9,492, both together 18,071), so sending a
+ * city alongside its country would widen the search to the whole country
+ * instead of narrowing it. One query per tag, most specific facet only.
+ */
+export function locationFacet(location: { country?: string; region?: string; city?: string }): LocationFacet {
+  const city = location.city?.trim()
+  const region = location.region?.trim()
+  const country = location.country?.trim()
+  if (city) return { city: [city] }
+  if (region) return { region: [region] }
+  if (country) return { country: [country] }
+  return {}
+}
+
 // freehire's `q` param does a loose OR-across-words match even within a
 // single role query (verified directly against the live API: q="AI
 // Developer" returns "Senior Backend Developer" and "Security Analyst"
@@ -135,9 +155,6 @@ export const MAX_ROLE_QUERIES = 5
 export const MAX_COMEET_COMPANIES = 10
 
 interface RoleQueryParams {
-  region: string[]
-  country: string[]
-  city: string[]
   seniority: string[]
   category: string[]
   remote?: 'remote' | 'hybrid' | 'onsite'
@@ -155,20 +172,39 @@ interface RoleQueryParams {
 // results — verified directly against the live API: a single-role query
 // like "Data Analyst" returns only Data Analyst postings, while the joined
 // multi-role string returned an unrelated grab-bag.
+// Locations multiply the fan-out: roles x locations queries, bounded at 5 x 5.
 async function fetchPostingsForRoles(
   roles: string[],
-  params: RoleQueryParams
+  params: RoleQueryParams,
+  locations: { country?: string; region?: string; city?: string }[]
 ): Promise<{ postings: JobPosting[]; degraded: boolean; errorMessage?: string }> {
-  const queries = roles.length > 0 ? roles.slice(0, MAX_ROLE_QUERIES) : [undefined]
+  const roleQueries = roles.length > 0 ? roles.slice(0, MAX_ROLE_QUERIES) : [undefined]
+  // Identical facets (e.g. two tags in the same city) would just repeat a query,
+  // so dedupe before applying the cap.
+  const uniqueFacets = new Map<string, LocationFacet>()
+  for (const facet of locations.map(locationFacet)) {
+    if (Object.keys(facet).length === 0) continue
+    const key = JSON.stringify(facet)
+    if (!uniqueFacets.has(key)) uniqueFacets.set(key, facet)
+  }
+  const facets = [...uniqueFacets.values()].slice(0, MAX_LOCATIONS)
+  const locationQueries: LocationFacet[] = facets.length > 0 ? facets : [{}]
+  const queries = roleQueries.flatMap((role) => locationQueries.map((facet) => ({ role, facet })))
   const results = await Promise.all(
-    queries.map((role) => searchFreehireJobs({ ...params, query: role, limit: 25 }))
+    queries.map(({ role, facet }) => searchFreehireJobs({ ...params, ...facet, query: role, limit: 25 }))
   )
 
   const succeeded = results
-    .map((result, i) => ({ result, role: queries[i] }))
+    .map((result, i) => ({ result, role: queries[i].role }))
     .filter((entry): entry is { result: SourceSearchResult; role: string | undefined } => !entry.result.degraded)
   if (succeeded.length === 0) {
     return { postings: [], degraded: true, errorMessage: results[0]?.errorMessage }
+  }
+  if (succeeded.length < results.length) {
+    const firstFailure = results.find((r) => r.degraded)
+    console.warn(
+      `[jobsearch] ${results.length - succeeded.length} of ${results.length} freehire queries failed: ${firstFailure?.errorMessage ?? 'unknown error'}`
+    )
   }
 
   // A posting can legitimately match more than one role query (e.g. a
@@ -360,18 +396,19 @@ export async function runScanForProfile(userId: string, profileId: string): Prom
   let draftFailed = firstDrain.failed
 
   const [freehireResult, comeetResult] = await Promise.all([
-    fetchPostingsForRoles(profile.roles, {
-      region: profile.locations.map((l) => l.region).filter((r): r is string => !!r),
-      country: profile.locations.map((l) => l.country).filter((c): c is string => !!c),
-      city: profile.locations.map((l) => l.city).filter((c): c is string => !!c),
-      seniority: profile.seniority,
-      category: profile.categories,
-      // freehire's --remote facet takes exactly one value; a profile with 0
-      // or 2+ selected work modes omits the facet entirely rather than
-      // arbitrarily picking one and silently narrowing the search.
-      remote: profile.workModes.length === 1 ? (profile.workModes[0] as 'remote' | 'hybrid' | 'onsite') : undefined,
-      jobage: profile.recencyDays,
-    }),
+    fetchPostingsForRoles(
+      profile.roles,
+      {
+        seniority: profile.seniority,
+        category: profile.categories,
+        // freehire's --remote facet takes exactly one value; a profile with 0
+        // or 2+ selected work modes omits the facet entirely rather than
+        // arbitrarily picking one and silently narrowing the search.
+        remote: profile.workModes.length === 1 ? (profile.workModes[0] as 'remote' | 'hybrid' | 'onsite') : undefined,
+        jobage: profile.recencyDays,
+      },
+      profile.locations
+    ),
     fetchComeetPostings(profile.comeetCompanies ?? []),
   ])
 
