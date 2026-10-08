@@ -88,13 +88,13 @@ function Metric({ value, label }: { value: number; label: string }) {
       <span
         className={
           value > 0
-            ? 'text-[15px] font-medium tabular-nums text-fg-heading'
-            : 'text-[15px] tabular-nums text-fg-subtle'
+            ? 'text-base font-medium tabular-nums text-fg-heading'
+            : 'text-base tabular-nums text-fg-subtle'
         }
       >
         {value}
       </span>
-      <span className="text-[9px] uppercase tracking-wider text-fg-subtle">{label}</span>
+      <span className="text-xs uppercase tracking-wide text-fg-subtle">{label}</span>
     </div>
   )
 }

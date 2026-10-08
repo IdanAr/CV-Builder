@@ -39,7 +39,7 @@ export function ExportMenu({ onExport, busy = false, onJsonExport }: ExportMenuP
       className="w-full rounded-control px-3 py-2 text-left transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
     >
       <span className="block text-xs font-medium text-fg">{label}</span>
-      <span className="block text-[10px] text-fg-muted">{sub}</span>
+      <span className="block text-xs text-fg-muted">{sub}</span>
     </button>
   )
   const item = (label: string, sub: string, format: 'pdf' | 'docx', mode: ExportMode) =>

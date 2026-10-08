@@ -91,7 +91,7 @@ function CardContent({ app, customChips }: { app: ApplicationRow; customChips: s
           {customChips.map((chip) => (
             <span
               key={chip}
-              className="rounded-chip bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-fg-muted"
+              className="rounded-chip bg-secondary px-1.5 py-0.5 text-xs font-medium text-fg-muted"
             >
               {chip}
             </span>

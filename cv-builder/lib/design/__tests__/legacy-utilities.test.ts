@@ -75,26 +75,6 @@ const BASELINE: Record<string, number> = {
   'components/ui/Button.tsx': 2,
   // kept: the single allowed active-segment shadow-sm, the one raised surface a segmented control is meant to have.
   'components/editor/design/SegmentedControl.tsx': 1,
-  // kept: cleared by the type-scale task in this PR
-  'components/applications/ApplicationsBoard.tsx': 1,
-  // kept: cleared by the type-scale task in this PR
-  'components/applications/ColumnHeader.tsx': 3,
-  // kept: cleared by the type-scale task in this PR
-  'components/ats/StepsBar.tsx': 1,
-  // kept: cleared by the type-scale task in this PR
-  'components/editor/EditTab.tsx': 1,
-  // kept: cleared by the type-scale task in this PR
-  'components/editor/ExportMenu.tsx': 1,
-  // kept: cleared by the type-scale task in this PR
-  'components/jobsearch/JobSearchShell.tsx': 1,
-  // kept: cleared by the type-scale task in this PR
-  'components/jobsearch/ProfileList.tsx': 3,
-  // kept: cleared by the type-scale task in this PR
-  'components/jobsearch/ProfileSettings.tsx': 1,
-  // kept: cleared by the type-scale task in this PR
-  'components/jobsearch/ProfileWizardSteps.tsx': 3,
-  // kept: cleared by the type-scale task in this PR
-  'components/marketing/JobSearchSection.tsx': 1,
 }
 
 // Returns the baseline entries ('path': N, with N > 0) whose previous non-empty line is not a `// kept:` comment.

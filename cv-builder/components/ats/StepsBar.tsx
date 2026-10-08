@@ -42,7 +42,7 @@ export function StepsBar({ current, maxUnlocked, onStepClick }: StepsBarProps) {
         )
 
         const badgeClass = cn(
-          'flex h-4 w-4 items-center justify-center rounded-full text-[10px]',
+          'flex h-5 w-5 items-center justify-center rounded-full text-xs',
           isCurrent ? 'bg-primary-fg/25' : 'bg-surface/70'
         )
 
