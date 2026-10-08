@@ -26,6 +26,17 @@ describe('AiSuggestButton', () => {
     expect(screen.queryByText('✨')).not.toBeInTheDocument()
   })
 
+  it('is a borderless ghost icon button that keeps the 40px touch floor below sm', () => {
+    render(
+      <AiSuggestButton resumeId="r1" currentValue="Some notes" context={{ field: 'summary' }} onAccept={() => {}} />
+    )
+    const btn = screen.getByRole('button', { name: /ai-written suggestion/i })
+    const classes = btn.className.split(/\s+/)
+    expect(classes).not.toContain('border')
+    expect(classes).toContain('max-sm:h-10')
+    expect(classes).toContain('max-sm:w-10')
+  })
+
   it('gives the button a title/aria-label that clearly conveys AI involvement', () => {
     render(
       <AiSuggestButton

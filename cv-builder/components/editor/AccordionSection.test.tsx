@@ -227,4 +227,33 @@ describe('AccordionSection', () => {
     // When focused, the ancestor group has focus-within, so opacity-100 class should apply
     expect(dragHandle.className).toContain('group-focus-within:opacity-100')
   })
+
+  it('drag handle is always visible on touch and wider below sm, with a matching spacer when not draggable', () => {
+    const dragHandleProps = {
+      listeners: undefined,
+      attributes: {} as DraggableAttributes,
+      setNodeRef: () => {},
+      transform: null,
+      transition: undefined,
+      isDragging: false,
+    }
+    const { container, unmount } = render(
+      <AccordionSection title="Work Experience" isOpen={false} onToggle={vi.fn()} dragHandleProps={dragHandleProps}>
+        {null}
+      </AccordionSection>
+    )
+    const classes = screen.getByRole('button', { name: /drag to reorder/i }).className.split(/\s+/)
+    expect(classes).toContain('[@media(hover:none)]:opacity-100')
+    expect(classes).toContain('max-sm:w-10')
+    expect(classes).toContain('group-hover:opacity-100')
+    unmount()
+    const r = render(
+      <AccordionSection title="Personal Info" isOpen={false} onToggle={vi.fn()}>
+        {null}
+      </AccordionSection>
+    )
+    const spacer = r.container.querySelector('span[aria-hidden="true"].w-5')
+    expect(spacer?.className).toContain('max-sm:w-10')
+    void container
+  })
 })
