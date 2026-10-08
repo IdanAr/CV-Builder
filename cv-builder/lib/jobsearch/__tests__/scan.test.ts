@@ -56,7 +56,7 @@ vi.mock('../apply', () => ({
   PER_USER_DAILY_DRAFT_CAP: 10,
 }))
 
-import { runScanForProfile, MAX_ROLE_QUERIES } from '../scan'
+import { runScanForProfile, locationFacet, MAX_ROLE_QUERIES } from '../scan'
 
 function leanChain(resolved: unknown) {
   return { lean: vi.fn().mockResolvedValue(resolved) }
@@ -326,7 +326,117 @@ describe('runScanForProfile', () => {
 
     const result = await runScanForProfile('u1', 'p1')
 
+    expect(mockSearchFreehireJobs).toHaveBeenCalledTimes(2)
     expect(result.fetched).toBe(1)
+  })
+
+  it('queries once per (role, location) pair and keeps each role\'s own postings', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({
+      ...baseProfile,
+      roles: ['Data Analyst', 'Frontend Engineer'],
+      locations: [{ city: 'Tel Aviv' }, { city: 'Haifa' }],
+    })
+    mockSearchFreehireJobs.mockImplementation((params: { query?: string }) =>
+      Promise.resolve({
+        degraded: false,
+        postings: [
+          {
+            source: 'freehire',
+            sourceId: `id-${params.query}`,
+            title: params.query === 'Data Analyst' ? 'Senior Data Analyst' : 'Frontend Engineer II',
+            company: 'Acme',
+            url: 'https://x/1',
+            description: 'JD',
+          },
+        ],
+      })
+    )
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(mockSearchFreehireJobs).toHaveBeenCalledTimes(4)
+    const pairs = mockSearchFreehireJobs.mock.calls.map(([a]) => `${a.query}|${a.city?.[0]}`).sort()
+    expect(pairs).toEqual([
+      'Data Analyst|Haifa',
+      'Data Analyst|Tel Aviv',
+      'Frontend Engineer|Haifa',
+      'Frontend Engineer|Tel Aviv',
+    ])
+    expect(result.fetched).toBe(2)
+  })
+
+  it('is not degraded when one city fails every query but another city succeeds', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({
+      ...baseProfile,
+      roles: ['Data Analyst', 'Frontend Engineer'],
+      locations: [{ city: 'Tel Aviv' }, { city: 'Haifa' }],
+    })
+    mockSearchFreehireJobs.mockImplementation((params: { query?: string; city?: string[] }) => {
+      if (params.city?.[0] === 'Haifa') {
+        return Promise.resolve({ degraded: true, postings: [], errorMessage: 'freehire returned 503' })
+      }
+      return Promise.resolve({
+        degraded: false,
+        postings: [
+          {
+            source: 'freehire',
+            sourceId: `id-${params.query}`,
+            title: params.query === 'Data Analyst' ? 'Data Analyst' : 'Frontend Engineer',
+            company: 'Acme',
+            url: 'https://x/1',
+            description: 'JD',
+          },
+        ],
+      })
+    })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.degraded).toBe(false)
+    expect(result.fetched).toBe(2)
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith('[jobsearch] 2 of 4 freehire queries failed: freehire returned 503')
+    warn.mockRestore()
+  })
+
+  it('does not warn when every query succeeds', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({ ...baseProfile, locations: [{ city: 'Haifa' }] })
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('collapses identical location facets into one query', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({
+      ...baseProfile,
+      locations: [{ country: 'IL', city: 'Haifa' }, { city: 'Haifa' }, { city: ' Haifa ' }],
+    })
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockSearchFreehireJobs).toHaveBeenCalledTimes(1)
+  })
+
+  it('falls back to one unfiltered query when every location is empty or whitespace', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({
+      ...baseProfile,
+      locations: [{}, { city: '   ' }, { country: '', region: ' ' }],
+    })
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockSearchFreehireJobs).toHaveBeenCalledTimes(1)
+    const [arg] = mockSearchFreehireJobs.mock.calls[0]
+    expect(arg.city).toBeUndefined()
+    expect(arg.region).toBeUndefined()
+    expect(arg.country).toBeUndefined()
   })
 
   it('returns a degraded result instead of throwing when createScrapedJobs fails unexpectedly', async () => {
@@ -1004,5 +1114,23 @@ describe('runScanForProfile — draft ordering and failure visibility', () => {
     expect(result.created).toBe(1)
     expect(result.drafted).toBe(1)
     expect(result.draftFailed).toBe(0)
+  })
+})
+
+describe('locationFacet', () => {
+  it('prefers city over region over country', () => {
+    expect(locationFacet({ country: 'IL', region: 'Haifa District', city: 'Haifa' })).toEqual({ city: ['Haifa'] })
+    expect(locationFacet({ country: 'DE', region: 'Bavaria' })).toEqual({ region: ['Bavaria'] })
+    expect(locationFacet({ country: 'IL' })).toEqual({ country: ['IL'] })
+  })
+
+  it('ignores whitespace-only values and sends the trimmed value', () => {
+    expect(locationFacet({ city: '   ', country: 'IL' })).toEqual({ country: ['IL'] })
+    expect(locationFacet({ city: '  Haifa ' })).toEqual({ city: ['Haifa'] })
+  })
+
+  it('returns an empty facet when nothing is set', () => {
+    expect(locationFacet({})).toEqual({})
+    expect(locationFacet({ city: ' ', region: '', country: '  ' })).toEqual({})
   })
 })

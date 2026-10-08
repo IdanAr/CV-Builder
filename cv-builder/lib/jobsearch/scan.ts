@@ -121,9 +121,12 @@ type LocationFacet = { region?: string[]; country?: string[]; city?: string[] }
  * instead of narrowing it. One query per tag, most specific facet only.
  */
 export function locationFacet(location: { country?: string; region?: string; city?: string }): LocationFacet {
-  if (location.city) return { city: [location.city] }
-  if (location.region) return { region: [location.region] }
-  if (location.country) return { country: [location.country] }
+  const city = location.city?.trim()
+  const region = location.region?.trim()
+  const country = location.country?.trim()
+  if (city) return { city: [city] }
+  if (region) return { region: [region] }
+  if (country) return { country: [country] }
   return {}
 }
 
@@ -176,10 +179,15 @@ async function fetchPostingsForRoles(
   locations: { country?: string; region?: string; city?: string }[]
 ): Promise<{ postings: JobPosting[]; degraded: boolean; errorMessage?: string }> {
   const roleQueries = roles.length > 0 ? roles.slice(0, MAX_ROLE_QUERIES) : [undefined]
-  const facets = locations
-    .map(locationFacet)
-    .filter((facet) => Object.keys(facet).length > 0)
-    .slice(0, MAX_LOCATIONS)
+  // Identical facets (e.g. two tags in the same city) would just repeat a query,
+  // so dedupe before applying the cap.
+  const uniqueFacets = new Map<string, LocationFacet>()
+  for (const facet of locations.map(locationFacet)) {
+    if (Object.keys(facet).length === 0) continue
+    const key = JSON.stringify(facet)
+    if (!uniqueFacets.has(key)) uniqueFacets.set(key, facet)
+  }
+  const facets = [...uniqueFacets.values()].slice(0, MAX_LOCATIONS)
   const locationQueries: LocationFacet[] = facets.length > 0 ? facets : [{}]
   const queries = roleQueries.flatMap((role) => locationQueries.map((facet) => ({ role, facet })))
   const results = await Promise.all(
@@ -191,6 +199,12 @@ async function fetchPostingsForRoles(
     .filter((entry): entry is { result: SourceSearchResult; role: string | undefined } => !entry.result.degraded)
   if (succeeded.length === 0) {
     return { postings: [], degraded: true, errorMessage: results[0]?.errorMessage }
+  }
+  if (succeeded.length < results.length) {
+    const firstFailure = results.find((r) => r.degraded)
+    console.warn(
+      `[jobsearch] ${results.length - succeeded.length} of ${results.length} freehire queries failed: ${firstFailure?.errorMessage ?? 'unknown error'}`
+    )
   }
 
   // A posting can legitimately match more than one role query (e.g. a
