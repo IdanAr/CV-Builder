@@ -20,7 +20,7 @@ npx vitest run path/to/file.test.ts          # run a single test file
 npx vitest run -t "test name substring"      # run tests matching a name
 ```
 
-CI (`.github/workflows/*.yml`) runs, in order: `npm ci` → `npm run lint` → `npx tsc --noEmit` → `npm run test:run`, all with `working-directory: cv-builder`. Match this locally before considering a change done.
+CI (`.github/workflows/*.yml`) runs, in order: `npm ci` → `npm run lint` → `npx tsc --noEmit` → `npm run test:run` → `npm run build` (with a placeholder `MONGODB_URI`, since the build evaluates `lib/db.ts` at module scope), all with `working-directory: cv-builder`. Match this locally before considering a change done.
 
 Vitest defaults to `environment: 'node'` (`vitest.config.ts`); any test that renders React components must opt into jsdom with a `// @vitest-environment jsdom` comment at the top of the file. The `@/*` path alias resolves to the `cv-builder/` root in both TS and Vitest.
 
