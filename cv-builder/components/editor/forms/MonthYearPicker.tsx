@@ -123,7 +123,7 @@ export function MonthYearPicker({ value, onChange, allowPresent = false, placeho
             type="checkbox"
             checked={isPresent}
             onChange={handlePresentChange}
-            className="rounded border-accent-300 text-fg-muted focus:ring-accent-500"
+            className="rounded-chip border-input text-fg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           Present
         </label>
@@ -178,7 +178,7 @@ export function MonthYearPicker({ value, onChange, allowPresent = false, placeho
             type="checkbox"
             checked={isPresent}
             onChange={handlePresentChange}
-            className="rounded border-accent-300 text-fg-muted focus:ring-accent-500"
+            className="rounded-chip border-input text-fg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           Present
         </label>

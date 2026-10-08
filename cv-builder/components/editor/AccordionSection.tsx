@@ -49,18 +49,18 @@ export function AccordionSection({
         transform: CSS.Transform.toString(dragHandleProps?.transform ?? null),
         transition: dragHandleProps?.transition,
       }}
-      className={`border border-accent-100 rounded-xl overflow-hidden bg-surface shadow-sm transition-shadow duration-200 hover:shadow-md group${
-        dragHandleProps?.isDragging ? ' opacity-60 border-dashed border-accent-400' : ''
+      className={`border border-border rounded-card overflow-hidden bg-surface group${
+        dragHandleProps?.isDragging ? ' opacity-60 border-dashed border-input' : ''
       }`}
     >
       {/* Header layout is a fixed left rail so the icon chip lands at the same
           x-position in every variant: [handle slot] [icon chip] [title/rename].
           Non-draggable sections (Personal Info) get a same-width spacer. */}
-      <div className="flex items-center gap-1 pl-2 pr-2 bg-surface hover:bg-surface transition-colors">
+      <div className="flex items-center gap-1 pl-2 pr-2 bg-surface">
         {dragHandleProps ? (
           <button
             type="button"
-            className="w-5 shrink-0 py-3 text-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity cursor-grab text-fg-subtle hover:text-fg-body select-none"
+            className="w-5 shrink-0 rounded-chip py-3 text-center max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity cursor-grab text-fg-subtle hover:text-fg-body select-none"
             {...dragHandleProps.listeners}
             {...dragHandleProps.attributes}
             aria-label="Drag to reorder"
@@ -71,7 +71,7 @@ export function AccordionSection({
           <span className="w-5 shrink-0" aria-hidden="true" />
         )}
         {icon && (
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent-50 text-fg-muted">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-control bg-surface-selected text-fg-muted">
             {icon}
           </span>
         )}
@@ -99,7 +99,7 @@ export function AccordionSection({
               onClick={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
               aria-label={`Rename ${title}`}
-              className="w-full font-medium text-sm text-fg bg-transparent border-none outline-none focus:ring-1 focus:ring-accent-300 rounded px-2 py-1 min-w-0"
+              className="w-full min-w-0 rounded-chip border-none bg-transparent px-2 py-1 text-base font-medium text-fg max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
         ) : (
@@ -107,13 +107,13 @@ export function AccordionSection({
             type="button"
             onClick={onToggle}
             aria-expanded={isOpen}
-            className="flex-1 flex items-center px-2 py-3 text-left min-w-0"
+            className="flex min-w-0 flex-1 items-center rounded-control px-2 py-3 text-left max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <span className="font-medium text-sm text-fg truncate">{title}</span>
+            <span className="truncate text-base font-medium text-fg">{title}</span>
           </button>
         )}
         {badge && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-accent-50 text-fg-muted shrink-0">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-surface-subtle text-fg-muted shrink-0">
             {badge}
           </span>
         )}
@@ -121,7 +121,7 @@ export function AccordionSection({
           <button
             type="button"
             onClick={onDelete}
-            className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'h-6 w-6 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}
+            className={buttonClasses({ variant: 'ghost', size: 'icon', className: 'h-6 w-6 max-sm:h-10 max-sm:w-10 text-fg-subtle hover:bg-surface-danger hover:text-fg-danger' })}
             aria-label={`Delete ${title}`}
           ><X aria-hidden="true" className="h-3.5 w-3.5" /></button>
         )}
@@ -130,7 +130,7 @@ export function AccordionSection({
           onClick={onToggle}
           aria-expanded={isOpen}
           aria-label={`Toggle ${title}`}
-          className="text-fg-subtle text-xs px-3 py-3"
+          className="rounded-control px-3 py-3 text-xs text-fg-subtle max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <motion.span
             animate={{ rotate: isOpen ? 180 : 0 }}
@@ -142,7 +142,7 @@ export function AccordionSection({
         </button>
       </div>
       <Collapsible open={isOpen}>
-        <div className="px-4 pb-4 pt-2 border-t border-accent-100 bg-surface">{children}</div>
+        <div className="px-4 pb-4 pt-2 border-t border-border bg-surface">{children}</div>
       </Collapsible>
     </div>
   )

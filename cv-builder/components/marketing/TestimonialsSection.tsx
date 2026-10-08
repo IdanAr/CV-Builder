@@ -29,7 +29,7 @@ function FiveStars() {
   return (
     <div className="mt-4 flex items-center gap-0.5" role="img" aria-label="5 out of 5 stars">
       {Array.from({ length: 5 }).map((_, i) => (
-        <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden="true" />
+        <Star key={i} className="h-4 w-4 fill-fg-warning text-fg-warning" aria-hidden="true" />
       ))}
     </div>
   )
@@ -38,8 +38,8 @@ function FiveStars() {
 export function TestimonialsSection() {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-      <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">Success Stories</h2>
-      <p className="mt-2 text-center text-sm text-gray-600">Based on early beta feedback</p>
+      <h2 className="text-center text-3xl font-medium tracking-tight text-fg-heading">Success Stories</h2>
+      <p className="mt-2 text-center text-sm text-fg-body">Based on early beta feedback</p>
       <div className="mt-10">
         <Marquee
           ariaLabel="Success Stories"
@@ -47,11 +47,11 @@ export function TestimonialsSection() {
           items={TESTIMONIALS.map(({ quote, author, role }) => (
             <figure
               key={author}
-              className="w-80 rounded-2xl border border-indigo-100 bg-white/70 backdrop-blur-xl p-6 shadow-sm"
+              className="w-80 rounded-card border border-border bg-surface p-6"
             >
-              <blockquote className="text-sm text-gray-700">&ldquo;{quote}&rdquo;</blockquote>
-              <figcaption className="mt-4 text-sm font-semibold text-gray-900">
-                {author} <span className="font-normal text-gray-500">&middot; {role}</span>
+              <blockquote className="text-sm text-fg-body">&ldquo;{quote}&rdquo;</blockquote>
+              <figcaption className="mt-4 text-sm font-medium text-fg-heading">
+                {author} <span className="font-normal text-fg-muted">&middot; {role}</span>
               </figcaption>
               <FiveStars />
             </figure>

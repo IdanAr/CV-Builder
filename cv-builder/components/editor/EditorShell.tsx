@@ -293,14 +293,14 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
             tabIndex={tabIndexFor(activeTab === tab)}
             onClick={() => setActiveTab(tab)}
             className={`relative flex items-center justify-center min-h-[44px] px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === tab ? 'text-accent-600' : 'text-fg-muted hover:text-fg-body'
+              activeTab === tab ? 'text-fg-heading' : 'text-fg-muted hover:text-fg-body'
             }`}
           >
             {TAB_LABELS[tab]}
             {activeTab === tab && (
               <motion.span
                 layoutId="editor-tab-underline"
-                className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent-600"
+                className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary"
                 transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 40 }}
               />
             )}
@@ -382,9 +382,9 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
                 aria-selected={mobileView === 'edit'}
                 tabIndex={tabIndexFor(mobileView === 'edit')}
                 onClick={() => setMobileView('edit')}
-                className={`flex-1 min-h-[40px] rounded text-sm font-medium transition-colors ${
+                className={`flex-1 min-h-[40px] rounded-control text-sm font-medium transition-colors ${
                   mobileView === 'edit'
-                    ? 'bg-accent-600 text-white'
+                    ? 'bg-primary text-primary-fg'
                     : 'text-fg-muted hover:bg-surface-subtle'
                 }`}
               >
@@ -396,9 +396,9 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
                 aria-selected={mobileView === 'preview'}
                 tabIndex={tabIndexFor(mobileView === 'preview')}
                 onClick={() => setMobileView('preview')}
-                className={`flex-1 min-h-[40px] rounded text-sm font-medium transition-colors ${
+                className={`flex-1 min-h-[40px] rounded-control text-sm font-medium transition-colors ${
                   mobileView === 'preview'
-                    ? 'bg-accent-600 text-white'
+                    ? 'bg-primary text-primary-fg'
                     : 'text-fg-muted hover:bg-surface-subtle'
                 }`}
               >
@@ -426,7 +426,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
                     key={tab}
                     type="button"
                     onClick={() => { setPreviewExpanded(false); setActiveTab(tab) }}
-                    className="text-xs text-fg-muted hover:text-fg transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="text-xs text-fg-muted hover:text-fg transition-colors rounded-chip focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
                   >
                     {TAB_LABELS[tab]}
@@ -454,8 +454,8 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
                 aria-valuemin={mounted ? getPanelWidthBounds().min : PANEL_MIN}
                 aria-valuemax={mounted ? getPanelWidthBounds().max : PANEL_MAX}
                 tabIndex={0}
-                className={`group/divider w-1.5 shrink-0 cursor-col-resize select-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
-                  dividerActive ? 'bg-accent-400/60' : 'bg-border hover:bg-accent-400/40'
+                className={`group/divider w-1.5 shrink-0 cursor-col-resize select-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  dividerActive ? 'bg-ring/60' : 'bg-border hover:bg-ring/40'
                 }`}
                 onPointerDown={handleDividerPointerDown}
                 onPointerMove={handleDividerPointerMove}

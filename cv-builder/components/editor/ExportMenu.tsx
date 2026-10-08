@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { ExportMode } from '@/lib/export-mode'
 import { Popover } from '@/components/ui/Popover'
+import { Button } from '@/components/ui/Button'
 
 export interface ExportMenuProps {
   onExport: (format: 'pdf' | 'docx', mode: ExportMode) => void
@@ -35,7 +36,7 @@ export function ExportMenu({ onExport, busy = false, onJsonExport }: ExportMenuP
       type="button"
       role="menuitem"
       onClick={() => { setOpen(false); onSelect() }}
-      className="w-full text-left px-3 py-2 hover:bg-surface-subtle transition-colors"
+      className="w-full rounded-control px-3 py-2 text-left transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10"
     >
       <span className="block text-xs font-medium text-fg">{label}</span>
       <span className="block text-[10px] text-fg-muted">{sub}</span>
@@ -49,17 +50,17 @@ export function ExportMenu({ onExport, busy = false, onJsonExport }: ExportMenuP
       open={menuOpen}
       onOpenChange={setOpen}
       trigger={
-        <button
-          type="button"
+        <Button
+          size="md"
           disabled={busy}
           aria-expanded={menuOpen}
           aria-haspopup="menu"
           aria-busy={busy}
           aria-label={busy ? 'Exporting, please wait' : 'Export options'}
-          className="min-h-10 shrink-0 rounded-control bg-accent-600 px-3 text-sm font-medium text-white transition-colors hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-60"
+          className="shrink-0 px-3 focus-visible:outline-none"
         >
           {busy ? 'Exporting…' : 'Export ▾'}
-        </button>
+        </Button>
       }
     >
       <div
@@ -69,7 +70,7 @@ export function ExportMenu({ onExport, busy = false, onJsonExport }: ExportMenuP
           if (e.key === 'ArrowDown') { e.preventDefault(); focusMenuItem(e.currentTarget, 1) }
           if (e.key === 'ArrowUp') { e.preventDefault(); focusMenuItem(e.currentTarget, -1) }
         }}
-        className="w-56 overflow-hidden rounded-xl border border-border-subtle bg-surface shadow-xl"
+        className="w-56 overflow-hidden rounded-card border border-border bg-surface p-1 shadow-popover"
       >
         {item('PDF - Designed', 'Exact match of the preview', 'pdf', 'designed')}
         {item('PDF - ATS-optimized', 'Single-column, parser-safe', 'pdf', 'ats')}

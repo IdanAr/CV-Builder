@@ -7,6 +7,8 @@ import { highlightApprovals } from '@/lib/ai/highlight-approvals'
 import { inputClass } from '@/components/editor/forms/field-styles'
 import { cn } from '@/lib/utils'
 import { apiErrorMessage } from '@/lib/api/client-errors'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 
 interface CoverLetterDraft {
   content: string
@@ -118,7 +120,7 @@ export function CoverLetterPanel() {
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
             placeholder="Company name (optional)"
-            className={cn(inputClass, 'w-auto flex-1')}
+            className={cn(inputClass, 'w-auto min-w-0 flex-1')}
           />
           <label htmlFor={`${id}-role`} className="sr-only">Role title</label>
           <input
@@ -127,49 +129,40 @@ export function CoverLetterPanel() {
             value={roleName}
             onChange={(e) => setRoleName(e.target.value)}
             placeholder="Role title (optional)"
-            className={cn(inputClass, 'w-auto flex-1')}
+            className={cn(inputClass, 'w-auto min-w-0 flex-1')}
           />
         </div>
 
-        <button
+        <Button
+          size="md"
           onClick={handleGenerate}
           disabled={loading || !jobDescription.trim()}
-          className="mt-2 px-4 py-2 bg-accent-600 text-white text-sm rounded-lg hover:bg-accent-700 disabled:opacity-50 transition-colors"
+          className="mt-2"
         >
           {loading ? 'Generating…' : 'Generate'}
-        </button>
+        </Button>
         {error && <p className="mt-2 text-sm text-fg-danger">{error}</p>}
       </div>
 
       {draft && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="rounded-lg border border-accent-200 bg-surface p-3 shadow-sm"
-        >
+        <Card role="status" aria-live="polite" padding="sm">
           {draft.pendingApprovals.length > 0 && (
-            <p className="mb-2 rounded border border-warning-200 bg-warning-50 px-2 py-1 text-xs text-warning-700">
+            <p className="mb-2 rounded-chip border border-border-attention bg-surface-attention px-2 py-1 text-xs text-fg-attention">
               Highlighted items were not in your original notes - verify before using this letter.
             </p>
           )}
-          <p className="mb-3 whitespace-pre-wrap text-sm leading-relaxed text-neutral-800">
+          <p className="mb-3 whitespace-pre-wrap text-sm leading-relaxed text-fg-body">
             {highlightApprovals(draft.content, draft.pendingApprovals)}
           </p>
           <div className="flex gap-2">
-            <button
-              onClick={handleUseDraft}
-              className="rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-700"
-            >
+            <Button size="sm" onClick={handleUseDraft}>
               Use this letter
-            </button>
-            <button
-              onClick={() => setDraft(null)}
-              className="rounded px-3 py-1.5 text-xs text-fg-muted transition-colors hover:text-fg-body"
-            >
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>
               Discard
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
       )}
 
       <div>
@@ -178,30 +171,30 @@ export function CoverLetterPanel() {
             Your cover letter
           </label>
           <div className="flex gap-2">
-            <button
-              type="button"
+            <Button
+              size="xs"
+              variant="ghost"
               onClick={handleCopy}
               disabled={!(data.coverLetter ?? '').trim()}
-              className="rounded px-2 py-1 text-xs font-medium text-accent-600 transition-colors hover:bg-accent-50 disabled:opacity-40 disabled:hover:bg-transparent"
             >
               {copied ? 'Copied!' : 'Copy'}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              size="xs"
+              variant="ghost"
               onClick={() => handleExport('docx')}
               disabled={!(data.coverLetter ?? '').trim() || exporting !== null}
-              className="rounded px-2 py-1 text-xs font-medium text-accent-600 transition-colors hover:bg-accent-50 disabled:opacity-40 disabled:hover:bg-transparent"
             >
               {exporting === 'docx' ? 'Exporting…' : 'Export DOCX'}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              size="xs"
+              variant="ghost"
               onClick={() => handleExport('pdf')}
               disabled={!(data.coverLetter ?? '').trim() || exporting !== null}
-              className="rounded px-2 py-1 text-xs font-medium text-accent-600 transition-colors hover:bg-accent-50 disabled:opacity-40 disabled:hover:bg-transparent"
             >
               {exporting === 'pdf' ? 'Exporting…' : 'Export PDF'}
-            </button>
+            </Button>
           </div>
         </div>
         {exportError && <p className="mb-1 text-xs text-fg-danger">{exportError}</p>}

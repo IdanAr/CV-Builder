@@ -12,15 +12,15 @@ const STEPS = [
 export function HowItWorksSection() {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-      <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">How It Works</h2>
+      <h2 className="text-center text-3xl font-medium tracking-tight text-fg-heading">How It Works</h2>
       <ol className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
         {STEPS.map(({ title, description }, i) => (
           <li key={title} className="text-center">
-            <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-sm font-bold text-white">
+            <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-fg">
               {i + 1}
             </span>
-            <h3 className="mt-4 text-base font-semibold text-gray-900">{title}</h3>
-            <p className="mt-2 text-sm text-gray-600">{description}</p>
+            <h3 className="mt-4 text-base font-medium text-fg-heading">{title}</h3>
+            <p className="mt-2 text-sm text-fg-body">{description}</p>
           </li>
         ))}
       </ol>

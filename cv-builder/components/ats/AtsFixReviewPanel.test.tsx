@@ -57,6 +57,8 @@ describe('AtsFixReviewPanel', () => {
     const button = screen.getByRole('button', { name: /apply all verified/i })
     expect(button).toBeDisabled()
     expect(button.textContent).toContain('(0)')
+    const reason = screen.getByText(/no fix is verified yet/i)
+    expect(button).toHaveAttribute('aria-describedby', reason.id)
   })
 
   it('enables "Apply All Verified" with a count reflecting only the unflagged fixes', () => {
@@ -73,6 +75,8 @@ describe('AtsFixReviewPanel', () => {
     const button = screen.getByRole('button', { name: /apply all verified/i })
     expect(button).toBeEnabled()
     expect(button.textContent).toContain('(1)')
+    expect(button).not.toHaveAttribute('aria-describedby')
+    expect(screen.queryByText(/no fix is verified yet/i)).not.toBeInTheDocument()
   })
 
   it('renders Before/After blocks for an edit-kind fix', () => {

@@ -247,7 +247,7 @@ export function EditTab() {
           onClick={() => setAddMenuOpen((o) => !o)}
           aria-haspopup="menu"
           aria-expanded={addMenuOpen}
-          className="w-full py-2.5 border-2 border-dashed border-accent-300 rounded-xl text-sm font-semibold text-fg-muted bg-accent-50/50 hover:border-accent-500 hover:text-fg-body hover:bg-accent-50 transition-all"
+          className="w-full rounded-card border-2 border-dashed border-input bg-surface-subtle py-2.5 text-sm font-medium text-fg-muted transition-colors hover:border-primary hover:bg-surface-selected hover:text-fg-body max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           + Add Section
         </button>
@@ -256,19 +256,19 @@ export function EditTab() {
             <div className="fixed inset-0 z-10" aria-hidden="true" onClick={() => setAddMenuOpen(false)} />
             <div
               role="menu"
-              className="absolute left-0 right-0 mt-1 z-20 rounded-xl border border-accent-100 bg-white shadow-lg overflow-hidden"
+              className="absolute left-0 right-0 mt-1 z-20 rounded-card border border-border bg-surface shadow-popover overflow-hidden"
             >
               <button
                 type="button"
                 role="menuitem"
                 onClick={handleAddSection}
                 title="Custom sections hold content the built-in categories don't cover. Give it a name, pick which fields to show, and add as many entries as you like. Handy for things like Military Service, References, or Conferences."
-                className="w-full text-left px-4 py-2.5 text-sm text-fg hover:bg-accent-50"
+                className="w-full text-left px-4 py-2.5 text-sm text-fg hover:bg-surface-subtle max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 + New custom section
               </button>
               {removedBuiltIns.length > 0 && (
-                <div className="border-t border-accent-50">
+                <div className="border-t border-border-subtle">
                   <p className="px-4 pt-2 pb-1 text-[11px] uppercase tracking-wide text-fg-subtle">Add built-in sections</p>
                   {removedBuiltIns.map((section) => (
                     <button
@@ -276,7 +276,7 @@ export function EditTab() {
                       type="button"
                       role="menuitem"
                       onClick={() => handleReAddSection(section)}
-                      className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-fg-body hover:bg-accent-50"
+                      className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-fg-body hover:bg-surface-subtle max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <SectionIcon section={section} />
                       {SECTION_LABELS[section]}

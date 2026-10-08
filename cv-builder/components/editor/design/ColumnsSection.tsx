@@ -286,7 +286,7 @@ export function ColumnsSection() {
             aria-label="Rail width"
             value={meta.sidebarRailWidth ?? 33}
             onChange={(e) => setMeta({ sidebarRailWidth: parseFloat(e.target.value) })}
-            className="w-full accent-accent-600" />
+            className="w-full accent-primary" />
           <div className="flex justify-between text-xs text-fg-subtle mt-0.5">
             <span>20% (min)</span><span>40%</span>
           </div>

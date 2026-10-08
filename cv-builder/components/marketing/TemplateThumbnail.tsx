@@ -68,8 +68,10 @@ export function TemplateThumbnail({
   return (
     <div
       data-testid={testId}
-      className={`relative overflow-hidden rounded-lg bg-white shadow-lg ${className}`}
-      style={{ height, width }}
+      className={`relative overflow-hidden rounded-control shadow-popover ${className}`}
+      // The paper is white by definition (it previews a printed page), so it is
+      // data rather than a surface token.
+      style={{ height, width, backgroundColor: '#ffffff' }}
       {...(decorative
         ? { 'aria-hidden': 'true' as const, inert: true }
         : { 'aria-label': `${TEMPLATE_LABELS[templateId]} template preview` })}

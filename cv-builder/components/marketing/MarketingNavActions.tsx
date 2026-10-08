@@ -1,5 +1,6 @@
 // components/marketing/MarketingNavActions.tsx
 import Link from 'next/link'
+import { buttonClasses } from '@/components/ui/Button'
 
 interface MarketingNavActionsProps {
   /** Signed-in visitors get a single "Dashboard" link instead of Sign In / Get Started. */
@@ -13,7 +14,7 @@ export function MarketingNavActions({ isSignedIn = false }: MarketingNavActionsP
       <div className="flex items-center gap-3 flex-1">
         <Link
           href="/dashboard"
-          className="ml-auto rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:opacity-90"
+          className={buttonClasses({ variant: 'primary', size: 'md', className: 'ml-auto' })}
         >
           Dashboard
         </Link>
@@ -25,13 +26,13 @@ export function MarketingNavActions({ isSignedIn = false }: MarketingNavActionsP
     <div className="flex items-center gap-3 flex-1">
       <Link
         href="/signin"
-        className="ml-auto hidden text-sm font-medium text-indigo-700 hover:text-indigo-900 sm:inline"
+        className={buttonClasses({ variant: 'link', size: 'md', className: 'ml-auto hidden sm:inline-flex' })}
       >
         Sign In
       </Link>
       <Link
         href="/signin"
-        className="ml-auto rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:opacity-90 sm:ml-0"
+        className={buttonClasses({ variant: 'primary', size: 'md', className: 'ml-auto sm:ml-0' })}
       >
         Get Started
       </Link>

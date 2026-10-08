@@ -107,7 +107,7 @@ export function JobSearchShell({
                     'inline-flex items-center gap-2 rounded-chip px-3 py-1.5 text-sm font-medium transition',
                     'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     isActive
-                      ? 'bg-primary text-primary-fg shadow-sm'
+                      ? 'bg-primary text-primary-fg'
                       : 'text-fg-subtle hover:bg-surface-subtle hover:text-fg-body'
                   )}
                 >

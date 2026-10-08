@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 /**
  * Status pills. Every tone pairs a token surface with the matching AA-rated
  * foreground, which is the part the hand-rolled pills kept getting wrong —
- * `text-accent-500` on `bg-accent-50` is 4.0:1, under the 4.5:1 floor for text
+ * a mid-blue accent text on a pale accent fill is 4.0:1, under the 4.5:1 floor for text
  * this size.
  */
 
@@ -12,7 +12,7 @@ export type BadgeTone = 'accent' | 'neutral' | 'danger' | 'success' | 'warning' 
 
 const TONE: Record<BadgeTone, string> = {
   accent: 'bg-surface-subtle text-fg-body',
-  neutral: 'bg-neutral-100 text-fg-subtle',
+  neutral: 'bg-surface-subtle text-fg-subtle',
   danger: 'bg-surface-danger text-fg-danger',
   success: 'bg-surface-success text-fg-success',
   warning: 'bg-surface-warning text-fg-warning',

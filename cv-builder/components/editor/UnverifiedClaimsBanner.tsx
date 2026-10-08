@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { AlertTriangle, Check } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 
 /**
  * Warns that this résumé contains AI-written phrases the hallucination guard
@@ -53,44 +54,46 @@ export function UnverifiedClaimsBanner({
   return (
     <div
       role="status"
-      className="mx-4 mt-3 rounded-lg border border-warning-300 bg-warning-50 px-4 py-3 text-warning-900"
+      className="mx-4 mt-3 rounded-card border border-border-attention bg-surface-attention px-4 py-3 text-fg-attention"
     >
       <div className="flex items-start gap-2.5">
-        <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 flex-none text-warning-600" />
+        <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 flex-none text-fg-attention" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">
+          <p className="text-sm font-medium">
             {claims.length === 1
               ? 'One claim in this draft was written by AI and not verified'
               : `${claims.length} claims in this draft were written by AI and not verified`}
           </p>
           <p className="mt-1 text-sm">
             This résumé was tailored automatically. These phrases could not be matched to anything
-            in your own text — check them before you send it anywhere.
+            in your own text. Check them before you send it anywhere.
           </p>
           <ul className="mt-2 flex flex-wrap gap-1.5">
             {claims.map((claim) => (
               <li
                 key={claim}
-                className="rounded bg-warning-200/70 px-1.5 py-0.5 font-mono text-xs text-warning-950"
+                className="rounded-chip bg-surface px-1.5 py-0.5 font-mono text-xs text-fg"
               >
                 {claim}
               </li>
             ))}
           </ul>
           {failed && (
-            <p className="mt-2 text-sm font-medium text-danger-700">
+            <p className="mt-2 text-sm font-medium text-fg-danger">
               Could not save that. Try again.
             </p>
           )}
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={confirm}
             disabled={saving}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-warning-400 bg-white px-2.5 py-1.5 text-sm font-medium text-warning-900 hover:bg-warning-100 disabled:opacity-60"
+            className="mt-3"
           >
             <Check aria-hidden="true" className="h-3.5 w-3.5" />
             {saving ? 'Saving…' : "I've checked these"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

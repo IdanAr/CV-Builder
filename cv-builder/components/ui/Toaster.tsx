@@ -5,8 +5,8 @@ import { useToastStore, type Toast } from '@/lib/stores/toast.store'
 import { X } from 'lucide-react'
 
 const VARIANT_STYLES: Record<Toast['variant'], string> = {
-  success: 'border-success-200 bg-success-50/95 text-success-800',
-  error: 'border-danger-200 bg-danger-50/95 text-danger-800',
+  success: 'border-border-success bg-surface-success text-fg-success',
+  error: 'border-border-danger bg-surface-danger text-fg-danger',
   info: 'border-border bg-surface text-fg',
 }
 

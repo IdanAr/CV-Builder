@@ -98,11 +98,14 @@ export function RichTextField({
   }
 
   const textareaClass =
-    'w-full resize-y rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-fg transition-colors duration-150 hover:border-neutral-300 focus:outline-none focus:border-accent-400 focus:ring-2 focus:ring-accent-500/35 placeholder:text-neutral-400'
+    'w-full resize-y rounded-control border border-input bg-surface px-3 py-1.5 text-sm text-fg transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-fg-muted'
 
+  // Below sm the toolbar buttons are 40px tall, so a toolbar hanging off the top edge would cover the
+  // first line of the textarea. AccordionSection clips with overflow-hidden, so rather than pushing the
+  // toolbar further up (where it could be cut off) the wrapper reserves its height and the toolbar sits in it.
   return (
-    <div className={`relative group ${className ?? ''}`}>
-      <div className="absolute -top-3.5 right-2.5 flex gap-0.5 rounded-lg border border-neutral-200 bg-white p-0.5 shadow-sm opacity-0 pointer-events-none transition-opacity duration-150 group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+    <div className={`relative group max-sm:pt-12 ${className ?? ''}`}>
+      <div className="absolute -top-3.5 max-sm:top-0 right-2.5 flex gap-0.5 rounded-control border border-border bg-surface p-0.5 opacity-0 pointer-events-none transition-opacity duration-150 group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
         {(['bold', 'italic', 'underline'] as Format[]).map((fmt) => {
           const Icon = BUTTON_ICONS[fmt]
           return (
@@ -115,7 +118,7 @@ export function RichTextField({
                 applyFormat(fmt)
               }}
               aria-label={`Format ${fmt}`}
-              className="flex h-5 w-[22px] items-center justify-center rounded text-neutral-500 hover:bg-neutral-100 hover:text-accent-600 transition-colors"
+              className="flex h-5 w-[22px] items-center justify-center rounded-chip text-fg-muted hover:bg-surface-subtle hover:text-fg-body transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:h-10 max-sm:w-10"
             >
               <Icon size={12} />
             </button>

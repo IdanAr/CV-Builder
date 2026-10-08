@@ -41,7 +41,7 @@ function ItemForm({ item, onUpdate, onRemove }: { item: Item; onUpdate: (v: Item
           </div>
         ))}
         <button type="button" onClick={addKeyword}
-          className="text-xs text-accent-600 hover:text-accent-800">+ Add keyword</button>
+          className="text-xs text-fg-body underline underline-offset-4 hover:text-fg-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10">+ Add keyword</button>
       </fieldset>
     </div>
   )

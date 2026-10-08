@@ -21,7 +21,7 @@ describe('SkipLink', () => {
     render(<SkipLink />)
     const classes = screen.getByRole('link').className.split(/\s+/)
     expect(classes).toContain('-translate-y-20')
-    expect(classes).toContain('focus:translate-y-0')
+    expect(classes).toContain('focus-visible:translate-y-0')
     expect(classes).not.toContain('sr-only')
     expect(classes).not.toContain('focus:not-sr-only')
   })

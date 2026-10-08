@@ -244,15 +244,15 @@ export function ListFieldManager<T>({
                 <div
                   ref={(el) => { setNodeRef(el); itemRefs.current[i] = el }}
                   style={style}
-                  className={`flex items-start gap-1.5 border border-accent-100 rounded-lg p-3 bg-surface${
-                    isDragging ? ' opacity-60 border-dashed border-accent-400' : ''
+                  className={`flex items-start gap-1.5 border border-border rounded-control p-3 bg-surface${
+                    isDragging ? ' opacity-60 border-dashed border-primary' : ''
                   }`}
                 >
                   <button
                     type="button"
                     data-testid={`list-drag-handle-${instanceId}-${i}`}
                     aria-label="Drag to reorder"
-                    className="shrink-0 py-1 px-0.5 text-fg-subtle hover:text-fg-body cursor-grab select-none"
+                    className="shrink-0 py-1 px-0.5 rounded-control text-fg-subtle hover:text-fg-body cursor-grab select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10"
                     {...listeners}
                     {...attributes}
                   >
@@ -268,7 +268,7 @@ export function ListFieldManager<T>({
         </SortableContext>
       </DndContext>
       <button type="button" onClick={add}
-        className="text-sm text-accent-600 hover:text-accent-800 font-medium">
+        className="text-sm text-fg-body underline underline-offset-4 hover:text-fg-heading font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10">
         + {addLabel}
       </button>
     </div>

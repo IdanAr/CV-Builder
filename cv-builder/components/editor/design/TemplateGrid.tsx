@@ -32,11 +32,11 @@ function Cards({ templateId, renderThumb }: CardsProps) {
               if (!active) setMeta({ templateId: t.id })
             }}
             className={cn(
-              'rounded-card border bg-surface p-2 text-left transition-shadow',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              'rounded-card border bg-surface p-2 text-left transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               active
-                ? 'border-accent-600 ring-2 ring-accent-600'
-                : 'border-border hover:border-accent-300 hover:shadow-sm'
+                ? 'border-primary ring-2 ring-ring'
+                : 'border-border hover:border-input'
             )}
           >
             {renderThumb(t.id)}

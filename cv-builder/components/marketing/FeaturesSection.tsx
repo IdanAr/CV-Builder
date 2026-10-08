@@ -30,18 +30,18 @@ const FEATURES = [
 export function FeaturesSection() {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-      <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">Everything You Need to Get Hired</h2>
+      <h2 className="text-center text-3xl font-medium tracking-tight text-fg-heading">Everything You Need to Get Hired</h2>
       <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
         {FEATURES.map(({ icon: Icon, title, description }) => (
           <div
             key={title}
-            className="rounded-2xl border border-indigo-100 bg-white/70 backdrop-blur-xl p-6 shadow-sm"
+            className="rounded-card border border-border bg-surface p-6"
           >
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+            <span className="flex h-11 w-11 items-center justify-center rounded-control bg-surface-selected text-fg-body">
               <Icon className="h-6 w-6" aria-hidden="true" />
             </span>
-            <h3 className="mt-4 text-lg font-semibold text-gray-900">{title}</h3>
-            <p className="mt-2 text-sm text-gray-600">{description}</p>
+            <h3 className="mt-4 text-lg font-medium text-fg-heading">{title}</h3>
+            <p className="mt-2 text-sm text-fg-body">{description}</p>
           </div>
         ))}
       </div>

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   // shows; `template` frames the rest, so the editor reads "My CV · CV Builder"
   // in a tab strip rather than an unattributed document name.
   title: {
-    default: 'CV Builder — AI-assisted résumé builder',
+    default: 'CV Builder: AI-assisted résumé builder',
     template: '%s · CV Builder',
   },
   description:
@@ -27,14 +27,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     siteName: 'CV Builder',
-    title: 'CV Builder — AI-assisted résumé builder',
+    title: 'CV Builder: AI-assisted résumé builder',
     description:
       'AI drafting, ATS scoring against a real job description, and PDF or DOCX export.',
     url: '/',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CV Builder — AI-assisted résumé builder',
+    title: 'CV Builder: AI-assisted résumé builder',
     description:
       'AI drafting, ATS scoring against a real job description, and PDF or DOCX export.',
   },

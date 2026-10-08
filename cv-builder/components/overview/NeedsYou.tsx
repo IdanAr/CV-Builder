@@ -32,7 +32,7 @@ export function NeedsYou({ counts }: { counts: PipelineCounts }) {
             <p className="font-medium text-fg-heading">You&apos;re caught up.</p>
             <p className="mt-1">
               Nothing needs your attention.{' '}
-              <Link href="/dashboard/jobsearch" className="text-accent-700 underline">
+              <Link href="/dashboard/jobsearch" className="text-fg-body underline underline-offset-4">
                 Run a scan
               </Link>{' '}
               to look for new roles.

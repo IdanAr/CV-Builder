@@ -223,7 +223,7 @@ function ProgressRadial({
       </svg>
       {(showLabel || children) && (
         <div className="absolute inset-0 flex items-center justify-center">
-          {children || <span className="text-lg font-bold">{value}%</span>}
+          {children || <span className="text-lg font-medium">{value}%</span>}
         </div>
       )}
     </div>

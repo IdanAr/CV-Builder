@@ -41,26 +41,26 @@ export function FaqSection() {
 
   return (
     <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-16">
-      <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">Frequently Asked Questions</h2>
+      <h2 className="text-center text-3xl font-medium tracking-tight text-fg-heading">Frequently Asked Questions</h2>
       <div className="mt-8 space-y-3">
         {FAQS.map(({ question, answer }, i) => {
           const isOpen = openIndex === i
           return (
-            <div key={question} className="rounded-2xl border border-indigo-100 bg-white/70 backdrop-blur-xl">
+            <div key={question} className="rounded-card border border-border bg-surface">
               <button
                 type="button"
                 aria-expanded={isOpen}
                 onClick={() => setOpenIndex(isOpen ? null : i)}
-                className="flex w-full items-center justify-between px-5 py-4 text-left"
+                className="flex min-h-10 w-full items-center justify-between rounded-card px-5 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <span className="text-sm font-semibold text-gray-900">{question}</span>
+                <span className="text-sm font-medium text-fg-heading">{question}</span>
                 <ChevronDown
                   className={`h-4 w-4 shrink-0 text-fg-muted transition-transform ${isOpen ? 'rotate-180' : ''}`}
                   aria-hidden="true"
                 />
               </button>
               <Collapsible open={isOpen}>
-                <p className="px-5 pb-4 text-sm text-gray-600">{answer}</p>
+                <p className="px-5 pb-4 text-sm text-fg-body">{answer}</p>
               </Collapsible>
             </div>
           )
