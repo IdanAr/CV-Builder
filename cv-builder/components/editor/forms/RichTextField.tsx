@@ -100,9 +100,12 @@ export function RichTextField({
   const textareaClass =
     'w-full resize-y rounded-control border border-input bg-surface px-3 py-1.5 text-sm text-fg transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-fg-muted'
 
+  // Below sm the toolbar buttons are 40px tall, so a toolbar hanging off the top edge would cover the
+  // first line of the textarea. AccordionSection clips with overflow-hidden, so rather than pushing the
+  // toolbar further up (where it could be cut off) the wrapper reserves its height and the toolbar sits in it.
   return (
-    <div className={`relative group ${className ?? ''}`}>
-      <div className="absolute -top-3.5 right-2.5 flex gap-0.5 rounded-control border border-border bg-surface p-0.5 opacity-0 pointer-events-none transition-opacity duration-150 group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+    <div className={`relative group max-sm:pt-12 ${className ?? ''}`}>
+      <div className="absolute -top-3.5 max-sm:top-0 right-2.5 flex gap-0.5 rounded-control border border-border bg-surface p-0.5 opacity-0 pointer-events-none transition-opacity duration-150 group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
         {(['bold', 'italic', 'underline'] as Format[]).map((fmt) => {
           const Icon = BUTTON_ICONS[fmt]
           return (

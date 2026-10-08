@@ -57,7 +57,7 @@ export function ExportMenu({ onExport, busy = false, onJsonExport }: ExportMenuP
           aria-haspopup="menu"
           aria-busy={busy}
           aria-label={busy ? 'Exporting, please wait' : 'Export options'}
-          className="shrink-0 px-3 focus-visible:outline-none disabled:cursor-wait"
+          className="shrink-0 px-3 focus-visible:outline-none"
         >
           {busy ? 'Exporting…' : 'Export ▾'}
         </Button>

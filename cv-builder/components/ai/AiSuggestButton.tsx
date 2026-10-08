@@ -70,7 +70,12 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
   }, [result])
 
   return (
-    <div className="shrink-0">
+    // A disabled Button has pointer-events-none, so its own title never shows. This wrapper
+    // carries the reason when the field is empty, so hovering the (inert) button still shows it.
+    <span
+      className="inline-flex shrink-0"
+      title={!loading && !currentValue.trim() ? 'Write something in this field first, then ask for an AI suggestion' : undefined}
+    >
       <Popover
         open={open}
         onOpenChange={(next) => {
@@ -147,6 +152,6 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
           </div>
         )}
       </Popover>
-    </div>
+    </span>
   )
 }

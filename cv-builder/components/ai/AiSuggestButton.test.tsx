@@ -40,6 +40,15 @@ describe('AiSuggestButton', () => {
     expect(button.getAttribute('aria-label')).toMatch(/AI/i)
   })
 
+  it('explains on a wrapper why an empty field disables the button (a disabled button shows no tooltip)', () => {
+    render(
+      <AiSuggestButton resumeId="r1" currentValue="  " context={{ field: 'summary' }} onAccept={() => {}} />
+    )
+    const button = screen.getByRole('button')
+    expect(button).toBeDisabled()
+    expect(button.parentElement?.getAttribute('title')).toMatch(/write something/i)
+  })
+
   it('swaps to a spinning loading icon while a suggestion is being generated, keeping the AI-labeled affordance', async () => {
     let resolveFetch: (v: unknown) => void = () => {}
     const fetchMock = vi.fn().mockReturnValueOnce(

@@ -77,6 +77,7 @@ export function AtsFixReviewPanel({
   const resolvedAppliedIds = appliedIds ?? EMPTY_APPLIED_IDS
   const visible = fixes.filter((f) => !dismissedIds.has(f.id))
   const verifiedCount = visible.filter((f) => f.pendingApprovals.length === 0).length
+  const applyAllDisabled = verifiedCount === 0
   const groups = groupFixesByRecord(visible, data)
 
   if (visible.length === 0) {
@@ -89,22 +90,31 @@ export function AtsFixReviewPanel({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-fg-heading">
-          {visible.length} suggested {visible.length === 1 ? 'fix' : 'fixes'}
-        </p>
-        <Button
-          size="xs"
-          onClick={onApplyAll}
-          disabled={verifiedCount === 0}
-          title={
-            verifiedCount < visible.length
-              ? 'Fixes with unverified figures are skipped - apply those individually after checking them'
-              : undefined
-          }
-        >
-          Apply All Verified{verifiedCount < visible.length ? ` (${verifiedCount})` : ''}
-        </Button>
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-fg-heading">
+            {visible.length} suggested {visible.length === 1 ? 'fix' : 'fixes'}
+          </p>
+          <Button
+            size="xs"
+            onClick={onApplyAll}
+            disabled={applyAllDisabled}
+            aria-describedby={applyAllDisabled ? 'apply-all-reason' : undefined}
+            title={
+              verifiedCount < visible.length
+                ? 'Fixes with unverified figures are skipped - apply those individually after checking them'
+                : undefined
+            }
+          >
+            Apply All Verified{verifiedCount < visible.length ? ` (${verifiedCount})` : ''}
+          </Button>
+        </div>
+        {/* A disabled Button has pointer-events-none, so its title never shows; say it in text. */}
+        {applyAllDisabled && (
+          <p id="apply-all-reason" className="text-xs text-fg-muted">
+            No fix is verified yet. Check the unverified figures and apply those fixes individually.
+          </p>
+        )}
       </div>
 
       {groups.map((group) => (
