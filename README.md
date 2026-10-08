@@ -648,7 +648,7 @@ All routes below are session-authenticated via Auth.js (`auth()` wrapper) and sc
 | `POST` | `/api/jobsearch/scan` | Run a synchronous scan for one profile ("Scan now") |
 | `GET` | `/api/jobsearch/scan/cron` | Vercel Cron target - Bearer `CRON_SECRET`, fans every active profile out to QStash |
 | `POST` | `/api/jobsearch/scan/worker` | QStash callback target - signature-verified, runs the scan for one profile |
-| `GET` | `/api/jobsearch/scraped-jobs` | Two modes. `?profileId=` returns the legacy list for a profile. `?stage=&profileId=&q=&cursor=&limit=` returns a pipeline page (`items`, `nextCursor`, `counts`) |
+| `GET` | `/api/jobsearch/scraped-jobs` | `?stage=&profileId=&q=&cursor=&limit=` returns a pipeline page (`items`, `nextCursor`, `counts`); `stage` is required, a request without it is a 400 |
 | `PATCH` / `DELETE` | `/api/jobsearch/scraped-jobs/:id` | Update (`dismissed` boolean, or `deleted: false` to restore a tombstone) / delete a scraped job |
 | `POST` | `/api/jobsearch/scraped-jobs/:id/approve` | Approve a `needs_review` match once pending approvals are resolved |
 | `POST` | `/api/jobsearch/scraped-jobs/:id/convert` | Convert a `queued` match into a tracked application |
