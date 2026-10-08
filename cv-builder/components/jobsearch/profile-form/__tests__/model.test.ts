@@ -135,3 +135,14 @@ describe('formatValidationDetails', () => {
     expect(formatValidationDetails(undefined)).toBe(' Try again.')
   })
 })
+
+describe('valuesFromProfile locations', () => {
+  it('drops empty location entries left behind by the old wizard', () => {
+    const v = valuesFromProfile({
+      _id: 'p', name: 'N', roles: [], workModes: [], seniority: [], categories: [], industries: [],
+      recencyDays: 14, minAtsScore: 75,
+      locations: [{}, { city: '' }, { country: 'IL' }, { city: 'Haifa' }, { region: 'Bavaria' }],
+    })
+    expect(v.locations).toEqual([{ country: 'IL' }, { city: 'Haifa' }, { region: 'Bavaria' }])
+  })
+})

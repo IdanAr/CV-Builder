@@ -7,6 +7,7 @@ import { emptyValues, type ProfileFormValues } from './model'
 import { StepRole } from './StepRole'
 import { StepWhere } from './StepWhere'
 import { StepSources } from './StepSources'
+import { MAX_COMEET_COMPANIES } from '@/lib/schemas/jobsearch.zod'
 import { StepReview } from './StepReview'
 
 function Stateful({ children, initial }: { initial?: Partial<ProfileFormValues>; children: (v: ProfileFormValues, c: (p: Partial<ProfileFormValues>) => void) => React.ReactNode }) {
@@ -58,6 +59,14 @@ describe('StepWhere', () => {
     expect(screen.queryByText('Tel Aviv, Israel')).not.toBeInTheDocument()
   })
 
+  it('renders legacy duplicate locations without key collisions', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(<Stateful initial={{ locations: [{ city: 'Haifa' }, { city: 'Haifa' }] }}>{(v, c) => <StepWhere values={v} onChange={c} />}</Stateful>)
+    expect(screen.getAllByText('Haifa')).toHaveLength(2)
+    expect(error).not.toHaveBeenCalled()
+    error.mockRestore()
+  })
+
   it('asks for something to add when both fields are empty', async () => {
     render(<Stateful>{(v, c) => <StepWhere values={v} onChange={c} />}</Stateful>)
     await userEvent.click(screen.getByRole('button', { name: 'Add location' }))
@@ -91,6 +100,53 @@ describe('StepSources', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Add company' }))
     expect(screen.getByRole('alert')).toHaveTextContent('That company is already in the list.')
     expect(vi.mocked(fetch)).not.toHaveBeenCalled()
+  })
+
+  it('uses the current list after the lookup, so a tag removed meanwhile stays removed', async () => {
+    let resolve: (value: Response) => void = () => {}
+    vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((r) => (resolve = r)))
+    render(<Stateful initial={{ comeetCompanies: [{ name: 'Wix', uid: 'u1', token: 't1' }] }}>{(v, c) => <StepSources values={v} onChange={c} />}</Stateful>)
+    await userEvent.type(screen.getByLabelText('Company careers page URL'), 'https://x.test')
+    await userEvent.click(screen.getByRole('button', { name: 'Add company' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Wix' }))
+    resolve({ ok: true, json: async () => ({ company: { name: 'Monday', uid: 'u2', token: 't2' } }) } as Response)
+    expect(await screen.findByText('Monday')).toBeInTheDocument()
+    expect(screen.queryByText('Wix')).not.toBeInTheDocument()
+  })
+
+  it('shows a generic message when the lookup request fails', async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new Error('network'))
+    render(<Stateful>{(v, c) => <StepSources values={v} onChange={c} />}</Stateful>)
+    await userEvent.type(screen.getByLabelText('Company careers page URL'), 'https://x.test')
+    await userEvent.click(screen.getByRole('button', { name: 'Add company' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not look up that page. Try again.')
+  })
+
+  it('refuses another company once the cap is reached', async () => {
+    const full = Array.from({ length: MAX_COMEET_COMPANIES }, (_, i) => ({ name: `Co ${i}`, uid: `u${i}`, token: 't' }))
+    render(<Stateful initial={{ comeetCompanies: full }}>{(v, c) => <StepSources values={v} onChange={c} />}</Stateful>)
+    await userEvent.type(screen.getByLabelText('Company careers page URL'), 'https://x.test')
+    await userEvent.click(screen.getByRole('button', { name: 'Add company' }))
+    expect(screen.getByRole('alert')).toHaveTextContent(`You can watch up to ${MAX_COMEET_COMPANIES} companies.`)
+    expect(vi.mocked(fetch)).not.toHaveBeenCalled()
+  })
+
+  it('rejects a response whose company is already watched', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ company: { name: 'Wix', uid: 'u1', token: 't1' } }) } as Response)
+    render(<Stateful initial={{ comeetCompanies: [{ name: 'Wix', uid: 'u1', token: 't1' }] }}>{(v, c) => <StepSources values={v} onChange={c} />}</Stateful>)
+    await userEvent.type(screen.getByLabelText('Company careers page URL'), 'https://other.test/page')
+    await userEvent.click(screen.getByRole('button', { name: 'Add company' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('That company is already in the list.')
+    expect(screen.getAllByText('Wix')).toHaveLength(1)
+  })
+
+  it('renders legacy duplicate companies without key collisions', () => {
+    const dup = { name: 'Wix', uid: 'u1', token: 't1' }
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(<Stateful initial={{ comeetCompanies: [dup, dup] }}>{(v, c) => <StepSources values={v} onChange={c} />}</Stateful>)
+    expect(screen.getAllByText('Wix')).toHaveLength(2)
+    expect(error).not.toHaveBeenCalled()
+    error.mockRestore()
   })
 
   it('collects categories and industries as tags', async () => {

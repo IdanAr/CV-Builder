@@ -35,6 +35,38 @@ describe('Dialog', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
+  it('asks to close on an outside press', async () => {
+    const { onOpenChange } = setup()
+    // Radix dismisses on pointerdown outside the content.
+    const overlay = document.querySelector('.bg-fg-heading\\/40')
+    expect(overlay).not.toBeNull()
+    await userEvent.click(overlay as Element)
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('lets the caller choose where focus lands on open', async () => {
+    render(
+      <Dialog
+        open
+        onOpenChange={() => {}}
+        title="T"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault()
+          document.getElementById('second')?.focus()
+        }}
+      >
+        <input id="first" aria-label="First" />
+        <input id="second" aria-label="Second" />
+      </Dialog>
+    )
+    await waitFor(() => expect(screen.getByLabelText('Second')).toHaveFocus())
+  })
+
+  it('breaks long unbroken titles instead of overflowing', () => {
+    setup({ title: 'x'.repeat(100) })
+    expect(screen.getByRole('heading').className).toContain('break-words')
+  })
+
   it('does not render when closed', () => {
     setup({ open: false })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

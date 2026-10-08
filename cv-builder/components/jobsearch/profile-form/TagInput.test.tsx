@@ -83,4 +83,31 @@ describe('TagInput', () => {
     expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange).toHaveBeenCalledWith(['a'])
   })
+
+  it('ignores auto-repeated Backspace so holding the key cannot wipe the list', () => {
+    render(<Harness initial={['one', 'two']} />)
+    const input = screen.getByLabelText('Target roles')
+    fireEvent.keyDown(input, { key: 'Backspace', repeat: true })
+    expect(screen.getByText('two')).toBeInTheDocument()
+    fireEvent.keyDown(input, { key: 'Backspace' })
+    expect(screen.queryByText('two')).not.toBeInTheDocument()
+    expect(screen.getByText('one')).toBeInTheDocument()
+  })
+
+  it('keeps the typed text when the cap blocked it, on Enter and on blur', async () => {
+    render(<Harness initial={['a', 'b']} max={2} />)
+    const input = screen.getByLabelText('Target roles')
+    await userEvent.type(input, 'third{Enter}')
+    expect(input).toHaveValue('third')
+    await userEvent.tab()
+    expect(input).toHaveValue('third')
+    expect(screen.queryByText('third')).not.toBeInTheDocument()
+  })
+
+  it('still clears the text when it is a duplicate', async () => {
+    render(<Harness initial={['a']} max={5} />)
+    const input = screen.getByLabelText('Target roles')
+    await userEvent.type(input, 'A{Enter}')
+    expect(input).toHaveValue('')
+  })
 })

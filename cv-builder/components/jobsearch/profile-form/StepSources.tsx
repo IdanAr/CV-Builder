@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MAX_COMEET_COMPANIES, type ComeetCompanyWatch } from '@/lib/schemas/jobsearch.zod'
 import { Button } from '@/components/ui/Button'
 import { fieldClass, helperClass, labelClass } from './field'
@@ -11,6 +11,13 @@ export function StepSources({ values, onChange }: StepProps) {
   const [url, setUrl] = useState('')
   const [resolving, setResolving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // The lookup is async, so the closure's `values` can be stale by the time the
+  // response arrives (the user may have removed a tag meanwhile). Read the
+  // current list through a ref instead.
+  const valuesRef = useRef(values)
+  useEffect(() => {
+    valuesRef.current = values
+  })
 
   // Resolves the pasted careers-page URL server-side into a full {name, uid, token}
   // entry; the user never sees or types the UID or token themselves.
@@ -38,7 +45,17 @@ export function StepSources({ values, onChange }: StepProps) {
         setError(body.error ?? 'Could not look up that page. Try again.')
         return
       }
-      onChange({ comeetCompanies: [...values.comeetCompanies, body.company as ComeetCompanyWatch] })
+      const company = body.company as ComeetCompanyWatch
+      const current = valuesRef.current.comeetCompanies
+      if (current.length >= MAX_COMEET_COMPANIES) {
+        setError(`You can watch up to ${MAX_COMEET_COMPANIES} companies.`)
+        return
+      }
+      if (current.some((c) => c.uid === company.uid)) {
+        setError('That company is already in the list.')
+        return
+      }
+      onChange({ comeetCompanies: [...current, company] })
       setUrl('')
     } catch {
       setError('Could not look up that page. Try again.')
@@ -59,7 +76,7 @@ export function StepSources({ values, onChange }: StepProps) {
           <div className="flex flex-wrap gap-1.5">
             {values.comeetCompanies.map((company, index) => (
               <TagChip
-                key={company.uid || index}
+                key={`${index}|${company.uid}`}
                 label={company.name}
                 onRemove={() => onChange({ comeetCompanies: values.comeetCompanies.filter((_, i) => i !== index) })}
               />

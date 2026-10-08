@@ -10,9 +10,28 @@ import { TagChip } from './TagInput'
 import { ToggleChipGroup } from './ToggleChipGroup'
 import type { StepProps } from './StepRole'
 
-export function StepWhere({ values, onChange }: StepProps) {
-  const [country, setCountry] = useState('')
-  const [city, setCity] = useState('')
+export interface PendingLocation {
+  country: string
+  city: string
+}
+
+export const EMPTY_PENDING: PendingLocation = { country: '', city: '' }
+
+interface StepWhereProps extends StepProps {
+  /**
+   * The not-yet-added country/city. The dialog owns it so a selection that was
+   * never added with the button is still committed on Next/Save. Optional so
+   * the step works stand-alone, with its own state.
+   */
+  pending?: PendingLocation
+  onPendingChange?: (pending: PendingLocation) => void
+}
+
+export function StepWhere({ values, onChange, pending: controlled, onPendingChange }: StepWhereProps) {
+  const [local, setLocal] = useState<PendingLocation>(EMPTY_PENDING)
+  const pending = controlled ?? local
+  const setPending = onPendingChange ?? setLocal
+  const { country, city } = pending
   const [error, setError] = useState<string | null>(null)
 
   function toggleMode(mode: WorkMode) {
@@ -31,7 +50,7 @@ export function StepWhere({ values, onChange }: StepProps) {
     }
     setError(null)
     onChange({ locations: result.locations })
-    setCity('')
+    setPending({ ...pending, city: '' })
   }
 
   return (
@@ -47,7 +66,7 @@ export function StepWhere({ values, onChange }: StepProps) {
           <div className="flex flex-wrap gap-1.5">
             {values.locations.map((location, index) => (
               <TagChip
-                key={`${location.country ?? ''}|${location.city ?? ''}`}
+                key={`${index}|${location.country ?? ''}|${location.region ?? ''}|${location.city ?? ''}`}
                 label={locationLabel(location)}
                 onRemove={() => onChange({ locations: values.locations.filter((_, i) => i !== index) })}
               />
@@ -59,7 +78,7 @@ export function StepWhere({ values, onChange }: StepProps) {
             <label htmlFor="location-country" className="text-xs text-fg-subtle">
               Country
             </label>
-            <select id="location-country" className={fieldClass} value={country} onChange={(e) => setCountry(e.target.value)}>
+            <select id="location-country" className={fieldClass} value={country} onChange={(e) => setPending({ ...pending, country: e.target.value })}>
               <option value="">Any country</option>
               {COUNTRIES.map((c) => (
                 <option key={c.code} value={c.code}>
@@ -77,7 +96,7 @@ export function StepWhere({ values, onChange }: StepProps) {
               className={fieldClass}
               value={city}
               placeholder="Tel Aviv"
-              onChange={(e) => setCity(e.target.value)}
+              onChange={(e) => setPending({ ...pending, city: e.target.value })}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
                   e.preventDefault()

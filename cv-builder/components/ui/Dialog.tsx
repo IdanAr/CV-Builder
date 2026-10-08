@@ -29,15 +29,18 @@ export interface DialogProps {
   footer?: ReactNode
   children: ReactNode
   returnFocusTo?: HTMLElement | null
+  /** Override where focus lands on open (default: Radix focuses the first focusable). */
+  onOpenAutoFocus?: (event: Event) => void
 }
 
-export function Dialog({ open, onOpenChange, title, description, footer, children, returnFocusTo }: DialogProps) {
+export function Dialog({ open, onOpenChange, title, description, footer, children, returnFocusTo, onOpenAutoFocus }: DialogProps) {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-fg-heading/40" />
         <DialogPrimitive.Content
           {...(description ? {} : { 'aria-describedby': undefined })}
+          onOpenAutoFocus={onOpenAutoFocus}
           onCloseAutoFocus={(event) => {
             if (returnFocusTo && returnFocusTo.isConnected) {
               event.preventDefault()
@@ -53,7 +56,7 @@ export function Dialog({ open, onOpenChange, title, description, footer, childre
         >
           <div className="flex items-start justify-between gap-3 border-b border-border-subtle px-5 py-4">
             <div className="flex min-w-0 flex-col gap-0.5">
-              <DialogPrimitive.Title className="text-base font-medium text-fg-heading">{title}</DialogPrimitive.Title>
+              <DialogPrimitive.Title className="break-words text-base font-medium text-fg-heading">{title}</DialogPrimitive.Title>
               {description && (
                 <DialogPrimitive.Description className="text-sm text-fg-subtle">{description}</DialogPrimitive.Description>
               )}

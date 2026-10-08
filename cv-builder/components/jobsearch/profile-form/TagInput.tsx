@@ -42,17 +42,23 @@ export function TagInput({ id, label, values, onChange, placeholder, helper, max
   const [text, setText] = useState('')
   const helperId = useId()
 
-  function addMany(parts: string[]) {
+  /** Returns true when the cap stopped a new, non-duplicate entry from being added. */
+  function addMany(parts: string[]): boolean {
+    let blockedByMax = false
     const seen = new Set(values.map((v) => v.toLowerCase()))
     const added: string[] = []
     for (const part of parts.map((p) => p.trim()).filter(Boolean)) {
       const key = part.toLowerCase()
       if (seen.has(key)) continue
-      if (max !== undefined && values.length + added.length >= max) break
+      if (max !== undefined && values.length + added.length >= max) {
+        blockedByMax = true
+        break
+      }
       seen.add(key)
       added.push(part)
     }
     if (added.length > 0) onChange([...values, ...added])
+    return blockedByMax
   }
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
@@ -70,18 +76,15 @@ export function TagInput({ id, label, values, onChange, placeholder, helper, max
     if (event.nativeEvent.isComposing || event.key === 'Process') return
     if (event.key === 'Enter') {
       event.preventDefault()
-      addMany([text])
-      setText('')
-    } else if (event.key === 'Backspace' && text === '' && values.length > 0) {
+      // Keep the text when the cap blocked it; a duplicate is simply cleared.
+      if (!addMany([text])) setText('')
+    } else if (event.key === 'Backspace' && !event.repeat && text === '' && values.length > 0) {
       onChange(values.slice(0, -1))
     }
   }
 
   function handleBlur() {
-    if (text.trim()) {
-      addMany([text])
-      setText('')
-    }
+    if (text.trim() && !addMany([text])) setText('')
   }
 
   return (

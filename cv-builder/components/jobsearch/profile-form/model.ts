@@ -68,7 +68,9 @@ export function valuesFromProfile(p: ExistingProfile): ProfileFormValues {
     roles: p.roles,
     seniority: p.seniority,
     workModes: p.workModes,
-    locations: p.locations,
+    // The old wizard could store an empty `{}` or `{ city: '' }`; those carry no
+    // search information and would render as blank tags.
+    locations: p.locations.filter((l) => l.country || l.region || l.city),
     comeetCompanies: p.comeetCompanies ?? [],
     categories: p.categories,
     industries: p.industries,
