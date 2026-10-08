@@ -9,9 +9,9 @@ import { cn } from '@/lib/utils'
  */
 
 export type CardTone =
-  /** The default. Opaque, hairline border, no shadow. */
+  /** The default. Opaque, hairline border, no elevation. */
   | 'default'
-  /** Opaque, floats above the page with a shadow: dialogs, popovers. */
+  /** Opaque, floats above the page with elevation: dialogs, popovers. */
   | 'raised'
   /** No fill, just an outline. Empty states and drop zones. */
   | 'outline'
