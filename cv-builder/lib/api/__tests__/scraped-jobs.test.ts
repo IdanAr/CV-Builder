@@ -56,7 +56,6 @@ vi.mock('@/lib/api/jobsearch-profiles', () => ({
 }))
 
 import {
-  listScrapedJobs,
   findExistingSourceIds,
   createScrapedJobs,
   countDraftedInWindow,
@@ -73,9 +72,6 @@ import {
   markNotifyMatchesRead,
 } from '../scraped-jobs'
 
-function sortLeanChain(resolved: unknown) {
-  return { sort: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(resolved) })) }
-}
 function leanChain(resolved: unknown) {
   return { lean: vi.fn().mockResolvedValue(resolved) }
 }
@@ -87,18 +83,6 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockEnsureJobMetadataColumns.mockResolvedValue(undefined)
   mockGetProfileNameMap.mockResolvedValue(new Map())
-})
-
-describe('listScrapedJobs', () => {
-  it('scopes the query to userId and profileId, newest first', async () => {
-    const jobs = [{ _id: 'j1', userId: 'u1', profileId: 'p1', title: 'Engineer' }]
-    mockFind.mockReturnValue(sortLeanChain(jobs))
-
-    const result = await listScrapedJobs('u1', 'p1')
-
-    expect(mockFind).toHaveBeenCalledWith({ userId: 'u1', profileId: 'p1', deletedAt: { $exists: false } })
-    expect(result).toEqual(jobs)
-  })
 })
 
 describe('findExistingSourceIds', () => {

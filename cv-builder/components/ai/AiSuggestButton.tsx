@@ -96,7 +96,7 @@ export function AiSuggestButton({ resumeId, currentValue, context, onAccept }: A
         }}
         trigger={
           <Button
-            variant="secondary"
+            variant="ghost"
             size="icon"
             onClick={handleClick}
             disabled={loading || !currentValue.trim() || !resumeId}

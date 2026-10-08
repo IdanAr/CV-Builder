@@ -36,10 +36,10 @@ export function ProfileWizardSteps({ current, maxUnlocked, labels, onStepClick }
           : 'flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium text-fg-subtle cursor-not-allowed'
 
         const badgeClass = isCurrent
-          ? 'flex items-center justify-center h-4 w-4 rounded-full bg-primary-fg/25 text-[10px]'
+          ? 'flex items-center justify-center h-5 w-5 rounded-full bg-primary-fg/25 text-xs'
           : isDone
-          ? 'flex items-center justify-center h-4 w-4 rounded-full bg-surface-selected text-[10px]'
-          : 'flex items-center justify-center h-4 w-4 rounded-full bg-surface-subtle text-[10px]'
+          ? 'flex items-center justify-center h-5 w-5 rounded-full border border-border-success bg-surface-success text-xs text-fg-success'
+          : 'flex items-center justify-center h-5 w-5 rounded-full bg-surface-subtle text-xs'
 
         return (
           <button

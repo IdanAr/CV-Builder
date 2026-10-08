@@ -83,7 +83,7 @@ export function JobSearchSection() {
                   <p className="truncate text-xs text-fg-muted">{company}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <Badge className="bg-surface-muted text-[10px]">{tag}</Badge>
+                  <Badge className="bg-surface-muted text-xs">{tag}</Badge>
                   <Badge tone={scoreTone(score)} className="rounded-full">
                     {score}%
                   </Badge>

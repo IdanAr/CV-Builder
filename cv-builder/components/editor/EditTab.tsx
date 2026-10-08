@@ -269,7 +269,7 @@ export function EditTab() {
               </button>
               {removedBuiltIns.length > 0 && (
                 <div className="border-t border-border-subtle">
-                  <p className="px-4 pt-2 pb-1 text-[11px] uppercase tracking-wide text-fg-subtle">Add built-in sections</p>
+                  <p className="px-4 pt-2 pb-1 text-xs uppercase tracking-wide text-fg-subtle">Add built-in sections</p>
                   {removedBuiltIns.map((section) => (
                     <button
                       key={section}

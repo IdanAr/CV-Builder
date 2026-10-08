@@ -16,7 +16,7 @@
  *  - The border was `indigo-200`, 1.4:1, leaving the field with no findable
  *    edge. SC 1.4.11 asks 3:1 of a control's boundary; `border-input` is
  *    4.1:1. The focus indicator is a `focus-visible:ring-ring` ring, not a
- *    border colour change, and the edge carries the field without a shadow.
+ *    border colour change, and the edge carries the field without any elevation.
  *
  *  Both are token references, so the values live in lib/design/color-tokens.ts
  *  and are covered by its contrast test rather than being re-litigated here.

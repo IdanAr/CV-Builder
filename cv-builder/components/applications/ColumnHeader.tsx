@@ -42,7 +42,7 @@ export function ColumnHeader({
           <span className="shrink-0 text-fg-muted" aria-hidden="true">
             {entry.direction === 'asc' ? '▲' : '▼'}
             {sort.length > 1 && (
-              <span className="ml-0.5 text-[10px]">{LEVEL_BADGES[level] ?? level + 1}</span>
+              <span className="ml-0.5 text-xs">{LEVEL_BADGES[level] ?? level + 1}</span>
             )}
           </span>
         )}
@@ -53,7 +53,7 @@ export function ColumnHeader({
           aria-label={`Edit ${column.label} column`}
           title="Edit column"
           onClick={() => onEdit(column)}
-          className="shrink-0 rounded-chip px-0.5 text-[11px] text-fg-subtle opacity-0 transition group-hover/header:opacity-100 hover:text-fg-body focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10"
+          className="shrink-0 rounded-chip px-0.5 text-xs text-fg-subtle opacity-0 transition group-hover/header:opacity-100 hover:text-fg-body focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10"
         >
           <Pencil className="h-3 w-3" aria-hidden="true" />
         </button>
@@ -64,7 +64,7 @@ export function ColumnHeader({
           aria-label={`Delete ${column.label} column`}
           title="Delete column"
           onClick={() => onDelete(column)}
-          className="shrink-0 rounded-chip px-0.5 text-[11px] text-fg-subtle opacity-0 transition group-hover/header:opacity-100 hover:text-fg-danger focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10"
+          className="shrink-0 rounded-chip px-0.5 text-xs text-fg-subtle opacity-0 transition group-hover/header:opacity-100 hover:text-fg-danger focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10"
         >
           <X className="h-3 w-3" aria-hidden="true" />
         </button>

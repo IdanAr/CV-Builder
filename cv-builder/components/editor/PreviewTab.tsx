@@ -312,7 +312,7 @@ export function PreviewTab({
                   style={{
                     background: 'rgb(var(--color-ring) / 0.08)',
                     color: 'rgb(var(--color-ring) / 0.6)',
-                    fontSize: '10px',
+                    fontSize: '12px',
                     padding: '1px 8px',
                     borderRadius: '0 0 4px 4px',
                     fontFamily: 'sans-serif',

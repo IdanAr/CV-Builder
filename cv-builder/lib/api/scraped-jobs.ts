@@ -17,19 +17,6 @@ import type { CustomFieldValue } from '@/lib/schemas/application.zod'
 import { stageOf, stageQuery, type PipelineFilter } from '@/lib/jobsearch/stages'
 import type { PipelineCountsDto, PipelineJob } from '@/lib/jobsearch/pipeline-types'
 
-// Tombstoned postings are excluded by default; the list's "Deleted" filter
-// passes includeDeleted so it can show and restore them.
-export async function listScrapedJobs(
-  userId: string,
-  profileId: string,
-  options: { includeDeleted?: boolean } = {}
-) {
-  await dbConnect()
-  const query: Record<string, unknown> = { userId, profileId }
-  if (!options.includeDeleted) query.deletedAt = { $exists: false }
-  return ScrapedJob.find(query).sort({ createdAt: -1 }).lean()
-}
-
 // Deliberately does NOT exclude tombstones. This is the dedup gate scan.ts
 // consults before creating — and therefore before tailoring — anything, so a
 // posting the user already actioned must keep matching here forever. Filtering

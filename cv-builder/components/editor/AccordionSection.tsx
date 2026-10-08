@@ -60,7 +60,7 @@ export function AccordionSection({
         {dragHandleProps ? (
           <button
             type="button"
-            className="w-5 shrink-0 rounded-chip py-3 text-center max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity cursor-grab text-fg-subtle hover:text-fg-body select-none"
+            className="w-5 max-sm:w-10 shrink-0 rounded-chip py-3 text-center max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity cursor-grab text-fg-subtle hover:text-fg-body select-none"
             {...dragHandleProps.listeners}
             {...dragHandleProps.attributes}
             aria-label="Drag to reorder"
@@ -68,7 +68,7 @@ export function AccordionSection({
             ⠿
           </button>
         ) : (
-          <span className="w-5 shrink-0" aria-hidden="true" />
+          <span className="w-5 max-sm:w-10 shrink-0" aria-hidden="true" />
         )}
         {icon && (
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-control bg-surface-selected text-fg-muted">

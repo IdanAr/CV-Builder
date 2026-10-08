@@ -48,8 +48,8 @@ function SegmentBadge({ count, isActive }: { count: number; isActive: boolean })
   return (
     <span
       className={cn(
-        'inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1',
-        'text-[10px] font-medium tabular-nums',
+        'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1',
+        'text-xs font-medium tabular-nums',
         isActive ? 'bg-primary-fg/25 text-primary-fg' : 'bg-secondary text-secondary-fg'
       )}
     >

@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { mockList, mockPipeline, mockCounts } = vi.hoisted(() => ({
-  mockList: vi.fn(), mockPipeline: vi.fn(), mockCounts: vi.fn(),
+const { mockPipeline, mockCounts } = vi.hoisted(() => ({
+  mockPipeline: vi.fn(), mockCounts: vi.fn(),
 }))
 
 vi.mock('@/lib/api/scraped-jobs', () => {
   class InvalidCursorError extends Error {}
-  return { listScrapedJobs: mockList, listPipelineJobs: mockPipeline, countPipelineStages: mockCounts, InvalidCursorError }
+  return { listPipelineJobs: mockPipeline, countPipelineStages: mockCounts, InvalidCursorError }
 })
 
 vi.mock('@/lib/auth', () => ({
@@ -17,37 +17,6 @@ vi.mock('@/lib/auth', () => ({
 import { GET } from './route'
 
 beforeEach(() => vi.clearAllMocks())
-
-describe('GET /api/jobsearch/scraped-jobs', () => {
-  it('lists scraped jobs for the given profileId', async () => {
-    mockList.mockResolvedValue([{ _id: 'j1', title: 'Engineer' }])
-    const req = new Request('http://test/api/jobsearch/scraped-jobs?profileId=p1')
-
-    const res = (await GET(req as never, undefined as never)) as Response
-    const body = await res.json()
-
-    expect(mockList).toHaveBeenCalledWith('u1', 'p1', { includeDeleted: false })
-    expect(body.scrapedJobs).toEqual([{ _id: 'j1', title: 'Engineer' }])
-  })
-
-  it('passes includeDeleted through when the Deleted filter asks for it', async () => {
-    mockList.mockResolvedValue([])
-    const req = new Request('http://test/api/jobsearch/scraped-jobs?profileId=p1&includeDeleted=1')
-
-    await GET(req as never, undefined as never)
-
-    expect(mockList).toHaveBeenCalledWith('u1', 'p1', { includeDeleted: true })
-  })
-
-  it('rejects a missing profileId with 400', async () => {
-    const req = new Request('http://test/api/jobsearch/scraped-jobs')
-
-    const res = (await GET(req as never, undefined as never)) as Response
-
-    expect(res.status).toBe(400)
-    expect(mockList).not.toHaveBeenCalled()
-  })
-})
 
 describe('GET pipeline mode', () => {
   const get = async (qs: string) => (await GET(new Request(`http://test/api/jobsearch/scraped-jobs?${qs}`) as never, undefined as never)) as Response
@@ -80,10 +49,13 @@ describe('GET pipeline mode', () => {
     mockCounts.mockResolvedValue({})
     expect((await get('stage=found&cursor=zzz')).status).toBe(400)
   })
-  it('keeps the legacy shape when stage is absent (R7)', async () => {
-    mockList.mockResolvedValue([{ _id: 'j1' }])
-    const res = await get('profileId=p1')
-    expect((await res.json()).scrapedJobs).toEqual([{ _id: 'j1' }])
+  it('no stage returns 400 VALIDATION_ERROR and never calls the data layer', async () => {
+    for (const qs of ['', 'profileId=p1', 'profileId=p1&includeDeleted=1']) {
+      const res = await get(qs)
+      expect(res.status).toBe(400)
+      expect(await res.json()).toMatchObject({ code: 'VALIDATION_ERROR', error: 'stage is required' })
+    }
     expect(mockPipeline).not.toHaveBeenCalled()
+    expect(mockCounts).not.toHaveBeenCalled()
   })
 })
