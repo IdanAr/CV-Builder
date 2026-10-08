@@ -33,15 +33,17 @@ describe('ProfileSettings', () => {
     render(<ProfileSettings profileId="p1" />)
 
     expect(await screen.findByText('Data Analyst')).toBeInTheDocument()
-    expect(screen.getByText(/israel.*tel aviv/i)).toBeInTheDocument()
+    expect(screen.getByText('Tel Aviv, Israel')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /edit preferences/i })).toBeInTheDocument()
   })
 
-  it('switches to the wizard in edit mode and refreshes the summary after saving', async () => {
+  it('opens the edit dialog prefilled, saves, and refreshes the summary', async () => {
     let currentProfile = baseProfile
+    const calls: { url: string; method: string }[] = []
     const mockFetch = vi.fn((url: string, opts?: { method?: string }) => {
+      calls.push({ url, method: opts?.method ?? 'GET' })
       if (url === '/api/jobsearch/profiles/p1' && opts?.method === 'PATCH') {
-        currentProfile = { ...baseProfile, name: 'Updated', recencyDays: 30 }
+        currentProfile = { ...baseProfile, recencyDays: 30 }
         return Promise.resolve(jsonResponse({ profile: currentProfile }))
       }
       if (url === '/api/jobsearch/profiles/p1') {
@@ -54,26 +56,48 @@ describe('ProfileSettings', () => {
     render(<ProfileSettings profileId="p1" />)
 
     await userEvent.click(await screen.findByRole('button', { name: /edit preferences/i }))
-    expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('Roles')
+    expect(await screen.findByRole('dialog', { name: 'Edit Analyst' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Profile name')).toHaveValue('Analyst')
 
-    for (let i = 0; i < 5; i++) {
-      await userEvent.click(screen.getByRole('button', { name: /next/i }))
-    }
-    await userEvent.click(screen.getByRole('button', { name: /save changes/i }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
 
-    await waitFor(() => expect(screen.queryByRole('button', { name: /save changes/i })).not.toBeInTheDocument())
-    expect(await screen.findByText(/30 days/i)).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(calls.filter((c) => c.method === 'PATCH')).toHaveLength(1)
+    expect(await screen.findByText('30 days')).toBeInTheDocument()
+    expect(calls.filter((c) => c.url === '/api/jobsearch/profiles/p1' && c.method === 'GET')).toHaveLength(2)
   })
 
-  it('cancels out of edit mode without saving', async () => {
-    const mockFetch = vi.fn().mockResolvedValue(jsonResponse({ profile: baseProfile }))
+  it('cancels out of the dialog without saving and returns focus to the opener', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(jsonResponse({ profile: baseProfile, resumes: [] }))
     vi.stubGlobal('fetch', mockFetch)
 
     render(<ProfileSettings profileId="p1" />)
-    await userEvent.click(await screen.findByRole('button', { name: /edit preferences/i }))
-    await userEvent.click(screen.getByRole('button', { name: /cancel/i }))
+    const opener = await screen.findByRole('button', { name: /edit preferences/i })
+    await userEvent.click(opener)
+    await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
 
-    expect(screen.getByRole('button', { name: /edit preferences/i })).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(mockFetch.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'PATCH')).toBe(false)
+    await waitFor(() => expect(opener).toHaveFocus())
+  })
+
+  it('lists every location in the Location indicator, joined with "; "', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          profile: {
+            ...baseProfile,
+            locations: [
+              { country: 'IL', city: 'Tel Aviv' },
+              { country: 'IL', city: 'Herzliya' },
+            ],
+          },
+        })
+      )
+    )
+    render(<ProfileSettings profileId="p1" />)
+    expect(await screen.findByText('Tel Aviv, Israel; Herzliya, Israel')).toBeInTheDocument()
   })
 
   it('shows watched Comeet company names, or "-" when none are configured', async () => {

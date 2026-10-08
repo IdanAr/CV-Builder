@@ -30,6 +30,12 @@ interface ProfileFormDialogBaseProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSaved: (profile: { _id: string; name: string }) => void
+  /**
+   * Where focus goes when the dialog closes. Pass the button that opened it:
+   * on iOS Safari a tapped button is never focused, so the element active at
+   * mount cannot be relied on.
+   */
+  returnFocusTo?: HTMLElement | null
 }
 
 export type ProfileFormDialogProps = ProfileFormDialogBaseProps &
@@ -67,9 +73,10 @@ function ProfileFormDialogInner(props: ProfileFormDialogProps) {
   const [pending, setPending] = useState<PendingLocation>(EMPTY_PENDING)
   const [nameFocusTick, setNameFocusTick] = useState(0)
   const [resumeOptions, setResumeOptions] = useState<ResumeOption[]>([])
-  const [opener] = useState<HTMLElement | null>(() =>
+  const [capturedOpener] = useState<HTMLElement | null>(() =>
     typeof document !== 'undefined' && document.activeElement instanceof HTMLElement ? document.activeElement : null
   )
+  const opener = props.returnFocusTo ?? capturedOpener
   const savedRef = useRef(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const prevStep = useRef(step)
