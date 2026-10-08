@@ -84,17 +84,17 @@ function watchChips(profile: ProfileSummary): Array<{ key: string; label: string
 
 function Metric({ value, label }: { value: number; label: string }) {
   return (
-    <div className="flex flex-col items-end leading-tight">
+    <div className="flex flex-col items-end">
       <span
         className={
           value > 0
-            ? 'text-base font-medium tabular-nums text-fg-heading'
-            : 'text-base tabular-nums text-fg-subtle'
+            ? 'text-base font-medium leading-tight tabular-nums text-fg-heading'
+            : 'text-base leading-tight tabular-nums text-fg-subtle'
         }
       >
         {value}
       </span>
-      <span className="text-xs uppercase tracking-wide text-fg-subtle">{label}</span>
+      <span className="text-xs uppercase leading-tight tracking-wide text-fg-subtle">{label}</span>
     </div>
   )
 }

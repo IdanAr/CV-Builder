@@ -38,7 +38,7 @@ export function ProfileWizardSteps({ current, maxUnlocked, labels, onStepClick }
         const badgeClass = isCurrent
           ? 'flex items-center justify-center h-5 w-5 rounded-full bg-primary-fg/25 text-xs'
           : isDone
-          ? 'flex items-center justify-center h-5 w-5 rounded-full bg-surface-selected text-xs'
+          ? 'flex items-center justify-center h-5 w-5 rounded-full border border-border-success bg-surface-success text-xs text-fg-success'
           : 'flex items-center justify-center h-5 w-5 rounded-full bg-surface-subtle text-xs'
 
         return (

@@ -400,6 +400,42 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
         fireEvent.pointerCancel(d, { pointerId: 1 })
         expect(Number(d.getAttribute('aria-valuenow'))).toBe(380)
       })
+
+      it('pointercancel at a narrow window restores the chosen preference, not the clamped width', () => {
+        setViewport(1280)
+        localStorage.setItem('cv-builder:panel-width', '480')
+        mockLeft(56)
+        renderShell()
+        resizeWindow(700)
+        const d = startDrag()
+        fireEvent.pointerMove(d, { pointerId: 1, clientX: 56 + 330 })
+        fireEvent.pointerCancel(d, { pointerId: 1 })
+        expect(Number(d.getAttribute('aria-valuenow'))).toBe(420)
+        resizeWindow(1280)
+        expect(Number(d.getAttribute('aria-valuenow'))).toBe(480)
+      })
+
+      it('a plain click at a narrow window does not overwrite the preference', () => {
+        setViewport(1280)
+        localStorage.setItem('cv-builder:panel-width', '480')
+        mockLeft(56)
+        renderShell()
+        resizeWindow(700)
+        const d = startDrag()
+        fireEvent.pointerUp(d, { pointerId: 1 })
+        expect(localStorage.getItem('cv-builder:panel-width')).toBe('480')
+        resizeWindow(1280)
+        expect(Number(d.getAttribute('aria-valuenow'))).toBe(480)
+      })
+    })
+
+    it('mounting in a narrow window keeps the stored width as the preference for when it grows', () => {
+      setViewport(700)
+      localStorage.setItem('cv-builder:panel-width', '480')
+      renderShell()
+      expect(Number(divider().getAttribute('aria-valuenow'))).toBe(420)
+      resizeWindow(1280)
+      expect(Number(divider().getAttribute('aria-valuenow'))).toBe(480)
     })
 
     it('keeps its accessible name', () => {

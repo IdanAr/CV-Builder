@@ -101,7 +101,7 @@ function WorkItemForm({
   const setRoles = (roles: WorkRole[]) => onUpdate({
     ...item, roles,
     // roles[] is the sole source of truth once edited through this list —
-    // clear the legacy flat fields so they don't linger as stale leftovers
+    // clear the legacy flat fields so they don't linger as stale leftover
     // data (same pattern BasicsForm uses for legacy basics.url).
     position: undefined, startDate: undefined, endDate: undefined, summary: undefined, highlights: undefined,
   })

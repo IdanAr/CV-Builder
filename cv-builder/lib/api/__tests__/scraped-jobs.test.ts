@@ -72,9 +72,6 @@ import {
   markNotifyMatchesRead,
 } from '../scraped-jobs'
 
-function sortLeanChain(resolved: unknown) {
-  return { sort: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(resolved) })) }
-}
 function leanChain(resolved: unknown) {
   return { lean: vi.fn().mockResolvedValue(resolved) }
 }

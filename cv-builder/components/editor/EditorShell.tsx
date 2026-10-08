@@ -81,11 +81,14 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   // The panel's left edge in viewport coordinates (the app shell's sidebar rail sits to its left).
   const dragOffsetRef = useRef(0)
-  const dragStartWidthRef = useRef(DEFAULT_PANEL_WIDTH)
   // The width the user last chose. The window resize handler clamps this for the
   // current viewport rather than the rendered width, so growing the window back
   // restores it instead of keeping the shrunken value.
   const preferredWidthRef = useRef(DEFAULT_PANEL_WIDTH)
+  // The preference as it was at pointer-down, so a cancelled drag can restore it, and whether
+  // the pointer actually moved (a plain click must not overwrite the preference).
+  const preferredAtDragStartRef = useRef(DEFAULT_PANEL_WIDTH)
+  const dragMovedRef = useRef(false)
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT_QUERY)
   const reduceMotion = useReducedMotion()
 
@@ -123,10 +126,10 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
     if (saved) {
       const w = parseInt(saved, 10)
       if (!isNaN(w)) {
-        const clamped = clampPanelWidth(w)
-        preferredWidthRef.current = clamped
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setPanelWidth(clamped)
+        // Keep the stored value (bounded only by the panel's own limits) as the preference and
+        // render it clamped to this viewport, so a window that grows later restores it.
+        preferredWidthRef.current = Math.max(PANEL_MIN, Math.min(PANEL_MAX, w))
+        setPanelWidth(clampPanelWidth(preferredWidthRef.current))
       }
     }
   }, [])
@@ -140,7 +143,8 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
   }, [])
 
   function handleDividerPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    dragStartWidthRef.current = panelWidth
+    preferredAtDragStartRef.current = preferredWidthRef.current
+    dragMovedRef.current = false
     dragOffsetRef.current = panelRef.current?.getBoundingClientRect().left ?? 0
     e.currentTarget.setPointerCapture(e.pointerId)
     draggingRef.current = true
@@ -150,6 +154,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
   function handleDividerPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!draggingRef.current) return
     const next = clampPanelWidth(e.clientX - dragOffsetRef.current)
+    dragMovedRef.current = true
     preferredWidthRef.current = next
     setPanelWidth(next)
   }
@@ -157,18 +162,15 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
   function handleDividerPointerUp() {
     draggingRef.current = false
     setDividerActive(false)
-    setPanelWidth((w) => {
-      preferredWidthRef.current = w
-      localStorage.setItem(PANEL_WIDTH_KEY, String(w))
-      return w
-    })
+    if (!dragMovedRef.current) return
+    localStorage.setItem(PANEL_WIDTH_KEY, String(preferredWidthRef.current))
   }
 
   function handleDividerPointerCancel() {
     draggingRef.current = false
     setDividerActive(false)
-    preferredWidthRef.current = dragStartWidthRef.current
-    setPanelWidth(dragStartWidthRef.current)
+    preferredWidthRef.current = preferredAtDragStartRef.current
+    setPanelWidth(clampPanelWidth(preferredAtDragStartRef.current))
   }
 
   function handleDividerKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {

@@ -237,7 +237,7 @@ describe('AccordionSection', () => {
       transition: undefined,
       isDragging: false,
     }
-    const { container, unmount } = render(
+    const { unmount } = render(
       <AccordionSection title="Work Experience" isOpen={false} onToggle={vi.fn()} dragHandleProps={dragHandleProps}>
         {null}
       </AccordionSection>
@@ -254,6 +254,5 @@ describe('AccordionSection', () => {
     )
     const spacer = r.container.querySelector('span[aria-hidden="true"].w-5')
     expect(spacer?.className).toContain('max-sm:w-10')
-    void container
   })
 })
