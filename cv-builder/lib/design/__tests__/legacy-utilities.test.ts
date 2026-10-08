@@ -30,12 +30,13 @@ const RULES: Record<string, RegExp> = {
     /\b(?:bg|text|border|ring|fill|stroke)-(?:(?:neutral|gray|slate|zinc|stone|red|orange|amber|yellow|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|danger|success|warning)-\d+|(?:black|white)\/\d+)/g,
   'inline accent var': /rgb\(var\(--color-accent-\d+\)/g,
   'focus: ring/border': /\bfocus:(border|ring)/g,
-  'arbitrary text size': /\btext-\[\d+(?:\.\d+)?(?:px|rem|em)\]/g,
+  'arbitrary text size': /\btext-\[(?:length:)?\.?\d+(?:\.\d+)?(?:px|rem|em|pt)\]/g,
   'extra off-scale radius':
-    /\brounded-(?:sm|3xl)\b|\brounded-(?:t|r|b|l|s|e|tl|tr|bl|br|ss|se|es|ee)-(?:sm|md|lg|xl|2xl|3xl)\b/g,
+    /\brounded-(?:sm|3xl)\b|\brounded-(?:t|r|b|l|s|e|tl|tr|bl|br|ss|se|es|ee)-(?:sm|md|lg|xl|2xl|3xl)\b|\brounded-(?:t|r|b|l|s|e|tl|tr|bl|br|ss|se|es|ee)(?![\w-])|\brounded-\[/g,
   'bare shadow': /(?<![\w-])shadow(?:-inner)?(?![\w-])/g,
-  'inline heavy weight': /fontWeight:\s*(?:[6-9]\d\d|['"`](?:bold|semibold|[6-9]00)['"`])/g,
-  'inline literal shadow': /boxShadow:\s*['"`](?!none|var|[^'"`]*var\()/g,
+  'inline heavy weight': /fontWeight:\s*(?:[6-9]\d\d|['"`](?:bold|bolder|semibold|[6-9]00)['"`])/g,
+  'inline literal shadow': /boxShadow:\s*['"`](?!none['"`]|var\()/g,
+  'inline small font size': /fontSize:\s*['"`]?(?:[0-9]|1[01])(?:\.\d+)?(?:px)?['"`]?\s*[,}\n]/g,
 }
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -52,6 +53,7 @@ function walk(dir: string, out: string[] = []): string[] {
 // take no Tailwind classes, and the preview must match the PDF), so they are not app UI.
 const RULE_SKIP: Record<string, RegExp> = {
   'inline heavy weight': /^(?:components\/templates\/|lib\/pdf\/|app\/opengraph-image\.tsx$)/,
+  'inline small font size': /^(?:components\/templates\/|lib\/pdf\/|app\/opengraph-image\.tsx$)/,
 }
 
 function breakdown(src: string, rel: string): Record<string, number> {
@@ -75,6 +77,8 @@ const BASELINE: Record<string, number> = {
   'components/ui/Button.tsx': 2,
   // kept: the single allowed active-segment shadow-sm, the one raised surface a segmented control is meant to have.
   'components/editor/design/SegmentedControl.tsx': 1,
+  // kept: inline-styled floating menu; the popover shadow has no CSS variable, so it mirrors shadow-popover's geometry
+  'components/editor/PreviewEditOverlay.tsx': 1,
 }
 
 // Returns the baseline entries ('path': N, with N > 0) whose previous non-empty line is not a `// kept:` comment.
