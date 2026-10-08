@@ -82,6 +82,10 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
   // The panel's left edge in viewport coordinates (the app shell's sidebar rail sits to its left).
   const dragOffsetRef = useRef(0)
   const dragStartWidthRef = useRef(DEFAULT_PANEL_WIDTH)
+  // The width the user last chose. The window resize handler clamps this for the
+  // current viewport rather than the rendered width, so growing the window back
+  // restores it instead of keeping the shrunken value.
+  const preferredWidthRef = useRef(DEFAULT_PANEL_WIDTH)
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT_QUERY)
   const reduceMotion = useReducedMotion()
 
@@ -119,15 +123,17 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
     if (saved) {
       const w = parseInt(saved, 10)
       if (!isNaN(w)) {
+        const clamped = clampPanelWidth(w)
+        preferredWidthRef.current = clamped
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setPanelWidth(clampPanelWidth(w))
+        setPanelWidth(clamped)
       }
     }
   }, [])
 
   useEffect(() => {
     function onResize() {
-      setPanelWidth((w) => clampPanelWidth(w))
+      setPanelWidth(clampPanelWidth(preferredWidthRef.current))
     }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
@@ -143,13 +149,16 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
 
   function handleDividerPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!draggingRef.current) return
-    setPanelWidth(clampPanelWidth(e.clientX - dragOffsetRef.current))
+    const next = clampPanelWidth(e.clientX - dragOffsetRef.current)
+    preferredWidthRef.current = next
+    setPanelWidth(next)
   }
 
   function handleDividerPointerUp() {
     draggingRef.current = false
     setDividerActive(false)
     setPanelWidth((w) => {
+      preferredWidthRef.current = w
       localStorage.setItem(PANEL_WIDTH_KEY, String(w))
       return w
     })
@@ -158,6 +167,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
   function handleDividerPointerCancel() {
     draggingRef.current = false
     setDividerActive(false)
+    preferredWidthRef.current = dragStartWidthRef.current
     setPanelWidth(dragStartWidthRef.current)
   }
 
@@ -171,6 +181,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
     e.preventDefault()
     setPanelWidth((w) => {
       const next = clampPanelWidth(w + delta)
+      preferredWidthRef.current = next
       localStorage.setItem(PANEL_WIDTH_KEY, String(next))
       return next
     })

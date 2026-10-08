@@ -274,6 +274,34 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
       expect(w).toBeLessThanOrEqual(Math.floor(700 * 0.6))
     })
 
+    function resizeWindow(w: number) {
+      act(() => {
+        setViewport(w)
+        window.dispatchEvent(new Event('resize'))
+      })
+    }
+
+    it('returns to the width the user chose after the window shrinks and grows back', () => {
+      setViewport(1280)
+      localStorage.setItem('cv-builder:panel-width', '480')
+      renderShell()
+      resizeWindow(700)
+      expect(Number(divider().getAttribute('aria-valuenow'))).toBe(420)
+      resizeWindow(1280)
+      expect(Number(divider().getAttribute('aria-valuenow'))).toBe(480)
+    })
+
+    it('treats a width chosen at a narrow window as the preference after it grows', () => {
+      setViewport(1280)
+      renderShell()
+      resizeWindow(700)
+      // 380 + 3 * 16 = 428, clamped to 420 at this viewport.
+      for (let i = 0; i < 3; i++) fireEvent.keyDown(divider(), { key: 'ArrowRight' })
+      expect(Number(divider().getAttribute('aria-valuenow'))).toBe(420)
+      resizeWindow(1280)
+      expect(Number(divider().getAttribute('aria-valuenow'))).toBe(420)
+    })
+
     it('clamps to 320 at a narrow viewport where the 60% cap is below the minimum', () => {
       setViewport(375)
       renderShell()
