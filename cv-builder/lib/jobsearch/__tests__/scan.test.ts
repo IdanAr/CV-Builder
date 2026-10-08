@@ -239,18 +239,94 @@ describe('runScanForProfile', () => {
     expect(mockFindOne).toHaveBeenCalledWith({ _id: 'r1', userId: 'u1' })
   })
 
-  it('maps location region into the freehire search params alongside country and city', async () => {
+  it('queries freehire once per location, sending only that location’s most specific facet', async () => {
     mockGetJobSearchProfile.mockResolvedValue({
       ...baseProfile,
-      locations: [{ country: 'DE', region: 'Bavaria', city: 'Munich' }, { region: 'Île-de-France' }],
+      locations: [
+        { country: 'IL', city: 'Tel Aviv' },
+        { country: 'IL', city: 'Herzliya' },
+      ],
     })
     mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
 
     await runScanForProfile('u1', 'p1')
 
-    expect(mockSearchFreehireJobs).toHaveBeenCalledWith(
-      expect.objectContaining({ region: ['Bavaria', 'Île-de-France'] })
-    )
+    expect(mockSearchFreehireJobs).toHaveBeenCalledTimes(2)
+    expect(mockSearchFreehireJobs).toHaveBeenCalledWith(expect.objectContaining({ city: ['Tel Aviv'] }))
+    expect(mockSearchFreehireJobs).toHaveBeenCalledWith(expect.objectContaining({ city: ['Herzliya'] }))
+    for (const [arg] of mockSearchFreehireJobs.mock.calls) {
+      expect(arg.country).toBeUndefined()
+      expect(arg.region).toBeUndefined()
+    }
+  })
+
+  it('falls back from city to region to country for each location', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({
+      ...baseProfile,
+      locations: [{ region: 'Bavaria', country: 'DE' }, { country: 'IL' }],
+    })
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockSearchFreehireJobs).toHaveBeenCalledWith(expect.objectContaining({ region: ['Bavaria'] }))
+    expect(mockSearchFreehireJobs).toHaveBeenCalledWith(expect.objectContaining({ country: ['IL'] }))
+  })
+
+  it('does not let a country-only tag widen or be narrowed by a city tag elsewhere', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({
+      ...baseProfile,
+      locations: [{ country: 'IL' }, { country: 'FR', city: 'Paris' }],
+    })
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+
+    await runScanForProfile('u1', 'p1')
+
+    const args = mockSearchFreehireJobs.mock.calls.map(([a]) => a)
+    expect(args.some((a) => a.country?.[0] === 'IL' && a.city === undefined)).toBe(true)
+    expect(args.some((a) => a.city?.[0] === 'Paris' && a.country === undefined)).toBe(true)
+  })
+
+  it('runs a single unfiltered query when the profile has no locations', async () => {
+    mockGetJobSearchProfile.mockResolvedValue(baseProfile)
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockSearchFreehireJobs).toHaveBeenCalledTimes(1)
+    const [arg] = mockSearchFreehireJobs.mock.calls[0]
+    expect(arg.country).toBeUndefined()
+    expect(arg.city).toBeUndefined()
+    expect(arg.region).toBeUndefined()
+  })
+
+  it('bounds location queries at MAX_LOCATIONS even if the stored profile has more', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({
+      ...baseProfile,
+      locations: Array.from({ length: 8 }, (_, i) => ({ city: `City ${i}` })),
+    })
+    mockSearchFreehireJobs.mockResolvedValue({ postings: [], degraded: false })
+
+    await runScanForProfile('u1', 'p1')
+
+    expect(mockSearchFreehireJobs).toHaveBeenCalledTimes(5)
+  })
+
+  it('merges results across locations and dedupes a posting that matches two of them', async () => {
+    mockGetJobSearchProfile.mockResolvedValue({
+      ...baseProfile,
+      locations: [{ city: 'Tel Aviv' }, { city: 'Herzliya' }],
+    })
+    mockSearchFreehireJobs.mockResolvedValue({
+      degraded: false,
+      postings: [
+        { source: 'freehire', sourceId: 'a1', title: 'X', company: 'Y', url: 'https://x/a1', description: 'JD' },
+      ],
+    })
+
+    const result = await runScanForProfile('u1', 'p1')
+
+    expect(result.fetched).toBe(1)
   })
 
   it('returns a degraded result instead of throwing when createScrapedJobs fails unexpectedly', async () => {

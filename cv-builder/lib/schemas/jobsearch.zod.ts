@@ -37,12 +37,16 @@ export type ComeetCompanyWatch = z.infer<typeof ComeetCompanyWatchSchema>
 // lib/jobsearch/scan.ts's MAX_COMEET_COMPANIES, which re-enforces this at fetch time).
 export const MAX_COMEET_COMPANIES = 10
 
+// Each location becomes its own freehire query per role (see lib/jobsearch/scan.ts),
+// so the cap bounds the per-scan request count at MAX_ROLE_QUERIES x MAX_LOCATIONS.
+export const MAX_LOCATIONS = 5
+
 export const JobSearchProfileSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(100),
   resumeId: z.string().optional(),
   roles: z.array(z.string().trim().min(1)).default([]),
   workModes: z.array(WorkModeEnum).default([]),
-  locations: z.array(JobLocationSchema).default([]),
+  locations: z.array(JobLocationSchema).max(MAX_LOCATIONS).default([]),
   seniority: z.array(SeniorityEnum).default([]),
   categories: z.array(z.string().trim().min(1)).default([]),
   industries: z.array(z.string().trim().min(1)).default([]),
@@ -68,7 +72,7 @@ export const PatchJobSearchProfileSchema = z.object({
   resumeId: z.string().optional(),
   roles: z.array(z.string().trim().min(1)).optional(),
   workModes: z.array(WorkModeEnum).optional(),
-  locations: z.array(JobLocationSchema).optional(),
+  locations: z.array(JobLocationSchema).max(MAX_LOCATIONS).optional(),
   seniority: z.array(SeniorityEnum).optional(),
   categories: z.array(z.string().trim().min(1)).optional(),
   industries: z.array(z.string().trim().min(1)).optional(),

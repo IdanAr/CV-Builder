@@ -4,6 +4,7 @@ import {
   PatchJobSearchProfileSchema,
   ComeetCompanyWatchSchema,
   MAX_COMEET_COMPANIES,
+  MAX_LOCATIONS,
   DEFAULT_RECENCY_DAYS,
   DEFAULT_MIN_ATS_SCORE,
   SENIORITY_LEVELS,
@@ -365,5 +366,28 @@ describe('PatchJobSearchRuleSchema', () => {
   it('rejects an empty conditions array when provided', () => {
     const result = PatchJobSearchRuleSchema.safeParse({ conditions: [] })
     expect(result.success).toBe(false)
+  })
+})
+
+describe('locations cap', () => {
+  const six = Array.from({ length: MAX_LOCATIONS + 1 }, (_, i) => ({ city: `City ${i}` }))
+
+  it('exports a cap of 5', () => {
+    expect(MAX_LOCATIONS).toBe(5)
+  })
+
+  it('rejects more than MAX_LOCATIONS locations on create', () => {
+    const result = JobSearchProfileSchema.safeParse({ name: 'P', locations: six })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects more than MAX_LOCATIONS locations on patch', () => {
+    const result = PatchJobSearchProfileSchema.safeParse({ locations: six })
+    expect(result.success).toBe(false)
+  })
+
+  it('accepts exactly MAX_LOCATIONS', () => {
+    const ok = six.slice(0, MAX_LOCATIONS)
+    expect(JobSearchProfileSchema.safeParse({ name: 'P', locations: ok }).success).toBe(true)
   })
 })
