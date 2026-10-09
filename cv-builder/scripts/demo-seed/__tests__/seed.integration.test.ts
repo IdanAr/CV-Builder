@@ -41,6 +41,9 @@ afterAll(async () => {
 beforeEach(async () => {
   await clearMemoryMongo()
   const db = mongoose.connection.db!
+  // clearMemoryMongo only empties Mongoose-registered collections; `users`
+  // belongs to the Auth.js adapter, so it is cleared here.
+  await db.collection('users').deleteMany({})
   await db.collection('users').insertMany([
     { _id: new Types.ObjectId(DEMO_ID), email: DEMO_EMAIL },
     { _id: new Types.ObjectId(OTHER_ID), email: 'someone@else.com' },
