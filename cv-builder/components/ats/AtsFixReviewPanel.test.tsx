@@ -57,7 +57,7 @@ describe('AtsFixReviewPanel', () => {
     const button = screen.getByRole('button', { name: /apply all verified/i })
     expect(button).toBeDisabled()
     expect(button.textContent).toContain('(0)')
-    const reason = screen.getByText(/no fix is verified yet/i)
+    const reason = screen.getByText(/no edit is verified yet/i)
     expect(button).toHaveAttribute('aria-describedby', reason.id)
   })
 
@@ -76,10 +76,10 @@ describe('AtsFixReviewPanel', () => {
     expect(button).toBeEnabled()
     expect(button.textContent).toContain('(1)')
     expect(button).not.toHaveAttribute('aria-describedby')
-    expect(screen.queryByText(/no fix is verified yet/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/no edit is verified yet/i)).not.toBeInTheDocument()
   })
 
-  it('renders Before/After blocks for an edit-kind fix', () => {
+  it('renders the edited text with the original underneath for an edit-kind fix', () => {
     render(
       <AtsFixReviewPanel
         fixes={[makeFix()]}
@@ -87,12 +87,12 @@ describe('AtsFixReviewPanel', () => {
         {...noop}
       />
     )
-    expect(screen.getByText('Before')).toBeInTheDocument()
-    expect(screen.getByText('After')).toBeInTheDocument()
+    expect(screen.getByText('Was:')).toBeInTheDocument()
+    expect(screen.getByText('After:')).toBeInTheDocument()
     // The "After" text is split across multiple <span> segments (unchanged vs.
     // changed words) by the word-diff renderer, so match on combined textContent.
     const byTextContent = (target: string) =>
-      screen.getByText((_, element) => element?.tagName.toLowerCase() === 'p' && element.textContent === target)
+      screen.getByText((_, element) => element?.tagName.toLowerCase() === 'p' && element.textContent?.replace(/^(Was:|After: )/, '') === target)
     expect(byTextContent('Experienced developer.')).toBeInTheDocument()
     expect(byTextContent('Experienced React developer.')).toBeInTheDocument()
   })
@@ -108,7 +108,7 @@ describe('AtsFixReviewPanel', () => {
         {...noop}
       />
     )
-    const struck = Array.from(container.querySelectorAll('.line-through')).map(el => el.textContent)
+    const struck = Array.from(container.querySelectorAll('del')).map(el => el.textContent)
     expect(struck.join('')).toContain('small')
     expect(struck.join('')).not.toContain('dashboard')
     expect(struck.join('')).not.toContain('users')
@@ -137,7 +137,7 @@ describe('AtsFixReviewPanel', () => {
       ).toBeInTheDocument()
     })
 
-    it('does not render a Before block or any strikethrough element', () => {
+    it('does not render a Was line or any deleted-word element', () => {
       const { container } = render(
         <AtsFixReviewPanel
           fixes={[generateFix]}
@@ -145,12 +145,12 @@ describe('AtsFixReviewPanel', () => {
           {...noop}
         />
       )
-      expect(screen.queryByText('Before')).not.toBeInTheDocument()
-      expect(screen.queryByText('After')).not.toBeInTheDocument()
-      expect(container.querySelector('.line-through')).toBeNull()
+      expect(screen.queryByText('Was:')).not.toBeInTheDocument()
+      expect(screen.queryByText('After:')).not.toBeInTheDocument()
+      expect(container.querySelector('del')).toBeNull()
     })
 
-    it('still renders keyword chips, Apply and Dismiss buttons', () => {
+    it('still renders keyword chips, Apply and Skip buttons', () => {
       render(
         <AtsFixReviewPanel
           fixes={[generateFix]}
@@ -161,7 +161,7 @@ describe('AtsFixReviewPanel', () => {
       expect(screen.getByText('react')).toBeInTheDocument()
       expect(screen.getByText('ats')).toBeInTheDocument()
       expect(screen.getByText('Apply')).toBeInTheDocument()
-      expect(screen.getByText('Dismiss')).toBeInTheDocument()
+      expect(screen.getByText('Skip')).toBeInTheDocument()
     })
 
     it('still shows the unverified-claims warning when pendingApprovals is present', () => {
@@ -186,7 +186,7 @@ describe('AtsFixReviewPanel', () => {
       }],
     }
 
-    it('labels a summary fix with "Summary Section"', () => {
+    it('labels a summary fix with "Summary"', () => {
       render(
         <AtsFixReviewPanel
           fixes={[makeFix()]}
@@ -195,7 +195,7 @@ describe('AtsFixReviewPanel', () => {
           {...noop}
         />
       )
-      expect(screen.getByText('Summary Section')).toBeInTheDocument()
+      expect(screen.getByText('Summary')).toBeInTheDocument()
     })
 
     it('labels a work fix with the section and the specific role/company record', () => {
@@ -214,7 +214,7 @@ describe('AtsFixReviewPanel', () => {
           {...noop}
         />
       )
-      expect(screen.getByText('Work Experience Section - Frontend Engineer at Acme Corp')).toBeInTheDocument()
+      expect(screen.getByText('Frontend Engineer at Acme Corp')).toBeInTheDocument()
     })
 
     it('aggregates multiple fixes for the same work record under a single heading', () => {
@@ -235,8 +235,8 @@ describe('AtsFixReviewPanel', () => {
           {...noop}
         />
       )
-      expect(screen.getAllByText('Work Experience Section - Frontend Engineer at Acme Corp')).toHaveLength(1)
-      expect(screen.getByText('2 suggested fixes')).toBeInTheDocument()
+      expect(screen.getAllByText('Frontend Engineer at Acme Corp')).toHaveLength(1)
+      expect(screen.getByText('2 suggested edits')).toBeInTheDocument()
     })
 
     it('falls back gracefully when data is not provided', () => {
@@ -249,12 +249,12 @@ describe('AtsFixReviewPanel', () => {
           {...noop}
         />
       )
-      expect(screen.getByText('Work Experience Section')).toBeInTheDocument()
+      expect(screen.getByText('Work experience')).toBeInTheDocument()
     })
   })
 
   describe('applied-confirmation card', () => {
-    it('renders a compact "✓ Applied" card for a fix whose id is in appliedIds, instead of the full edit card', () => {
+    it('renders a compact "Applied" card for a fix whose id is in appliedIds, instead of the full edit card', () => {
       render(
         <AtsFixReviewPanel
           fixes={[makeFix({ id: 'fix-a' })]}
@@ -264,9 +264,9 @@ describe('AtsFixReviewPanel', () => {
         />
       )
       expect(screen.getByText(/applied/i)).toBeInTheDocument()
-      expect(screen.queryByText('Before')).not.toBeInTheDocument()
+      expect(screen.queryByText('Was:')).not.toBeInTheDocument()
       expect(screen.queryByText('Apply')).not.toBeInTheDocument()
-      expect(screen.queryByText('Dismiss')).not.toBeInTheDocument()
+      expect(screen.queryByText('Skip')).not.toBeInTheDocument()
     })
 
     it('still renders the full edit card for a fix not in appliedIds', () => {
@@ -278,7 +278,7 @@ describe('AtsFixReviewPanel', () => {
           {...noop}
         />
       )
-      expect(screen.getByText('Before')).toBeInTheDocument()
+      expect(screen.getByText('Was:')).toBeInTheDocument()
       expect(screen.getByText('Apply')).toBeInTheDocument()
     })
 
@@ -296,7 +296,7 @@ describe('AtsFixReviewPanel', () => {
           {...noop}
         />
       )
-      expect(screen.getAllByText('Work Experience Section - Frontend Engineer at Acme Corp')).toHaveLength(1)
+      expect(screen.getAllByText('Frontend Engineer at Acme Corp')).toHaveLength(1)
     })
 
     it('defaults to no applied fixes when appliedIds is omitted', () => {
@@ -307,7 +307,7 @@ describe('AtsFixReviewPanel', () => {
           {...noop}
         />
       )
-      expect(screen.getByText('Before')).toBeInTheDocument()
+      expect(screen.getByText('Was:')).toBeInTheDocument()
     })
   })
 })

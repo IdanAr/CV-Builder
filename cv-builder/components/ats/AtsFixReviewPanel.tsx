@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { Check, CheckCheck } from 'lucide-react'
 import type { AtsFix } from '@/lib/ai/ats-fix-pipeline'
 import { diffWords } from '@/lib/text-diff'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
@@ -51,16 +52,16 @@ function groupFixesByRecord(fixes: AtsFix[], data: ResumeData | undefined): FixG
 }
 
 function getRecordLabel(fix: AtsFix, data: ResumeData | undefined): string {
-  if (fix.section === 'summary') return 'Summary Section'
+  if (fix.section === 'summary') return 'Summary'
 
   const job = fix.workIndex !== undefined ? data?.work?.[fix.workIndex] : undefined
   const position = fix.roleIndex !== undefined ? job?.roles?.[fix.roleIndex]?.position : job?.position
   const company = job?.name
 
-  if (position && company) return `Work Experience Section - ${position} at ${company}`
-  if (position) return `Work Experience Section - ${position}`
-  if (company) return `Work Experience Section - ${company}`
-  return 'Work Experience Section'
+  if (position && company) return `${position} at ${company}`
+  if (position) return position
+  if (company) return company
+  return 'Work experience'
 }
 
 const EMPTY_APPLIED_IDS: Set<string> = new Set()
@@ -83,61 +84,65 @@ export function AtsFixReviewPanel({
   if (visible.length === 0) {
     return (
       <div className="rounded-card border border-border-success bg-surface-success p-4 text-center">
-        <p className="text-sm font-medium text-fg-success">All fixes applied or dismissed.</p>
+        <p className="text-sm font-medium text-fg-success">All suggestions applied or skipped.</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-1">
-        <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
           <p className="text-sm font-medium text-fg-heading">
-            {visible.length} suggested {visible.length === 1 ? 'fix' : 'fixes'}
+            {visible.length} suggested {visible.length === 1 ? 'edit' : 'edits'}
           </p>
-          <Button
-            size="xs"
-            onClick={onApplyAll}
-            disabled={applyAllDisabled}
-            aria-describedby={applyAllDisabled ? 'apply-all-reason' : undefined}
-            title={
-              verifiedCount < visible.length
-                ? 'Fixes with unverified figures are skipped - apply those individually after checking them'
-                : undefined
-            }
-          >
-            Apply All Verified{verifiedCount < visible.length ? ` (${verifiedCount})` : ''}
-          </Button>
+          <p className="text-xs text-fg-muted">Added words are highlighted. Review, then apply.</p>
         </div>
-        {/* A disabled Button has pointer-events-none, so its title never shows; say it in text. */}
-        {applyAllDisabled && (
-          <p id="apply-all-reason" className="text-xs text-fg-muted">
-            No fix is verified yet. Check the unverified figures and apply those fixes individually.
-          </p>
-        )}
+        <Button
+          size="sm"
+          onClick={onApplyAll}
+          disabled={applyAllDisabled}
+          aria-describedby={applyAllDisabled ? 'apply-all-reason' : undefined}
+          title={
+            verifiedCount < visible.length
+              ? 'Edits with unverified figures are skipped - apply those individually after checking them'
+              : undefined
+          }
+        >
+          <CheckCheck aria-hidden="true" className="h-4 w-4" />
+          Apply All Verified{verifiedCount < visible.length ? ` (${verifiedCount})` : ''}
+        </Button>
       </div>
+      {/* A disabled Button has pointer-events-none, so its title never shows; say it in text. */}
+      {applyAllDisabled && (
+        <p id="apply-all-reason" className="text-xs text-fg-muted">
+          No edit is verified yet. Check the unverified figures and apply those edits individually.
+        </p>
+      )}
 
       {groups.map((group) => (
         <div key={group.key} className="space-y-2">
-          <p className="text-xs font-medium text-fg-muted uppercase tracking-wide">
-            {group.label}
-          </p>
+          <p className="text-xs text-fg-muted">{group.label}</p>
           {group.fixes.map((fix) => (
             resolvedAppliedIds.has(fix.id) ? (
               <div
                 key={fix.id}
-                className="rounded-card border border-border-success bg-surface-success px-4 py-3 flex items-center justify-between"
+                role="status"
+                className="flex items-center justify-between rounded-card border border-border-success bg-surface-success px-4 py-3"
               >
-                <span className="text-sm text-fg-success">{fix.targetKeywords.join(', ') || 'Fix'}</span>
-                <span className="text-xs font-medium text-fg-success">✓ Applied</span>
+                <span className="text-sm text-fg-success">{fix.targetKeywords.join(', ') || 'Edit'}</span>
+                <span className="flex items-center gap-1 text-xs font-medium text-fg-success">
+                  <Check aria-hidden="true" className="h-3.5 w-3.5" /> Applied
+                </span>
               </div>
             ) : (
-            <div
+            <article
               key={fix.id}
-              className="rounded-card border border-border bg-surface p-4 space-y-2"
+              className="space-y-3 rounded-card border border-border bg-surface p-4"
             >
               {fix.targetKeywords.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-1">
+                <div className="flex flex-wrap items-center gap-1">
+                  <span className="text-xs text-fg-subtle">Adds</span>
                   {fix.targetKeywords.map((kw) => (
                     <Badge key={kw} className="rounded-full">
                       {kw}
@@ -147,49 +152,43 @@ export function AtsFixReviewPanel({
               )}
 
               {fix.kind === 'generate' ? (
-                <div className="text-sm">
-                  <div className="rounded-card border border-border bg-surface-success px-3 py-2">
-                    <p className="mb-0.5 text-xs font-medium text-fg-success">New professional summary</p>
-                    <p className="text-fg-heading leading-relaxed">{fix.suggested}</p>
-                  </div>
+                <div>
+                  <p className="mb-1 text-xs text-fg-muted">New professional summary</p>
+                  <p className="text-sm leading-relaxed text-fg-heading">{fix.suggested}</p>
                 </div>
               ) : (
                 (() => {
                   const { before, after } = diffWords(fix.original, fix.suggested)
                   return (
-                    <div className="space-y-1 text-sm">
-                      <div className="rounded-card border border-border bg-surface-danger px-3 py-2">
-                        <p className="text-xs text-fg-danger font-medium mb-0.5">Before</p>
-                        <p className="text-fg-body leading-relaxed">
-                          {before.map((seg, i) =>
-                            seg.changed ? (
-                              <span key={i} className="line-through text-fg-danger bg-surface rounded-chip px-0.5">{seg.text}</span>
-                            ) : (
-                              <span key={i}>{seg.text}</span>
-                            )
-                          )}
-                        </p>
-                      </div>
-                      <div className="rounded-card border border-border bg-surface-success px-3 py-2">
-                        <p className="mb-0.5 text-xs font-medium text-fg-success">After</p>
-                        <p className="text-fg-body leading-relaxed">
-                          {after.map((seg, i) =>
-                            seg.changed ? (
-                              <span key={i} className="font-medium underline text-fg-success bg-surface rounded-chip px-0.5">{seg.text}</span>
-                            ) : (
-                              <span key={i}>{seg.text}</span>
-                            )
-                          )}
-                        </p>
-                      </div>
+                    <div className="space-y-2 text-sm">
+                      <p className="leading-relaxed text-fg-heading">
+                        <span className="sr-only">After: </span>
+                        {after.map((seg, i) =>
+                          seg.changed ? (
+                            <mark key={i} className="rounded-chip bg-surface-success px-0.5 text-fg-success">{seg.text}</mark>
+                          ) : (
+                            <span key={i}>{seg.text}</span>
+                          )
+                        )}
+                      </p>
+                      <p className="border-l-2 border-border pl-2 text-xs leading-relaxed text-fg-muted">
+                        <span className="mr-1 text-fg-subtle">Was:</span>
+                        {before.map((seg, i) =>
+                          seg.changed ? (
+                            <del key={i} className="text-fg-danger">{seg.text}</del>
+                          ) : (
+                            <span key={i}>{seg.text}</span>
+                          )
+                        )}
+                      </p>
                     </div>
                   )
                 })()
               )}
 
               {fix.pendingApprovals.length > 0 && (
-                <div className="rounded-card border border-border-warning bg-surface-warning px-3 py-2">
-                  <p className="mb-1 text-xs font-medium text-fg-warning">
+                <div className="rounded-control border border-border-attention bg-surface-attention px-3 py-2">
+                  <p className="mb-1 text-xs font-medium text-fg-attention">
                     Contains figures not in your original text - verify before applying:
                   </p>
                   <div className="flex flex-wrap gap-1">
@@ -202,15 +201,15 @@ export function AtsFixReviewPanel({
                 </div>
               )}
 
-              <div className="flex gap-2 pt-1">
+              <div className="flex gap-2">
                 <Button size="xs" onClick={() => onApply(fix)}>
                   Apply
                 </Button>
                 <Button size="xs" variant="ghost" onClick={() => onDismiss(fix.id)}>
-                  Dismiss
+                  Skip
                 </Button>
               </div>
-            </div>
+            </article>
             )
           ))}
         </div>

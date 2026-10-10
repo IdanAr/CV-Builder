@@ -7,7 +7,7 @@ import type { KeyboardEvent } from 'react'
  * but handled no keys, which is the half that matters: a screen-reader user is
  * told "tab, 2 of 4" and then finds the arrow keys do nothing. The pattern is
  * identical in all four, so it lives here once rather than four times —
- * `StepsBar` and the since-removed `ProfileWizardSteps` had each grown their
+ * the since-removed `StepsBar` and `ProfileWizardSteps` had each grown their
  * own copy and drifted apart; the job-search `StepRail` reuses this one.
  *
  * Attach the returned handler to the tablist container, not to each tab. The
