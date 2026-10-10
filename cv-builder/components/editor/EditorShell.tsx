@@ -327,8 +327,13 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
         })}
       </div>
 
-      {/* Tab content */}
-      <div className="flex-1 overflow-auto">
+      {/* Tab content. `relative` makes this scroller the containing block for
+          absolutely positioned descendants (every `sr-only` label is one).
+          Without it they were positioned against <body>, so a long panel (the
+          ATS tab with nine suggestion cards) stretched the document to ~2,800px
+          and scrolling past the panel's end scrolled the whole editor off
+          screen. `overscroll-contain` keeps that wheel from chaining outward. */}
+      <div data-testid="editor-panel-scroller" className="relative flex-1 overflow-auto overscroll-contain">
         <div role="tabpanel" id="editor-panel-edit" aria-labelledby="editor-tab-edit" className={activeTab === 'edit' ? 'block' : 'hidden'}>
           <EditorErrorBoundary><EditTab /></EditorErrorBoundary>
         </div>

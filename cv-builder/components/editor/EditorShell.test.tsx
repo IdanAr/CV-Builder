@@ -123,6 +123,18 @@ describe('EditorShell — desktop layout (>= breakpoint)', () => {
     expect(screen.getByText('PreviewTabContent')).toBeInTheDocument()
   })
 
+  // jsdom has no layout, so this pins the two classes that fixed a real bug: an
+  // ATS panel with many suggestion cards let its sr-only labels (positioned
+  // against <body>) stretch the document, and scrolling past the panel's end
+  // scrolled the whole editor off screen.
+  it('contains the tab panels in a positioned scroller that does not chain scroll to the page', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    const scroller = screen.getByTestId('editor-panel-scroller')
+    expect(scroller.className).toContain('relative')
+    expect(scroller.className).toContain('overscroll-contain')
+    expect(scroller.querySelector('#editor-panel-ats')).not.toBeNull()
+  })
+
   it('renders the resize divider', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
     expect(screen.getByTestId('panel-resize-divider')).toBeInTheDocument()
