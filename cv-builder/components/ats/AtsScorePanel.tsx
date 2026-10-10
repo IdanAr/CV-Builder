@@ -17,7 +17,19 @@ import { apiErrorMessage } from '@/lib/api/client-errors'
 // /ats-score merges keywordPriorities onto AtsScoreResult rather than
 // widening that interface (see the route) — this is the richer shape the
 // client actually receives.
-type AtsScoreResponse = AtsScoreResult & { keywordPriorities?: Record<string, KeywordPriority> }
+type KeywordSource = 'ai' | 'basic' | 'cached'
+type FallbackReason = 'rate-limited' | 'ai-error' | 'ai-empty'
+type AtsScoreResponse = AtsScoreResult & {
+  keywordPriorities?: Record<string, KeywordPriority>
+  keywordSource?: KeywordSource
+  keywordFallbackReason?: FallbackReason
+}
+
+const FALLBACK_REASON: Record<FallbackReason, string> = {
+  'rate-limited': 'you reached the limit of AI requests for this minute',
+  'ai-error': 'the AI service returned an error',
+  'ai-empty': 'the AI found no requirements in this text',
+}
 
 const VECTORS: { key: keyof AtsScoreResult['breakdown']; label: string; hint: string; max: number }[] = [
   { key: 'keywordDensity', label: 'Keyword coverage', hint: "How many of the job's keywords appear anywhere in your CV", max: 35 },
@@ -156,6 +168,9 @@ export function AtsScorePanel() {
   // Cleared on every fresh check so an edited job description is re-read.
   const [jdKeywords, setJdKeywords] = useState<string[]>([])
   const [keywordPriorities, setKeywordPriorities] = useState<Record<string, KeywordPriority>>({})
+  // Which extractor read the job on the last fresh check. The basic (regex)
+  // fallback is noisy, so the user is told when it was used and why.
+  const [keywordSource, setKeywordSource] = useState<{ source: KeywordSource; reason?: FallbackReason }>({ source: 'ai' })
 
   // Pending applied->dismissed timeouts, keyed by fix id, so they can be
   // cleared on unmount instead of firing setState after unmount.
@@ -210,6 +225,9 @@ export function AtsScorePanel() {
       setResult(json)
       setJdKeywords(json.jdKeywords)
       setKeywordPriorities(json.keywordPriorities ?? {})
+      if (json.keywordSource && json.keywordSource !== 'cached') {
+        setKeywordSource({ source: json.keywordSource, reason: json.keywordFallbackReason })
+      }
       return json
     } catch (err) {
       setError(requestErrorMessage(err, 'Analysis failed. Please try again.'))
@@ -421,9 +439,26 @@ export function AtsScorePanel() {
                 <h2 id={`${ids}-gaps`} className="text-sm font-medium text-fg-heading">Missing from your CV</h2>
                 <span className="text-xs text-fg-muted">{missing.length} of {missing.length + result.matchedKeywords.length}</span>
               </div>
+              {keywordSource.source === 'basic' && (
+                <div role="note" className="mt-3 rounded-control border border-border-attention bg-surface-attention px-3 py-2 text-xs text-fg-attention">
+                  <p>
+                    Basic word matching was used because {FALLBACK_REASON[keywordSource.reason ?? 'ai-error']}. This list can include
+                    generic words that are not real requirements. Ignore those with ×, or{' '}
+                    <button
+                      type="button"
+                      onClick={() => { setEditingJd(false); handleCheck() }}
+                      disabled={loading}
+                      className="underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      check again
+                    </button>
+                    {' '}for an AI reading.
+                  </p>
+                </div>
+              )}
               {mustHave.length > 0 && (
                 <div className="mt-3">
-                  <p className="mb-1.5 text-xs text-fg-muted">Required</p>
+                  <p className="mb-1.5 text-xs text-fg-muted">{keywordSource.source === 'basic' ? 'From the job description' : 'Required'}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {mustHave.map((kw) => (
                       <MissingChip key={kw} kw={kw} priority={keywordPriorities[kw] ?? 'ambiguous'} onIgnore={() => setIgnored(kw, true)} />

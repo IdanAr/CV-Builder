@@ -51,6 +51,31 @@ describe('extractKeywords', () => {
     expect(result).toContain('onboarding')
   })
 
+  // Reported from a real check: a long posting produced "possible", "fields",
+  // "fast-paced", "self-reliant" and "company.as" as missing "requirements".
+  it('does not treat a plain word repeated only twice as a keyword', () => {
+    const result = extractKeywords('If possible, apply soon. Remote work is possible for some fields of work in many fields.')
+    expect(result).not.toContain('possible')
+    expect(result).not.toContain('fields')
+  })
+
+  it('drops two-part descriptive hyphenations but keeps technical ones', () => {
+    const result = extractKeywords('A fast-paced, fast-growing team wants a self-reliant, large-scale thinker for skill-based work with react-native and test-driven-development.')
+    for (const generic of ['fast-paced', 'fast-growing', 'self-reliant', 'large-scale', 'skill-based']) {
+      expect(result).not.toContain(generic)
+    }
+    expect(result).toContain('react-native')
+    expect(result).toContain('test-driven-development')
+  })
+
+  it('splits sentences glued together by a missing space instead of keeping a dotted token', () => {
+    const result = extractKeywords('Join our company.As a member you will use Next.js and ASP.NET daily.')
+    expect(result).not.toContain('company.as')
+    expect(extractKeywords('Job DescriptionPlay a key role with TypeScript.')).toEqual(['typescript'])
+    expect(result).toContain('next.js')
+    expect(result).toContain('asp.net')
+  })
+
   it('excludes a generic word mentioned only once', () => {
     const result = extractKeywords('This role focuses on onboarding new hires smoothly')
     expect(result).not.toContain('onboarding')

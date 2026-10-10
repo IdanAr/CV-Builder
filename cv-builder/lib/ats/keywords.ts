@@ -62,7 +62,15 @@ const TECH_TERMS = new Set([
 ])
 
 function tokenizeWithCase(text: string): string[] {
-  const cleaned = text.replace(/[^a-zA-Z0-9\s.+#/-]/g, ' ')
+  // A sentence glued to the next by a missing space ("the company.As a…",
+  // common in text copied from job boards) would otherwise survive as one
+  // dotted "keyword". Split it back into two words first.
+  // Same for a section heading glued to its first line ("DescriptionPlay a
+  // key role…"), which would otherwise pass as a camel-case product name.
+  const unglued = text
+    .replace(/([a-z])\.([A-Z])/g, '$1. $2')
+    .replace(/\b(Description|Requirements|Responsibilities|Qualifications|Overview|Summary|Benefits)(?=[A-Z][a-z])/g, '$1 ')
+  const cleaned = unglued.replace(/[^a-zA-Z0-9\s.+#/-]/g, ' ')
   return cleaned
     .split(/\s+/)
     .map(w => w.replace(/^[.\-/]+|[.\-/]+$/g, ''))
@@ -86,6 +94,30 @@ function looksLikeProperNounOrAcronym(raw: string): boolean {
  * tokens out of the ATS-fix prompt, not to tune matching quality.
  */
 const MAX_KEYWORD_LENGTH = 32
+
+/**
+ * A plain word must appear this often before repetition alone makes it a
+ * keyword. Twice was too loose: ordinary prose words ("possible", "business",
+ * "insights") repeat that often in any long posting, and each one then showed
+ * up as a "missing" requirement the AI was asked to work into the CV.
+ */
+const MIN_REPEATS = 3
+
+/** Dotted tokens that name a technology (Node.js, ASP.NET, socket.io). */
+const TECH_DOT_SUFFIX = /^\.?[a-z0-9+#]+(?:\.(?:js|net|io|ai|py|ts))$|^\.[a-z]+$/
+
+/**
+ * Hyphenated tokens are kept only when they look like a named technique or
+ * technology: a part is a known tech term ("react-native", "ci-cd"), or the
+ * phrase has three or more parts ("test-driven-development"). Two-part
+ * descriptive compounds ("fast-paced", "self-reliant", "large-scale",
+ * "skill-based") are how postings describe people and companies, not skills.
+ */
+function isTechnicalHyphenated(word: string): boolean {
+  const parts = word.split('-').filter(Boolean)
+  if (parts.length >= 3) return true
+  return parts.some((p) => TECH_TERMS.has(p))
+}
 
 export function extractKeywords(text: string): string[] {
   if (!text.trim()) return []
@@ -117,8 +149,10 @@ export function extractKeywords(text: string): string[] {
 
     if (TECH_TERMS.has(word)) return true
     if (properNounSeen.get(word)) return true
-    if (/[0-9+#]/.test(word) || word.includes('.') || word.includes('-')) return true
-    if ((counts.get(word) ?? 0) >= 2) return true
+    if (/[0-9+#]/.test(word)) return true
+    if (word.includes('.')) return TECH_DOT_SUFFIX.test(word)
+    if (word.includes('-')) return isTechnicalHyphenated(word)
+    if ((counts.get(word) ?? 0) >= MIN_REPEATS) return true
     return false
   })
 }

@@ -158,6 +158,52 @@ describe('AtsScorePanel: checking a job', () => {
   })
 })
 
+describe('AtsScorePanel: keyword source', () => {
+  it('says when the basic matcher was used, why, and offers a fresh check', async () => {
+    const api = mockApi({
+      '/ats-score': [{ body: { ...scoreResult, keywordSource: 'basic', keywordFallbackReason: 'rate-limited' } }],
+      '/ats-semantic-match': NO_SYNONYMS,
+    })
+    render(<AtsScorePanel />)
+    await check()
+    const note = screen.getByRole('note')
+    expect(note).toHaveTextContent(/basic word matching was used because you reached the limit of AI requests/i)
+    // Without AI priorities nothing is known to be required, so the group is not labelled that way.
+    expect(screen.getByText('From the job description')).toBeInTheDocument()
+    expect(screen.queryByText('Required')).toBeNull()
+
+    fireEvent.click(within(note).getByRole('button', { name: 'check again' }))
+    await waitFor(() => expect(api.to('/ats-score').length).toBeGreaterThanOrEqual(2))
+    expect(api.to('/ats-score').at(-1)?.body?.jdKeywords).toEqual([])
+  })
+
+  it('shows no notice when the AI read the job', async () => {
+    mockApi({
+      '/ats-score': [{ body: { ...scoreResult, keywordSource: 'ai', keywordPriorities: { react: 'must' } } }],
+      '/ats-semantic-match': NO_SYNONYMS,
+    })
+    render(<AtsScorePanel />)
+    await check()
+    expect(screen.queryByRole('note')).toBeNull()
+    expect(screen.getByText('Required')).toBeInTheDocument()
+  })
+
+  it('keeps the notice through re-scores that reuse the cached list', async () => {
+    mockApi({
+      '/ats-score': [
+        { body: { ...scoreResult, keywordSource: 'basic', keywordFallbackReason: 'ai-error' } },
+        { body: { ...scoreResult, missingKeywords: ['typescript'], excludedMissingKeywords: ['react'], keywordSource: 'cached' } },
+      ],
+      '/ats-semantic-match': NO_SYNONYMS,
+    })
+    render(<AtsScorePanel />)
+    await check()
+    fireEvent.click(screen.getByRole('button', { name: 'Ignore "react"' }))
+    await screen.findByRole('button', { name: 'Count "react" again' })
+    expect(screen.getByRole('note')).toHaveTextContent(/the AI service returned an error/i)
+  })
+})
+
 describe('AtsScorePanel: automatic synonym check', () => {
   it('runs by itself after the score, re-scores with the confirmed matches, and marks them', async () => {
     const api = mockApi({
