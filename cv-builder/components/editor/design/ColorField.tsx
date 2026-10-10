@@ -1,8 +1,6 @@
 'use client'
 
 import React from 'react'
-import { inputClass } from '../forms/field-styles'
-import { cn } from '@/lib/utils'
 
 const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}){1,2}$/
 
@@ -28,9 +26,11 @@ interface ColorFieldProps {
   swatchLabel: string
   presetsLabel: string
   placeholder: string
+  /** Show the single-colour quick-pick row. Off where a theme picker already covers it. */
+  showPresets?: boolean
 }
 
-export function ColorField({ label, value, onCommit, swatchLabel, presetsLabel, placeholder }: ColorFieldProps) {
+export function ColorField({ label, value, onCommit, swatchLabel, presetsLabel, placeholder, showPresets = true }: ColorFieldProps) {
   const textId = React.useId()
   const [draft, setDraft] = React.useState(value)
   const [touched, setTouched] = React.useState(false)
@@ -77,15 +77,18 @@ export function ColorField({ label, value, onCommit, swatchLabel, presetsLabel, 
   return (
     <div>
       <label htmlFor={textId} className="mb-1 block text-xs font-medium text-fg-muted">{label}</label>
-      <div className="mb-2 flex items-center gap-2">
-        <input
-          type="color"
-          value={value}
-          onChange={handleSwatchChange}
-          aria-label={swatchLabel}
-          title="Custom color"
-          className="h-9 w-9 shrink-0 cursor-pointer overflow-hidden rounded-full border-2 border-surface p-0 ring-1 ring-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
+      {/* One control: the swatch opens the native picker, the hex is typed beside it. */}
+      <div className="flex min-h-10 items-center gap-2 rounded-control border border-input bg-surface pl-1 pr-2 focus-within:ring-2 focus-within:ring-ring sm:min-h-9">
+        <span className="relative h-7 w-7 shrink-0 overflow-hidden rounded-chip ring-1 ring-border" style={{ backgroundColor: value }}>
+          <input
+            type="color"
+            value={value}
+            onChange={handleSwatchChange}
+            aria-label={swatchLabel}
+            title="Pick a custom color"
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          />
+        </span>
         <input
           id={textId}
           type="text"
@@ -93,10 +96,12 @@ export function ColorField({ label, value, onCommit, swatchLabel, presetsLabel, 
           onChange={handleTextChange}
           onBlur={handleTextBlur}
           placeholder={placeholder}
-          className={cn(inputClass, 'w-auto flex-1 px-2 py-1 text-xs font-mono focus-visible:ring-1 max-sm:min-h-10')}
+          spellCheck={false}
+          className="min-w-0 flex-1 bg-transparent font-mono text-xs uppercase text-fg focus-visible:outline-none"
         />
       </div>
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label={presetsLabel}>
+      {showPresets && (
+      <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label={presetsLabel}>
         {PRESET_COLORS.map(({ name, hex }) => {
           const isActive = value.toLowerCase() === hex.toLowerCase()
           return (
@@ -115,6 +120,7 @@ export function ColorField({ label, value, onCommit, swatchLabel, presetsLabel, 
           )
         })}
       </div>
+      )}
       {touched && !HEX_COLOR_RE.test(draft) && (
         <p className="mt-1 text-sm text-fg-danger">Enter a valid hex color (e.g. #0066cc)</p>
       )}

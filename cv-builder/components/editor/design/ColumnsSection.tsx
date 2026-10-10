@@ -23,10 +23,17 @@ import { CSS } from '@dnd-kit/utilities'
 import { useShallow } from 'zustand/react/shallow'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
-import type { ResumeData } from '@/lib/schemas/resume.zod'
+import { GripVertical } from 'lucide-react'
+import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
 const labelClass = 'block text-xs font-medium text-fg-muted mb-1'
-const sectionTitle = 'mb-3 text-xs font-medium uppercase tracking-wide text-fg-subtle'
+
+/** Short summary for the collapsed Design section. */
+export function layoutSummary(meta: Pick<ResumeMeta, 'templateId' | 'layout' | 'sidebarRailWidth'>): string {
+  if (meta.templateId === 'sidebar') return `Rail + main column · ${meta.sidebarRailWidth ?? 33}% rail`
+  if (meta.templateId === 'minimal' || meta.layout !== 'two-column') return 'Single column'
+  return 'Two columns'
+}
 
 const SECTION_LABELS: Record<string, string> = {
   work: 'Work',
@@ -109,16 +116,17 @@ function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumn
       <span
         {...attributes}
         {...listeners}
-        className="rounded-chip text-fg-subtle cursor-grab active:cursor-grabbing text-base select-none outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:flex max-sm:min-h-10 max-sm:min-w-10 max-sm:items-center max-sm:justify-center"
+        className="flex rounded-chip text-fg-subtle cursor-grab active:cursor-grabbing select-none outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 max-sm:min-w-10 max-sm:items-center max-sm:justify-center"
         aria-label="Drag to reorder"
       >
-        ⠿
+        <GripVertical aria-hidden="true" className="h-4 w-4" />
       </span>
       <span className="flex-1 text-sm text-fg-body">{label}</span>
 
-<div className="flex rounded-control border border-border bg-surface-subtle p-0.5 text-xs font-medium">
+      <div className="flex rounded-control border border-border bg-surface-subtle p-0.5 text-xs font-medium" role="group" aria-label={`Column for ${label}`}>
         <button
           type="button"
+          aria-pressed={side === 'left'}
           onClick={side === 'left' ? undefined : onToggle}
           className={`px-3 py-1 rounded-chip transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 ${
             side === 'left'
@@ -130,6 +138,7 @@ function SortableColumnRow({ sectionKey, label, side, onToggle }: SortableColumn
         </button>
         <button
           type="button"
+          aria-pressed={side === 'right'}
           onClick={side === 'right' ? undefined : onToggle}
           className={`px-3 py-1 rounded-chip transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-10 ${
             side === 'right'
@@ -178,26 +187,18 @@ export function ColumnsSection() {
     setMeta({ columnAssignment: { ...meta.columnAssignment, [sectionKey]: next } })
   }
   return (
-    <section aria-labelledby="design-layout">
-      <h2 id="design-layout" className={sectionTitle}>Layout</h2>
-      <div className="space-y-5">
+    <div className="space-y-4">
       {/* Layout toggle — Minimal is single-column only; Sidebar always uses a
           rail + main layout, so the toggle is meaningless there and hidden. */}
       <div>
         {meta.templateId === 'sidebar' ? (
           <>
-            <p className="text-xs text-fg-subtle mt-1.5">The Sidebar template always uses a rail + main column layout.</p>
-            {/* Every section really does render in either column now. Until this
-                note existed, four of them (Work, Education, Volunteer and any
-                custom section) silently vanished from the preview when moved to
-                the rail, and Skills or Languages moved to the main column
-                vanished from the exported PDF — so the guidance below is
-                preference, not a constraint. */}
-            <p className="text-xs text-fg-subtle mt-1">
-              Every section can go in either column. Set them under{' '}
-              <span className="font-medium">Section columns</span> below. Skills and Languages start in
-              the rail. The rail is only {meta.sidebarRailWidth ?? 33}% of the page width, so short
-              sections suit it best; longer ones like Work Experience read better in the main column.
+            {/* Every section really does render in either column. Until this note
+                existed, four of them silently vanished from the preview when moved
+                to the rail, so the guidance here is preference, not a constraint. */}
+            <p className="rounded-control bg-surface-subtle px-3 py-2 text-xs leading-relaxed text-fg-muted">
+              Every section can go in either column. The rail is {meta.sidebarRailWidth ?? 33}% of the page width,
+              so short sections like Skills and Languages suit it best.
             </p>
           </>
         ) : (
@@ -269,7 +270,7 @@ export function ColumnsSection() {
               </SortableContext>
             </DndContext>
           </div>
-          <p className="text-xs text-fg-subtle mt-1.5 text-center">⠿ drag to reorder · click badge to switch column</p>
+          <p className="text-xs text-fg-subtle mt-1.5">Drag to reorder. Pick Left or Right to move a section.</p>
         </div>
       )}
 
@@ -293,6 +294,5 @@ export function ColumnsSection() {
         </div>
       )}
       </div>
-    </section>
   )
 }

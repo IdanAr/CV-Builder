@@ -37,18 +37,56 @@ function openAdvanced(container: HTMLElement) {
   container.querySelectorAll('details').forEach((d) => { d.open = true })
 }
 
+// Every control but the template gallery sits in a collapsed section; open
+// the one a test needs, the way a user would.
+function openSection(name: 'Colors' | 'Typography' | 'Layout' | 'Size and spacing') {
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${name}`) }))
+}
+
+function renderPanel(section?: Parameters<typeof openSection>[0], opts: { customColors?: boolean } = {}) {
+  const utils = render(<DesignPanel />)
+  if (section) openSection(section)
+  if (opts.customColors) fireEvent.click(screen.getByRole('button', { name: /custom colors/i }))
+  return utils
+}
+
 describe('DesignPanel', () => {
   it('titles its sections with h2 headings and no h3', () => {
     render(<DesignPanel />)
-    const h2 = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
-    for (const t of ['Template', 'Layout', 'Fonts', 'Colors', 'Size and spacing']) {
-      expect(h2).toContain(t)
+    const h2 = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent ?? '')
+    for (const t of ['Template', 'Colors', 'Typography', 'Layout', 'Size and spacing']) {
+      expect(h2.some((h) => h.startsWith(t))).toBe(true)
     }
     expect(screen.queryAllByRole('heading', { level: 3 })).toHaveLength(0)
   })
 
+  it('starts with every section collapsed and keeps at most one open', () => {
+    render(<DesignPanel />)
+    const header = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}`) })
+    for (const n of ['Colors', 'Typography', 'Layout', 'Size and spacing']) {
+      expect(header(n)).toHaveAttribute('aria-expanded', 'false')
+    }
+    fireEvent.click(header('Colors'))
+    expect(header('Colors')).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(header('Layout'))
+    expect(header('Layout')).toHaveAttribute('aria-expanded', 'true')
+    expect(header('Colors')).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(header('Layout'))
+    expect(header('Layout')).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('summarises current values in the collapsed headers', () => {
+    useResumeEditorStore.setState({
+      meta: { ...defaultMeta, headerFontFamily: 'Cambria', layout: 'two-column', lineSpacing: 1.3 },
+    })
+    render(<DesignPanel />)
+    expect(screen.getByRole('button', { name: /^Typography/ })).toHaveTextContent('Editorial · Cambria / Calibri')
+    expect(screen.getByRole('button', { name: /^Layout/ })).toHaveTextContent('Two columns')
+    expect(screen.getByRole('button', { name: /^Size and spacing/ })).toHaveTextContent('Default · Relaxed · Standard')
+  })
+
   it('line spacing slider reaches 1.3', () => {
-    const { container } = render(<DesignPanel />)
+    const { container } = renderPanel('Size and spacing')
     openAdvanced(container)
     const slider = screen.getByRole('slider', { name: /line spacing/i }) as HTMLInputElement
     expect(slider.max).toBe('1.3')
@@ -56,7 +94,7 @@ describe('DesignPanel', () => {
   })
 
   it('marks the active template and layout buttons as pressed for assistive tech', () => {
-    render(<DesignPanel />)
+    renderPanel('Layout')
     // Anchored to the start: "Classic"/"Modern" alone would also match the
     // "Classic Blue"/"Modern..." color-preset buttons' aria-labels below.
     const classicBtn = screen.getByRole('button', { name: /^classic\b/i })
@@ -64,9 +102,9 @@ describe('DesignPanel', () => {
     const modernBtn = screen.getByRole('button', { name: /^modern\b/i })
     expect(modernBtn).toHaveAttribute('aria-pressed', 'false')
 
-    const singleColumnBtn = screen.getByRole('button', { name: /single column/i })
+    const singleColumnBtn = screen.getByRole('button', { name: /^single column/i })
     expect(singleColumnBtn).toHaveAttribute('aria-pressed', 'true')
-    const twoColumnBtn = screen.getByRole('button', { name: /two columns/i })
+    const twoColumnBtn = screen.getByRole('button', { name: /^two columns/i })
     expect(twoColumnBtn).toHaveAttribute('aria-pressed', 'false')
   })
 
@@ -74,21 +112,24 @@ describe('DesignPanel', () => {
     const before = useResumeEditorStore.getState().data
     const { container } = render(<DesignPanel />)
     fireEvent.click(screen.getByText('Modern'))
+    openSection('Typography')
     fireEvent.click(screen.getByRole('radio', { name: /Editorial/ }))
+    openSection('Size and spacing')
     fireEvent.click(screen.getByRole('radio', { name: 'Relaxed' }))
-    const primaryGroup = screen.getByRole('group', { name: /primary color presets/i })
-    fireEvent.click(primaryGroup.querySelector('button[title="Navy"]') as HTMLButtonElement)
+    openSection('Colors')
+    fireEvent.click(screen.getByRole('radio', { name: 'Ocean' }))
     expect(useResumeEditorStore.getState().meta.templateId).toBe('modern')
-    expect(useResumeEditorStore.getState().meta.primaryColor).toBe('#1e3a8a')
+    expect(useResumeEditorStore.getState().meta.primaryColor).toBe('#0c4a6e')
     expect(useResumeEditorStore.getState().data).toBe(before)
     expect(container).toBeTruthy()
   })
 
   it('renders template options', () => {
     render(<DesignPanel />)
-    expect(screen.getByText('Classic')).toBeTruthy()
-    expect(screen.getByText('Modern')).toBeTruthy()
-    expect(screen.getByText('Minimal')).toBeTruthy()
+    const gallery = screen.getByRole('group', { name: 'Template' })
+    expect(within(gallery).getByText('Classic')).toBeTruthy()
+    expect(within(gallery).getByText('Modern')).toBeTruthy()
+    expect(within(gallery).getByText('Minimal')).toBeTruthy()
   })
 
   it('clicking a template calls setMeta with the new templateId', () => {
@@ -98,7 +139,7 @@ describe('DesignPanel', () => {
   })
 
   it('clicking layout toggle updates layout', () => {
-    render(<DesignPanel />)
+    renderPanel('Layout')
     fireEvent.click(screen.getByText('Two columns'))
     expect(useResumeEditorStore.getState().meta.layout).toBe('two-column')
   })
@@ -109,9 +150,9 @@ describe('DesignPanel', () => {
       data: {},
       meta: { ...defaultMeta, templateId: 'minimal' },
     })
-    render(<DesignPanel />)
-    expect(screen.queryByText('Two columns')).toBeNull()
-    expect(screen.getByText('Single column')).toBeTruthy()
+    renderPanel('Layout')
+    expect(screen.queryByText('Two columns', { selector: 'button' })).toBeNull()
+    expect(screen.getByText('Single column', { selector: 'button' })).toBeTruthy()
   })
 
   it('section columns block is hidden in single-column mode', () => {
@@ -125,7 +166,7 @@ describe('DesignPanel', () => {
       data: {},
       meta: { ...defaultMeta, layout: 'two-column' },
     })
-    render(<DesignPanel />)
+    renderPanel('Layout')
     expect(screen.getByText('Section columns')).toBeTruthy()
   })
 
@@ -135,7 +176,7 @@ describe('DesignPanel', () => {
       data: {},
       meta: { ...defaultMeta, layout: 'two-column', sectionOrder: ['work', 'skills'] },
     })
-    render(<DesignPanel />)
+    renderPanel('Layout')
     const leftBtns = screen.getAllByText('Left')
     const rightBtns = screen.getAllByText('Right')
     expect(leftBtns.length).toBeGreaterThan(0)
@@ -148,7 +189,7 @@ describe('DesignPanel', () => {
       data: {},
       meta: { ...defaultMeta, layout: 'two-column', sectionOrder: ['work', 'skills'] },
     })
-    render(<DesignPanel />)
+    renderPanel('Layout')
     // 'work' defaults to left — click Right to move it
     const rightBtns = screen.getAllByText('Right')
     fireEvent.click(rightBtns[0])
@@ -194,7 +235,7 @@ describe('DesignPanel', () => {
       })
       const rectSpy = mockRowRects()
 
-      render(<DesignPanel />)
+      renderPanel('Layout')
 
       const handles = screen.getAllByRole('button', { name: /drag to reorder/i })
       expect(handles).toHaveLength(3)
@@ -218,7 +259,7 @@ describe('DesignPanel', () => {
         data: {},
         meta: { ...defaultMeta, layout: 'two-column', sectionOrder: ['work', 'education', 'skills'] },
       })
-      render(<DesignPanel />)
+      renderPanel('Layout')
       const handles = screen.getAllByRole('button', { name: /drag to reorder/i })
       expect(handles).toHaveLength(3)
       // Sanity check only: verifying the full pointer drag sequence is
@@ -232,7 +273,7 @@ describe('DesignPanel', () => {
     const errorText = 'Enter a valid hex color (e.g. #0066cc)'
 
     it('typing a valid hex into the primary color text input calls setMeta', () => {
-      render(<DesignPanel />)
+      renderPanel('Colors', { customColors: true })
       const input = screen.getByPlaceholderText('#000000') as HTMLInputElement
       fireEvent.change(input, { target: { value: '#123abc' } })
       expect(useResumeEditorStore.getState().meta.primaryColor).toBe('#123abc')
@@ -240,7 +281,7 @@ describe('DesignPanel', () => {
     })
 
     it('typing an invalid hex into the primary color text input shows an error and does not call setMeta', () => {
-      render(<DesignPanel />)
+      renderPanel('Colors', { customColors: true })
       const input = screen.getByPlaceholderText('#000000') as HTMLInputElement
       fireEvent.change(input, { target: { value: 'purple' } })
       expect(screen.getByText(errorText)).toBeTruthy()
@@ -248,12 +289,12 @@ describe('DesignPanel', () => {
     })
 
     it('does not show an error before the primary color text input has been interacted with', () => {
-      render(<DesignPanel />)
+      renderPanel('Colors', { customColors: true })
       expect(screen.queryByText(errorText)).toBeNull()
     })
 
     it('blurring the primary color text input while invalid reverts the displayed value and clears the error', () => {
-      render(<DesignPanel />)
+      renderPanel('Colors', { customColors: true })
       const input = screen.getByPlaceholderText('#000000') as HTMLInputElement
       fireEvent.change(input, { target: { value: 'purple' } })
       fireEvent.blur(input)
@@ -262,7 +303,7 @@ describe('DesignPanel', () => {
     })
 
     it('using the primary color swatch still updates meta immediately and syncs the text draft', () => {
-      const { container } = render(<DesignPanel />)
+      const { container } = renderPanel('Colors', { customColors: true })
       const swatch = container.querySelectorAll('input[type="color"]')[0] as HTMLInputElement
       fireEvent.change(swatch, { target: { value: '#abcdef' } })
       expect(useResumeEditorStore.getState().meta.primaryColor).toBe('#abcdef')
@@ -271,14 +312,14 @@ describe('DesignPanel', () => {
     })
 
     it('typing a valid hex into the accent color text input calls setMeta', () => {
-      render(<DesignPanel />)
+      renderPanel('Colors', { customColors: true })
       const input = screen.getByPlaceholderText('#0066cc') as HTMLInputElement
       fireEvent.change(input, { target: { value: '#654321' } })
       expect(useResumeEditorStore.getState().meta.accentColor).toBe('#654321')
     })
 
     it('typing an invalid hex into the accent color text input shows an error and does not call setMeta', () => {
-      render(<DesignPanel />)
+      renderPanel('Colors', { customColors: true })
       const input = screen.getByPlaceholderText('#0066cc') as HTMLInputElement
       fireEvent.change(input, { target: { value: '#12' } })
       expect(screen.getByText(errorText)).toBeTruthy()
@@ -286,7 +327,7 @@ describe('DesignPanel', () => {
     })
 
     it('blurring the accent color text input while invalid reverts the displayed value', () => {
-      render(<DesignPanel />)
+      renderPanel('Colors', { customColors: true })
       const input = screen.getByPlaceholderText('#0066cc') as HTMLInputElement
       fireEvent.change(input, { target: { value: 'nope' } })
       fireEvent.blur(input)
@@ -295,14 +336,14 @@ describe('DesignPanel', () => {
     })
 
     it('using the accent color swatch still updates meta immediately', () => {
-      const { container } = render(<DesignPanel />)
+      const { container } = renderPanel('Colors', { customColors: true })
       const swatch = container.querySelectorAll('input[type="color"]')[1] as HTMLInputElement
       fireEvent.change(swatch, { target: { value: '#fedcba' } })
       expect(useResumeEditorStore.getState().meta.accentColor).toBe('#fedcba')
     })
 
     it('syncs the primary color text draft when meta.primaryColor changes externally (e.g. undo/redo)', () => {
-      render(<DesignPanel />)
+      renderPanel('Colors', { customColors: true })
       const input = screen.getByPlaceholderText('#000000') as HTMLInputElement
       expect(input.value).toBe('#000000')
 
@@ -316,7 +357,7 @@ describe('DesignPanel', () => {
     })
 
     it('syncs the accent color text draft when meta.accentColor changes externally (e.g. undo/redo)', () => {
-      render(<DesignPanel />)
+      renderPanel('Colors', { customColors: true })
       const input = screen.getByPlaceholderText('#0066cc') as HTMLInputElement
       expect(input.value).toBe('#0066cc')
 
@@ -329,59 +370,44 @@ describe('DesignPanel', () => {
     })
   })
 
-  describe('color preset palette', () => {
-    it('renders a labeled preset swatch group for primary and accent colors', () => {
-      render(<DesignPanel />)
-      expect(screen.getByRole('group', { name: /primary color presets/i })).toBeInTheDocument()
-      expect(screen.getByRole('group', { name: /accent color presets/i })).toBeInTheDocument()
+  describe('color themes', () => {
+    it('offers a labelled radiogroup of themes with the matching one checked', () => {
+      renderPanel('Colors')
+      const group = screen.getByRole('radiogroup', { name: 'Color theme' })
+      expect(within(group).getAllByRole('radio').length).toBeGreaterThan(5)
+      // defaultMeta is #000000 / #0066cc, the Classic theme.
+      expect(within(group).getByRole('radio', { name: 'Classic' })).toHaveAttribute('aria-checked', 'true')
+      expect(within(group).getByRole('radio', { name: 'Ocean' })).toHaveAttribute('aria-checked', 'false')
     })
 
-    it('renders more than one clickable preset swatch per palette', () => {
-      render(<DesignPanel />)
-      const primaryGroup = screen.getByRole('group', { name: /primary color presets/i })
-      const accentGroup = screen.getByRole('group', { name: /accent color presets/i })
-      expect(primaryGroup.querySelectorAll('button').length).toBeGreaterThan(1)
-      expect(accentGroup.querySelectorAll('button').length).toBeGreaterThan(1)
+    it('choosing a theme sets both colours in one history entry', () => {
+      useResumeEditorStore.setState({ _history: [], _future: [] })
+      renderPanel('Colors')
+      fireEvent.click(screen.getByRole('radio', { name: 'Forest' }))
+      const meta = useResumeEditorStore.getState().meta
+      expect(meta.primaryColor).toBe('#14532d')
+      expect(meta.accentColor).toBe('#15803d')
+      expect(useResumeEditorStore.getState()._history).toHaveLength(1)
     })
 
-    it('clicking a primary color preset updates meta and the text draft', () => {
+    it('summarises the theme in the collapsed section header', () => {
       render(<DesignPanel />)
-      const primaryGroup = screen.getByRole('group', { name: /primary color presets/i })
-      const navyBtn = primaryGroup.querySelector('button[title="Navy"]') as HTMLButtonElement
-      fireEvent.click(navyBtn)
-      expect(useResumeEditorStore.getState().meta.primaryColor).toBe('#1e3a8a')
-      const textInput = screen.getByPlaceholderText('#000000') as HTMLInputElement
-      expect(textInput.value).toBe('#1e3a8a')
+      expect(screen.getByRole('button', { name: /^Colors/ })).toHaveTextContent('Classic')
+      act(() => {
+        useResumeEditorStore.setState((s) => ({ meta: { ...s.meta, primaryColor: '#123456' } }))
+      })
+      expect(screen.getByRole('button', { name: /^Colors/ })).toHaveTextContent('Custom')
     })
 
-    it('clicking an accent color preset updates meta and the text draft', () => {
-      render(<DesignPanel />)
-      const accentGroup = screen.getByRole('group', { name: /accent color presets/i })
-      const tealBtn = accentGroup.querySelector('button[title="Teal"]') as HTMLButtonElement
-      fireEvent.click(tealBtn)
-      expect(useResumeEditorStore.getState().meta.accentColor).toBe('#0f766e')
-      const textInput = screen.getByPlaceholderText('#0066cc') as HTMLInputElement
-      expect(textInput.value).toBe('#0f766e')
-    })
-
-    it('marks the preset matching the current primary color as pressed', () => {
-      render(<DesignPanel />)
-      const primaryGroup = screen.getByRole('group', { name: /primary color presets/i })
-      const blackBtn = primaryGroup.querySelector('button[title="Black"]') as HTMLButtonElement
-      expect(blackBtn).toHaveAttribute('aria-pressed', 'true')
-      const navyBtn = primaryGroup.querySelector('button[title="Navy"]') as HTMLButtonElement
-      expect(navyBtn).toHaveAttribute('aria-pressed', 'false')
-    })
-
-    it('marks the preset matching the current accent color as pressed', () => {
-      render(<DesignPanel />)
-      const accentGroup = screen.getByRole('group', { name: /accent color presets/i })
-      const classicBlueBtn = accentGroup.querySelector('button[title="Classic Blue"]') as HTMLButtonElement
-      expect(classicBlueBtn).toHaveAttribute('aria-pressed', 'true')
+    it('opens the custom colour fields by itself when the CV uses an off-theme pair', () => {
+      useResumeEditorStore.setState((s) => ({ meta: { ...s.meta, primaryColor: '#123456' } }))
+      renderPanel('Colors')
+      expect(screen.getByPlaceholderText('#000000')).toHaveValue('#123456')
+      expect(screen.queryByRole('radio', { checked: true })).toBeNull()
     })
 
     it('the custom color picker input still has an accessible label', () => {
-      render(<DesignPanel />)
+      renderPanel('Colors', { customColors: true })
       expect(screen.getByLabelText(/custom primary color/i)).toBeInTheDocument()
       expect(screen.getByLabelText(/custom accent color/i)).toBeInTheDocument()
     })
@@ -394,7 +420,7 @@ describe('DesignPanel', () => {
         data: {},
         meta: { ...defaultMeta, templateId: 'sidebar' },
       })
-      render(<DesignPanel />)
+      renderPanel('Layout')
       expect(screen.queryByText('Single column')).toBeNull()
       expect(screen.queryByText('Two columns')).toBeNull()
     })
@@ -409,7 +435,7 @@ describe('DesignPanel', () => {
         data: {},
         meta: { ...defaultMeta, templateId: 'sidebar', sidebarRailWidth: 33 },
       })
-      render(<DesignPanel />)
+      renderPanel('Layout')
       expect(screen.getByText(/Every section can go in either column/i)).toBeTruthy()
       expect(screen.getByText(/33% of the page width/i)).toBeTruthy()
     })
@@ -420,7 +446,7 @@ describe('DesignPanel', () => {
         data: {},
         meta: { ...defaultMeta, templateId: 'classic' },
       })
-      render(<DesignPanel />)
+      renderPanel('Layout')
       expect(screen.queryByText(/Every section can go in either column/i)).toBeNull()
     })
 
@@ -430,7 +456,7 @@ describe('DesignPanel', () => {
         data: {},
         meta: { ...defaultMeta, templateId: 'sidebar', layout: 'single-column', sectionOrder: ['work', 'skills', 'languages'] },
       })
-      render(<DesignPanel />)
+      renderPanel('Layout')
       // Scoped to the section's own label: the sidebar guidance note below the
       // layout toggle names the same control, so a bare getByText now matches twice.
       expect(screen.getByText('Section columns', { selector: 'p' })).toBeTruthy()
@@ -442,7 +468,7 @@ describe('DesignPanel', () => {
         data: {},
         meta: { ...defaultMeta, templateId: 'sidebar', sectionOrder: ['skills'], columnAssignment: {} },
       })
-      render(<DesignPanel />)
+      renderPanel('Layout')
       // SortableColumnRow always renders both "Left" and "Right" buttons, styling
       // whichever is the current side with the active (text-fg-heading) class. Skills has
       // no LEFT_DEFAULTS entry, so this only passes when the sidebar's own column
@@ -456,7 +482,7 @@ describe('DesignPanel', () => {
 
   describe('rail width slider (sidebar-only)', () => {
     it('is hidden for non-sidebar templates', () => {
-      render(<DesignPanel />)
+      renderPanel('Layout')
       expect(screen.queryByText(/Rail width/)).toBeNull()
     })
 
@@ -466,7 +492,7 @@ describe('DesignPanel', () => {
         data: {},
         meta: { ...defaultMeta, templateId: 'sidebar', sidebarRailWidth: 28 },
       })
-      render(<DesignPanel />)
+      renderPanel('Layout')
       expect(screen.getByText(/Rail width/)).toBeTruthy()
       const slider = screen.getByRole('slider', { name: /Rail width/i })
       expect(slider).toHaveProperty('value', '28')
@@ -480,7 +506,7 @@ describe('DesignPanel', () => {
         data: {},
         meta: metaWithoutRailWidth as typeof defaultMeta,
       })
-      render(<DesignPanel />)
+      renderPanel('Layout')
       const slider = screen.getByRole('slider', { name: /Rail width/i })
       expect(slider).toHaveProperty('value', '33')
     })
@@ -491,7 +517,7 @@ describe('DesignPanel', () => {
         data: {},
         meta: { ...defaultMeta, templateId: 'sidebar' },
       })
-      render(<DesignPanel />)
+      renderPanel('Layout')
       const slider = screen.getByRole('slider', { name: /Rail width/i })
       fireEvent.change(slider, { target: { value: '25' } })
       expect(useResumeEditorStore.getState().meta.sidebarRailWidth).toBe(25)
@@ -503,7 +529,7 @@ describe('DesignPanel', () => {
         data: {},
         meta: { ...defaultMeta, templateId: 'sidebar' },
       })
-      render(<DesignPanel />)
+      renderPanel('Layout')
       const slider = screen.getByRole('slider', { name: /Rail width/i }) as HTMLInputElement
       expect(slider.min).toBe('20')
       expect(slider.max).toBe('40')
@@ -515,38 +541,41 @@ describe('DesignPanel', () => {
   // the behaviour preserved from the original selects/sliders.
   describe('typography and spacing controls (store effects)', () => {
     it('choosing a body font updates meta.fontFamily only', () => {
-      render(<DesignPanel />)
+      renderPanel('Typography')
+      fireEvent.click(screen.getByRole('button', { name: 'Body font: Calibri' }))
       const list = screen.getByRole('radiogroup', { name: 'Fonts for body' })
-      fireEvent.click(within(list).getByRole('radio', { name: 'Georgia' }))
+      fireEvent.click(within(list).getByRole('radio', { name: /Georgia/ }))
       const meta = useResumeEditorStore.getState().meta
       expect(meta.fontFamily).toBe('Georgia')
       expect(meta.headerFontFamily).toBe('Calibri')
     })
 
     it('choosing a heading font updates meta.headerFontFamily only', () => {
-      render(<DesignPanel />)
-      fireEvent.click(screen.getByRole('radio', { name: 'Headings' }))
+      renderPanel('Typography')
+      fireEvent.click(screen.getByRole('button', { name: 'Headings font: Calibri' }))
       const list = screen.getByRole('radiogroup', { name: 'Fonts for headings' })
-      fireEvent.click(within(list).getByRole('radio', { name: 'Georgia' }))
+      fireEvent.click(within(list).getByRole('radio', { name: /Georgia/ }))
       const meta = useResumeEditorStore.getState().meta
       expect(meta.headerFontFamily).toBe('Georgia')
       expect(meta.fontFamily).toBe('Calibri')
     })
 
     it('offers the same font options for body and heading', () => {
-      render(<DesignPanel />)
+      renderPanel('Typography')
       const names = (group: HTMLElement) =>
         within(group).getAllByRole('radio').map((r) => r.textContent)
+      fireEvent.click(screen.getByRole('button', { name: 'Body font: Calibri' }))
       const body = names(screen.getByRole('radiogroup', { name: 'Fonts for body' }))
-      fireEvent.click(screen.getByRole('radio', { name: 'Headings' }))
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
+      fireEvent.click(screen.getByRole('button', { name: 'Headings font: Calibri' }))
       const heading = names(screen.getByRole('radiogroup', { name: 'Fonts for headings' }))
       expect(body.length).toBeGreaterThan(1)
       expect(body).toEqual(heading)
-      expect(body).toContain('Calibri')
+      expect(body.some((n) => n?.startsWith('Calibri'))).toBe(true)
     })
 
     it('the page margins slider (under Advanced) updates meta.pageMargins', () => {
-      const { container } = render(<DesignPanel />)
+      const { container } = renderPanel('Size and spacing')
       openAdvanced(container)
       const margins = screen.getByRole('slider', { name: 'Page margins' }) as HTMLInputElement
       expect(margins.min).toBe('0.5')
@@ -556,7 +585,7 @@ describe('DesignPanel', () => {
     })
 
     it('a margin preset writes meta.pageMargins', () => {
-      render(<DesignPanel />)
+      renderPanel('Size and spacing')
       const group = screen.getByRole('radiogroup', { name: 'Margin presets' })
       const radios = within(group).getAllByRole('radio')
       fireEvent.click(radios.find((r) => r.getAttribute('aria-checked') === 'false')!)
@@ -564,7 +593,7 @@ describe('DesignPanel', () => {
     })
 
     it('the line spacing slider (under Advanced) updates meta.lineSpacing', () => {
-      const { container } = render(<DesignPanel />)
+      const { container } = renderPanel('Size and spacing')
       openAdvanced(container)
       const slider = screen.getByRole('slider', { name: /line spacing/i })
       fireEvent.change(slider, { target: { value: '1.3' } })
@@ -572,7 +601,7 @@ describe('DesignPanel', () => {
     })
 
     it('a line spacing preset writes meta.lineSpacing', () => {
-      render(<DesignPanel />)
+      renderPanel('Size and spacing')
       const group = screen.getByRole('radiogroup', { name: 'Line spacing presets' })
       const radios = within(group).getAllByRole('radio')
       fireEvent.click(radios.find((r) => r.getAttribute('aria-checked') === 'false')!)
@@ -594,7 +623,7 @@ describe('DesignPanel', () => {
           const top = Math.max(index, 0) * 60
           return { top, left: 0, right: 240, bottom: top + 56, width: 240, height: 56, x: 0, y: top, toJSON() { return {} } } as DOMRect
         })
-      render(<DesignPanel />)
+      renderPanel('Layout')
       const handles = screen.getAllByRole('button', { name: /drag to reorder/i })
       handles[0].focus()
       fireEvent.keyDown(handles[0], { key: ' ', code: 'Space' })

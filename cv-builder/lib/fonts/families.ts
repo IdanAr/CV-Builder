@@ -99,6 +99,12 @@ export function fontFaceCss(): string {
 /** Substitutes whose generic CSS fallback should be serif rather than sans. */
 const SERIF_FAMILIES = new Set(['Caladea', 'Gelasio', 'EBGaramond'])
 
+/** Whether a picker font is drawn with a serif face (for labelling, not rendering). */
+export function isSerifFont(pickerName: string): boolean {
+  const entry = FONT_SUBSTITUTES[pickerName]
+  return !!entry && SERIF_FAMILIES.has(entry.family)
+}
+
 /**
  * The CSS `font-family` stack a preview template must use.
  *

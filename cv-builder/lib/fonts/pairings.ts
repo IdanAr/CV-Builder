@@ -17,6 +17,8 @@ export const PAIRINGS: Pairing[] = [
   { id: 'editorial', label: 'Editorial', heading: 'Cambria', body: 'Calibri' },
   { id: 'executive', label: 'Executive', heading: 'Georgia', body: 'Arial' },
   { id: 'refined', label: 'Refined', heading: 'Garamond', body: 'Lato' },
+  { id: 'modern', label: 'Modern', heading: 'Roboto', body: 'Roboto' },
+  { id: 'technical', label: 'Technical', heading: 'IBM Plex Sans', body: 'IBM Plex Sans' },
 ]
 
 export function matchPairing(heading: string, body: string): Pairing | undefined {

@@ -1,61 +1,93 @@
 'use client'
 
+import { useState } from 'react'
+import { Columns2, Palette, Ruler, Type } from 'lucide-react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
+import { matchColorTheme } from '@/lib/editor/color-themes'
+import { matchPairing } from '@/lib/fonts/pairings'
+import { DEFAULT_PICKER_FONT } from '@/lib/fonts/families'
 import { TemplateGrid } from './design/TemplateGrid'
-import { ColumnsSection } from './design/ColumnsSection'
+import { ColumnsSection, layoutSummary } from './design/ColumnsSection'
 import { FontSection } from './design/FontSection'
-import { ColorField } from './design/ColorField'
-import { SpacingControls } from './design/SpacingControls'
+import { ColorSection, ThemeDot } from './design/ColorSection'
+import { SpacingControls, spacingSummary } from './design/SpacingControls'
+import { InspectorSection } from './design/InspectorSection'
 
-const sectionTitle = 'mb-3 text-xs font-medium uppercase tracking-wide text-fg-subtle'
+type SectionId = 'colors' | 'typography' | 'layout' | 'spacing'
 
 /**
  * `active` is false while the Design tab is hidden (EditorShell keeps all tab
  * panels mounted); it stops the template thumbnails doing work on every edit.
+ *
+ * Layout: the template gallery is always on screen, everything else sits in
+ * collapsible rows that show their current value when closed. Only one row is
+ * open at a time, so the panel never grows into a long scroll.
  */
 export function DesignPanel({ active = true }: { active?: boolean }) {
-  const primaryColor = useResumeEditorStore((s) => s.meta.primaryColor)
-  const accentColor = useResumeEditorStore((s) => s.meta.accentColor)
-  const setMeta = useResumeEditorStore((s) => s.setMeta)
+  const meta = useResumeEditorStore((s) => s.meta)
+  const [open, setOpen] = useState<SectionId | null>(null)
+  const toggle = (id: SectionId) => setOpen((cur) => (cur === id ? null : id))
+
+  const theme = matchColorTheme(meta.primaryColor, meta.accentColor)
+  const heading = meta.headerFontFamily ?? DEFAULT_PICKER_FONT
+  const pairing = matchPairing(heading, meta.fontFamily)
 
   return (
-    <div className="mx-auto max-w-sm space-y-7 px-4 py-6">
+    <div className="mx-auto max-w-md space-y-5 px-4 py-5">
       <section aria-labelledby="design-template">
-        <h2 id="design-template" className={sectionTitle}>Template</h2>
+        <div className="mb-2.5 flex items-baseline justify-between">
+          <h2 id="design-template" className="text-sm font-medium text-fg-heading">Template</h2>
+          <span className="text-xs text-fg-subtle">Your content, five looks</span>
+        </div>
         <TemplateGrid active={active} />
       </section>
-      <ColumnsSection />
-      <section aria-labelledby="design-fonts">
-        <h2 id="design-fonts" className={sectionTitle}>Fonts</h2>
-        <FontSection />
-      </section>
-      <section aria-labelledby="design-colors">
-        <h2 id="design-colors" className={sectionTitle}>Colors</h2>
-        {/* Stacked vertically so each picker's swatch row and preset palette
-            get the panel's full width. */}
-        <div className="space-y-5">
-          <ColorField
-            label="Primary color"
-            value={primaryColor}
-            onCommit={(hex) => setMeta({ primaryColor: hex })}
-            swatchLabel="Custom primary color"
-            presetsLabel="Primary color presets"
-            placeholder="#000000"
-          />
-          <ColorField
-            label="Accent color"
-            value={accentColor}
-            onCommit={(hex) => setMeta({ accentColor: hex })}
-            swatchLabel="Custom accent color"
-            presetsLabel="Accent color presets"
-            placeholder="#0066cc"
-          />
-        </div>
-      </section>
-      <section aria-labelledby="design-spacing">
-        <h2 id="design-spacing" className={sectionTitle}>Size and spacing</h2>
-        <SpacingControls />
-      </section>
+
+      <div className="space-y-2">
+        <InspectorSection
+          title="Colors"
+          icon={<Palette className="h-4 w-4" />}
+          summary={
+            <span className="inline-flex items-center gap-1.5">
+              <ThemeDot primary={meta.primaryColor} accent={meta.accentColor} className="h-3 w-3" />
+              {theme ? theme.label : 'Custom'}
+            </span>
+          }
+          open={open === 'colors'}
+          onToggle={() => toggle('colors')}
+        >
+          <ColorSection />
+        </InspectorSection>
+
+        <InspectorSection
+          title="Typography"
+          icon={<Type className="h-4 w-4" />}
+          summary={`${pairing ? pairing.label : 'Custom'} · ${heading} / ${meta.fontFamily}`}
+          open={open === 'typography'}
+          onToggle={() => toggle('typography')}
+        >
+          <FontSection />
+        </InspectorSection>
+
+        <InspectorSection
+          title="Layout"
+          icon={<Columns2 className="h-4 w-4" />}
+          summary={layoutSummary(meta)}
+          open={open === 'layout'}
+          onToggle={() => toggle('layout')}
+        >
+          <ColumnsSection />
+        </InspectorSection>
+
+        <InspectorSection
+          title="Size and spacing"
+          icon={<Ruler className="h-4 w-4" />}
+          summary={spacingSummary(meta)}
+          open={open === 'spacing'}
+          onToggle={() => toggle('spacing')}
+        >
+          <SpacingControls />
+        </InspectorSection>
+      </div>
     </div>
   )
 }
