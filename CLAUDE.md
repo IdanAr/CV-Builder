@@ -122,6 +122,7 @@ cv-builder/
 │   ├── schemas/                   # resume.zod.ts, application.zod.ts, jobsearch.zod.ts — single source of truth
 │   ├── stores/                      # resume-editor.store.ts, toast.store.ts (Zustand)
 │   ├── upload/                        # parse-file.ts, extract-resume.ts
+│   ├── job-url/                       # safe-fetch.ts (SSRF-guarded fetch of a user-supplied job link), extract.ts (JSON-LD JobPosting, else page text)
 │   ├── editor/design-presets.ts, editor/use-format-score.ts, fonts/pairings.ts   # spacing/margin presets, font pairings for the Design panel
 │   ├── design/            # color-tokens.ts (semantic colours), tokens.ts, font-scale.ts; __tests__/legacy-utilities.test.ts is the ratchet
 │   └── rate-limit.ts, export-mode.ts, preview-pagination.ts, mongodb.ts, auth.ts, db.ts
