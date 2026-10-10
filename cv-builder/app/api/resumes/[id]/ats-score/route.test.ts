@@ -116,6 +116,8 @@ describe('POST /api/resumes/[id]/ats-score', () => {
     expect(extractJdRequirements).toHaveBeenCalledWith('Analytics role')
     expect(scoreResume).toHaveBeenCalledWith({}, 'Analytics role', [], [], ['mixpanel', 'amplitude'])
     expect(json.keywordPriorities).toEqual({ mixpanel: 'nice-to-have', amplitude: 'nice-to-have' })
+    expect(json.keywordSource).toBe('ai')
+    expect(json.keywordFallbackReason).toBeUndefined()
   })
 
   it('reuses cached keywordPriorities from the body instead of recomputing them, when jdKeywords is also cached', async () => {
@@ -132,6 +134,7 @@ describe('POST /api/resumes/[id]/ats-score', () => {
     expect(checkRateLimit).not.toHaveBeenCalled()
     expect(extractJdRequirements).not.toHaveBeenCalled()
     expect(json.keywordPriorities).toEqual({ react: 'must', kubernetes: 'ambiguous' })
+    expect(json.keywordSource).toBe('cached')
   })
 
   it('normalizes malformed cached priority values instead of trusting the client blindly', async () => {
@@ -157,6 +160,8 @@ describe('POST /api/resumes/[id]/ats-score', () => {
     expect(extractJdRequirements).not.toHaveBeenCalled()
     expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], [])
     expect(json.keywordPriorities).toEqual({})
+    expect(json.keywordSource).toBe('basic')
+    expect(json.keywordFallbackReason).toBe('rate-limited')
   })
 
   it('falls back to an empty override and empty priorities when AI extraction throws, and still returns 200', async () => {
@@ -169,6 +174,16 @@ describe('POST /api/resumes/[id]/ats-score', () => {
     expect(res.status).toBe(200)
     expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], [])
     expect(json.keywordPriorities).toEqual({})
+    expect(json.keywordSource).toBe('basic')
+    expect(json.keywordFallbackReason).toBe('ai-error')
+  })
+
+  it('reports the basic matcher when AI extraction returns no terms', async () => {
+    const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
+    vi.mocked(extractJdRequirements).mockResolvedValueOnce([])
+    const { json } = await authedRequest({ jobDescription: 'React developer' })
+    expect(json.keywordSource).toBe('basic')
+    expect(json.keywordFallbackReason).toBe('ai-empty')
   })
 
   it('does not attempt AI extraction when the job description is blank', async () => {

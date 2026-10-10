@@ -32,14 +32,27 @@ beforeEach(() => {
   })
 })
 
+const fontList = (name = 'Fonts for body') => screen.getByRole('radiogroup', { name })
+const openPicker = (target: 'Body' | 'Headings') =>
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${target} font:`) }))
+
 describe('FontSection', () => {
-  it('renders four pairing cards in a radiogroup with Aa samples', () => {
+  it('renders six pairing specimens, each drawn in its own fonts', () => {
     render(<FontSection />)
     const group = screen.getByRole('radiogroup', { name: 'Font pairing' })
-    const cards = within(group).getAllByRole('radio')
-    expect(cards).toHaveLength(4)
-    const sample = within(screen.getByRole('radio', { name: /Editorial/ })).getByText('Aa')
-    expect(q(sample.style.fontFamily)).toBe(webFontFamily('Cambria'))
+    expect(within(group).getAllByRole('radio')).toHaveLength(6)
+    const editorial = screen.getByRole('radio', { name: /Editorial/ })
+    expect(q(within(editorial).getByTestId('pairing-heading-sample').style.fontFamily)).toBe(webFontFamily('Cambria'))
+    expect(q(within(editorial).getByTestId('pairing-body-sample').style.fontFamily)).toBe(webFontFamily('Calibri'))
+  })
+
+  it("uses the CV owner's name as the specimen, with a fallback", () => {
+    const { unmount } = render(<FontSection />)
+    expect(screen.getAllByText('Your Name').length).toBe(6)
+    unmount()
+    useResumeEditorStore.setState({ data: { basics: { name: 'Ada Lovelace' } } })
+    render(<FontSection />)
+    expect(screen.getAllByText('Ada Lovelace').length).toBe(6)
   })
 
   it('checks the matching pairing (Clean by default)', () => {
@@ -66,12 +79,12 @@ describe('FontSection', () => {
     expect(st.isDirty).toBe(false)
   })
 
-  it('shows Custom and no checked pairing when nothing matches', () => {
+  it('shows Custom pairing and no checked pairing when nothing matches', () => {
     useResumeEditorStore.setState({ meta: { ...defaultMeta, fontFamily: 'Roboto', headerFontFamily: 'Lato' } })
     render(<FontSection />)
     const group = screen.getByRole('radiogroup', { name: 'Font pairing' })
     for (const r of group.querySelectorAll('[role="radio"]')) expect(r).toHaveAttribute('aria-checked', 'false')
-    expect(screen.getByText('Custom')).toBeTruthy()
+    expect(screen.getByText('Custom pairing')).toBeTruthy()
   })
 
   it('arrow keys move through pairings', () => {
@@ -85,40 +98,51 @@ describe('FontSection', () => {
     expect(document.activeElement).toBe(editorial)
   })
 
-  it('Headings target edits only headerFontFamily', () => {
+  it('the two pickers name the current fonts', () => {
+    useResumeEditorStore.setState({ meta: { ...defaultMeta, headerFontFamily: 'Cambria', fontFamily: 'Lato' } })
     render(<FontSection />)
-    expect(screen.getByRole('radiogroup', { name: 'Customize font target' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('radio', { name: 'Headings' }))
-    const list = screen.getByRole('radiogroup', { name: 'Fonts for headings' })
-    fireEvent.click(within(list).getByRole('radio', { name: 'Georgia' }))
+    expect(screen.getByRole('button', { name: 'Headings font: Cambria' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Body font: Lato' })).toBeTruthy()
+  })
+
+  it('the Headings picker edits only headerFontFamily', () => {
+    render(<FontSection />)
+    openPicker('Headings')
+    fireEvent.click(within(fontList('Fonts for headings')).getByRole('radio', { name: 'Georgia' }))
     expect(meta().headerFontFamily).toBe('Georgia')
     expect(meta().fontFamily).toBe('Calibri')
   })
 
-  it('Body target edits only fontFamily', () => {
+  it('the Body picker edits only fontFamily', () => {
     render(<FontSection />)
-    const list = screen.getByRole('radiogroup', { name: 'Fonts for body' })
-    fireEvent.click(within(list).getByRole('radio', { name: 'Lato' }))
+    openPicker('Body')
+    fireEvent.click(within(fontList()).getByRole('radio', { name: 'Lato' }))
     expect(meta().fontFamily).toBe('Lato')
     expect(meta().headerFontFamily).toBe('Calibri')
   })
 
-  it('lists the 9 fonts, each rendered in its own family, current one checked', () => {
+  it('lists the 9 fonts, each rendered in its own family and tagged serif or sans, current one checked', () => {
     render(<FontSection />)
-    const list = screen.getByRole('radiogroup', { name: 'Fonts for body' })
-    const opts = within(list).getAllByRole('radio')
-    expect(opts.map((o) => o.textContent)).toEqual(Object.keys(FONT_SUBSTITUTES))
-    for (const o of opts) expect(q((o as HTMLElement).style.fontFamily)).toBe(webFontFamily(o.textContent!))
-    expect(within(list).getByRole('radio', { name: 'Calibri' })).toHaveAttribute('aria-checked', 'true')
-    expect(within(list).getByRole('radio', { name: 'Arial' })).toHaveAttribute('aria-checked', 'false')
+    openPicker('Body')
+    const opts = within(fontList()).getAllByRole('radio')
+    const labels = opts.map((o) => o.getAttribute('aria-label'))
+    expect(labels).toEqual(Object.keys(FONT_SUBSTITUTES))
+    for (const o of opts) {
+      const sample = within(o).getByText(o.getAttribute('aria-label')!)
+      expect(q(sample.style.fontFamily)).toBe(webFontFamily(o.getAttribute('aria-label')!))
+    }
+    expect(within(fontList()).getByRole('radio', { name: 'Georgia' })).toHaveTextContent('Serif')
+    expect(within(fontList()).getByRole('radio', { name: 'Arial' })).toHaveTextContent('Sans')
+    expect(within(fontList()).getByRole('radio', { name: 'Calibri' })).toHaveAttribute('aria-checked', 'true')
+    expect(within(fontList()).getByRole('radio', { name: 'Arial' })).toHaveAttribute('aria-checked', 'false')
   })
 
-  describe('font list keyboard + targets', () => {
-    const fontList = (name = 'Fonts for body') => screen.getByRole('radiogroup', { name })
+  describe('font list keyboard', () => {
     const names = Object.keys(FONT_SUBSTITUTES)
 
     it('has exactly one tab stop and arrows move selection and focus', () => {
       render(<FontSection />)
+      openPicker('Body')
       const opts = within(fontList()).getAllByRole('radio')
       expect(opts.filter((o) => o.getAttribute('tabindex') === '0')).toHaveLength(1)
       expect(within(fontList()).getByRole('radio', { name: 'Calibri' })).toHaveAttribute('tabindex', '0')
@@ -129,6 +153,7 @@ describe('FontSection', () => {
 
     it('ArrowUp from the first wraps to the last; Home/End work', () => {
       render(<FontSection />)
+      openPicker('Body')
       fireEvent.keyDown(within(fontList()).getByRole('radio', { name: 'Calibri' }), { key: 'ArrowUp' })
       expect(meta().fontFamily).toBe(names[names.length - 1])
       fireEvent.keyDown(document.activeElement as Element, { key: 'Home' })
@@ -139,21 +164,10 @@ describe('FontSection', () => {
 
     it('arrows on Headings write headerFontFamily only', () => {
       render(<FontSection />)
-      fireEvent.click(screen.getByRole('radio', { name: 'Headings' }))
+      openPicker('Headings')
       fireEvent.keyDown(within(fontList('Fonts for headings')).getByRole('radio', { name: 'Calibri' }), { key: 'ArrowDown' })
       expect(meta().headerFontFamily).toBe(names[1])
       expect(meta().fontFamily).toBe('Calibri')
-    })
-
-    it('list checked state follows the target', () => {
-      useResumeEditorStore.setState({ meta: { ...defaultMeta, headerFontFamily: 'Cambria', fontFamily: 'Calibri' } })
-      render(<FontSection />)
-      expect(within(fontList()).getByRole('radio', { name: 'Calibri' })).toHaveAttribute('aria-checked', 'true')
-      fireEvent.click(screen.getByRole('radio', { name: 'Headings' }))
-      expect(within(fontList('Fonts for headings')).getByRole('radio', { name: 'Cambria' })).toHaveAttribute('aria-checked', 'true')
-      expect(within(fontList('Fonts for headings')).getByRole('radio', { name: 'Calibri' })).toHaveAttribute('aria-checked', 'false')
-      fireEvent.click(screen.getByRole('radio', { name: 'Body' }))
-      expect(within(fontList()).getByRole('radio', { name: 'Calibri' })).toHaveAttribute('aria-checked', 'true')
     })
 
     it('legacy CV without headerFontFamily draws headings in the default font', () => {
@@ -162,14 +176,12 @@ describe('FontSection', () => {
       legacy('Calibri')
       const { unmount } = render(<FontSection />)
       expect(screen.getByRole('radio', { name: /Clean/ })).toHaveAttribute('aria-checked', 'true')
-      fireEvent.click(screen.getByRole('radio', { name: 'Headings' }))
-      expect(within(fontList('Fonts for headings')).getByRole('radio', { name: 'Calibri' })).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByRole('button', { name: 'Headings font: Calibri' })).toBeTruthy()
       unmount()
       legacy('Cambria')
       render(<FontSection />)
       expect(screen.getByRole('radio', { name: /Editorial/ })).toHaveAttribute('aria-checked', 'false')
-      fireEvent.click(screen.getByRole('radio', { name: 'Headings' }))
-      expect(within(fontList('Fonts for headings')).getByRole('radio', { name: 'Calibri' })).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByRole('button', { name: 'Headings font: Calibri' })).toBeTruthy()
     })
   })
 })

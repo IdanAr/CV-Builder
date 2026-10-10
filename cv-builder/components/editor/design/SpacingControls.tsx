@@ -11,7 +11,7 @@ import {
 import type { ResumeMeta } from '@/lib/schemas/resume.zod'
 import { SegmentedControl } from './SegmentedControl'
 
-interface GroupProps {
+interface GroupConfig {
   title: string
   groupLabel: string
   presets: Preset[]
@@ -21,35 +21,18 @@ interface GroupProps {
   slider: { label: string; min: number; max: number; step: number }
 }
 
-function Group({ title, groupLabel, presets, value, format, onSet, slider }: GroupProps) {
+function readout({ presets, value, format }: GroupConfig): string {
   const matched = matchPreset(presets, value)
-  const readout = matched ? matched.label : `Custom (${format(value)})`
-  return (
-    <div>
-      <p className="mb-1 text-xs font-medium text-fg-muted">
-        {title} <span className="font-mono text-fg-subtle">{readout}</span>
-      </p>
-      <SegmentedControl
-        label={groupLabel}
-        options={presets.map((p) => ({ id: p.id, label: p.label }))}
-        value={matched?.id}
-        onChange={(id) => onSet(presets.find((p) => p.id === id)!.value)}
-      />
-      <details className="mt-1">
-        <summary className="cursor-pointer text-xs text-fg-subtle">Advanced</summary>
-        <input
-          type="range"
-          aria-label={slider.label}
-          min={slider.min}
-          max={slider.max}
-          step={slider.step}
-          value={value}
-          onChange={(e) => onSet(parseFloat(e.target.value))}
-          className="mt-1 w-full accent-accent-600"
-        />
-      </details>
-    </div>
-  )
+  return matched ? matched.label : `Custom (${format(value)})`
+}
+
+/** Short summary for the collapsed Design section, e.g. "Default · Normal · Standard". */
+export function spacingSummary(meta: Pick<ResumeMeta, 'fontScale' | 'lineSpacing' | 'pageMargins'>): string {
+  return [
+    matchPreset(TEXT_SIZE_PRESETS, meta.fontScale ?? 1)?.label ?? 'Custom',
+    matchPreset(LINE_SPACING_PRESETS, meta.lineSpacing)?.label ?? 'Custom',
+    matchPreset(MARGIN_PRESETS, meta.pageMargins)?.label ?? 'Custom',
+  ].join(' · ')
 }
 
 export function SpacingControls() {
@@ -57,35 +40,77 @@ export function SpacingControls() {
   const setMeta = useResumeEditorStore((s) => s.setMeta)
   const set = (patch: Partial<ResumeMeta>) => setMeta(patch)
 
+  const groups: GroupConfig[] = [
+    {
+      title: 'Text size',
+      groupLabel: 'Text size presets',
+      presets: TEXT_SIZE_PRESETS,
+      value: meta.fontScale ?? 1,
+      format: (v) => v.toFixed(2),
+      onSet: (v) => set({ fontScale: v }),
+      slider: { label: 'Text size scale', min: 0.9, max: 1.1, step: 0.01 },
+    },
+    {
+      title: 'Line spacing',
+      groupLabel: 'Line spacing presets',
+      presets: LINE_SPACING_PRESETS,
+      value: meta.lineSpacing,
+      format: (v) => v.toFixed(2),
+      onSet: (v) => set({ lineSpacing: v }),
+      slider: { label: 'Line spacing', min: 1.0, max: 1.3, step: 0.05 },
+    },
+    {
+      title: 'Margins',
+      groupLabel: 'Margin presets',
+      presets: MARGIN_PRESETS,
+      value: meta.pageMargins,
+      format: (v) => `${v.toFixed(1)}"`,
+      onSet: (v) => set({ pageMargins: v }),
+      slider: { label: 'Page margins', min: 0.5, max: 1.5, step: 0.1 },
+    },
+  ]
+
   return (
     <div className="space-y-3">
-      <Group
-        title="Text size"
-        groupLabel="Text size presets"
-        presets={TEXT_SIZE_PRESETS}
-        value={meta.fontScale ?? 1}
-        format={(v) => v.toFixed(2)}
-        onSet={(v) => set({ fontScale: v })}
-        slider={{ label: 'Text size scale', min: 0.9, max: 1.1, step: 0.01 }}
-      />
-      <Group
-        title="Line spacing"
-        groupLabel="Line spacing presets"
-        presets={LINE_SPACING_PRESETS}
-        value={meta.lineSpacing}
-        format={(v) => v.toFixed(2)}
-        onSet={(v) => set({ lineSpacing: v })}
-        slider={{ label: 'Line spacing', min: 1.0, max: 1.3, step: 0.05 }}
-      />
-      <Group
-        title="Margins"
-        groupLabel="Margin presets"
-        presets={MARGIN_PRESETS}
-        value={meta.pageMargins}
-        format={(v) => `${v.toFixed(1)}"`}
-        onSet={(v) => set({ pageMargins: v })}
-        slider={{ label: 'Page margins', min: 0.5, max: 1.5, step: 0.1 }}
-      />
+      {groups.map((g) => (
+        <div key={g.title}>
+          <p className="mb-1 flex items-baseline justify-between text-xs font-medium text-fg-muted">
+            {g.title} <span className="font-mono font-normal text-fg-subtle">{readout(g)}</span>
+          </p>
+          <SegmentedControl
+            label={g.groupLabel}
+            options={g.presets.map((p) => ({ id: p.id, label: p.label }))}
+            value={matchPreset(g.presets, g.value)?.id}
+            onChange={(id) => g.onSet(g.presets.find((p) => p.id === id)!.value)}
+          />
+        </div>
+      ))}
+      {/* One disclosure for all three sliders, instead of one per row. */}
+      <details className="group pt-1">
+        <summary className="cursor-pointer list-none text-xs font-medium text-fg-body hover:text-fg-heading">
+          <span className="inline-block transition-transform group-open:rotate-90">›</span> Fine-tune with sliders
+        </summary>
+        <div className="mt-2 space-y-3">
+          {groups.map((g) => (
+            <label key={g.title} className="block">
+              <span className="flex justify-between text-xs text-fg-muted">
+                {g.title}
+                <span className="font-mono text-fg-subtle">{g.format(g.value)}</span>
+              </span>
+              <input
+                type="range"
+                aria-label={g.slider.label}
+                min={g.slider.min}
+                max={g.slider.max}
+                step={g.slider.step}
+                value={g.value}
+                onChange={(e) => g.onSet(parseFloat(e.target.value))}
+                className="mt-1 w-full accent-primary"
+              />
+            </label>
+          ))}
+        </div>
+      </details>
     </div>
   )
 }

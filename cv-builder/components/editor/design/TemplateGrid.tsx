@@ -6,6 +6,7 @@ import { useDebounce } from '@/lib/hooks/use-debounce'
 import { CvThumbnail } from '@/components/cvs/CvThumbnail'
 import { TEMPLATE_OPTIONS } from '@/lib/templates'
 import { cn } from '@/lib/utils'
+import { Check } from 'lucide-react'
 
 interface CardsProps {
   templateId: string
@@ -16,7 +17,7 @@ function Cards({ templateId, renderThumb }: CardsProps) {
   const baseId = useId()
   const setMeta = useResumeEditorStore((s) => s.setMeta)
   return (
-    <div role="group" aria-label="Template" className="grid grid-cols-2 gap-3">
+    <div role="group" aria-label="Template" className="grid grid-cols-2 gap-2.5">
       {TEMPLATE_OPTIONS.map((t) => {
         const active = templateId === t.id
         const labelId = `${baseId}-${t.id}-label`
@@ -31,8 +32,9 @@ function Cards({ templateId, renderThumb }: CardsProps) {
             onClick={() => {
               if (!active) setMeta({ templateId: t.id })
             }}
+            title={t.desc}
             className={cn(
-              'rounded-card border bg-surface p-2 text-left transition-colors',
+              'group relative rounded-card border bg-surface p-1.5 text-left transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               active
                 ? 'border-primary ring-2 ring-ring'
@@ -40,8 +42,15 @@ function Cards({ templateId, renderThumb }: CardsProps) {
             )}
           >
             {renderThumb(t.id)}
-            <span id={labelId} className="mt-2 block text-sm font-medium text-fg">{t.label}</span>
-            <span id={descId} className="block text-xs text-fg-muted">{t.desc}</span>
+            {active && (
+              <span className="absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-fg">
+                <Check aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={3} />
+              </span>
+            )}
+            <span className="flex items-baseline gap-1 px-1 pb-0.5 pt-1.5">
+              <span id={labelId} className={cn('text-sm font-medium', active ? 'text-primary' : 'text-fg')}>{t.label}</span>
+            </span>
+            <span id={descId} className="block truncate px-1 text-xs text-fg-muted">{t.desc}</span>
           </button>
         )
       })}

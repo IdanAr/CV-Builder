@@ -56,10 +56,11 @@ describe('SpacingControls', () => {
     expect(screen.getByText(/Custom \(1\.20\)/)).toBeTruthy()
   })
 
-  it('Advanced slider still edits the value', () => {
+  it('one Fine-tune disclosure holds all three sliders, which still edit the value', () => {
     const { container } = render(<SpacingControls />)
     const details = container.querySelectorAll('details')
-    expect(details).toHaveLength(3)
+    expect(details).toHaveLength(1)
+    expect(details[0].querySelectorAll('input[type="range"]')).toHaveLength(3)
     const slider = screen.getByRole('slider', { name: 'Line spacing' }) as HTMLInputElement
     expect(slider.min).toBe('1')
     expect(slider.max).toBe('1.3')

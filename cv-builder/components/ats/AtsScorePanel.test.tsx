@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
 import { AtsScorePanel, sortByPriority } from './AtsScorePanel'
 import type { AtsFix } from '@/lib/ai/ats-fix-pipeline'
@@ -34,29 +34,40 @@ const generateFix: AtsFix = {
   pendingApprovals: [],
 }
 
-function jsonResponse(body: unknown) {
-  return { ok: true, json: async () => body }
-}
+interface Reply { ok?: boolean; status?: number; body: unknown }
 
-// Every test that needs step-2 or step-3 content reaches it through these —
-// centralizing the navigation click keeps each test focused on its own
-// assertion instead of repeating the same button lookup everywhere.
-async function goToStep2() {
-  const nextButton = await screen.findByRole('button', { name: /next: close the gap/i })
-  fireEvent.click(nextButton)
-}
-
-async function goToStep3() {
-  const nextButton = await screen.findByRole('button', { name: /next: review & apply/i })
-  await waitFor(() => expect(nextButton).not.toBeDisabled())
-  fireEvent.click(nextButton)
-}
-
-async function analyzeWith(jobDescriptionText = 'Looking for a React + TypeScript engineer.') {
-  fireEvent.change(screen.getByPlaceholderText(/paste the full job description/i), {
-    target: { value: jobDescriptionText },
+/**
+ * Routes fetch by URL, so a test states what each endpoint answers rather than
+ * the exact order of calls (the panel now saves before scoring and runs the
+ * synonym check by itself). Each route replays its replies in order and then
+ * repeats the last one. Autosave PATCHes always succeed.
+ */
+function mockApi(routes: Record<string, Reply[]>) {
+  const calls: Array<{ url: string; method: string; body: Record<string, unknown> | undefined }> = []
+  const fn = vi.fn(async (url: string, init?: RequestInit) => {
+    const method = init?.method ?? 'GET'
+    calls.push({ url, method, body: init?.body ? JSON.parse(String(init.body)) : undefined })
+    if (method === 'PATCH') return { ok: true, status: 200, headers: new Headers(), json: async () => ({}) }
+    const key = Object.keys(routes).find((k) => url.endsWith(k))
+    if (!key) throw new Error(`unexpected fetch ${url}`)
+    const queue = routes[key]
+    const r = queue.length > 1 ? queue.shift()! : queue[0]
+    return { ok: r.ok ?? true, status: r.status ?? 200, headers: new Headers(), json: async () => r.body }
   })
-  fireEvent.click(screen.getByText('Analyze'))
+  vi.stubGlobal('fetch', fn)
+  return { fn, to: (k: string) => calls.filter((c) => c.url.endsWith(k)), calls }
+}
+
+const NO_SYNONYMS: Reply[] = [{ body: { confirmedMatches: [] } }]
+
+async function check(jobDescriptionText = 'Looking for a React + TypeScript engineer.') {
+  fireEvent.change(screen.getByLabelText('Job description'), { target: { value: jobDescriptionText } })
+  fireEvent.click(screen.getByRole('button', { name: /check match/i }))
+  await screen.findByRole('region', { name: 'ATS score' })
+}
+
+async function generate() {
+  fireEvent.click(await screen.findByRole('button', { name: /add missing keywords with ai/i }))
 }
 
 beforeEach(() => {
@@ -76,158 +87,279 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('AtsScorePanel text status label', () => {
-  it('shows a text status label alongside a low score, not color alone', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
+describe('AtsScorePanel: checking a job', () => {
+  it('keeps the Check button disabled until a job description is pasted', () => {
     render(<AtsScorePanel />)
-    await analyzeWith()
-
-    await waitFor(() => expect(screen.getByText(/needs work|poor match/i)).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: /check match/i })).toBeDisabled()
+    fireEvent.change(screen.getByLabelText('Job description'), { target: { value: 'x' } })
+    expect(screen.getByRole('button', { name: /check match/i })).toBeEnabled()
   })
 
-  it('shows "Good match" for a high score', async () => {
-    const highScore: AtsScoreResult = {
-      total: 85,
-      breakdown: { format: 25, keywordDensity: 35, keywordPlacement: 20, metrics: 5 },
-      matchedKeywords: ['react', 'typescript'],
-      missingKeywords: [],
-      excludedMatchedKeywords: [],
-      excludedMissingKeywords: [],
-      jdKeywords: ['react', 'typescript'],
+  it('shows the score with a text verdict, not colour alone, and the four parts of the score', async () => {
+    mockApi({ '/ats-score': [{ body: scoreResult }], '/ats-semantic-match': NO_SYNONYMS })
+    render(<AtsScorePanel />)
+    await check()
+    const region = screen.getByRole('region', { name: 'ATS score' })
+    expect(within(region).getByText('42')).toBeInTheDocument()
+    expect(within(region).getByText('Needs work')).toBeInTheDocument()
+    for (const label of ['Keyword coverage', 'Structure', 'Keyword placement', 'Measurable results']) {
+      expect(within(region).getByText(label)).toBeInTheDocument()
     }
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(highScore))
-    vi.stubGlobal('fetch', fetchMock)
+  })
 
+  it('says "Good match" for a high score', async () => {
+    mockApi({ '/ats-score': [{ body: { ...scoreResult, total: 85 } }], '/ats-semantic-match': NO_SYNONYMS })
     render(<AtsScorePanel />)
-    await analyzeWith()
+    await check()
+    expect(screen.getByText('Good match')).toBeInTheDocument()
+  })
 
-    await waitFor(() => expect(screen.getByText(/good match/i)).toBeInTheDocument())
+  it('folds the job description into a one-line summary, and Change job brings the text back', async () => {
+    mockApi({ '/ats-score': [{ body: scoreResult }], '/ats-semantic-match': NO_SYNONYMS })
+    render(<AtsScorePanel />)
+    await check('A job.')
+    expect(screen.queryByLabelText('Job description')).toBeNull()
+    expect(screen.getByText(/6 characters · 2 keywords found/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Change job' }))
+    expect(screen.getByLabelText('Job description')).toHaveValue('A job.')
+  })
+
+  it('shows the server error and keeps the input open when scoring fails', async () => {
+    mockApi({ '/ats-score': [{ ok: false, status: 500, body: { error: 'Scoring is down.' } }] })
+    render(<AtsScorePanel />)
+    fireEvent.change(screen.getByLabelText('Job description'), { target: { value: 'A job.' } })
+    fireEvent.click(screen.getByRole('button', { name: /check match/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Scoring is down.')
+    expect(screen.getByLabelText('Job description')).toBeInTheDocument()
+  })
+
+  it('saves pending edits before scoring, because the route reads the CV from the database', async () => {
+    const api = mockApi({ '/ats-score': [{ body: scoreResult }], '/ats-semantic-match': NO_SYNONYMS })
+    useResumeEditorStore.setState({ isDirty: true })
+    render(<AtsScorePanel />)
+    await check()
+    const order = api.calls.map((c) => c.method === 'PATCH' ? 'save' : c.url.split('/').pop())
+    expect(order.indexOf('save')).toBeLessThan(order.indexOf('ats-score'))
+  })
+
+  it('a fresh check always sends empty keyword caches, so the server re-reads the job', async () => {
+    const api = mockApi({
+      '/ats-score': [{ body: { ...scoreResult, keywordPriorities: { react: 'must' } } }],
+      '/ats-semantic-match': NO_SYNONYMS,
+    })
+    render(<AtsScorePanel />)
+    await check('First job')
+    fireEvent.click(screen.getByRole('button', { name: 'Change job' }))
+    await check('Second job')
+    const scoreCalls = api.to('/ats-score')
+    expect(scoreCalls.at(-1)?.body?.jobDescription).toBe('Second job')
+    expect(scoreCalls.at(-1)?.body?.jdKeywords).toEqual([])
+    expect(scoreCalls.at(-1)?.body?.keywordPriorities).toEqual({})
   })
 })
 
-describe('AtsScorePanel help popover for Semantic Match / Tailor with AI', () => {
-  it('is closed by default and opens to show both explanations when the "?" button is clicked', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
+describe('AtsScorePanel: keyword source', () => {
+  it('says when the basic matcher was used, why, and offers a fresh check', async () => {
+    const api = mockApi({
+      '/ats-score': [{ body: { ...scoreResult, keywordSource: 'basic', keywordFallbackReason: 'rate-limited' } }],
+      '/ats-semantic-match': NO_SYNONYMS,
+    })
     render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
+    await check()
+    const note = screen.getByRole('note')
+    expect(note).toHaveTextContent(/basic word matching was used because you reached the limit of AI requests/i)
+    // Without AI priorities nothing is known to be required, so the group is not labelled that way.
+    expect(screen.getByText('From the job description')).toBeInTheDocument()
+    expect(screen.queryByText('Required')).toBeNull()
 
-    expect(screen.queryByText(/it doesn.t rewrite anything/i)).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: /what do semantic match and tailor with ai do/i }))
-
-    expect(screen.getByText(/it doesn.t rewrite anything/i)).toBeInTheDocument()
-    expect(screen.getByText(/you review and approve each suggested change/i)).toBeInTheDocument()
+    fireEvent.click(within(note).getByRole('button', { name: 'check again' }))
+    await waitFor(() => expect(api.to('/ats-score').length).toBeGreaterThanOrEqual(2))
+    expect(api.to('/ats-score').at(-1)?.body?.jdKeywords).toEqual([])
   })
 
-  it('renders the primary action buttons at the theme color and a 44px-tall touch target', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
+  it('shows no notice when the AI read the job', async () => {
+    mockApi({
+      '/ats-score': [{ body: { ...scoreResult, keywordSource: 'ai', keywordPriorities: { react: 'must' } } }],
+      '/ats-semantic-match': NO_SYNONYMS,
+    })
     render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
+    await check()
+    expect(screen.queryByRole('note')).toBeNull()
+    expect(screen.getByText('Required')).toBeInTheDocument()
+  })
 
-    const semanticButton = screen.getByRole('button', { name: '🔎 Semantic Match' })
-    const tailorButton = screen.getByText(/tailor with ai/i).closest('button')
-    expect(semanticButton?.className).toContain('bg-primary')
-    expect(semanticButton?.className).toContain('min-h-10')
-    expect(tailorButton?.className).toContain('bg-primary')
-    expect(tailorButton?.className).toContain('min-h-10')
+  it('keeps the notice through re-scores that reuse the cached list', async () => {
+    mockApi({
+      '/ats-score': [
+        { body: { ...scoreResult, keywordSource: 'basic', keywordFallbackReason: 'ai-error' } },
+        { body: { ...scoreResult, missingKeywords: ['typescript'], excludedMissingKeywords: ['react'], keywordSource: 'cached' } },
+      ],
+      '/ats-semantic-match': NO_SYNONYMS,
+    })
+    render(<AtsScorePanel />)
+    await check()
+    fireEvent.click(screen.getByRole('button', { name: 'Ignore "react"' }))
+    await screen.findByRole('button', { name: 'Count "react" again' })
+    expect(screen.getByRole('note')).toHaveTextContent(/the AI service returned an error/i)
   })
 })
 
-describe('AtsScorePanel applyFix for generate-kind summary fixes', () => {
-  it('applying a generate fix sets basics.summary when no summary existed before', async () => {
-    const fetchMock = vi
-      .fn()
-      // 1st call: POST /ats-score
-      .mockResolvedValueOnce(jsonResponse(scoreResult))
-      // 2nd call: POST /ats-fix
-      .mockResolvedValueOnce(jsonResponse([generateFix]))
-    vi.stubGlobal('fetch', fetchMock)
-
+describe('AtsScorePanel: automatic synonym check', () => {
+  it('runs by itself after the score, re-scores with the confirmed matches, and marks them', async () => {
+    const api = mockApi({
+      '/ats-score': [
+        { body: { ...scoreResult, keywordPriorities: { react: 'must' } } },
+        { body: { ...scoreResult, total: 60, matchedKeywords: ['typescript'], missingKeywords: ['react'] } },
+      ],
+      '/ats-semantic-match': [{ body: { confirmedMatches: ['typescript'] } }],
+    })
     render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
+    await check()
+    await screen.findByText(/1 keyword is already covered in other words/i)
+    expect(api.to('/ats-semantic-match')[0].body).toEqual({ missingKeywords: ['react', 'typescript'] })
+    const rescore = api.to('/ats-score')[1].body!
+    expect(rescore.semanticMatches).toEqual(['typescript'])
+    // Same job: reuse what the first response extracted instead of paying for it again.
+    expect(rescore.jdKeywords).toEqual(['react', 'typescript'])
+    expect(rescore.keywordPriorities).toEqual({ react: 'must' })
 
-    fireEvent.click(screen.getByText(/tailor with ai/i))
-    await goToStep3()
-    await waitFor(() => expect(screen.getByText('Apply')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /already in your cv/i }))
+    expect(screen.getByText('(synonym match)')).toBeInTheDocument()
+  })
 
-    expect(useResumeEditorStore.getState().data.basics?.summary).toBeUndefined()
+  it('does not re-score when the check confirms nothing', async () => {
+    const api = mockApi({ '/ats-score': [{ body: scoreResult }], '/ats-semantic-match': NO_SYNONYMS })
+    render(<AtsScorePanel />)
+    await check()
+    await waitFor(() => expect(api.to('/ats-semantic-match')).toHaveLength(1))
+    expect(api.to('/ats-score')).toHaveLength(1)
+  })
 
-    fireEvent.click(screen.getByText('Apply'))
+  it('offers a retry when the check fails, without hiding the score', async () => {
+    const api = mockApi({
+      '/ats-score': [{ body: scoreResult }],
+      '/ats-semantic-match': [{ ok: false, status: 500, body: {} }, { body: { confirmedMatches: [] } }],
+    })
+    render(<AtsScorePanel />)
+    await check()
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(api.to('/ats-semantic-match')).toHaveLength(2))
+    expect(screen.getByRole('region', { name: 'ATS score' })).toBeInTheDocument()
+  })
 
+  it('is skipped entirely when nothing is missing', async () => {
+    const api = mockApi({
+      '/ats-score': [{ body: { ...scoreResult, total: 90, matchedKeywords: ['react', 'typescript'], missingKeywords: [] } }],
+    })
+    render(<AtsScorePanel />)
+    await check()
+    expect(screen.getByText(/covers every keyword/i)).toBeInTheDocument()
+    expect(api.to('/ats-semantic-match')).toHaveLength(0)
+    expect(screen.queryByRole('button', { name: /add missing keywords/i })).toBeNull()
+  })
+})
+
+describe('AtsScorePanel: missing keywords', () => {
+  const priorities = { react: 'nice-to-have', typescript: 'must', graphql: 'ambiguous' }
+
+  it('groups must-have and unclear keywords under Required and the rest under Nice to have', async () => {
+    mockApi({
+      '/ats-score': [{ body: { ...scoreResult, missingKeywords: ['react', 'typescript', 'graphql', 'go'], keywordPriorities: priorities } }],
+      '/ats-semantic-match': NO_SYNONYMS,
+    })
+    render(<AtsScorePanel />)
+    await check()
+    const required = screen.getByText('Required').nextElementSibling as HTMLElement
+    const nice = screen.getByText('Nice to have').nextElementSibling as HTMLElement
+    // `go` has no priority entry: unclear counts as required, never hidden.
+    expect(within(required).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Ignore "typescript"', 'Ignore "graphql"', 'Ignore "go"',
+    ])
+    expect(within(nice).getByRole('button', { name: 'Ignore "react"' })).toBeInTheDocument()
+  })
+
+  it('explains in words what ignoring does', async () => {
+    mockApi({ '/ats-score': [{ body: scoreResult }], '/ats-semantic-match': NO_SYNONYMS })
+    render(<AtsScorePanel />)
+    await check()
+    expect(screen.getByText(/stops counting against you and the AI won.t add it/i)).toBeInTheDocument()
+  })
+
+  it('ignoring a keyword persists it, re-scores with the cached keywords, and lists it as Ignored', async () => {
+    const api = mockApi({
+      '/ats-score': [
+        { body: { ...scoreResult, keywordPriorities: { react: 'must' } } },
+        { body: { ...scoreResult, missingKeywords: ['typescript'], excludedMissingKeywords: ['react'] } },
+      ],
+      '/ats-semantic-match': NO_SYNONYMS,
+    })
+    render(<AtsScorePanel />)
+    await check()
+    await waitFor(() => expect(api.to('/ats-semantic-match')).toHaveLength(1))
+    fireEvent.click(screen.getByRole('button', { name: 'Ignore "react"' }))
+
+    expect(useResumeEditorStore.getState().meta.excludedAtsKeywords).toEqual(['react'])
+    await screen.findByRole('button', { name: 'Count "react" again' })
+    const rescore = api.to('/ats-score')[1].body!
+    expect(rescore.excludedKeywords).toEqual(['react'])
+    expect(rescore.jdKeywords).toEqual(['react', 'typescript'])
+    expect(rescore.keywordPriorities).toEqual({ react: 'must' })
+  })
+
+  it('Count again re-includes an ignored keyword', async () => {
+    useResumeEditorStore.setState({ meta: { ...defaultMeta, excludedAtsKeywords: ['react'] } })
+    mockApi({
+      '/ats-score': [{ body: { ...scoreResult, missingKeywords: ['typescript'], excludedMissingKeywords: ['react'] } }],
+      '/ats-semantic-match': NO_SYNONYMS,
+    })
+    render(<AtsScorePanel />)
+    await check()
+    fireEvent.click(screen.getByRole('button', { name: 'Count "react" again' }))
+    expect(useResumeEditorStore.getState().meta.excludedAtsKeywords).toEqual([])
+  })
+})
+
+describe('AtsScorePanel: AI suggestions', () => {
+  it('applying a generate fix sets basics.summary without clobbering the rest of basics', async () => {
+    mockApi({ '/ats-score': [{ body: scoreResult }], '/ats-semantic-match': NO_SYNONYMS, '/ats-fix': [{ body: [generateFix] }] })
+    render(<AtsScorePanel />)
+    await check()
+    await generate()
+    fireEvent.click(await screen.findByRole('button', { name: 'Apply' }))
     const { data } = useResumeEditorStore.getState()
-    expect(data.basics?.summary).toBe(
-      'React and TypeScript engineer focused on ATS-optimized resumes.'
-    )
-    // Applying the summary must not clobber the rest of basics.
+    expect(data.basics?.summary).toBe('React and TypeScript engineer focused on ATS-optimized resumes.')
     expect(data.basics?.name).toBe('Jane Doe')
   })
-})
 
-describe('AtsScorePanel Apply All Verified', () => {
-  it('applies only fixes with no pendingApprovals, leaving flagged ones for individual review', async () => {
+  it('Apply All Verified applies every unflagged fix and leaves flagged ones for review', async () => {
     useResumeEditorStore.setState({
-      data: { basics: { name: 'Jane Doe' }, work: [{ highlights: ['Built a system.'] }] },
+      data: { basics: { name: 'Jane Doe' }, work: [{ highlights: ['Built a system.', 'Wrote docs.'] }] },
     })
-    const workFix: AtsFix = {
-      id: 'fix-work',
-      section: 'work',
-      kind: 'edit',
-      workIndex: 0,
-      highlightIndex: 0,
-      original: 'Built a system.',
-      suggested: 'Built a scalable system.',
-      targetKeywords: ['react'],
-      pendingApprovals: [],
-    }
-    const flaggedSummaryFix: AtsFix = {
-      ...generateFix,
-      id: 'fix-summary-flagged',
-      suggested: 'Grew revenue by 45%.',
-      pendingApprovals: ['45%'],
-    }
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(scoreResult))
-      .mockResolvedValueOnce(jsonResponse([workFix, flaggedSummaryFix]))
-    vi.stubGlobal('fetch', fetchMock)
-
+    const workFix = (i: number, original: string, suggested: string): AtsFix => ({
+      id: `fix-work-${i}`, section: 'work', kind: 'edit', workIndex: 0, highlightIndex: i,
+      original, suggested, targetKeywords: ['react'], pendingApprovals: [],
+    })
+    const flagged: AtsFix = { ...generateFix, id: 'fix-flagged', suggested: 'Grew revenue by 45%.', pendingApprovals: ['45%'] }
+    mockApi({
+      '/ats-score': [{ body: scoreResult }],
+      '/ats-semantic-match': NO_SYNONYMS,
+      '/ats-fix': [{ body: [workFix(0, 'Built a system.', 'Built a React system.'), workFix(1, 'Wrote docs.', 'Wrote TypeScript docs.'), flagged] }],
+    })
     render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
-
-    fireEvent.click(screen.getByText(/tailor with ai/i))
-    await goToStep3()
-    const applyAllButton = await screen.findByRole('button', { name: /apply all verified/i })
-    expect(applyAllButton.textContent).toContain('(1)')
-
-    fireEvent.click(applyAllButton)
+    await check()
+    await generate()
+    const applyAll = await screen.findByRole('button', { name: /apply all verified/i })
+    expect(applyAll.textContent).toContain('(2)')
+    fireEvent.click(applyAll)
 
     const { data } = useResumeEditorStore.getState()
-    expect(data.work?.[0].highlights?.[0]).toBe('Built a scalable system.')
+    // Both edits land: each apply builds on the previous one, not on stale data.
+    expect(data.work?.[0].highlights).toEqual(['Built a React system.', 'Wrote TypeScript docs.'])
     expect(data.basics?.summary).toBeUndefined()
-    // The flagged fix is still awaiting individual review, not silently dropped.
     expect(screen.getByText(/not in your original text/i)).toBeInTheDocument()
   })
-})
 
-describe('AtsScorePanel applyFix for roles[]-only work entries', () => {
-  it('writes the suggested text into work[].roles[] when the fix targets a role, not the legacy field', async () => {
-    // Mirrors a work entry edited through the current editor UI, where
-    // WorkForm.tsx clears the legacy top-level fields and moves everything
-    // into roles[] on save.
+  it('writes into work[].roles[] when the fix targets a role, not the legacy field', async () => {
     useResumeEditorStore.setState({
       data: {
         basics: { name: 'Jane Doe' },
@@ -235,670 +367,99 @@ describe('AtsScorePanel applyFix for roles[]-only work entries', () => {
       },
     })
     const roleFix: AtsFix = {
-      id: 'fix-work-0-r0-0',
-      section: 'work',
-      kind: 'edit',
-      workIndex: 0,
-      roleIndex: 0,
-      highlightIndex: 0,
-      original: 'Built a system.',
-      suggested: 'Built a scalable system.',
-      targetKeywords: ['react'],
-      pendingApprovals: [],
+      id: 'fix-work-0-r0-0', section: 'work', kind: 'edit', workIndex: 0, roleIndex: 0, highlightIndex: 0,
+      original: 'Built a system.', suggested: 'Built a scalable system.', targetKeywords: ['react'], pendingApprovals: [],
     }
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(scoreResult))
-      .mockResolvedValueOnce(jsonResponse([roleFix]))
-    vi.stubGlobal('fetch', fetchMock)
-
+    mockApi({ '/ats-score': [{ body: scoreResult }], '/ats-semantic-match': NO_SYNONYMS, '/ats-fix': [{ body: [roleFix] }] })
     render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
-
-    fireEvent.click(screen.getByText(/tailor with ai/i))
-    await goToStep3()
-    await waitFor(() => expect(screen.getByText('Apply')).toBeInTheDocument())
-
-    fireEvent.click(screen.getByText('Apply'))
-
+    await check()
+    await generate()
+    fireEvent.click(await screen.findByRole('button', { name: 'Apply' }))
     const { data } = useResumeEditorStore.getState()
     expect(data.work?.[0].roles?.[0].highlights?.[0]).toBe('Built a scalable system.')
-    // Must not resurrect the legacy field the current editor already cleared.
     expect(data.work?.[0].highlights).toBeUndefined()
   })
-})
 
-describe('AtsScorePanel keyword exclusion toggle', () => {
-  it('clicking a missing-keyword chip excludes it, persists via setMeta, and re-analyzes', async () => {
-    const afterExclusion: AtsScoreResult = {
-      total: 30,
-      breakdown: { format: 20, keywordDensity: 0, keywordPlacement: 0, metrics: 5 },
-      matchedKeywords: [],
-      missingKeywords: ['typescript'],
-      excludedMatchedKeywords: [],
-      excludedMissingKeywords: ['react'],
-      jdKeywords: ['react', 'typescript'],
-    }
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(scoreResult))
-      .mockResolvedValueOnce(jsonResponse(afterExclusion))
-    vi.stubGlobal('fetch', fetchMock)
-
+  it('shows the error and keeps the button when generation fails', async () => {
+    mockApi({
+      '/ats-score': [{ body: scoreResult }],
+      '/ats-semantic-match': NO_SYNONYMS,
+      '/ats-fix': [{ ok: false, status: 500, body: { error: 'Model unavailable.' } }],
+    })
     render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByText('react')).toBeInTheDocument())
-
-    fireEvent.click(screen.getByLabelText('Exclude "react" from scoring'))
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
-    const secondCallBody = JSON.parse(fetchMock.mock.calls[1][1].body)
-    expect(secondCallBody.excludedKeywords).toEqual(['react'])
-    // The jdKeywords from the first /ats-score response are re-sent, proving
-    // the exclude-toggle re-score reuses the cached AI extraction instead of
-    // triggering a fresh one server-side.
-    expect(secondCallBody.jdKeywords).toEqual(['react', 'typescript'])
-    expect(useResumeEditorStore.getState().meta.excludedAtsKeywords).toEqual(['react'])
-
-    const chip = await screen.findByLabelText('Include "react" in scoring')
-    expect(chip.className).toContain('line-through')
+    await check()
+    await generate()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Model unavailable.')
+    expect(screen.getByRole('alert').className).toContain('text-fg-danger')
+    expect(screen.getByRole('button', { name: /add missing keywords with ai/i })).toBeInTheDocument()
   })
 
-  it('clicking an already-excluded chip re-includes it', async () => {
-    useResumeEditorStore.setState({ meta: { ...defaultMeta, excludedAtsKeywords: ['react'] } })
-    const preExcluded: AtsScoreResult = {
-      total: 30,
-      breakdown: { format: 20, keywordDensity: 0, keywordPlacement: 0, metrics: 5 },
-      matchedKeywords: [],
-      missingKeywords: ['typescript'],
-      excludedMatchedKeywords: [],
-      excludedMissingKeywords: ['react'],
-      jdKeywords: ['react', 'typescript'],
-    }
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(preExcluded))
-      .mockResolvedValueOnce(jsonResponse(scoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
+  it('offers Suggest again when the AI returns no edits', async () => {
+    const api = mockApi({ '/ats-score': [{ body: scoreResult }], '/ats-semantic-match': NO_SYNONYMS, '/ats-fix': [{ body: [] }] })
     render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByLabelText('Include "react" in scoring')).toBeInTheDocument())
+    await check()
+    await generate()
+    fireEvent.click(await screen.findByRole('button', { name: /suggest again/i }))
+    await waitFor(() => expect(api.to('/ats-fix')).toHaveLength(2))
+  })
 
-    fireEvent.click(screen.getByLabelText('Include "react" in scoring'))
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
-    const secondCallBody = JSON.parse(fetchMock.mock.calls[1][1].body)
-    expect(secondCallBody.excludedKeywords).toEqual([])
-    expect(secondCallBody.jdKeywords).toEqual(['react', 'typescript'])
-    expect(useResumeEditorStore.getState().meta.excludedAtsKeywords).toEqual([])
+  it('offers Suggest again once every suggestion is skipped', async () => {
+    mockApi({ '/ats-score': [{ body: scoreResult }], '/ats-semantic-match': NO_SYNONYMS, '/ats-fix': [{ body: [generateFix] }] })
+    render(<AtsScorePanel />)
+    await check()
+    await generate()
+    fireEvent.click(await screen.findByRole('button', { name: 'Skip' }))
+    expect(screen.getByText('All suggestions skipped.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /suggest again/i })).toBeInTheDocument()
   })
 })
 
-describe('AtsScorePanel semantic match', () => {
-  it('clicking Semantic Match calls the endpoint, re-analyzes, and styles the confirmed chip distinctly', async () => {
-    const afterSemantic: AtsScoreResult = {
-      total: 55,
-      breakdown: { format: 20, keywordDensity: 35, keywordPlacement: 25, metrics: 5 },
-      matchedKeywords: ['react'],
-      missingKeywords: ['typescript'],
-      excludedMatchedKeywords: [],
-      excludedMissingKeywords: [],
-      jdKeywords: ['react', 'typescript'],
-    }
-    const fetchMock = vi
-      .fn()
-      // 1st call: POST /ats-score (initial Analyze)
-      .mockResolvedValueOnce(jsonResponse(scoreResult))
-      // 2nd call: POST /ats-semantic-match
-      .mockResolvedValueOnce(jsonResponse({ confirmedMatches: ['react'] }))
-      // 3rd call: POST /ats-score (re-analyze after semantic match)
-      .mockResolvedValueOnce(jsonResponse(afterSemantic))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByRole('button', { name: '🔎 Semantic Match' })).toBeInTheDocument())
-
-    fireEvent.click(screen.getByRole('button', { name: '🔎 Semantic Match' }))
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
-    const semanticCallBody = JSON.parse(fetchMock.mock.calls[1][1].body)
-    expect(semanticCallBody.missingKeywords).toEqual(['react', 'typescript'])
-    const rescoreCallBody = JSON.parse(fetchMock.mock.calls[2][1].body)
-    expect(rescoreCallBody.semanticMatches).toEqual(['react'])
-    // The re-score after Semantic Match also reuses the cached jdKeywords
-    // from the initial Analyze, instead of triggering a fresh AI extraction.
-    expect(rescoreCallBody.jdKeywords).toEqual(['react', 'typescript'])
-
-    const reactChip = await screen.findByLabelText('Exclude "react" from scoring')
-    await waitFor(() => expect(reactChip.className).toContain('bg-surface-selected'))
-    await waitFor(() => expect(screen.queryByText(/semantic match/i)).not.toBeInTheDocument())
+describe('AtsScorePanel: applied confirmation and re-check', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
-  it('shows an error message when the semantic match request fails', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(scoreResult))
-      .mockResolvedValueOnce({ ok: false, json: async () => ({}) })
-    vi.stubGlobal('fetch', fetchMock)
-
+  it('confirms an applied edit, then offers a re-check that saves first and reuses the cached keywords', async () => {
+    const api = mockApi({
+      '/ats-score': [{ body: { ...scoreResult, keywordPriorities: { react: 'must' } } }, { body: { ...scoreResult, total: 71 } }],
+      '/ats-semantic-match': NO_SYNONYMS,
+      '/ats-fix': [{ body: [generateFix] }],
+    })
     render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByRole('button', { name: '🔎 Semantic Match' })).toBeInTheDocument())
+    await check()
+    await generate()
+    fireEvent.click(await screen.findByRole('button', { name: 'Apply' }))
+    expect(screen.getByText('Applied')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: '🔎 Semantic Match' }))
+    act(() => { vi.advanceTimersByTime(1300) })
+    expect(screen.queryByText('Applied')).toBeNull()
+    expect(screen.getByText(/1 edit applied/)).toBeInTheDocument()
 
-    const errorMessage = await screen.findByText(/semantic match failed/i)
-    expect(errorMessage).toBeInTheDocument()
-    // Sits inside the surface-danger missing-keywords container, where text-danger-600
-    // falls just under AA contrast (~4.42:1) — must be danger-700 (~5.92:1).
-    expect(errorMessage.className).toContain('text-fg-danger')
-    expect(errorMessage.className).not.toContain('text-danger-600')
-  })
-
-  it('shows a soft nudge to try Semantic Match first, hiding it once Semantic Match has run', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(scoreResult))
-      .mockResolvedValueOnce(jsonResponse({ confirmedMatches: [] }))
-      .mockResolvedValueOnce(jsonResponse(scoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-
-    await waitFor(() => expect(screen.getByText(/try semantic match first/i)).toBeInTheDocument())
-
-    fireEvent.click(screen.getByRole('button', { name: '🔎 Semantic Match' }))
-
-    await waitFor(() => expect(screen.queryByText(/try semantic match first/i)).not.toBeInTheDocument())
-  })
-
-  it('does not gate Tailor with AI on having tried Semantic Match — both stay clickable', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByText(/try semantic match first/i)).toBeInTheDocument())
-
-    const tailorButton = screen.getByText(/tailor with ai/i).closest('button')
-    expect(tailorButton).not.toBeDisabled()
-  })
-})
-
-describe('AtsScorePanel fix generation error', () => {
-  it('shows an error message when fix generation fails, using AA-safe contrast', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(scoreResult))
-      .mockResolvedValueOnce({ ok: false, json: async () => ({}) })
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
-
-    fireEvent.click(screen.getByText(/tailor with ai/i))
-
-    const errorMessage = await screen.findByText(/could not generate fixes/i)
-    expect(errorMessage).toBeInTheDocument()
-    // Same surface-danger container as the semanticError message — text-danger-600
-    // fails AA there (~4.42:1); must be danger-700 (~5.92:1).
-    expect(errorMessage.className).toContain('text-fg-danger')
-    expect(errorMessage.className).not.toContain('text-danger-600')
-  })
-})
-
-describe('AtsScorePanel missing-keyword overflow label', () => {
-  it('shows a "+N more" label with AA-safe contrast when there are more than 40 missing keywords', async () => {
-    const manyMissing: AtsScoreResult = {
-      total: 20,
-      breakdown: { format: 5, keywordDensity: 5, keywordPlacement: 5, metrics: 5 },
-      matchedKeywords: [],
-      // 45 missing keywords -> overflow label reads "+5 more" (45 - 40 shown)
-      missingKeywords: Array.from({ length: 45 }, (_, i) => `skill-${i}`),
-      excludedMatchedKeywords: [],
-      excludedMissingKeywords: [],
-      jdKeywords: [],
-    }
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(manyMissing))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith('Looking for a candidate with many skills.')
-    await goToStep2()
-
-    const overflowLabel = await screen.findByText('+5 more')
-    // Sits in the same surface-danger container as the other fixed instances —
-    // text-danger-500 fails AA there (~3.44:1 against #fef2f2); must be danger-700 (~5.92:1).
-    expect(overflowLabel.className).toContain('text-fg-danger')
-    expect(overflowLabel.className).not.toContain('text-danger-500')
-  })
-})
-
-describe('AtsScorePanel missing-keyword ignore hint', () => {
-  it('shows a hint explaining that clicking a missing keyword ignores it everywhere', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-
-    await waitFor(() =>
-      expect(screen.getByText(/click a keyword you don't have to ignore it/i)).toBeInTheDocument()
-    )
-  })
-
-  it('does not show the hint when there are no missing keywords', async () => {
-    const noMissing: AtsScoreResult = {
-      total: 90,
-      breakdown: { format: 25, keywordDensity: 35, keywordPlacement: 25, metrics: 5 },
-      matchedKeywords: ['react', 'typescript'],
-      missingKeywords: [],
-      excludedMatchedKeywords: [],
-      excludedMissingKeywords: [],
-      jdKeywords: ['react', 'typescript'],
-    }
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(noMissing))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-
-    await waitFor(() => expect(screen.getByText(/matched keywords/i)).toBeInTheDocument())
-    expect(screen.queryByText(/click a keyword you don't have to ignore it/i)).not.toBeInTheDocument()
-  })
-})
-
-describe('AtsScorePanel jdKeywords caching', () => {
-  it('a fresh Analyze click always sends an empty jdKeywords cache, letting the server extract fresh', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
-    const firstCallBody = JSON.parse(fetchMock.mock.calls[0][1].body)
-    expect(firstCallBody.jdKeywords).toEqual([])
-  })
-
-  it('re-analyzing after editing the job description resets the cache rather than reusing stale keywords', async () => {
-    const secondScoreResult: AtsScoreResult = {
-      total: 60,
-      breakdown: { format: 20, keywordDensity: 20, keywordPlacement: 15, metrics: 5 },
-      matchedKeywords: ['mixpanel'],
-      missingKeywords: [],
-      excludedMatchedKeywords: [],
-      excludedMissingKeywords: [],
-      jdKeywords: ['mixpanel'],
-    }
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(scoreResult))
-      .mockResolvedValueOnce(jsonResponse(secondScoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    const textarea = screen.getByPlaceholderText(/paste the full job description/i)
-    fireEvent.change(textarea, { target: { value: 'Looking for a React + TypeScript engineer.' } })
-    fireEvent.click(screen.getByText('Analyze'))
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
-
-    fireEvent.change(textarea, { target: { value: 'Analytics role needing Mixpanel expertise.' } })
-    fireEvent.click(screen.getByText('Analyze'))
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
-    const secondCallBody = JSON.parse(fetchMock.mock.calls[1][1].body)
-    expect(secondCallBody.jdKeywords).toEqual([])
-  })
-})
-
-describe('AtsScorePanel missing-keyword priority coloring', () => {
-  const priorityScoreResult = {
-    ...scoreResult,
-    missingKeywords: ['react', 'typescript', 'agile'],
-    keywordPriorities: { react: 'must', typescript: 'nice-to-have' }, // agile intentionally absent
-  }
-
-  it('colors a must-have missing keyword red', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(priorityScoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-
-    const reactChip = await screen.findByLabelText('Exclude "react" from scoring')
-    expect(reactChip.className).toContain('danger')
-    expect(reactChip.className).not.toContain('warning')
-  })
-
-  it('colors a nice-to-have missing keyword yellow', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(priorityScoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-
-    const tsChip = await screen.findByLabelText('Exclude "typescript" from scoring')
-    expect(tsChip.className).toContain('warning')
-    expect(tsChip.className).not.toContain('danger')
-  })
-
-  it('colors a missing keyword with no priority entry (ambiguous) red, same as must-have', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(priorityScoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-
-    const agileChip = await screen.findByLabelText('Exclude "agile" from scoring')
-    expect(agileChip.className).toContain('danger')
-    expect(agileChip.className).not.toContain('warning')
-  })
-
-  it('shows a legend explaining the red/yellow priority coloring', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(priorityScoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-
-    await waitFor(() => expect(screen.getByText(/nice-to-have/i)).toBeInTheDocument())
-    expect(screen.getByText(/must-have/i)).toBeInTheDocument()
-  })
-
-  it('orders must-have and ambiguous missing keywords before nice-to-have ones in the chip list', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(priorityScoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-
-    await screen.findByLabelText('Exclude "react" from scoring')
-    const chipTexts = screen.getAllByRole('button', { name: /^(Exclude|Include) "(react|typescript|agile)" (from|in) scoring$/ })
-      .map((el) => el.textContent)
-    // react (must) and agile (ambiguous, absent priority) both rank before
-    // typescript (nice-to-have); react/agile relative order is preserved
-    // from the server's missingKeywords array (stable sort).
-    expect(chipTexts.indexOf('react')).toBeLessThan(chipTexts.indexOf('typescript'))
-    expect(chipTexts.indexOf('agile')).toBeLessThan(chipTexts.indexOf('typescript'))
-  })
-
-  it('caches and forwards keywordPriorities on a re-score of the same job description', async () => {
-    const afterExclusion = {
-      ...priorityScoreResult,
-      missingKeywords: ['typescript', 'agile'],
-      excludedMissingKeywords: ['react'],
-    }
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(priorityScoreResult))
-      .mockResolvedValueOnce(jsonResponse(afterExclusion))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByLabelText('Exclude "react" from scoring')).toBeInTheDocument())
-
-    fireEvent.click(screen.getByLabelText('Exclude "react" from scoring'))
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
-    const secondCallBody = JSON.parse(fetchMock.mock.calls[1][1].body)
-    expect(secondCallBody.keywordPriorities).toEqual({ react: 'must', typescript: 'nice-to-have' })
-  })
-
-  it('a fresh Analyze click sends an empty keywordPriorities cache', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(priorityScoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
-    const firstCallBody = JSON.parse(fetchMock.mock.calls[0][1].body)
-    expect(firstCallBody.keywordPriorities).toEqual({})
+    const callsBefore = api.calls.length
+    fireEvent.click(screen.getByRole('button', { name: /re-check score/i }))
+    await screen.findByText('Good match')
+    const after = api.calls.slice(callsBefore)
+    expect(after[0].method).toBe('PATCH')
+    expect(after[1].url.endsWith('/ats-score')).toBe(true)
+    expect(after[1].body?.jdKeywords).toEqual(['react', 'typescript'])
+    expect(after[1].body?.keywordPriorities).toEqual({ react: 'must' })
   })
 })
 
 describe('sortByPriority', () => {
   it('orders must and ambiguous keywords before nice-to-have', () => {
-    const result = sortByPriority(
-      ['figma', 'kubernetes', 'notion', 'graphql'],
-      { kubernetes: 'must', graphql: 'ambiguous', figma: 'nice-to-have', notion: 'nice-to-have' }
-    )
-    expect(result).toEqual(['kubernetes', 'graphql', 'figma', 'notion'])
+    expect(sortByPriority(['a', 'b', 'c'], { a: 'nice-to-have', b: 'must', c: 'ambiguous' })).toEqual(['b', 'c', 'a'])
   })
 
   it('treats an absent priority as ambiguous, sorting it before nice-to-have', () => {
-    const result = sortByPriority(['react', 'figma'], { figma: 'nice-to-have' })
-    expect(result).toEqual(['react', 'figma'])
+    expect(sortByPriority(['a', 'b'], { a: 'nice-to-have' })).toEqual(['b', 'a'])
   })
 
   it('preserves relative order within the same priority tier (stable sort)', () => {
-    const result = sortByPriority(
-      ['zeta', 'alpha', 'beta'],
-      { zeta: 'must', alpha: 'must', beta: 'must' }
-    )
-    expect(result).toEqual(['zeta', 'alpha', 'beta'])
-  })
-})
-
-describe('AtsScorePanel wizard navigation', () => {
-  it('starts on step 1 and unlocks step 2 only after a successful Analyze', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    expect(screen.getByRole('tab', { name: /review & apply/i })).toBeDisabled()
-    expect(screen.getByRole('tab', { name: /close the gap/i })).toBeDisabled()
-
-    await analyzeWith()
-
-    await waitFor(() => expect(screen.getByRole('tab', { name: /close the gap/i })).not.toBeDisabled())
-  })
-
-  it('does not auto-navigate to step 2 after Analyze — the user stays on step 1 until clicking Next', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-
-    await waitFor(() => expect(screen.getByText(/score breakdown/i)).toBeInTheDocument())
-    expect(screen.queryByText(/missing keywords/i)).not.toBeInTheDocument()
-  })
-
-  it('going Back from step 2 to step 1 preserves the score instead of clearing it', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
-
-    fireEvent.click(screen.getByRole('button', { name: /← back$/i }))
-
-    expect(screen.getByText(/score breakdown/i)).toBeInTheDocument()
-    expect(screen.getByText('42')).toBeInTheDocument()
-  })
-
-  it('clicking an unlocked StepsBar segment jumps directly to that step', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(scoreResult))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await waitFor(() => expect(screen.getByRole('tab', { name: /close the gap/i })).not.toBeDisabled())
-
-    fireEvent.click(screen.getByRole('tab', { name: /close the gap/i }))
-
-    expect(screen.getByText(/missing keywords/i)).toBeInTheDocument()
-  })
-
-  it('unlocks step 3 directly when the analysis finds zero missing keywords', async () => {
-    const noMissing: AtsScoreResult = {
-      total: 95,
-      breakdown: { format: 25, keywordDensity: 35, keywordPlacement: 25, metrics: 5 },
-      matchedKeywords: ['react'],
-      missingKeywords: [],
-      excludedMatchedKeywords: [],
-      excludedMissingKeywords: [],
-      jdKeywords: ['react'],
-    }
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(noMissing))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-
-    await waitFor(() => expect(screen.getByRole('tab', { name: /review & apply/i })).not.toBeDisabled())
-
-    fireEvent.click(screen.getByRole('tab', { name: /review & apply/i }))
-    expect(screen.getByText(/nothing to fix/i)).toBeInTheDocument()
-  })
-})
-
-describe('AtsScorePanel regenerate fixes (dead-end avoidance)', () => {
-  it('offers Regenerate once every returned fix has been dismissed', async () => {
-    const fixToDismiss: AtsFix = {
-      id: 'fix-a',
-      section: 'summary',
-      kind: 'generate',
-      original: '',
-      suggested: 'A summary.',
-      targetKeywords: ['react'],
-      pendingApprovals: [],
-    }
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(scoreResult))
-      .mockResolvedValueOnce(jsonResponse([fixToDismiss]))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
-    fireEvent.click(screen.getByText(/tailor with ai/i))
-    await goToStep3()
-
-    await waitFor(() => expect(screen.getByText('Dismiss')).toBeInTheDocument())
-    fireEvent.click(screen.getByText('Dismiss'))
-
-    await waitFor(() => expect(screen.getByText(/regenerate fixes/i)).toBeInTheDocument())
-  })
-
-  it('offers Regenerate immediately when Tailor with AI returns zero fixes', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(scoreResult))
-      .mockResolvedValueOnce(jsonResponse([]))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
-    fireEvent.click(screen.getByText(/tailor with ai/i))
-    await goToStep3()
-
-    await waitFor(() => expect(screen.getByText(/no specific fixes found/i)).toBeInTheDocument())
-    expect(screen.getByText(/regenerate fixes/i)).toBeInTheDocument()
-  })
-
-  it('clicking Regenerate calls the fix-generation endpoint again', async () => {
-    const fixToDismiss: AtsFix = {
-      id: 'fix-a',
-      section: 'summary',
-      kind: 'generate',
-      original: '',
-      suggested: 'A summary.',
-      targetKeywords: ['react'],
-      pendingApprovals: [],
-    }
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(scoreResult))
-      .mockResolvedValueOnce(jsonResponse([]))
-      .mockResolvedValueOnce(jsonResponse([fixToDismiss]))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
-    fireEvent.click(screen.getByText(/tailor with ai/i))
-    await goToStep3()
-    await waitFor(() => expect(screen.getByText(/regenerate fixes/i)).toBeInTheDocument())
-
-    fireEvent.click(screen.getByText(/regenerate fixes/i))
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
-    await waitFor(() => expect(screen.getByText('A summary.')).toBeInTheDocument())
-  })
-})
-
-describe('AtsScorePanel applied-fix confirmation', () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it('shows the applied confirmation immediately, then removes the fix after the timeout', async () => {
-    const fixToApply: AtsFix = {
-      id: 'fix-a',
-      section: 'summary',
-      kind: 'generate',
-      original: '',
-      suggested: 'A summary.',
-      targetKeywords: ['react'],
-      pendingApprovals: [],
-    }
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(scoreResult))
-      .mockResolvedValueOnce(jsonResponse([fixToApply]))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<AtsScorePanel />)
-    await analyzeWith()
-    await goToStep2()
-    await waitFor(() => expect(screen.getByText(/missing keywords/i)).toBeInTheDocument())
-    fireEvent.click(screen.getByText(/tailor with ai/i))
-    await goToStep3()
-    await waitFor(() => expect(screen.getByText('Apply')).toBeInTheDocument())
-
-    fireEvent.click(screen.getByText('Apply'))
-
-    expect(screen.getByText('✓ Applied')).toBeInTheDocument()
-    expect(screen.queryByText('Dismiss')).not.toBeInTheDocument()
-
-    act(() => { vi.advanceTimersByTime(1300) })
-
-    expect(screen.queryByText('✓ Applied')).not.toBeInTheDocument()
+    expect(sortByPriority(['x', 'y', 'z', 'w'], { x: 'must', y: 'nice-to-have', z: 'must', w: 'nice-to-have' })).toEqual(['x', 'z', 'y', 'w'])
   })
 })

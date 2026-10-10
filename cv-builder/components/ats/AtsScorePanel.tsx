@@ -1,45 +1,57 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
+import { useState, useCallback, useEffect, useId, useRef } from 'react'
+import { Check, ChevronDown, FileText, Loader2, RotateCcw, ScanSearch, Sparkles, X } from 'lucide-react'
+import { useResumeEditorStore, flushSave } from '@/lib/stores/resume-editor.store'
 import type { AtsScoreResult } from '@/lib/ats/scorer'
 import type { AtsFix } from '@/lib/ai/ats-fix-pipeline'
 import { applyAtsFixToResumeData } from '@/lib/ai/apply-ats-fix'
 import type { KeywordPriority } from '@/lib/ai/jd-extraction-pipeline'
 import { AtsFixReviewPanel } from './AtsFixReviewPanel'
-import { Badge, type BadgeTone } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
-import { Popover } from '@/components/ui/Popover'
 import { inputClass } from '@/components/editor/forms/field-styles'
 import { cn } from '@/lib/utils'
 import { fetchWithTimeout, requestErrorMessage } from '@/lib/fetch-with-timeout'
-import { StepsBar, type WizardStep } from './StepsBar'
 import { apiErrorMessage } from '@/lib/api/client-errors'
 
 // /ats-score merges keywordPriorities onto AtsScoreResult rather than
 // widening that interface (see the route) — this is the richer shape the
 // client actually receives.
-type AtsScoreResponse = AtsScoreResult & { keywordPriorities?: Record<string, KeywordPriority> }
-
-const VECTOR_LABELS: { key: keyof AtsScoreResult['breakdown']; label: string; max: number }[] = [
-  { key: 'format', label: 'Format & Structure', max: 25 },
-  { key: 'keywordDensity', label: 'Keyword Coverage', max: 35 },
-  { key: 'keywordPlacement', label: 'Keyword Placement', max: 25 },
-  { key: 'metrics', label: 'Metric Presence', max: 15 },
-]
-
-function getScoreStatusLabel(score: number): { colorClass: string; tone: BadgeTone; label: string } {
-  if (score >= 70) {
-    return { colorClass: 'text-fg-success', tone: 'success', label: 'Good match' }
-  } else if (score >= 40) {
-    return { colorClass: 'text-fg-warning', tone: 'warning', label: 'Needs work' }
-  } else {
-    return { colorClass: 'text-fg-danger', tone: 'danger', label: 'Poor match' }
-  }
+type KeywordSource = 'ai' | 'basic' | 'cached'
+type FallbackReason = 'rate-limited' | 'ai-error' | 'ai-empty'
+type AtsScoreResponse = AtsScoreResult & {
+  keywordPriorities?: Record<string, KeywordPriority>
+  keywordSource?: KeywordSource
+  keywordFallbackReason?: FallbackReason
 }
 
-const CHIP = 'inline-flex items-center rounded-chip border px-2 py-0.5 text-xs transition-colors max-sm:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring '
+const FALLBACK_REASON: Record<FallbackReason, string> = {
+  'rate-limited': 'you reached the limit of AI requests for this minute',
+  'ai-error': 'the AI service returned an error',
+  'ai-empty': 'the AI found no requirements in this text',
+}
+
+const VECTORS: { key: keyof AtsScoreResult['breakdown']; label: string; hint: string; max: number }[] = [
+  { key: 'keywordDensity', label: 'Keyword coverage', hint: "How many of the job's keywords appear anywhere in your CV", max: 35 },
+  { key: 'format', label: 'Structure', hint: 'Contact details, a summary, complete roles and real bullet points', max: 25 },
+  { key: 'keywordPlacement', label: 'Keyword placement', hint: 'Keywords in your summary, titles and bullets count the most', max: 25 },
+  { key: 'metrics', label: 'Measurable results', hint: 'Bullets that carry a number, a percentage or a team size', max: 15 },
+]
+
+type Tone = 'success' | 'warning' | 'danger'
+
+function toneFor(pct: number): Tone {
+  return pct >= 70 ? 'success' : pct >= 40 ? 'warning' : 'danger'
+}
+
+const TONE_TEXT: Record<Tone, string> = { success: 'text-fg-success', warning: 'text-fg-warning', danger: 'text-fg-danger' }
+const TONE_FILL: Record<Tone, string> = { success: 'bg-fg-success', warning: 'bg-fg-warning', danger: 'bg-fg-danger' }
+
+function verdict(score: number): { label: string; line: string } {
+  if (score >= 70) return { label: 'Good match', line: 'Your CV should pass most keyword screens for this job.' }
+  if (score >= 40) return { label: 'Needs work', line: 'A recruiter may see it, but key requirements look missing.' }
+  return { label: 'Poor match', line: 'Most screening software would rank this CV low for this job.' }
+}
 
 /**
  * Orders `must`/`ambiguous` keywords before `nice-to-have` ones so the most
@@ -57,25 +69,76 @@ export function sortByPriority(keywords: string[], priorities: Record<string, Ke
     .map((entry) => entry.kw)
 }
 
-function ScoreBar({ value, max }: { value: number; max: number }) {
-  const pct = max > 0 ? Math.round((value / max) * 100) : 0
+function ScoreRing({ score }: { score: number }) {
+  const r = 34
+  const c = 2 * Math.PI * r
+  const tone = toneFor(score)
   return (
-    <div className="h-2 w-full rounded-full bg-secondary">
-      <div
-        className={`h-2 rounded-full transition-[width] duration-300 ${
-          pct >= 70 ? 'bg-fg-success' : pct >= 40 ? 'bg-fg-warning' : 'bg-fg-danger'
-        }`}
-        style={{ width: `${pct}%` }}
-      />
+    <div className="relative h-24 w-24 shrink-0">
+      <svg viewBox="0 0 80 80" className="h-24 w-24 -rotate-90" aria-hidden="true">
+        <circle cx="40" cy="40" r={r} fill="none" strokeWidth="7" className="stroke-surface-muted" />
+        <circle
+          cx="40" cy="40" r={r} fill="none" strokeWidth="7" strokeLinecap="round"
+          stroke="currentColor"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - Math.max(0, Math.min(100, score)) / 100)}
+          className={cn('transition-[stroke-dashoffset] duration-700', TONE_TEXT[tone])}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className={cn('text-3xl font-medium leading-none', TONE_TEXT[tone])}>{score}</span>
+        <span className="mt-0.5 text-xs text-fg-subtle">of 100</span>
+      </div>
     </div>
   )
 }
 
+function Bar({ value, max }: { value: number; max: number }) {
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0
+  return (
+    <div className="h-1.5 w-full rounded-full bg-surface-muted">
+      <div className={cn('h-1.5 rounded-full transition-[width] duration-500', TONE_FILL[toneFor(pct)])} style={{ width: `${pct}%` }} />
+    </div>
+  )
+}
+
+const CHIP = 'inline-flex items-center gap-1 rounded-full border py-0.5 text-xs max-sm:min-h-10'
+
+function MissingChip({ kw, priority, onIgnore }: { kw: string; priority: KeywordPriority; onIgnore: () => void }) {
+  return (
+    <span
+      className={cn(CHIP, 'pl-2.5 pr-0.5', priority === 'nice-to-have'
+        ? 'border-border-warning bg-surface-warning text-fg-warning'
+        : 'border-border-danger bg-surface-danger text-fg-danger')}
+      title={priority === 'must' ? 'Must-have requirement' : priority === 'nice-to-have' ? 'Nice-to-have requirement' : 'Requirement level unclear from the job description'}
+    >
+      {kw}
+      <button
+        type="button"
+        onClick={onIgnore}
+        aria-label={`Ignore "${kw}"`}
+        title="I don't have this. Stop counting it."
+        className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:h-9 max-sm:w-9"
+      >
+        <X aria-hidden="true" className="h-3 w-3" />
+      </button>
+    </span>
+  )
+}
+
 type FixStatus = 'idle' | 'loading' | 'ready' | 'error'
+type SemanticStatus = 'idle' | 'loading' | 'ready' | 'error'
 
 const EMPTY_EXCLUDED_KEYWORDS: string[] = []
 
+/**
+ * One page, top to bottom: paste a job description, get a score and the
+ * keyword gaps, then let the AI work the missing keywords in and approve the
+ * edits in place. Synonym checking runs by itself after the first score, so
+ * the user never has to know it exists to benefit from it.
+ */
 export function AtsScorePanel() {
+  const ids = useId()
   const resumeId = useResumeEditorStore((s) => s.resumeId)
   const data = useResumeEditorStore((s) => s.data)
   const setData = useResumeEditorStore((s) => s.setData)
@@ -83,6 +146,7 @@ export function AtsScorePanel() {
   const setMeta = useResumeEditorStore((s) => s.setMeta)
 
   const [jobDescription, setJobDescription] = useState('')
+  const [editingJd, setEditingJd] = useState(true)
   const [result, setResult] = useState<AtsScoreResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -92,34 +156,21 @@ export function AtsScorePanel() {
   const [fixError, setFixError] = useState<string | null>(null)
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set())
+  const [appliedCount, setAppliedCount] = useState(0)
 
   const [semanticMatches, setSemanticMatches] = useState<string[]>([])
-  const [semanticStatus, setSemanticStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
-  const [semanticError, setSemanticError] = useState<string | null>(null)
-  const [hasTriedSemanticThisAnalysis, setHasTriedSemanticThisAnalysis] = useState(false)
-  const [helpOpen, setHelpOpen] = useState(false)
+  const [semanticStatus, setSemanticStatus] = useState<SemanticStatus>('idle')
+  const [matchedOpen, setMatchedOpen] = useState(false)
 
-  // The JD keyword list an /ats-score response actually used (AI-extracted
-  // or regex-fallback) — re-sent on subsequent re-scores of the SAME job
-  // description (exclude toggles, semantic-match re-analyze) so the server
-  // reuses it instead of paying for another AI extraction. Cleared on every
-  // fresh Analyze click so an edited job description gets fresh extraction.
+  // The JD keyword list and must/nice priorities an /ats-score response used,
+  // re-sent on re-scores of the SAME job description (ignore toggles, synonym
+  // check, re-check after edits) so the server skips another AI extraction.
+  // Cleared on every fresh check so an edited job description is re-read.
   const [jdKeywords, setJdKeywords] = useState<string[]>([])
-
-  // Which missing keywords are must-have vs nice-to-have, per the JD's own
-  // wording (Claude reads qualifiers like "Must", "Nice to have" directly).
-  // Cached and re-sent alongside jdKeywords for the same caching reason —
-  // an absent entry is treated as "ambiguous" (colored the same as
-  // must-have, per the product decision to err toward not hiding a
-  // possibly-important requirement).
   const [keywordPriorities, setKeywordPriorities] = useState<Record<string, KeywordPriority>>({})
-
-  // Wizard navigation. `currentStep` is which step is visible; `maxUnlockedStep`
-  // only ever increases and gates which StepsBar segments are clickable —
-  // going Back never re-locks a step, only a fresh Analyze can produce a
-  // smaller result set, and even then already-unlocked steps stay reachable.
-  const [currentStep, setCurrentStep] = useState<WizardStep>(1)
-  const [maxUnlockedStep, setMaxUnlockedStep] = useState<WizardStep>(1)
+  // Which extractor read the job on the last fresh check. The basic (regex)
+  // fallback is noisy, so the user is told when it was used and why.
+  const [keywordSource, setKeywordSource] = useState<{ source: KeywordSource; reason?: FallbackReason }>({ source: 'ai' })
 
   // Pending applied->dismissed timeouts, keyed by fix id, so they can be
   // cleared on unmount instead of firing setState after unmount.
@@ -132,37 +183,41 @@ export function AtsScorePanel() {
     }
   }, [])
 
-  async function handleAnalyze(
-    excludedOverride?: string[],
-    semanticOverride?: string[],
-    jdKeywordsOverride?: string[],
-    keywordPrioritiesOverride?: Record<string, KeywordPriority>
-  ) {
-    if (!resumeId || !jobDescription.trim()) return
+  interface ScoreOptions {
+    excluded?: string[]
+    semantic?: string[]
+    cachedJdKeywords?: string[]
+    cachedPriorities?: Record<string, KeywordPriority>
+    /** Keep the generated fixes on screen (a re-score that is not a new job). */
+    keepFixes?: boolean
+  }
+
+  async function score(opts: ScoreOptions = {}): Promise<AtsScoreResponse | null> {
+    if (!resumeId || !jobDescription.trim()) return null
     setLoading(true)
     setError(null)
-    setFixes([])
-    setFixStatus('idle')
-    setDismissedIds(new Set())
-    const semantic = semanticOverride ?? []
-    setSemanticMatches(semantic)
-    if (semanticOverride === undefined) {
-      setSemanticStatus('idle')
-      setSemanticError(null)
-      setHasTriedSemanticThisAnalysis(false)
+    if (!opts.keepFixes) {
+      setFixes([])
+      setFixStatus('idle')
+      setDismissedIds(new Set())
+      setAppliedCount(0)
     }
-    const cachedJdKeywords = jdKeywordsOverride ?? []
-    const cachedKeywordPriorities = keywordPrioritiesOverride ?? {}
+    const semantic = opts.semantic ?? []
+    setSemanticMatches(semantic)
     try {
+      // Every ATS route re-reads the CV from the database, so edits still in
+      // the autosave debounce (an applied fix, a quick tweak in Edit) would be
+      // scored as if they had never happened.
+      await flushSave().catch(() => {})
       const res = await fetchWithTimeout(`/api/resumes/${resumeId}/ats-score`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jobDescription,
-          excludedKeywords: excludedOverride ?? excludedKeywords,
+          excludedKeywords: opts.excluded ?? excludedKeywords,
           semanticMatches: semantic,
-          jdKeywords: cachedJdKeywords,
-          keywordPriorities: cachedKeywordPriorities,
+          jdKeywords: opts.cachedJdKeywords ?? [],
+          keywordPriorities: opts.cachedPriorities ?? {},
         }),
       })
       if (!res.ok) throw new Error(await apiErrorMessage(res, 'Analysis failed. Please try again.'))
@@ -170,72 +225,91 @@ export function AtsScorePanel() {
       setResult(json)
       setJdKeywords(json.jdKeywords)
       setKeywordPriorities(json.keywordPriorities ?? {})
-      setMaxUnlockedStep((prev) => {
-        const reached: WizardStep = json.missingKeywords.length === 0 ? 3 : 2
-        return reached > prev ? reached : prev
-      })
+      if (json.keywordSource && json.keywordSource !== 'cached') {
+        setKeywordSource({ source: json.keywordSource, reason: json.keywordFallbackReason })
+      }
+      return json
     } catch (err) {
       setError(requestErrorMessage(err, 'Analysis failed. Please try again.'))
+      return null
     } finally {
       setLoading(false)
     }
   }
 
-  function toggleExcluded(kw: string) {
-    const next = excludedKeywords.includes(kw)
-      ? excludedKeywords.filter((k) => k !== kw)
-      : [...excludedKeywords, kw]
-    setMeta({ excludedAtsKeywords: next })
-    if (jobDescription.trim()) {
-      handleAnalyze(next, semanticMatches, jdKeywords, keywordPriorities)
+  async function runSynonymCheck(base: AtsScoreResponse) {
+    if (!resumeId || base.missingKeywords.length === 0) return
+    setSemanticStatus('loading')
+    try {
+      const res = await fetchWithTimeout(`/api/resumes/${resumeId}/ats-semantic-match`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ missingKeywords: base.missingKeywords }),
+      })
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Synonym check failed.'))
+      const { confirmedMatches } = (await res.json()) as { confirmedMatches: string[] }
+      if (confirmedMatches.length > 0) {
+        await score({
+          semantic: confirmedMatches,
+          cachedJdKeywords: base.jdKeywords,
+          cachedPriorities: base.keywordPriorities ?? {},
+        })
+      }
+      setSemanticMatches(confirmedMatches)
+      setSemanticStatus('ready')
+    } catch {
+      setSemanticStatus('error')
     }
   }
 
-  async function handleFixAll() {
+  async function handleCheck() {
+    setSemanticStatus('idle')
+    setMatchedOpen(false)
+    const json = await score()
+    if (!json) return
+    setEditingJd(false)
+    await runSynonymCheck(json)
+  }
+
+  /** Same job, CV changed (fixes applied): re-score without re-reading the JD. */
+  async function handleRecheck() {
+    await score({ semantic: semanticMatches, cachedJdKeywords: jdKeywords, cachedPriorities: keywordPriorities })
+  }
+
+  function setIgnored(kw: string, ignored: boolean) {
+    const next = ignored ? [...excludedKeywords, kw] : excludedKeywords.filter((k) => k !== kw)
+    setMeta({ excludedAtsKeywords: next })
+    if (jobDescription.trim()) {
+      score({ excluded: next, semantic: semanticMatches, cachedJdKeywords: jdKeywords, cachedPriorities: keywordPriorities, keepFixes: true })
+    }
+  }
+
+  async function handleGenerateFixes() {
     if (!resumeId || !result || result.missingKeywords.length === 0) return
     setFixStatus('loading')
     setFixError(null)
     setDismissedIds(new Set())
+    setAppliedCount(0)
     try {
+      await flushSave().catch(() => {})
       const res = await fetchWithTimeout(`/api/resumes/${resumeId}/ats-fix`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ missingKeywords: result.missingKeywords }),
       })
-      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Could not generate fixes. Please try again.'))
-      const fetchedFixes: AtsFix[] = await res.json()
-      setFixes(fetchedFixes)
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Could not generate suggestions. Please try again.'))
+      setFixes(await res.json())
       setFixStatus('ready')
-      setMaxUnlockedStep((prev) => (prev < 3 ? 3 : prev))
     } catch (err) {
-      setFixError(requestErrorMessage(err, 'Could not generate fixes. Please try again.'))
+      setFixError(requestErrorMessage(err, 'Could not generate suggestions. Please try again.'))
       setFixStatus('error')
     }
   }
 
-  async function handleSemanticMatch() {
-    if (!resumeId || !result || result.missingKeywords.length === 0) return
-    setSemanticStatus('loading')
-    setSemanticError(null)
-    setHasTriedSemanticThisAnalysis(true)
-    try {
-      const res = await fetchWithTimeout(`/api/resumes/${resumeId}/ats-semantic-match`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ missingKeywords: result.missingKeywords }),
-      })
-      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Semantic match failed. Please try again.'))
-      const { confirmedMatches } = await res.json()
-      await handleAnalyze(excludedKeywords, confirmedMatches, jdKeywords, keywordPriorities)
-      setSemanticStatus('ready')
-    } catch (err) {
-      setSemanticError(requestErrorMessage(err, 'Semantic match failed. Please try again.'))
-      setSemanticStatus('error')
-    }
-  }
-
   const applyFix = useCallback((fix: AtsFix) => {
-    setData(applyAtsFixToResumeData(data, fix))
+    // Read the latest data, not the render's: Apply all runs several in a row.
+    setData(applyAtsFixToResumeData(useResumeEditorStore.getState().data, fix))
+    setAppliedCount((n) => n + 1)
     setAppliedIds((prev) => new Set(prev).add(fix.id))
     const timeoutId = setTimeout(() => {
       setDismissedIds((prev) => new Set(prev).add(fix.id))
@@ -247,7 +321,7 @@ export function AtsScorePanel() {
       appliedTimeoutsRef.current.delete(fix.id)
     }, 1200)
     appliedTimeoutsRef.current.set(fix.id, timeoutId)
-  }, [data, setData])
+  }, [setData])
 
   const dismissFix = useCallback((id: string) => {
     setDismissedIds((prev) => new Set(prev).add(id))
@@ -256,324 +330,190 @@ export function AtsScorePanel() {
   // Bulk-apply only fixes with no unverified claims — anything flagged by the
   // hallucination guard still requires an individual, deliberate "Apply".
   const applyAll = useCallback(() => {
-    const visible = fixes.filter((f) => !dismissedIds.has(f.id) && f.pendingApprovals.length === 0)
-    for (const fix of visible) {
-      applyFix(fix)
-    }
-  }, [fixes, dismissedIds, applyFix])
+    const verified = fixes.filter((f) => !dismissedIds.has(f.id) && !appliedIds.has(f.id) && f.pendingApprovals.length === 0)
+    for (const fix of verified) applyFix(fix)
+  }, [fixes, dismissedIds, appliedIds, applyFix])
+
+  const jdChars = jobDescription.trim().length
+  const ignored = result ? [...result.excludedMissingKeywords, ...result.excludedMatchedKeywords] : []
+  const missing = result ? sortByPriority(result.missingKeywords, keywordPriorities) : []
+  const mustHave = missing.filter((k) => keywordPriorities[k] !== 'nice-to-have')
+  const niceToHave = missing.filter((k) => keywordPriorities[k] === 'nice-to-have')
+  const allFixesHandled = fixStatus === 'ready' && fixes.every((f) => dismissedIds.has(f.id))
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <StepsBar current={currentStep} maxUnlocked={maxUnlockedStep} onStepClick={setCurrentStep} />
-
-      {currentStep === 1 && (
-        <div className="space-y-4">
+    <div className="mx-auto max-w-xl space-y-4 px-4 py-5">
+      {/* 1. Job description */}
+      {editingJd || !result ? (
+        <section aria-labelledby={`${ids}-jd`} className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-fg-body mb-1">
-              Paste job description
-            </label>
-            <textarea
-              value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value)}
-              placeholder="Paste the full job description here to see how well your CV matches…"
-              className={cn(inputClass, 'h-[312px] resize-none py-2')}
-            />
-            <Button
-              size="md"
-              onClick={() => handleAnalyze()}
-              disabled={loading || !jobDescription.trim()}
-              className="mt-2"
-            >
-              {loading ? 'Analyzing…' : 'Analyze'}
-            </Button>
-            {error && <p className="mt-2 text-sm text-fg-danger">{error}</p>}
+            <h2 id={`${ids}-jd`} className="text-base font-medium text-fg-heading">Match your CV to a job</h2>
+            <p className="mt-0.5 text-sm text-fg-muted">
+              Paste the job description. You get a score based on how screening software reads your CV, and a list of what is missing.
+            </p>
           </div>
-
-          {result && (
-            <>
-              <Card padding="lg" className="text-center">
-                <p className="text-sm text-fg-muted mb-1">ATS Score</p>
-                {(() => {
-                  const { colorClass, tone, label } = getScoreStatusLabel(result.total)
-                  return (
-                    <div className="flex items-baseline justify-center gap-3">
-                      <p className={`text-6xl font-medium ${colorClass}`}>
-                        {result.total}
-                        <span className="text-2xl font-medium text-fg-subtle">/100</span>
-                      </p>
-                      <Badge tone={tone} className="rounded-full px-3 py-1">
-                        {label}
-                      </Badge>
-                    </div>
-                  )
-                })()}
-              </Card>
-
-              <Card className="space-y-3">
-                <p className="text-sm font-medium text-fg-heading">Score Breakdown</p>
-                {VECTOR_LABELS.map(({ key, label, max }) => (
-                  <div key={key}>
-                    <div className="flex justify-between text-xs text-fg-muted mb-1">
-                      <span>{label}</span>
-                      <span className="font-medium">{result.breakdown[key]} / {max}</span>
-                    </div>
-                    <ScoreBar value={result.breakdown[key]} max={max} />
-                  </div>
-                ))}
-              </Card>
-
-              <div className="flex justify-end">
-                <Button
-                  size="md"
-                  onClick={() => setCurrentStep(2)}
-                  disabled={maxUnlockedStep < 2}
-                >
-                  Next: Close the Gap →
-                </Button>
-              </div>
-            </>
-          )}
+          <label htmlFor={`${ids}-jd-input`} className="sr-only">Job description</label>
+          <textarea
+            id={`${ids}-jd-input`}
+            value={jobDescription}
+            onChange={(e) => setJobDescription(e.target.value)}
+            placeholder="Paste the full job description here, including requirements…"
+            className={cn(inputClass, 'h-56 resize-y py-2 leading-relaxed')}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="md" onClick={handleCheck} disabled={loading || !jobDescription.trim()}>
+              {loading ? <Loader2 aria-hidden="true" className="h-4 w-4 motion-safe:animate-spin" /> : <ScanSearch aria-hidden="true" className="h-4 w-4" />}
+              {loading ? 'Checking…' : 'Check match'}
+            </Button>
+            {result && (
+              <Button size="md" variant="ghost" onClick={() => setEditingJd(false)} disabled={loading}>Cancel</Button>
+            )}
+            {!result && <span className="text-xs text-fg-subtle">Takes about 10 seconds</span>}
+          </div>
+          {error && <p role="alert" className="text-sm text-fg-danger">{error}</p>}
+        </section>
+      ) : (
+        <div className="flex items-center gap-3 rounded-card border border-border bg-surface px-3 py-2">
+          <FileText aria-hidden="true" className="h-4 w-4 shrink-0 text-fg-subtle" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm text-fg-heading">Job description</p>
+            <p className="truncate text-xs text-fg-muted">{jdChars.toLocaleString()} characters · {result.jdKeywords.length} keywords found</p>
+          </div>
+          <Button size="xs" variant="ghost" onClick={() => setEditingJd(true)}>Change job</Button>
         </div>
       )}
 
-      {currentStep === 2 && result && (
-        <div className="space-y-4">
-          <p className="text-xs font-medium text-fg-muted">
-            ✅ {result.matchedKeywords.length + result.excludedMatchedKeywords.length} matched
-            &nbsp;·&nbsp; ⚠️ {result.missingKeywords.length} missing
-          </p>
-
-          {(result.missingKeywords.length > 0 || result.excludedMissingKeywords.length > 0) && (
-            <div className="rounded-card border border-border-danger bg-surface-danger p-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-fg-danger">
-                  Missing Keywords ({result.missingKeywords.length})
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  {semanticStatus !== 'ready' && (
-                    <Button
-                      size="md"
-                      onClick={handleSemanticMatch}
-                      disabled={semanticStatus === 'loading'}
-                    >
-                      {semanticStatus === 'loading' ? (
-                        <>
-                          <span className="motion-safe:animate-spin inline-block">⟳</span>
-                          Checking…
-                        </>
-                      ) : (
-                        <>🔎 Semantic Match</>
-                      )}
-                    </Button>
-                  )}
-                  {fixStatus !== 'ready' && (
-                    <Button
-                      size="md"
-                      onClick={handleFixAll}
-                      disabled={fixStatus === 'loading'}
-                    >
-                      {fixStatus === 'loading' ? (
-                        <>
-                          <span className="motion-safe:animate-spin inline-block">⟳</span>
-                          Generating…
-                        </>
-                      ) : (
-                        <>✨ Tailor with AI</>
-                      )}
-                    </Button>
-                  )}
-                  <Popover
-                    open={helpOpen}
-                    onOpenChange={setHelpOpen}
-                    trigger={
-                      <button
-                        type="button"
-                        aria-expanded={helpOpen}
-                        aria-haspopup="dialog"
-                        aria-label="What do Semantic Match and Tailor with AI do?"
-                        className="flex items-center justify-center h-11 w-11 shrink-0 rounded-full bg-secondary text-secondary-fg text-sm font-medium hover:brightness-95 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        ?
-                      </button>
-                    }
-                  >
-                    <div
-                      role="dialog"
-                      aria-label="About Semantic Match and Tailor with AI"
-                      className="w-72 rounded-card border border-border bg-surface p-4 shadow-popover space-y-3 text-left"
-                    >
-                      <div>
-                        <p className="text-xs font-medium text-fg-heading mb-0.5">🔎 Semantic Match</p>
-                        <p className="text-xs text-fg-muted leading-relaxed">
-                          AI checks whether your resume already covers a missing keyword through a synonym or related term (e.g. &quot;k8s&quot; counts for &quot;Kubernetes&quot;) - it doesn&apos;t rewrite anything.
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-fg-heading mb-0.5">✨ Tailor with AI</p>
-                        <p className="text-xs text-fg-muted leading-relaxed">
-                          AI rewrites your summary and bullet points to naturally work in the missing keywords - you review and approve each suggested change before it&apos;s applied.
-                        </p>
-                      </div>
-                    </div>
-                  </Popover>
-                </div>
+      {result && !editingJd && (
+        <>
+          {/* 2. Score */}
+          <section aria-label="ATS score" aria-busy={loading} className={cn('rounded-card border border-border bg-surface p-4 transition-opacity', loading && 'opacity-60')}>
+            <div className="flex items-center gap-4">
+              <ScoreRing score={result.total} />
+              <div className="min-w-0">
+                <p className={cn('text-base font-medium', TONE_TEXT[toneFor(result.total)])}>{verdict(result.total).label}</p>
+                <p className="mt-0.5 text-sm text-fg-body">{verdict(result.total).line}</p>
+                <Button size="xs" variant="ghost" onClick={handleRecheck} disabled={loading} className="-ml-2.5 mt-1">
+                  <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+                  {loading ? 'Re-checking…' : 'Re-check'}
+                </Button>
               </div>
+            </div>
+            <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 border-t border-border-subtle pt-4 sm:grid-cols-2">
+              {VECTORS.map(({ key, label, hint, max }) => (
+                <div key={key} title={hint}>
+                  <div className="mb-1 flex justify-between text-xs">
+                    <dt className="text-fg-body">{label}</dt>
+                    <dd className="font-mono text-fg-muted">{result.breakdown[key]}/{max}</dd>
+                  </div>
+                  <Bar value={result.breakdown[key]} max={max} />
+                </div>
+              ))}
+            </dl>
+          </section>
 
-              {!hasTriedSemanticThisAnalysis && semanticStatus !== 'ready' && (
-                <div className="mb-2 rounded-control border border-border-warning bg-surface-warning px-3 py-2">
-                  <p className="text-xs text-fg-warning">
-                    💡 Try Semantic Match first - it can clear keywords you already cover before spending an AI rewrite on them.
+          {semanticStatus === 'loading' && (
+            <p role="status" className="flex items-center gap-2 px-1 text-xs text-fg-muted">
+              <Loader2 aria-hidden="true" className="h-3.5 w-3.5 motion-safe:animate-spin" />
+              Checking whether your CV already covers missing keywords in other words…
+            </p>
+          )}
+          {semanticStatus === 'ready' && semanticMatches.length > 0 && (
+            <p role="status" className="flex items-center gap-2 px-1 text-xs text-fg-success">
+              <Check aria-hidden="true" className="h-3.5 w-3.5" />
+              {semanticMatches.length} {semanticMatches.length === 1 ? 'keyword is' : 'keywords are'} already covered in other words, and counted.
+            </p>
+          )}
+          {semanticStatus === 'error' && (
+            <p className="px-1 text-xs text-fg-muted">
+              Couldn&apos;t check for synonyms.{' '}
+              <button type="button" onClick={() => runSynonymCheck(result)} className="text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                Try again
+              </button>
+            </p>
+          )}
+
+          {/* 3. Gaps */}
+          {missing.length > 0 ? (
+            <section aria-labelledby={`${ids}-gaps`} className="rounded-card border border-border bg-surface p-4">
+              <div className="flex items-baseline justify-between">
+                <h2 id={`${ids}-gaps`} className="text-sm font-medium text-fg-heading">Missing from your CV</h2>
+                <span className="text-xs text-fg-muted">{missing.length} of {missing.length + result.matchedKeywords.length}</span>
+              </div>
+              {keywordSource.source === 'basic' && (
+                <div role="note" className="mt-3 rounded-control border border-border-attention bg-surface-attention px-3 py-2 text-xs text-fg-attention">
+                  <p>
+                    Basic word matching was used because {FALLBACK_REASON[keywordSource.reason ?? 'ai-error']}. This list can include
+                    generic words that are not real requirements. Ignore those with ×, or{' '}
+                    <button
+                      type="button"
+                      onClick={() => { setEditingJd(false); handleCheck() }}
+                      disabled={loading}
+                      className="underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      check again
+                    </button>
+                    {' '}for an AI reading.
                   </p>
                 </div>
               )}
-
-              {semanticError && (
-                <p className="mb-2 text-xs text-fg-danger">{semanticError}</p>
+              {mustHave.length > 0 && (
+                <div className="mt-3">
+                  <p className="mb-1.5 text-xs text-fg-muted">{keywordSource.source === 'basic' ? 'From the job description' : 'Required'}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {mustHave.map((kw) => (
+                      <MissingChip key={kw} kw={kw} priority={keywordPriorities[kw] ?? 'ambiguous'} onIgnore={() => setIgnored(kw, true)} />
+                    ))}
+                  </div>
+                </div>
               )}
-
-              <p className="mb-1 text-xs text-fg-danger">
-                Click a keyword you don&apos;t have to ignore it - the AI tools above will skip it too.
-              </p>
-              <p className="mb-2 text-xs text-fg-muted">
-                <span className="text-fg-danger">●</span> must-have / unclear&nbsp;&nbsp;
-                <span className="text-fg-warning">●</span> nice-to-have
-              </p>
-
-              <div className="flex flex-wrap gap-1">
-                {[
-                  ...sortByPriority(result.missingKeywords, keywordPriorities).map((kw) => ({ kw, excluded: false })),
-                  ...result.excludedMissingKeywords.map((kw) => ({ kw, excluded: true })),
-                ].slice(0, 40).map(({ kw, excluded }) => {
-                  const priority = keywordPriorities[kw] ?? 'ambiguous'
-                  const isNiceToHave = priority === 'nice-to-have'
-                  return (
-                  <button
-                    key={kw}
-                    type="button"
-                    onClick={() => toggleExcluded(kw)}
-                    aria-label={excluded ? `Include "${kw}" in scoring` : `Exclude "${kw}" from scoring`}
-                    title={
-                      excluded
-                        ? undefined
-                        : priority === 'must'
-                        ? 'Must-have requirement'
-                        : priority === 'nice-to-have'
-                        ? 'Nice-to-have requirement'
-                        : 'Requirement level unclear from the job description'
-                    }
-                    className={
-                      excluded
-                        ? CHIP + 'border-border bg-surface-muted text-fg-muted line-through hover:brightness-95'
-                        : isNiceToHave
-                        ? CHIP + 'border-border-warning bg-surface text-fg-warning hover:brightness-95'
-                        : CHIP + 'border-border-danger bg-surface text-fg-danger hover:brightness-95'
-                    }
-                  >
-                    {kw}
-                  </button>
-                  )
-                })}
-                {result.missingKeywords.length + result.excludedMissingKeywords.length > 40 && (
-                  <span className="text-xs text-fg-danger self-center">
-                    +{result.missingKeywords.length + result.excludedMissingKeywords.length - 40} more
-                  </span>
-                )}
-              </div>
-
-              {fixError && (
-                <p className="mt-2 text-xs text-fg-danger">{fixError}</p>
+              {niceToHave.length > 0 && (
+                <div className="mt-3">
+                  <p className="mb-1.5 text-xs text-fg-muted">Nice to have</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {niceToHave.map((kw) => (
+                      <MissingChip key={kw} kw={kw} priority="nice-to-have" onIgnore={() => setIgnored(kw, true)} />
+                    ))}
+                  </div>
+                </div>
               )}
-            </div>
-          )}
-
-          {(result.matchedKeywords.length > 0 || result.excludedMatchedKeywords.length > 0) && (
-            <div className="rounded-card border border-border-success bg-surface-success p-4">
-              <p className="mb-2 text-sm font-medium text-fg-success">
-                Matched Keywords ({result.matchedKeywords.length})
+              <p className="mt-3 text-xs text-fg-muted">
+                Don&apos;t have one of these? Press <X aria-label="the cross" className="inline h-3 w-3 align-[-2px]" /> on it. It stops counting against you and the AI won&apos;t add it.
               </p>
-              <div className="flex flex-wrap gap-1">
-                {[
-                  ...result.matchedKeywords.map((kw) => ({ kw, excluded: false, semantic: semanticMatches.includes(kw) })),
-                  ...result.excludedMatchedKeywords.map((kw) => ({ kw, excluded: true, semantic: false })),
-                ].slice(0, 40).map(({ kw, excluded, semantic }) => (
-                  <button
-                    key={kw}
-                    type="button"
-                    onClick={() => toggleExcluded(kw)}
-                    aria-label={excluded ? `Include "${kw}" in scoring` : `Exclude "${kw}" from scoring`}
-                    title={semantic ? 'Matched via AI semantic analysis (not an exact keyword match)' : undefined}
-                    className={
-                      excluded
-                        ? CHIP + 'border-border bg-surface-muted text-fg-muted line-through hover:brightness-95'
-                        : semantic
-                        ? CHIP + 'border-border bg-surface-selected text-fg-body hover:brightness-95'
-                        : CHIP + 'border-border-success bg-surface text-fg-success hover:brightness-95'
-                    }
-                  >
-                    {kw}
-                  </button>
-                ))}
-                {result.matchedKeywords.length + result.excludedMatchedKeywords.length > 40 && (
-                  <span className="text-xs text-fg-success self-center">
-                    +{result.matchedKeywords.length + result.excludedMatchedKeywords.length - 40} more
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
 
-          <div className="flex justify-between">
-            <Button
-              size="md"
-              variant="soft"
-              onClick={() => setCurrentStep(1)}
-            >
-              ← Back
-            </Button>
-            <Button
-              size="md"
-              onClick={() => setCurrentStep(3)}
-              disabled={maxUnlockedStep < 3}
-            >
-              Next: Review &amp; Apply →
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {currentStep === 3 && (
-        <div className="space-y-4">
-          {result && result.missingKeywords.length === 0 && result.excludedMissingKeywords.length === 0 ? (
-            <div className="rounded-card border border-border-success bg-surface-success p-6 text-center">
-              <p className="text-sm font-medium text-fg-success">Nothing to fix - great match!</p>
-            </div>
-          ) : fixStatus === 'idle' ? (
-            <div className="rounded-card border border-border bg-surface-subtle p-6 text-center">
-              <p className="text-sm text-fg-muted">
-                Head back to Close the Gap and run Tailor with AI to see suggestions here.
-              </p>
-            </div>
-          ) : fixStatus === 'loading' ? (
-            <div className="rounded-card border border-border bg-surface-subtle p-6 text-center">
-              <p className="text-sm text-fg-muted">
-                <span className="motion-safe:animate-spin inline-block mr-1">⟳</span>
-                Generating fixes…
-              </p>
-            </div>
-          ) : fixStatus === 'error' ? (
-            <div className="rounded-card border border-border-danger bg-surface-danger p-4 text-center space-y-2">
-              <p className="text-sm text-fg-danger">{fixError}</p>
-              <Button
-                size="md"
-                variant="soft"
-                onClick={handleFixAll}
-              >
-                ↻ Try again
-              </Button>
-            </div>
+              {fixStatus === 'idle' || fixStatus === 'error' ? (
+                <div className="mt-4 border-t border-border-subtle pt-4">
+                  <Button size="md" onClick={handleGenerateFixes} className="w-full">
+                    <Sparkles aria-hidden="true" className="h-4 w-4" />
+                    Add missing keywords with AI
+                  </Button>
+                  <p className="mt-1.5 text-center text-xs text-fg-muted">
+                    Suggests edits to your summary and bullets. Nothing changes until you apply it.
+                  </p>
+                  {fixError && <p role="alert" className="mt-2 text-center text-sm text-fg-danger">{fixError}</p>}
+                </div>
+              ) : null}
+            </section>
           ) : (
-            <>
-              {fixes.length > 0 ? (
+            <section className="flex items-center gap-3 rounded-card border border-border-success bg-surface-success p-4">
+              <Check aria-hidden="true" className="h-5 w-5 shrink-0 text-fg-success" />
+              <p className="text-sm text-fg-success">Your CV covers every keyword this job asks for.</p>
+            </section>
+          )}
+
+          {/* 4. AI suggestions, reviewed in place */}
+          {fixStatus === 'loading' && (
+            <section aria-busy="true" className="space-y-2 rounded-card border border-border bg-surface p-4">
+              <p className="flex items-center gap-2 text-sm text-fg-body">
+                <Loader2 aria-hidden="true" className="h-4 w-4 motion-safe:animate-spin text-primary" />
+                Writing suggestions…
+              </p>
+              <div className="h-16 rounded-control bg-surface-subtle motion-safe:animate-pulse" />
+              <div className="h-16 rounded-control bg-surface-subtle motion-safe:animate-pulse" />
+            </section>
+          )}
+          {fixStatus === 'ready' && (
+            <section aria-label="AI suggestions" className="space-y-3">
+              {fixes.length > 0 && !allFixesHandled && (
                 <AtsFixReviewPanel
                   fixes={fixes}
                   dismissedIds={dismissedIds}
@@ -583,38 +523,88 @@ export function AtsScorePanel() {
                   onApplyAll={applyAll}
                   data={data}
                 />
-              ) : (
-                <div className="rounded-card border border-border bg-surface-subtle p-4 text-center">
-                  <p className="text-sm text-fg-muted">
-                    No specific fixes found - try re-analyzing after updating your highlights.
+              )}
+              {(fixes.length === 0 || allFixesHandled) && (
+                <div className="rounded-card border border-border bg-surface p-4 text-center">
+                  <p className="text-sm text-fg-body">
+                    {fixes.length === 0
+                      ? 'No safe edits found for these keywords. Add them to your experience yourself if they apply.'
+                      : appliedCount > 0
+                        ? `${appliedCount} ${appliedCount === 1 ? 'edit' : 'edits'} applied. Re-check to see your new score.`
+                        : 'All suggestions skipped.'}
                   </p>
+                  <div className="mt-3 flex justify-center gap-2">
+                    {appliedCount > 0 && (
+                      <Button size="sm" onClick={handleRecheck} disabled={loading}>
+                        <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+                        Re-check score
+                      </Button>
+                    )}
+                    <Button size="sm" variant="secondary" onClick={handleGenerateFixes}>
+                      <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+                      Suggest again
+                    </Button>
+                  </div>
                 </div>
               )}
-              {(fixes.length === 0 || fixes.every((f) => dismissedIds.has(f.id))) && (
-                <div className="rounded-card border border-border bg-surface-subtle p-4 text-center mt-4">
-                  <p className="text-sm text-fg-muted mb-2">Want another pass?</p>
-                  <Button
-                    size="md"
-                    variant="soft"
-                    onClick={handleFixAll}
-                  >
-                    ↻ Regenerate fixes
-                  </Button>
-                </div>
-              )}
-            </>
+            </section>
           )}
 
-          <div className="flex justify-start">
-            <Button
-              size="md"
-              variant="soft"
-              onClick={() => setCurrentStep(2)}
-            >
-              ← Back to Close the Gap
-            </Button>
-          </div>
-        </div>
+          {/* 5. Already covered, and anything the user chose to ignore */}
+          {result.matchedKeywords.length > 0 && (
+            <section className="rounded-card border border-border bg-surface">
+              <button
+                type="button"
+                aria-expanded={matchedOpen}
+                onClick={() => setMatchedOpen((v) => !v)}
+                className="flex min-h-11 w-full items-center gap-2 rounded-card px-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Check aria-hidden="true" className="h-4 w-4 text-fg-success" />
+                <span className="flex-1 text-sm text-fg-heading">Already in your CV</span>
+                <span className="text-xs text-fg-muted">{result.matchedKeywords.length}</span>
+                <ChevronDown aria-hidden="true" className={cn('h-4 w-4 text-fg-subtle transition-transform', matchedOpen && 'rotate-180')} />
+              </button>
+              {matchedOpen && (
+                <div className="flex flex-wrap gap-1.5 border-t border-border-subtle px-4 py-3">
+                  {result.matchedKeywords.map((kw) => {
+                    const semantic = semanticMatches.includes(kw)
+                    return (
+                      <span
+                        key={kw}
+                        title={semantic ? 'Covered by a synonym or related term in your CV' : undefined}
+                        className={cn(CHIP, 'px-2.5', semantic ? 'border-border bg-surface-selected text-fg-body' : 'border-border-success bg-surface text-fg-success')}
+                      >
+                        {semantic && <span aria-hidden="true">≈</span>}
+                        {kw}
+                        {semantic && <span className="sr-only">(synonym match)</span>}
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
+          )}
+
+          {ignored.length > 0 && (
+            <section aria-labelledby={`${ids}-ignored`} className="px-1">
+              <h2 id={`${ids}-ignored`} className="mb-1.5 text-xs text-fg-muted">Ignored ({ignored.length})</h2>
+              <div className="flex flex-wrap gap-1.5">
+                {ignored.map((kw) => (
+                  <button
+                    key={kw}
+                    type="button"
+                    onClick={() => setIgnored(kw, false)}
+                    aria-label={`Count "${kw}" again`}
+                    title="Count this keyword again"
+                    className={cn(CHIP, 'border-border bg-surface-subtle px-2.5 text-fg-muted line-through hover:text-fg-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring')}
+                  >
+                    {kw}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
     </div>
   )

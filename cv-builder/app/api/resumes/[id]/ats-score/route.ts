@@ -53,6 +53,12 @@ export const POST = auth(async (req, ctx) => {
     // "ambiguous", matching the pre-priority-coloring behavior).
     let jdKeywordsOverride = cachedJdKeywords
     let keywordPriorities: Record<string, KeywordPriority> = jdKeywordsOverride.length > 0 ? cachedKeywordPriorities : {}
+    // Which extractor produced the keyword list on a fresh check, so the UI can
+    // say so: the regex fallback is far noisier than the AI reading, and
+    // silently showing its output made a broken AI setup look like bad advice.
+    // 'cached' means the client supplied the list from an earlier response.
+    let keywordSource: 'ai' | 'basic' | 'cached' = jdKeywordsOverride.length > 0 ? 'cached' : 'basic'
+    let keywordFallbackReason: 'rate-limited' | 'ai-error' | 'ai-empty' | undefined
     if (jdKeywordsOverride.length === 0 && jobDescription.trim()) {
       const rate = checkRateLimit(`${req.auth.user.id}:ai`, AI_RATE_LIMIT)
       if (rate.allowed) {
@@ -60,18 +66,24 @@ export const POST = auth(async (req, ctx) => {
           const requirements = await extractJdRequirements(jobDescription)
           jdKeywordsOverride = requirements.map(r => r.term)
           keywordPriorities = Object.fromEntries(requirements.map(r => [r.term, r.priority]))
+          if (requirements.length > 0) keywordSource = 'ai'
+          else keywordFallbackReason = 'ai-empty'
         } catch (err) {
           console.error('POST /api/resumes/[id]/ats-score: extractJdRequirements threw, falling back to regex extraction', err)
           jdKeywordsOverride = []
           keywordPriorities = {}
+          keywordFallbackReason = 'ai-error'
         }
+      } else {
+        console.warn('POST /api/resumes/[id]/ats-score: AI rate limit reached, falling back to regex extraction')
+        keywordFallbackReason = 'rate-limited'
       }
     }
 
     const data = (resume.data ?? {}) as ResumeData
     const result = scoreResume(data, jobDescription, excludedKeywords, semanticMatches, jdKeywordsOverride)
 
-    return NextResponse.json({ ...result, keywordPriorities })
+    return NextResponse.json({ ...result, keywordPriorities, keywordSource, keywordFallbackReason })
   } catch (err) {
     return handleRouteError(err, 'POST /api/resumes/[id]/ats-score')
   }

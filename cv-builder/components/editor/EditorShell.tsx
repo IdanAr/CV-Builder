@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, useReducedMotion } from 'framer-motion'
+import { FileText, Gauge, Mail, Palette, type LucideIcon } from 'lucide-react'
 import { handleTablistKeyDown, tabIndexFor } from '@/lib/tablist-keys'
 import { useMediaQuery } from '@/lib/hooks/use-media-query'
 import { useResumeEditorStore, initAutoSave, flushSave } from '@/lib/stores/resume-editor.store'
@@ -22,6 +23,7 @@ import { requestErrorMessage } from '@/lib/fetch-with-timeout'
 type Tab = 'edit' | 'design' | 'ats' | 'coverLetter'
 
 const TAB_LABELS: Record<Tab, string> = { edit: 'Edit', design: 'Design', ats: 'ATS', coverLetter: 'Cover Letter' }
+const TAB_ICONS: Record<Tab, LucideIcon> = { edit: FileText, design: Palette, ats: Gauge, coverLetter: Mail }
 
 const PANEL_WIDTH_KEY = 'cv-builder:panel-width'
 const PANEL_MIN = 320
@@ -295,7 +297,9 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
         onKeyDown={handleTablistKeyDown}
         className="flex border-b border-border shrink-0 bg-surface"
       >
-        {(['edit', 'design', 'ats', 'coverLetter'] as Tab[]).map((tab) => (
+        {(['edit', 'design', 'ats', 'coverLetter'] as Tab[]).map((tab) => {
+          const Icon = TAB_ICONS[tab]
+          return (
           <button
             key={tab}
             type="button"
@@ -305,11 +309,12 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
             aria-selected={activeTab === tab}
             tabIndex={tabIndexFor(activeTab === tab)}
             onClick={() => setActiveTab(tab)}
-            className={`relative flex items-center justify-center min-h-[44px] px-4 py-2 text-sm font-medium transition-colors ${
+            className={`relative flex flex-auto items-center justify-center gap-1.5 min-h-[44px] px-2 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
               activeTab === tab ? 'text-fg-heading' : 'text-fg-muted hover:text-fg-body'
             }`}
           >
-            {TAB_LABELS[tab]}
+            <Icon aria-hidden="true" className={`h-4 w-4 shrink-0 ${activeTab === tab ? 'text-primary' : ''}`} />
+            <span className="whitespace-nowrap">{TAB_LABELS[tab]}</span>
             {activeTab === tab && (
               <motion.span
                 layoutId="editor-tab-underline"
@@ -318,11 +323,17 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
               />
             )}
           </button>
-        ))}
+          )
+        })}
       </div>
 
-      {/* Tab content */}
-      <div className="flex-1 overflow-auto">
+      {/* Tab content. `relative` makes this scroller the containing block for
+          absolutely positioned descendants (every `sr-only` label is one).
+          Without it they were positioned against <body>, so a long panel (the
+          ATS tab with nine suggestion cards) stretched the document to ~2,800px
+          and scrolling past the panel's end scrolled the whole editor off
+          screen. `overscroll-contain` keeps that wheel from chaining outward. */}
+      <div data-testid="editor-panel-scroller" className="relative flex-1 overflow-auto overscroll-contain">
         <div role="tabpanel" id="editor-panel-edit" aria-labelledby="editor-tab-edit" className={activeTab === 'edit' ? 'block' : 'hidden'}>
           <EditorErrorBoundary><EditTab /></EditorErrorBoundary>
         </div>
