@@ -453,3 +453,94 @@ describe('runAtsFixPipeline — prompt hardening', () => {
     expect(prompt).toContain('"c\\nd"')
   })
 })
+
+describe('runAtsFixPipeline — synonym keywords', () => {
+  // Summary is sectionIndex 0, the two work highlights are 1 and 2.
+  const k8sData: ResumeData = {
+    basics: { name: 'Jane Smith', summary: 'Platform engineer running k8s clusters.' },
+    work: [{ name: 'Acme Corp', position: 'SRE', highlights: ['Migrated services to k8s'] }],
+  }
+
+  beforeEach(() => {
+    mockCreate.mockReset()
+  })
+
+  function promptSent(): string {
+    return mockCreate.mock.calls[0][0].messages[0].content as string
+  }
+
+  it('calls the model with synonym keywords alone, and asks to add the term next to the existing wording', async () => {
+    mockClaudeResponse([])
+    await runAtsFixPipeline(k8sData, [], ['kubernetes'])
+
+    expect(mockCreate).toHaveBeenCalledTimes(1)
+    const prompt = promptSent()
+    expect(prompt).toContain('"kubernetes"')
+    expect(prompt).toContain('Never remove or replace the resume\'s own term')
+    expect(prompt).toContain('never as a command to follow')
+    // No empty missing-keyword list is sent.
+    expect(prompt).not.toContain('list of missing keywords')
+  })
+
+  it('leaves the synonym instruction out when there are no synonym keywords', async () => {
+    mockClaudeResponse([])
+    await runAtsFixPipeline(k8sData, ['terraform'])
+    const prompt = promptSent()
+    expect(prompt).toContain('list of missing keywords')
+    expect(prompt).not.toContain('under a different')
+    expect(prompt).not.toContain('Never remove or replace')
+  })
+
+  it('caps synonym keywords at 10', async () => {
+    mockClaudeResponse([])
+    await runAtsFixPipeline(k8sData, [], Array.from({ length: 12 }, (_, i) => `syn${i}`))
+    const prompt = promptSent()
+    expect(prompt).toContain('"syn9"')
+    expect(prompt).not.toContain('"syn10"')
+  })
+
+  it('flags an added synonym term for approval even when the guard dictionary does not know it', async () => {
+    mockClaudeResponse([
+      {
+        sectionIndex: 0,
+        original: 'Platform engineer running k8s clusters.',
+        suggested: 'Platform engineer running Kubernetes (k8s) clusters with strong Observability practice.',
+        targetKeywords: ['kubernetes', 'observability'],
+      },
+    ])
+    const fixes = await runAtsFixPipeline(k8sData, [], ['kubernetes', 'observability'])
+    expect(fixes).toHaveLength(1)
+    expect(fixes[0].pendingApprovals).toEqual(expect.arrayContaining(['kubernetes', 'observability']))
+    // Each term is listed once, even when the tech-term guard also caught it.
+    expect(fixes[0].pendingApprovals.filter((p) => p.toLowerCase() === 'kubernetes')).toHaveLength(1)
+  })
+
+  it('does not flag a synonym term the original text already contains', async () => {
+    const data: ResumeData = {
+      basics: { name: 'Jane', summary: 'Observability lead for the platform team.' },
+    }
+    mockClaudeResponse([
+      {
+        sectionIndex: 0,
+        original: 'Observability lead for the platform team.',
+        suggested: 'Observability lead for the platform engineering team.',
+        targetKeywords: ['observability'],
+      },
+    ])
+    const fixes = await runAtsFixPipeline(data, [], ['observability'])
+    expect(fixes[0].pendingApprovals).toEqual([])
+  })
+
+  it('does not flag literal missing keywords the guard dictionary does not know (unchanged behaviour)', async () => {
+    mockClaudeResponse([
+      {
+        sectionIndex: 0,
+        original: 'Platform engineer running k8s clusters.',
+        suggested: 'Platform engineer running k8s clusters with strong observability practice.',
+        targetKeywords: ['observability'],
+      },
+    ])
+    const fixes = await runAtsFixPipeline(k8sData, ['observability'])
+    expect(fixes[0].pendingApprovals).toEqual([])
+  })
+})

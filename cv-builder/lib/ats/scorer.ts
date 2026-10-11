@@ -16,6 +16,8 @@ export interface AtsScoreResult {
   excludedMatchedKeywords: string[]
   /** User-excluded JD keywords that are absent from the resume — shown as muted chips, never scored or sent to AI tailoring. */
   excludedMissingKeywords: string[]
+  /** The subset of `matchedKeywords` found only through a synonym, not as literal text. Scored at SEMANTIC_MATCH_WEIGHT. */
+  semanticMatchedKeywords: string[]
   /** The JD keyword list actually used for this scoring pass (AI-extracted override, or the regex-extracted fallback) — callers cache and re-send this to avoid redundant AI extraction on re-scores of the same job description. */
   jdKeywords: string[]
 }
@@ -132,6 +134,9 @@ function scoreMetrics(data: ResumeData): number {
   return Math.min(15, Math.round((withMetrics.length / highlights.length) * 30))
 }
 
+/** Share of a literal match's density and placement credit that a synonym-only match earns. */
+export const SEMANTIC_MATCH_WEIGHT = 0.5
+
 export function scoreResume(
   data: ResumeData,
   jobDescription: string,
@@ -158,6 +163,7 @@ export function scoreResume(
       missingKeywords: [],
       excludedMatchedKeywords: [],
       excludedMissingKeywords: [],
+      semanticMatchedKeywords: [],
       jdKeywords: [],
     }
   }
@@ -173,7 +179,10 @@ export function scoreResume(
 
   // Keywords Claude confirmed as covered by a synonym/abbreviation (see
   // lib/ai/keyword-analysis-pipeline.ts) are promoted from missing to
-  // matched, counting the same as a literal match everywhere below.
+  // matched, but earn only SEMANTIC_MATCH_WEIGHT of a literal match below:
+  // recruiter search in most ATS products is literal, so the JD's exact term
+  // is still worth adding. Only literally-missing keywords can be promoted,
+  // so a term the user has since written out counts in full.
   const semanticallyPromoted = literalMissing.filter(k => semantic.has(k))
   const allMatched = [...literalMatched, ...semanticallyPromoted]
   const allMissing = literalMissing.filter(k => !semantic.has(k))
@@ -187,17 +196,18 @@ export function scoreResume(
   // matched count and as the denominator, so an excluded word neither helps
   // nor drags down the score.
   const activeKeywords = jdKeywords.filter(k => !excluded.has(k))
+  const semanticMatchedKeywords = semanticallyPromoted.filter(k => !excluded.has(k))
+  const semanticCredit = semanticMatchedKeywords.length * SEMANTIC_MATCH_WEIGHT
+  const literalMatchedCount = matched.length - semanticMatchedKeywords.length
   const keywordDensityScore = activeKeywords.length > 0
-    ? Math.min(35, Math.round((matched.length / activeKeywords.length) * 35))
+    ? Math.min(35, Math.round(((literalMatchedCount + semanticCredit) / activeKeywords.length) * 35))
     : 0
 
+  // Where a synonym sits in the CV is unknown, so it gets the same partial
+  // credit for placement rather than counting as a high-value match.
   const { matched: hvMatchedLiteral } = keywordOverlap(highValueText, activeKeywords)
-  const hvMatched = new Set([
-    ...hvMatchedLiteral,
-    ...semanticallyPromoted.filter(k => !excluded.has(k)),
-  ])
   const keywordPlacementScore = activeKeywords.length > 0
-    ? Math.min(25, Math.round((hvMatched.size / activeKeywords.length) * 25))
+    ? Math.min(25, Math.round(((hvMatchedLiteral.length + semanticCredit) / activeKeywords.length) * 25))
     : 0
 
   const total = Math.min(100, formatScore + keywordDensityScore + keywordPlacementScore + metricsScore)
@@ -214,6 +224,7 @@ export function scoreResume(
     missingKeywords: missing,
     excludedMatchedKeywords,
     excludedMissingKeywords,
+    semanticMatchedKeywords,
     jdKeywords,
   }
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { scoreResume, flattenAllText } from '../scorer'
+import { scoreResume, flattenAllText, SEMANTIC_MATCH_WEIGHT } from '../scorer'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 const fullData: ResumeData = {
@@ -274,30 +274,62 @@ describe('scoreResume — semanticMatches', () => {
     expect(after.matchedKeywords).toContain('kubernetes')
   })
 
-  it('semantic promotion raises keywordDensity to full credit when it is the only unmatched keyword', () => {
+  it('a semantic match earns half the keywordDensity credit of a literal match', () => {
     const data: ResumeData = {
       basics: { name: 'A', email: 'a@b.c' },
       skills: [{ name: 'Stack', keywords: ['React'] }],
     }
-    const jdText = 'React Kubernetes developer needed'
+    // Two keywords: react literal, kubernetes only through a synonym.
+    const withSemantic = scoreResume(data, 'irrelevant', [], ['kubernetes'], ['react', 'kubernetes'])
+    expect(SEMANTIC_MATCH_WEIGHT).toBe(0.5)
+    // (1 + 0.5) / 2 * 35 = 26.25
+    expect(withSemantic.breakdown.keywordDensity).toBe(26)
 
-    const withoutSemantic = scoreResume(data, jdText)
-    expect(withoutSemantic.breakdown.keywordDensity).toBeLessThan(35)
+    const withoutSemantic = scoreResume(data, 'irrelevant', [], [], ['react', 'kubernetes'])
+    expect(withoutSemantic.breakdown.keywordDensity).toBe(18)
 
-    const withSemantic = scoreResume(data, jdText, [], ['kubernetes'])
-    expect(withSemantic.breakdown.keywordDensity).toBe(35)
+    const literal = scoreResume(
+      { ...data, skills: [{ name: 'Stack', keywords: ['React', 'Kubernetes'] }] },
+      'irrelevant', [], [], ['react', 'kubernetes'],
+    )
+    expect(literal.breakdown.keywordDensity).toBe(35)
   })
 
-  it('semantic promotion increases keywordPlacement credit', () => {
+  it('a semantic match earns half keywordPlacement credit, wherever the synonym sits', () => {
+    const data: ResumeData = {
+      basics: { name: 'A', email: 'a@b.c', summary: 'React engineer.' },
+    }
+    const withoutSemantic = scoreResume(data, 'irrelevant', [], [], ['react', 'kubernetes'])
+    const withSemantic = scoreResume(data, 'irrelevant', [], ['kubernetes'], ['react', 'kubernetes'])
+    // (1 + 0) / 2 * 25 = 12.5 -> 13, and (1 + 0.5) / 2 * 25 = 18.75 -> 19
+    expect(withoutSemantic.breakdown.keywordPlacement).toBe(13)
+    expect(withSemantic.breakdown.keywordPlacement).toBe(19)
+  })
+
+  it('reports synonym-only matches in semanticMatchedKeywords, as a subset of matchedKeywords', () => {
     const data: ResumeData = {
       basics: { name: 'A', email: 'a@b.c' },
       skills: [{ name: 'Stack', keywords: ['React'] }],
     }
-    const jdText = 'React Kubernetes developer needed'
+    const result = scoreResume(data, 'irrelevant', [], ['kubernetes'], ['react', 'kubernetes'])
+    expect(result.semanticMatchedKeywords).toEqual(['kubernetes'])
+    expect(result.matchedKeywords).toEqual(['react', 'kubernetes'])
+  })
 
-    const withoutSemantic = scoreResume(data, jdText)
-    const withSemantic = scoreResume(data, jdText, [], ['kubernetes'])
-    expect(withSemantic.breakdown.keywordPlacement).toBeGreaterThan(withoutSemantic.breakdown.keywordPlacement)
+  it('a keyword written out literally counts in full even if the client still sends it as semantic', () => {
+    const data: ResumeData = {
+      basics: { name: 'A', email: 'a@b.c' },
+      skills: [{ name: 'Stack', keywords: ['React', 'Kubernetes (k8s)'] }],
+    }
+    const result = scoreResume(data, 'irrelevant', [], ['kubernetes'], ['react', 'kubernetes'])
+    expect(result.semanticMatchedKeywords).toEqual([])
+    expect(result.breakdown.keywordDensity).toBe(35)
+  })
+
+  it('leaves an excluded semantic keyword out of semanticMatchedKeywords', () => {
+    const data: ResumeData = { basics: { name: 'A', email: 'a@b.c' } }
+    const result = scoreResume(data, 'Kubernetes required', ['kubernetes'], ['kubernetes'])
+    expect(result.semanticMatchedKeywords).toEqual([])
   })
 
   it('semantic match is case-insensitive', () => {

@@ -21,6 +21,7 @@ const scoreResult: AtsScoreResult = {
   missingKeywords: ['react', 'typescript'],
   excludedMatchedKeywords: [],
   excludedMissingKeywords: [],
+  semanticMatchedKeywords: [],
   jdKeywords: ['react', 'typescript'],
 }
 
@@ -205,17 +206,17 @@ describe('AtsScorePanel: keyword source', () => {
 })
 
 describe('AtsScorePanel: automatic synonym check', () => {
-  it('runs by itself after the score, re-scores with the confirmed matches, and marks them', async () => {
+  it('runs by itself after the score, re-scores with the confirmed matches, and marks them as half credit', async () => {
     const api = mockApi({
       '/ats-score': [
         { body: { ...scoreResult, keywordPriorities: { react: 'must' } } },
-        { body: { ...scoreResult, total: 60, matchedKeywords: ['typescript'], missingKeywords: ['react'] } },
+        { body: { ...scoreResult, total: 60, matchedKeywords: ['typescript'], missingKeywords: ['react'], semanticMatchedKeywords: ['typescript'] } },
       ],
       '/ats-semantic-match': [{ body: { confirmedMatches: ['typescript'] } }],
     })
     render(<AtsScorePanel />)
     await check()
-    await screen.findByText(/1 keyword is already covered in other words/i)
+    await screen.findByText(/1 keyword is covered in other words, counted at half weight/i)
     expect(api.to('/ats-semantic-match')[0].body).toEqual({ missingKeywords: ['react', 'typescript'] })
     const rescore = api.to('/ats-score')[1].body!
     expect(rescore.semanticMatches).toEqual(['typescript'])
@@ -223,8 +224,33 @@ describe('AtsScorePanel: automatic synonym check', () => {
     expect(rescore.jdKeywords).toEqual(['react', 'typescript'])
     expect(rescore.keywordPriorities).toEqual({ react: 'must' })
 
+    // Shown as a gap to close, not as already covered.
+    const gaps = screen.getByRole('region', { name: 'Missing from your CV' })
+    expect(within(gaps).getByText('In your CV in other words')).toBeInTheDocument()
+    expect(within(gaps).getByText('(synonym match)')).toBeInTheDocument()
+    expect(within(gaps).getByRole('button', { name: 'Ignore "typescript"' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /already in your cv/i })).toBeNull()
+  })
+
+  it('stops marking a keyword once the server counts it as a literal match', async () => {
+    mockApi({
+      '/ats-score': [
+        { body: scoreResult },
+        { body: { ...scoreResult, matchedKeywords: ['typescript'], missingKeywords: ['react'], semanticMatchedKeywords: ['typescript'] } },
+        // After a fix wrote "TypeScript" out, the same synonym list is re-sent but the match is literal.
+        { body: { ...scoreResult, total: 70, matchedKeywords: ['typescript'], missingKeywords: ['react'], semanticMatchedKeywords: [] } },
+      ],
+      '/ats-semantic-match': [{ body: { confirmedMatches: ['typescript'] } }],
+    })
+    render(<AtsScorePanel />)
+    await check()
+    await screen.findByText('In your CV in other words')
+    fireEvent.click(screen.getByRole('button', { name: 'Re-check' }))
+    await screen.findByText('70')
+    expect(screen.queryByText('In your CV in other words')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /already in your cv/i }))
-    expect(screen.getByText('(synonym match)')).toBeInTheDocument()
+    expect(screen.getByText('typescript')).toBeInTheDocument()
+    expect(screen.queryByText('(synonym match)')).toBeNull()
   })
 
   it('does not re-score when the check confirms nothing', async () => {
@@ -392,6 +418,61 @@ describe('AtsScorePanel: AI suggestions', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Model unavailable.')
     expect(screen.getByRole('alert').className).toContain('text-fg-danger')
     expect(screen.getByRole('button', { name: /add missing keywords with ai/i })).toBeInTheDocument()
+  })
+
+  it('sends synonym-matched keywords with the missing ones, so the AI can add the exact terms', async () => {
+    const api = mockApi({
+      '/ats-score': [
+        { body: scoreResult },
+        { body: { ...scoreResult, matchedKeywords: ['typescript'], missingKeywords: ['react'], semanticMatchedKeywords: ['typescript'] } },
+      ],
+      '/ats-semantic-match': [{ body: { confirmedMatches: ['typescript'] } }],
+      '/ats-fix': [{ body: [] }],
+    })
+    render(<AtsScorePanel />)
+    await check()
+    await screen.findByText('In your CV in other words')
+    await generate()
+    await waitFor(() => expect(api.to('/ats-fix')).toHaveLength(1))
+    expect(api.to('/ats-fix')[0].body).toEqual({ missingKeywords: ['react'], synonymKeywords: ['typescript'] })
+  })
+
+  it('keeps the gaps card and the AI button when only synonym matches are left', async () => {
+    const api = mockApi({
+      '/ats-score': [
+        { body: { ...scoreResult, missingKeywords: ['typescript'], matchedKeywords: ['react'] } },
+        { body: { ...scoreResult, total: 88, missingKeywords: [], matchedKeywords: ['react', 'typescript'], semanticMatchedKeywords: ['typescript'] } },
+      ],
+      '/ats-semantic-match': [{ body: { confirmedMatches: ['typescript'] } }],
+      '/ats-fix': [{ body: [] }],
+    })
+    render(<AtsScorePanel />)
+    await check()
+    const gaps = await screen.findByRole('region', { name: "Use the job's exact wording" })
+    expect(within(gaps).getByText('1 of 2')).toBeInTheDocument()
+    expect(screen.queryByText(/covers every keyword/i)).toBeNull()
+    // Nothing is missing outright, so the ignore note for missing keywords is not shown.
+    expect(screen.queryByText(/stops counting against you/i)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: "Add the job's exact terms with AI" }))
+    await waitFor(() => expect(api.to('/ats-fix')).toHaveLength(1))
+    expect(api.to('/ats-fix')[0].body).toEqual({ missingKeywords: [], synonymKeywords: ['typescript'] })
+  })
+
+  it('ignoring a synonym-matched keyword persists it like any other ignored keyword', async () => {
+    mockApi({
+      '/ats-score': [
+        { body: scoreResult },
+        { body: { ...scoreResult, matchedKeywords: ['typescript'], missingKeywords: ['react'], semanticMatchedKeywords: ['typescript'] } },
+        { body: { ...scoreResult, missingKeywords: ['react'], excludedMatchedKeywords: ['typescript'] } },
+      ],
+      '/ats-semantic-match': [{ body: { confirmedMatches: ['typescript'] } }],
+    })
+    render(<AtsScorePanel />)
+    await check()
+    fireEvent.click(await screen.findByRole('button', { name: 'Ignore "typescript"' }))
+    expect(useResumeEditorStore.getState().meta.excludedAtsKeywords).toEqual(['typescript'])
+    await screen.findByRole('button', { name: 'Count "typescript" again' })
+    expect(screen.queryByText('In your CV in other words')).toBeNull()
   })
 
   it('offers Suggest again when the AI returns no edits', async () => {

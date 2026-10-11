@@ -27,13 +27,18 @@ export const POST = auth(async (req, ctx) => {
     const missingKeywords: string[] = Array.isArray(body.missingKeywords)
       ? body.missingKeywords.filter((k: unknown) => typeof k === 'string').slice(0, 20)
       : []
+    // Keywords the CV covers only through a synonym: the fix adds the job's
+    // exact term next to the user's own wording.
+    const synonymKeywords: string[] = Array.isArray(body.synonymKeywords)
+      ? body.synonymKeywords.filter((k: unknown) => typeof k === 'string').slice(0, 10)
+      : []
 
-    if (missingKeywords.length === 0) {
-      return apiError('BAD_REQUEST', 'missingKeywords array is required', 400)
+    if (missingKeywords.length === 0 && synonymKeywords.length === 0) {
+      return apiError('BAD_REQUEST', 'missingKeywords or synonymKeywords array is required', 400)
     }
 
     const data = (resume.data ?? {}) as ResumeData
-    const fixes = await runAtsFixPipeline(data, missingKeywords)
+    const fixes = await runAtsFixPipeline(data, missingKeywords, synonymKeywords)
     return NextResponse.json(fixes)
   } catch (err) {
     return handleRouteError(err, 'POST /api/resumes/[id]/ats-fix')
