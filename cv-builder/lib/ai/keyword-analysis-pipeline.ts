@@ -48,11 +48,11 @@ export async function runSemanticKeywordAnalysis(
 
   const prompt = `You are an ATS keyword matcher reviewing a candidate's resume.
 
-The keywords below come from a job description and were NOT found as text in the resume. For each keyword, decide whether the resume already demonstrates that exact skill under a different name: a synonym, an abbreviation, or a more specific form of it. Examples that count: "k8s" for "kubernetes"; "Next.js" for "react"; "led a team of 5 engineers" for "leadership"; "built anti-fraud systems flagging suspicious transactions" for "fraud detection".
+The keywords below come from a job description and were NOT found as text in the resume. For each keyword, decide whether the resume already demonstrates that exact skill under a different name: a synonym, an abbreviation, or a more specific form of it. Examples that count: "k8s" for "kubernetes"; "Next.js" for "react"; "led a team of 5 engineers" for "leadership"; "ran Google Ads and Meta campaigns" for "paid media"; "triaged patients in the emergency department" for "emergency care".
 
 Be strict. Do not confirm a keyword when:
-- the resume only shows a neighbouring or broader area (anti-fraud work does not show "risk management"; building dashboards does not show "statistics");
-- the only support is a degree or job title in a different field (a degree in Industrial Engineering does not show "statistics"; a degree in Statistics does);
+- the resume only shows a neighbouring or broader area (writing blog posts does not show "SEO"; using Excel does not show "financial modeling"; front-desk work at a clinic does not show "patient care");
+- the only support is a degree or job title in a different field (a degree in Marketing does not show "SEO"; a degree in Accounting does show "accounting");
 - you would have to infer the skill rather than point to it.
 
 For every keyword you confirm, quote the exact words from the resume that show it, copied character for character, at most 15 words.

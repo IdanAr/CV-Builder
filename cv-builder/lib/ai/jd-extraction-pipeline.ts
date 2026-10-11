@@ -58,10 +58,10 @@ export async function extractJdRequirements(jobDescription: string): Promise<Ext
 Extract every specific, checkable requirement a candidate's resume should be scored against: hard skills, soft skills, tools, platforms, software, technologies, methodologies, and certifications explicitly named in the text.
 
 Rules:
-- Write each term the way a recruiter would type it into an ATS search box: the core skill, domain, tool or qualification, 1 to 3 words long. Use the natural, most common spelling and capitalization (e.g. "Google Cloud Platform", "Mixpanel", "Agile", "Stakeholder Management", "React").
-- Do not turn a sentence into a descriptive phrase. Reduce it to the searchable term inside it: "analyze large-scale datasets" -> "Data Analysis"; "knowledge of the payment ecosystem" -> "Payments"; "develop and maintain fraud models" -> "Fraud Modeling".
+- Write each term the way a recruiter would type it into an ATS search box: the core skill, domain, tool or qualification, 1 to 3 words long. Use the natural, most common spelling and capitalization (e.g. "React", "Google Cloud Platform", "SEO", "Stakeholder Management", "Patient Care", "IFRS").
+- Do not turn a sentence into a descriptive phrase. Reduce it to the searchable term inside it: "build responsive interfaces for our web app" -> "Frontend Development"; "own paid campaigns across social channels" -> "Paid Social"; "administer medications and monitor patient vitals" -> "Medication Administration", "Patient Monitoring"; "prepare monthly reports for the board" -> "Financial Reporting".
 - Combine words that name one specific thing into a single item (e.g. "Product Management", not "product" and "management" separately).
-- For a degree requirement, extract each field of study on its own (e.g. "BSc in Statistics or Industrial Engineering" -> "Statistics", "Industrial Engineering").
+- For a degree requirement, extract each field of study on its own (e.g. "Bachelor's degree in Nursing or Public Health" -> "Nursing", "Public Health").
 - Do not include generic filler, company boilerplate, or vague adjectives (e.g. "team player", "fast-paced environment", "passionate", "detail-oriented").
 - Deduplicate. Return as many distinct terms as the job description actually specifies, up to ${MAX_TERMS}.
 
