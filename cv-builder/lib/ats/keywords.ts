@@ -1,3 +1,5 @@
+import { stemTokens } from './stem'
+
 const STOP_WORDS = new Set([
   'and', 'or', 'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been',
   'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
@@ -238,16 +240,39 @@ export function matchesKeyword(text: string, keyword: string): boolean {
   return pattern.test(text)
 }
 
+/** Plain words only: a keyword like "c++", "ci/cd" or "node.js" must match literally. */
+const STEMMABLE_KEYWORD = /^[a-z0-9]+(?:[\s-]+[a-z0-9]+)*$/i
+
+/**
+ * Splits `resumeText` into the JD keywords it contains and the ones it lacks.
+ * A keyword matches literally (word-bounded) or, failing that, by word root:
+ * its stemmed words appear as a consecutive run in the stemmed text, so
+ * "data analysis" matches "Data Analyst" and "fraud models" matches "fraud
+ * modeling", the way an ATS search with stemming would. `matchesKeyword`
+ * itself stays literal; job-search rules depend on that.
+ */
 export function keywordOverlap(
   resumeText: string,
   jdKeywords: string[]
 ): { matched: string[]; missing: string[] } {
   const lower = resumeText.toLowerCase()
+  // Padded so a run can only match whole tokens: " fraud model " never matches inside " antifraud models ".
+  let stemmedText: string | null = null
   const matched: string[] = []
   const missing: string[] = []
   for (const kw of jdKeywords) {
-    if (matchesKeyword(lower, kw)) matched.push(kw)
-    else missing.push(kw)
+    if (matchesKeyword(lower, kw)) {
+      matched.push(kw)
+      continue
+    }
+    if (STEMMABLE_KEYWORD.test(kw.trim())) {
+      stemmedText ??= ` ${stemTokens(resumeText).join(' ')} `
+      if (stemmedText.includes(` ${stemTokens(kw).join(' ')} `)) {
+        matched.push(kw)
+        continue
+      }
+    }
+    missing.push(kw)
   }
   return { matched, missing }
 }

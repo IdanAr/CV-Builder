@@ -136,6 +136,30 @@ describe('keywordOverlap', () => {
     expect(matched).toHaveLength(2)
     expect(missing).toHaveLength(0)
   })
+
+  it('matches other forms of the same words, the way an ATS search with stemming does', () => {
+    const { matched, missing } = keywordOverlap(
+      'Revenue Operations Data Analyst. Deployed fraud models on multi-million-row financial datasets.',
+      ['data analysis', 'fraud modeling', 'dataset', 'finance', 'fraud detection'],
+    )
+    expect(matched).toEqual(['data analysis', 'fraud modeling', 'dataset', 'finance'])
+    expect(missing).toEqual(['fraud detection'])
+  })
+
+  it('needs the words of a phrase next to each other, in order', () => {
+    const { missing } = keywordOverlap('Analysis of fraud patterns and data quality', ['fraud analysis', 'data analysis'])
+    expect(missing).toEqual(['fraud analysis', 'data analysis'])
+  })
+
+  it('treats hyphens and spaces alike', () => {
+    expect(keywordOverlap('Large scale systems', ['large-scale']).matched).toEqual(['large-scale'])
+  })
+
+  it('does not stem keywords with symbols, or match a word inside a longer word', () => {
+    expect(keywordOverlap('node developer', ['node.js']).missing).toEqual(['node.js'])
+    expect(keywordOverlap('built reactive pipelines in javascript', ['react', 'java']).missing).toEqual(['react', 'java'])
+    expect(keywordOverlap('antifraud models', ['fraud models']).missing).toEqual(['fraud models'])
+  })
 })
 
 describe('matchesKeyword', () => {

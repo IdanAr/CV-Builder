@@ -1,6 +1,7 @@
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 import { extractKeywords, keywordOverlap } from './keywords'
 import { resolveWorkRoles, resolveEducationRoles } from '@/lib/roles'
+import type { KeywordPriority } from '@/lib/ai/jd-extraction-pipeline'
 
 export interface AtsScoreResult {
   total: number
@@ -77,6 +78,17 @@ function flattenHighValueText(data: ResumeData): string {
       parts.push(...(role.highlights ?? []))
     }
   }
+  // Degree fields and certifications have one natural home, so a job's
+  // "BSc in Statistics" or "CPA" requirement is well placed there.
+  for (const edu of data.education ?? []) {
+    for (const role of resolveEducationRoles(edu)) {
+      if (role.area) parts.push(role.area)
+      if (role.studyType) parts.push(role.studyType)
+    }
+  }
+  for (const c of data.certificates ?? []) {
+    if (c.name) parts.push(c.name)
+  }
   return parts.join(' ')
 }
 
@@ -137,12 +149,17 @@ function scoreMetrics(data: ResumeData): number {
 /** Share of a literal match's density and placement credit that a synonym-only match earns. */
 export const SEMANTIC_MATCH_WEIGHT = 0.5
 
+/** Weight of a nice-to-have keyword relative to a must-have (or unclear) one. */
+export const NICE_TO_HAVE_WEIGHT = 0.5
+
 export function scoreResume(
   data: ResumeData,
   jobDescription: string,
   excludedKeywords: string[] = [],
   semanticMatches: string[] = [],
-  jdKeywordsOverride: string[] = []
+  jdKeywordsOverride: string[] = [],
+  /** Lowercased keyword -> priority, from AI extraction. Absent keywords weigh as must-haves. */
+  keywordPriorities: Record<string, KeywordPriority> = {}
 ): AtsScoreResult {
   const formatScore = scoreFormat(data)
   const metricsScore = scoreMetrics(data)
@@ -194,21 +211,27 @@ export function scoreResume(
 
   // Scoring only considers the active (non-excluded) subset, both as the
   // matched count and as the denominator, so an excluded word neither helps
-  // nor drags down the score.
+  // nor drags down the score. Each keyword is weighted by how strongly the
+  // job asks for it, so a missing nice-to-have costs half a missing must-have.
   const activeKeywords = jdKeywords.filter(k => !excluded.has(k))
   const semanticMatchedKeywords = semanticallyPromoted.filter(k => !excluded.has(k))
-  const semanticCredit = semanticMatchedKeywords.length * SEMANTIC_MATCH_WEIGHT
-  const literalMatchedCount = matched.length - semanticMatchedKeywords.length
-  const keywordDensityScore = activeKeywords.length > 0
-    ? Math.min(35, Math.round(((literalMatchedCount + semanticCredit) / activeKeywords.length) * 35))
-    : 0
+  const semanticSet = new Set(semanticMatchedKeywords)
+  const literalSet = new Set(matched.filter(k => !semanticSet.has(k)))
+  const weightOf = (k: string) => (keywordPriorities[k] === 'nice-to-have' ? NICE_TO_HAVE_WEIGHT : 1)
+  const totalWeight = activeKeywords.reduce((sum, k) => sum + weightOf(k), 0)
+
+  // Literal match earns full credit, a synonym-only match SEMANTIC_MATCH_WEIGHT.
+  const creditOf = (k: string, literal: Set<string>) =>
+    literal.has(k) ? 1 : semanticSet.has(k) ? SEMANTIC_MATCH_WEIGHT : 0
+  const weightedShare = (literal: Set<string>) =>
+    totalWeight > 0 ? activeKeywords.reduce((sum, k) => sum + weightOf(k) * creditOf(k, literal), 0) / totalWeight : 0
+
+  const keywordDensityScore = Math.min(35, Math.round(weightedShare(literalSet) * 35))
 
   // Where a synonym sits in the CV is unknown, so it gets the same partial
   // credit for placement rather than counting as a high-value match.
   const { matched: hvMatchedLiteral } = keywordOverlap(highValueText, activeKeywords)
-  const keywordPlacementScore = activeKeywords.length > 0
-    ? Math.min(25, Math.round(((hvMatchedLiteral.length + semanticCredit) / activeKeywords.length) * 25))
-    : 0
+  const keywordPlacementScore = Math.min(25, Math.round(weightedShare(new Set(hvMatchedLiteral)) * 25))
 
   const total = Math.min(100, formatScore + keywordDensityScore + keywordPlacementScore + metricsScore)
 

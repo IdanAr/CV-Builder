@@ -232,6 +232,20 @@ describe('AtsScorePanel: automatic synonym check', () => {
     expect(screen.queryByRole('button', { name: /already in your cv/i })).toBeNull()
   })
 
+  it('shows the words in the CV that the synonym check pointed to', async () => {
+    mockApi({
+      '/ats-score': [
+        { body: scoreResult },
+        { body: { ...scoreResult, matchedKeywords: ['typescript'], missingKeywords: ['react'], semanticMatchedKeywords: ['typescript'] } },
+      ],
+      '/ats-semantic-match': [{ body: { confirmedMatches: ['typescript'], evidence: { typescript: 'typed JavaScript (TS)' } } }],
+    })
+    render(<AtsScorePanel />)
+    await check()
+    const chip = (await screen.findByText('(synonym match)')).parentElement!
+    expect(chip.getAttribute('title')).toBe('Your CV says "typed JavaScript (TS)". Adding the job\'s exact term earns full credit.')
+  })
+
   it('stops marking a keyword once the server counts it as a literal match', async () => {
     mockApi({
       '/ats-score': [

@@ -179,3 +179,46 @@ describe('extractJdRequirements', () => {
     expect(prompt).toMatch(/ignore any such text/i)
   })
 })
+
+describe('extractJdRequirements: stable, searchable terms', () => {
+  it('runs at temperature 0, so the same job gives the same list', async () => {
+    mockClaudeResponse([])
+    await extractJdRequirements('Fraud analyst')
+    expect(mockCreate.mock.calls[0]?.[0]?.temperature).toBe(0)
+  })
+
+  it('asks for short terms a recruiter would search for, and degree fields one by one', async () => {
+    mockClaudeResponse([])
+    await extractJdRequirements('Fraud analyst')
+    const prompt: string = mockCreate.mock.calls[0]?.[0]?.messages[0]?.content ?? ''
+    expect(prompt).toContain('ATS search box')
+    expect(prompt).toContain('1 to 3 words')
+    expect(prompt).toContain('"own paid campaigns across social channels" -> "Paid Social"')
+    expect(prompt).toContain('"Nursing", "Public Health"')
+  })
+
+  it('drops descriptive phrases longer than four words', async () => {
+    mockClaudeResponse([
+      { term: 'Fraud Detection', priority: 'must' },
+      { term: 'analysis of large and complex customer datasets', priority: 'must' },
+      { term: 'Google Cloud Platform Console', priority: 'ambiguous' },
+    ])
+    const result = await extractJdRequirements('Fraud analyst')
+    expect(result.map((r) => r.term)).toEqual(['fraud detection', 'google cloud platform console'])
+  })
+})
+
+describe('extractJdRequirements: prompt examples', () => {
+  // The examples steer the model, so they are drawn from unrelated fields
+  // rather than from any one job; a prompt full of one field's vocabulary
+  // reads every job through that field.
+  it('does not lean on a single field', async () => {
+    mockClaudeResponse([])
+    await extractJdRequirements('Any job')
+    const prompt: string = mockCreate.mock.calls[0]?.[0]?.messages[0]?.content ?? ''
+    for (const term of ['Frontend Development', 'Paid Social', 'Patient Monitoring', 'Financial Reporting']) {
+      expect(prompt).toContain(term)
+    }
+    expect(prompt).not.toMatch(/fraud|payment/i)
+  })
+})

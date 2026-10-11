@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { scoreResume, flattenAllText, SEMANTIC_MATCH_WEIGHT } from '../scorer'
+import { scoreResume, flattenAllText, SEMANTIC_MATCH_WEIGHT, NICE_TO_HAVE_WEIGHT } from '../scorer'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 const fullData: ResumeData = {
@@ -432,5 +432,71 @@ describe('nested roles', () => {
     }
     const result = scoreResume(data, 'Looking for someone with Snowflake experience')
     expect(result.matchedKeywords).toContain('snowflake')
+  })
+})
+
+describe('scoreResume — keyword priorities', () => {
+  const data: ResumeData = {
+    basics: { name: 'A', email: 'a@b.c', summary: 'SQL analyst.' },
+  }
+  const keywords = ['sql', 'payments']
+
+  it('a missing nice-to-have costs half as much as a missing must-have', () => {
+    expect(NICE_TO_HAVE_WEIGHT).toBe(0.5)
+    const mustMissing = scoreResume(data, 'x', [], [], keywords, { sql: 'must', payments: 'must' })
+    const niceMissing = scoreResume(data, 'x', [], [], keywords, { sql: 'must', payments: 'nice-to-have' })
+    // 1 / 2 * 35 = 17.5 -> 18, and 1 / 1.5 * 35 = 23.3 -> 23
+    expect(mustMissing.breakdown.keywordDensity).toBe(18)
+    expect(niceMissing.breakdown.keywordDensity).toBe(23)
+    expect(niceMissing.breakdown.keywordPlacement).toBe(17)
+  })
+
+  it('treats ambiguous and unlisted keywords as must-haves, so no priorities scores as before', () => {
+    const none = scoreResume(data, 'x', [], [], keywords)
+    const ambiguous = scoreResume(data, 'x', [], [], keywords, { sql: 'ambiguous' })
+    const must = scoreResume(data, 'x', [], [], keywords, { sql: 'must', payments: 'must' })
+    expect(none).toEqual(must)
+    expect(ambiguous).toEqual(must)
+  })
+
+  it('combines priority weight with synonym credit', () => {
+    // payments (nice, weight 0.5) only through a synonym: (1 + 0.5 * 0.5) / 1.5 * 35 = 29.2 -> 29
+    const result = scoreResume(data, 'x', [], ['payments'], keywords, { payments: 'nice-to-have' })
+    expect(result.breakdown.keywordDensity).toBe(29)
+  })
+})
+
+describe('scoreResume — placement in education', () => {
+  it('a degree field counts as well placed', () => {
+    const data: ResumeData = {
+      basics: { name: 'A', email: 'a@b.c', summary: 'Analyst.' },
+      education: [{ institution: 'Shenkar', area: 'Industrial Engineering', studyType: 'B.Sc.' }],
+      certificates: [{ name: 'CPA' }],
+    }
+    const result = scoreResume(data, 'x', [], [], ['industrial engineering', 'cpa'])
+    expect(result.breakdown.keywordPlacement).toBe(25)
+  })
+
+  it('an institution name alone does not', () => {
+    const data: ResumeData = {
+      basics: { name: 'A', email: 'a@b.c' },
+      education: [{ institution: 'Statistics Institute' }],
+    }
+    const result = scoreResume(data, 'x', [], [], ['statistics'])
+    expect(result.matchedKeywords).toEqual(['statistics'])
+    expect(result.breakdown.keywordPlacement).toBe(0)
+  })
+})
+
+describe('scoreResume — word forms', () => {
+  it('counts "Data Analyst" as a literal match for "data analysis"', () => {
+    const data: ResumeData = {
+      basics: { name: 'A', email: 'a@b.c' },
+      work: [{ name: 'Acme', position: 'Data Analyst', startDate: '2020' }],
+    }
+    const result = scoreResume(data, 'x', [], [], ['data analysis'])
+    expect(result.matchedKeywords).toEqual(['data analysis'])
+    expect(result.breakdown.keywordDensity).toBe(35)
+    expect(result.breakdown.keywordPlacement).toBe(25)
   })
 })
