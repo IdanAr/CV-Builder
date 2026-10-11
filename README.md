@@ -7,11 +7,11 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?logo=mongodb)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38bdf8?logo=tailwindcss)
-![Vitest](https://img.shields.io/badge/tests-196%20suites-brightgreen?logo=vitest)
+![Vitest](https://img.shields.io/badge/tests-304%20suites-brightgreen?logo=vitest)
 ![Vercel](https://img.shields.io/badge/deployed-Vercel-black?logo=vercel)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**Live:** [CVitaeStudio-indol-zeta.vercel.app](https://CVitaeStudio-indol-zeta.vercel.app)
+**Live:** [cv-builder-indol-zeta.vercel.app](https://cv-builder-indol-zeta.vercel.app)
 
 ---
 
@@ -47,7 +47,7 @@ Key differentiators:
 - **Dual-track, dual-mode export** - a *Designed* PDF (one of five visual templates, or DOCX via native paragraph styles) for humans, and a plain-text *ATS-safe* PDF mode for parsers, selected per export.
 - **Generate → Critique → Refine AI pipeline** - every AI draft (bullet points, summaries, ATS rewrites, cover letters) is critiqued by a second pass before it reaches the user, and any invented number or skill is flagged for explicit approval.
 - **Real-time ATS scoring with one-click auto-fix** - paste a job description, get a 0-100 score across four vectors, then let AI rewrite the weak sections directly against the missing keywords.
-- **AI-generated, hallucination-guarded cover letters**, tailored to a job description and generated from the same resume facts.
+- **AI-generated, hallucination-guarded cover letters**, tailored to a job description (pasted, or imported from a posting link) and generated from the same resume facts.
 - **A job-application tracking supertable** - an Airtable/Notion-style grid with a Kanban board view, custom columns, multi-column sort, filters, drag-and-drop, and a per-row activity log - to manage every resume version you send out and where it stands.
 - **Job Search Automation** - define a search profile and rule set once, and a daily scan finds new openings, scores them against your resume, and (within daily spend caps) drafts a tailored resume and cover letter ready for review.
 - **Live preview** - the editor renders a paginated HTML/CSS mirror of the document on every keystroke via a debounced Zustand store; the actual PDF/DOCX binary is only compiled on export.
@@ -67,22 +67,29 @@ Key differentiators:
 
 ### Templates & Design
 - Five ATS-safe visual templates: **Classic**, **Modern**, **Minimal**, **Executive**, **Sidebar** - plus a sixth, text-only **ATS** template used exclusively for ATS-safe export.
-- Per-document design controls: font family, header font, primary/accent color (with a preset palette), page margins (0.5-1.5 in, hard floor enforced), line spacing (1.0-1.15).
+- The Design tab is a compact inspector: the template gallery stays on screen, and Colors, Typography, Layout and Size and spacing are collapsible rows that summarise their current value when closed (one open at a time).
+- **Colors:** ten curated primary + accent themes picked in one click, with custom hex fields behind "Custom colors" (opened automatically when the CV already uses an off-theme pair). Themes are matched by value, never stored.
+- **Typography:** font pairings shown as specimens in the CV owner's own name, plus separate Headings and Body pickers that render each font in its own face.
+- **Size and spacing:** page margins (0.5-1.5 in, hard floor enforced), line spacing (1.0-1.15) and font scale, with presets and a single "Fine-tune with sliders" disclosure.
 - Single-column and two-column layouts; column assignment is drag-and-drop per section.
 - Paginated live preview with zoom controls (fit / percentage / manual).
 - Template switching never loses or corrupts career data - the design tree is fully decoupled from the data tree.
 
 ### AI Copilot
 - One-click bullet-point writer from rough notes, and a professional summary generator - each run through the Generate → Critique → Refine pipeline.
-- **ATS Fix**: analyzes the score gap against a job description and proposes targeted rewrites (or a brand-new summary) that weave in missing keywords, shown in a before/after review panel.
-- **Cover letter generator**: drafts a 3-paragraph letter tailored to a job description, using only facts already present in the resume.
+- **ATS Fix**: analyzes the score gap against a job description and proposes targeted rewrites (or a brand-new summary) that weave in missing keywords, shown inline with the added words highlighted over the original.
+- **Cover letter generator**: drafts a 3-paragraph letter tailored to a job description, using only facts already present in the resume. The Cover Letter tab is built around one editable letter box: a generated letter lands in it, Copy / PDF / DOCX and a word count sit on its toolbar, and a rewrite replaces it in one undoable step. The job can be pasted or imported from a posting link, and company and role fill themselves from the posting when empty.
 - Hallucination guard: any metric or skill in AI output not traceable to the user's original input is highlighted for explicit approval before it's committed to the schema.
 - Per-user rate limiting on all AI and upload endpoints.
 
 ### ATS Optimizer
-- Paste any job description → instant 0-100 ATS score.
-- Breakdown across four vectors: Format & Structure (25 pts), Keyword Density (35 pts), Strategic Keyword Placement in summary/recent titles (25 pts), Metric & Outcome Presence (15 pts).
-- Matched keywords shown as chips; missing keywords flagged with a fix action. Keywords can be explicitly excluded from scoring without disappearing from the UI.
+- One page, top to bottom: paste a job description and press **Check match**; the job then folds into a one-line summary with a Change job action.
+- A 0-100 score ring with a plain-language verdict, broken down across four vectors: Format & Structure (25 pts), Keyword Density (35 pts), Strategic Keyword Placement in summary/recent titles (25 pts), Metric & Outcome Presence (15 pts).
+- A synonym (semantic) check runs by itself after the first score and says what it found. Each synonym match quotes the CV wording it relies on, shown on the chip.
+- Missing keywords are grouped into **Required** and **Nice to have**, and synonym-only matches appear alongside them as **In your CV in other words** (they count at half weight, since recruiter search rewards the job's exact term). Each can be ignored with one click, and ignored keywords stay listed with a Count again action.
+- Re-running the same job gives the same score: the AI's reading of the job and the synonym results are cached per user.
+- **Add missing keywords with AI** shows suggestions inline (Apply, Skip, Apply All Verified; flagged figures still need an individual Apply), then **Re-check score** re-scores against the cached keywords.
+- If the AI job reading fails or is rate limited, a basic keyword extractor takes over and the panel says so, with the reason and a "check again" action.
 
 ### Export
 - **PDF (Designed)** - via `@react-pdf/renderer`, one of five visual templates, semantic tags, decorative elements marked as artifacts.
@@ -244,7 +251,9 @@ cv-builder/
 │   │   ├── resumes/[id]/ai-suggest/         # Bullet / summary AI copilot
 │   │   ├── resumes/[id]/ats-score/          # ATS scoring endpoint
 │   │   ├── resumes/[id]/ats-fix/            # AI-proposed ATS rewrites
+│   │   ├── resumes/[id]/ats-semantic-match/ # AI synonym check for missing keywords
 │   │   ├── resumes/[id]/cover-letter/       # AI cover letter generator
+│   │   ├── resumes/[id]/job-description/    # Import a job description from a posting link
 │   │   ├── resumes/[id]/export/{pdf,docx}/  # Export (pdf supports mode: ats | designed)
 │   │   ├── resumes/[id]/duplicate/          # Fork a resume (links version, resets status)
 │   │   ├── resumes/upload/{parse,extract}/  # Upload + AI extraction into JSON Resume
@@ -276,11 +285,12 @@ cv-builder/
 │   └── ui/                                  # Button, Card, Badge, Popover, Menu, Dialog, Toaster, Skeleton, ... (AppNavbar, Plasma: marketing and legal pages only)
 ├── lib/
 │   ├── ai/                                  # pipeline.ts, ats-fix-pipeline.ts, cover-letter-pipeline.ts, hallucination-guard.ts, models.ts
-│   ├── api/                                 # Shared route handler logic: resumes.ts, applications.ts, board-config.ts, jobsearch-profiles.ts, jobsearch-rules.ts, scraped-jobs.ts, route-errors.ts
-│   ├── ats/                                 # scorer.ts, keywords.ts
+│   ├── api/                                 # Shared route handler logic: resumes.ts, applications.ts, board-config.ts, jobsearch-profiles.ts, jobsearch-rules.ts, scraped-jobs.ts, ai-cache.ts, route-errors.ts
+│   ├── ats/                                 # scorer.ts, keywords.ts, stem.ts (conservative word-root matching)
 │   ├── applications/                        # cells.ts, filter.ts, order.ts, sort.ts, types.ts
 │   ├── jobsearch/                           # scan.ts, apply.ts, rules.ts, queue.ts, countries.ts, stages.ts, pipeline-url.ts, job-actions.ts, sources/ (freehire.ts, comeet.ts)
 │   ├── design/                               # color-tokens.ts (semantic colours), tokens.ts (design-panel constants), font-scale.ts
+│   ├── editor/                              # color-themes.ts (curated colour themes), design-presets.ts, use-format-score.ts
 │   ├── docx/                                # resume-docx.ts, styles.ts
 │   ├── fonts/                                # families.ts, registry.ts - web-font → ATS-safe system font mapping
 │   ├── hooks/                                # use-debounce.ts, use-media-query.ts, use-pdf-pagination.ts
@@ -288,12 +298,14 @@ cv-builder/
 │   ├── schemas/                             # resume.zod.ts, application.zod.ts, jobsearch.zod.ts
 │   ├── stores/                              # resume-editor.store.ts, toast.store.ts (Zustand)
 │   ├── upload/                              # parse-file.ts, extract-resume.ts
-│   ├── rate-limit.ts                        # In-memory token-bucket limiter (AI / upload / preview)
+│   ├── job-url/                             # safe-fetch.ts (SSRF-guarded fetch of a user-supplied job link), extract.ts (JSON-LD JobPosting, else page text)
+│   ├── rate-limit.ts                        # In-memory token-bucket limiter (AI / upload / preview / job-link import)
 │   ├── export-mode.ts                       # 'ats' | 'designed' export mode parsing
 │   ├── rich-text.ts                         # Bold/italic/underline markers + blank-line paragraph splitting
 │   ├── preview-pagination.ts, preview-anchor.ts
 │   └── mongodb.ts, auth.ts, db.ts, sections.ts, text-diff.ts, format-date.ts, ...
-├── models/                                  # Resume.ts, Application.ts, ApplicationActivity.ts, BoardConfig.ts, JobSearchProfile.ts, JobSearchRule.ts, ScrapedJob.ts
+├── models/                                  # Resume.ts, Application.ts, ApplicationActivity.ts, BoardConfig.ts, JobSearchProfile.ts, JobSearchRule.ts, ScrapedJob.ts, AiCache.ts
+├── scripts/                                 # seed-demo.ts + demo-seed/ (demo account seed), font/token/favicon build helpers
 ├── vercel.json                              # Vercel Cron schedule for the job-search scan
 └── types/                                   # Global TypeScript types
 ```
@@ -339,7 +351,7 @@ Every AI-authored piece of content - bullet points, summaries, ATS-targeted rewr
 
 **Hallucination guard:** independent of the critique step, `detectHallucinations()` compares the final output's numeric claims and skill/technology terms against the user's original text. Anything not found in the source is returned as a `pendingApprovals` list and surfaced in the UI - nothing is silently written to the JSON schema without the user explicitly accepting it. Job-search draft resumes carry the same `pendingApprovals` list through to the review queue.
 
-All AI endpoints are rate-limited to 10 requests/minute per user.
+All AI endpoints are rate-limited to 10 requests/minute per user. Importing a job description from a link has its own bucket (also 10/min per user).
 
 ---
 
@@ -350,13 +362,21 @@ All AI endpoints are rate-limited to 10 requests/minute per user.
 | Vector | Max points | What it measures |
 |---|---|---|
 | Format & Structure | 25 | Required fields present, summary length, complete work entries, well-formed highlights, structured skills |
-| Keyword Density | 35 | Literal (non-semantic) overlap between the job description and the full resume text |
-| Strategic Keyword Placement | 25 | Overlap weighted toward the summary and most recent job titles |
+| Keyword Density | 35 | Overlap between the job description's keywords and the full resume text |
+| Strategic Keyword Placement | 25 | Overlap weighted toward the summary, most recent job titles, education fields and certificate names |
 | Metric & Outcome Presence | 15 | Share of bullet points containing a number, percentage, dollar amount, or multiplier |
 
-Keywords can be explicitly excluded from a specific job description's scoring - excluded terms still render as muted chips in the UI rather than disappearing, so the exclusion stays visible and reversible.
+How keywords count toward the two keyword vectors:
 
-**ATS Fix** takes the missing-keyword list and asks the AI pipeline to rewrite the weakest section (or draft a summary from scratch if none exists), producing a diffable before/after suggestion - reviewed through the same hallucination guard before it can be applied. The same scorer and fix pipeline power the job-search scan's threshold filter and semi-auto tailoring.
+- **Literal match** counts in full. When no literal match is found, a conservative stemmer (`lib/ats/stem.ts`) matches word roots, so "data analysis" matches "Data Analyst".
+- **Synonym-only match** (confirmed by the AI synonym check, for example k8s for Kubernetes) earns half a literal match (`SEMANTIC_MATCH_WEIGHT`) and is reported in `semanticMatchedKeywords`. Every synonym match must quote the CV, and the quote is verified against the CV text.
+- **Priority:** a nice-to-have keyword weighs half a required one. Scores without priorities (the job-search scan) are unchanged.
+
+The job description's keywords are read by the AI (`extractJdRequirements`), which returns short 1-3 word terms a recruiter would search for and tags each as required or nice to have. Both AI calls (job reading and synonym check) run at temperature 0 and are cached per user in the `AiCache` collection (30-day TTL), keyed by a hash of the normalized input. A cache hit skips the AI rate limit. When the AI call fails, returns nothing, or hits the rate limit, a regex extractor in `lib/ats/keywords.ts` takes over; it is deliberately strict (a plain word needs three mentions, descriptive hyphenations such as "fast-paced" are dropped, glued sentences are split before tokenising). `/ats-score` reports which one ran as `keywordSource` (`ai` | `basic` | `cached`) plus a `keywordFallbackReason`, so the panel can say when basic matching was used.
+
+Keywords can be explicitly excluded from a specific job description's scoring - ignored terms stay listed in the UI with a Count again action rather than disappearing, so the exclusion stays visible and reversible. Every ATS server call first flushes any pending autosave, so the score always reflects the latest edits.
+
+**ATS Fix** takes the missing-keyword list and asks the AI pipeline to rewrite the weakest section (or draft a summary from scratch if none exists), producing a diffable before/after suggestion - reviewed through the same hallucination guard before it can be applied. Synonym-only keywords are sent too (up to 10), and the model adds the job's exact term next to the user's own wording without replacing it. Those additions are always flagged for approval, so they are never bulk-applied. The same scorer and fix pipeline power the job-search scan's threshold filter and semi-auto tailoring.
 
 ---
 
@@ -570,6 +590,16 @@ npm run test       # Vitest, watch mode
 npm run test:run   # Vitest, single run (CI)
 ```
 
+### Demo account seed
+
+`scripts/seed-demo.ts` fills one account with sample CVs, tracked applications (with activity history and custom columns), job-search profiles, rules and pipeline postings in every stage. The target comes only from `DEMO_USER_ID` and `DEMO_USER_EMAIL` in `.env.local`, and all writes and deletes are scoped to that one user. Committed CV content is fictional; real content can be supplied in `scripts/demo-seed/demo-content.local.json`, which is git-ignored.
+
+```bash
+npx tsx scripts/seed-demo.ts                  # dry run: checks the user, prints the plan, writes nothing
+npx tsx scripts/seed-demo.ts --apply          # first-time seed (refuses if the account already has data)
+npx tsx scripts/seed-demo.ts --apply --reset  # wipe this user's data and re-seed
+```
+
 ---
 
 ## Environment Variables
@@ -588,6 +618,7 @@ Copy `cv-builder/.env.local.example` to `cv-builder/.env.local` and fill in:
 | `QSTASH_URL` | No | Only needed if your QStash instance is not the default EU region |
 | `CRON_SECRET` | No | Bearer token Vercel Cron sends when calling the scan fan-out route (`openssl rand -base64 32`). Also unlocks the detailed `/api/health` output. |
 | `APP_URL` | No | This app's own canonical base URL, so the QStash publish call knows where to send the worker callback |
+| `DEMO_USER_ID` / `DEMO_USER_EMAIL` | No | The one account `scripts/seed-demo.ts` may seed; both must match the same user |
 
 The three QStash variables are a set - configure all of them or none. A token
 without signing keys publishes scan jobs the worker then rejects.
@@ -622,9 +653,11 @@ All routes below are session-authenticated via Auth.js (`auth()` wrapper) and sc
 | `GET` / `PATCH` / `DELETE` | `/api/resumes/:id` | Read / update / delete a resume |
 | `POST` | `/api/resumes/:id/duplicate` | Fork a resume; links version, resets application status |
 | `POST` | `/api/resumes/:id/ai-suggest` | Generate a bullet point or summary suggestion |
-| `POST` | `/api/resumes/:id/ats-score` | Score against a pasted job description |
-| `POST` | `/api/resumes/:id/ats-fix` | Propose AI rewrites targeting missing keywords |
+| `POST` | `/api/resumes/:id/ats-score` | Score against a pasted job description; returns `keywordSource` and, on fallback, `keywordFallbackReason` |
+| `POST` | `/api/resumes/:id/ats-semantic-match` | AI synonym check of missing keywords against the resume; each match carries a verified CV quote (cached per user) |
+| `POST` | `/api/resumes/:id/ats-fix` | Propose AI rewrites targeting missing keywords (and `synonymKeywords`, added next to the user's wording) |
 | `POST` | `/api/resumes/:id/cover-letter` | Generate a tailored cover letter |
+| `POST` | `/api/resumes/:id/job-description` | `{ url }` → `{ text, title?, company?, source, host }`: import a job description from a public posting link (SSRF-guarded, 2 MB / 10 s cap, 422 when the page has no readable posting) |
 | `POST` | `/api/resumes/:id/export/pdf` | Export PDF (`mode: 'designed' \| 'ats'`) |
 | `POST` | `/api/resumes/:id/export/docx` | Export DOCX |
 | `POST` | `/api/resumes/upload/parse` | Parse an uploaded PDF/DOCX into raw text |
@@ -675,7 +708,7 @@ All routes below are session-authenticated via Auth.js (`auth()` wrapper) and sc
 
 ## Testing
 
-The project has **196 Vitest test suites (1,861 tests)** covering schemas, API routes, AI pipelines (including hallucination detection), the ATS scorer, DOCX/PDF template rendering, pagination math, the application-tracking sort/filter/order logic, the job-search scan/rules/apply pipeline, and editor components, run via `@testing-library/react` + `jsdom`.
+The project has **304 Vitest test suites (3,195 tests)** covering schemas, API routes, AI pipelines (including hallucination detection), the ATS scorer, DOCX/PDF template rendering, pagination math, the application-tracking sort/filter/order logic, the job-search scan/rules/apply pipeline, and editor components, run via `@testing-library/react` + `jsdom`.
 
 ```bash
 npm run test        # watch mode
@@ -688,7 +721,7 @@ npm run test:run    # single run, CI-friendly
 
 The app is deployed on **Vercel**, built from this repository's `main` branch - every push triggers an automatic deployment.
 
-**Live:** [CVitaeStudio-indol-zeta.vercel.app](https://CVitaeStudio-indol-zeta.vercel.app)
+**Live:** [cv-builder-indol-zeta.vercel.app](https://cv-builder-indol-zeta.vercel.app)
 
 ### Project settings
 
