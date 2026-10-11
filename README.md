@@ -11,7 +11,7 @@
 ![Vercel](https://img.shields.io/badge/deployed-Vercel-black?logo=vercel)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**Live:** [cv-builder-indol-zeta.vercel.app](https://cv-builder-indol-zeta.vercel.app)
+**Live:** [cvitaestudio-indol-zeta.vercel.app/](https://cvitaestudio-indol-zeta.vercel.app/)
 
 ---
 
