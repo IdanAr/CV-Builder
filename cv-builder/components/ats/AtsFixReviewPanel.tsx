@@ -105,7 +105,7 @@ export function AtsFixReviewPanel({
           aria-describedby={applyAllDisabled ? 'apply-all-reason' : undefined}
           title={
             verifiedCount < visible.length
-              ? 'Edits with unverified figures are skipped - apply those individually after checking them'
+              ? 'Edits with unverified terms or figures are skipped - apply those individually after checking them'
               : undefined
           }
         >
@@ -116,7 +116,7 @@ export function AtsFixReviewPanel({
       {/* A disabled Button has pointer-events-none, so its title never shows; say it in text. */}
       {applyAllDisabled && (
         <p id="apply-all-reason" className="text-xs text-fg-muted">
-          No edit is verified yet. Check the unverified figures and apply those edits individually.
+          No edit is verified yet. Check the unverified terms or figures and apply those edits individually.
         </p>
       )}
 
@@ -189,7 +189,7 @@ export function AtsFixReviewPanel({
               {fix.pendingApprovals.length > 0 && (
                 <div className="rounded-control border border-border-attention bg-surface-attention px-3 py-2">
                   <p className="mb-1 text-xs font-medium text-fg-attention">
-                    Contains figures not in your original text - verify before applying:
+                    Adds terms or figures not in your original text. Check them before applying:
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {fix.pendingApprovals.map((claim) => (

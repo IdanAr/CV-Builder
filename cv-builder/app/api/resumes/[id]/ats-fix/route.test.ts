@@ -57,6 +57,32 @@ describe('POST /api/resumes/[id]/ats-fix', () => {
     expect(res.status).toBe(400)
   })
 
+  it('accepts synonymKeywords on their own and forwards both lists to the pipeline', async () => {
+    const { auth } = await import('@/lib/auth')
+    vi.mocked(auth).mockImplementationOnce((handler) => async (req: Request, ctx: unknown) => {
+      return handler(Object.assign(req, { auth: { user: { id: 'user-1' } } }) as never, ctx as never)
+    })
+
+    const { getResume } = await import('@/lib/api/resumes')
+    vi.mocked(getResume).mockResolvedValueOnce({ title: 'My CV', data: { basics: { name: 'A' } }, meta: {} } as never)
+    const { runAtsFixPipeline } = await import('@/lib/ai/ats-fix-pipeline')
+    vi.mocked(runAtsFixPipeline).mockResolvedValueOnce([])
+
+    const { POST } = await import('./route')
+    const req = new Request('http://localhost/api/resumes/abc/ats-fix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ synonymKeywords: ['kubernetes', 42, ...Array.from({ length: 12 }, (_, i) => `s${i}`)] }),
+    })
+    const res = await POST(req as never, { params: Promise.resolve({ id: 'abc' }) } as never) as Response
+    expect(res.status).toBe(200)
+    const [, missing, synonyms] = vi.mocked(runAtsFixPipeline).mock.calls.at(-1)!
+    expect(missing).toEqual([])
+    // Non-strings dropped, capped at 10.
+    expect(synonyms).toHaveLength(10)
+    expect(synonyms?.[0]).toBe('kubernetes')
+  })
+
   it('returns 429 with Retry-After when the user is rate limited', async () => {
     const { auth } = await import('@/lib/auth')
     vi.mocked(auth).mockImplementationOnce((handler) => async (req: Request, ctx: unknown) => {

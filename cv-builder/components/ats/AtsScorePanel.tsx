@@ -126,6 +126,29 @@ function MissingChip({ kw, priority, onIgnore }: { kw: string; priority: Keyword
   )
 }
 
+/** A JD keyword the CV covers only through a synonym: half credit until the job's exact term is added. */
+function SynonymChip({ kw, onIgnore }: { kw: string; onIgnore: () => void }) {
+  return (
+    <span
+      className={cn(CHIP, 'border-border bg-surface-selected pl-2.5 pr-0.5 text-fg-body')}
+      title="Your CV covers this in other words. Adding the job's exact term earns full credit."
+    >
+      <span aria-hidden="true">≈</span>
+      {kw}
+      <span className="sr-only">(synonym match)</span>
+      <button
+        type="button"
+        onClick={onIgnore}
+        aria-label={`Ignore "${kw}"`}
+        title="Keep my wording. Stop counting it."
+        className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:h-9 max-sm:w-9"
+      >
+        <X aria-hidden="true" className="h-3 w-3" />
+      </button>
+    </span>
+  )
+}
+
 type FixStatus = 'idle' | 'loading' | 'ready' | 'error'
 type SemanticStatus = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -285,7 +308,9 @@ export function AtsScorePanel() {
   }
 
   async function handleGenerateFixes() {
-    if (!resumeId || !result || result.missingKeywords.length === 0) return
+    if (!resumeId || !result) return
+    const synonymKeywords = result.semanticMatchedKeywords ?? []
+    if (result.missingKeywords.length === 0 && synonymKeywords.length === 0) return
     setFixStatus('loading')
     setFixError(null)
     setDismissedIds(new Set())
@@ -295,7 +320,7 @@ export function AtsScorePanel() {
       const res = await fetchWithTimeout(`/api/resumes/${resumeId}/ats-fix`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ missingKeywords: result.missingKeywords }),
+        body: JSON.stringify({ missingKeywords: result.missingKeywords, synonymKeywords }),
       })
       if (!res.ok) throw new Error(await apiErrorMessage(res, 'Could not generate suggestions. Please try again.'))
       setFixes(await res.json())
@@ -339,6 +364,12 @@ export function AtsScorePanel() {
   const missing = result ? sortByPriority(result.missingKeywords, keywordPriorities) : []
   const mustHave = missing.filter((k) => keywordPriorities[k] !== 'nice-to-have')
   const niceToHave = missing.filter((k) => keywordPriorities[k] === 'nice-to-have')
+  // Read from the result, not from the last synonym check: once the user has
+  // written the job's exact term, the server counts it as a literal match.
+  const synonymMatched = result?.semanticMatchedKeywords ?? []
+  const synonyms = sortByPriority(synonymMatched, keywordPriorities)
+  const literalMatched = result ? result.matchedKeywords.filter((k) => !synonymMatched.includes(k)) : []
+  const hasGaps = missing.length > 0 || synonyms.length > 0
   const allFixesHandled = fixStatus === 'ready' && fixes.every((f) => dismissedIds.has(f.id))
 
   return (
@@ -417,10 +448,9 @@ export function AtsScorePanel() {
               Checking whether your CV already covers missing keywords in other words…
             </p>
           )}
-          {semanticStatus === 'ready' && semanticMatches.length > 0 && (
-            <p role="status" className="flex items-center gap-2 px-1 text-xs text-fg-success">
-              <Check aria-hidden="true" className="h-3.5 w-3.5" />
-              {semanticMatches.length} {semanticMatches.length === 1 ? 'keyword is' : 'keywords are'} already covered in other words, and counted.
+          {semanticStatus === 'ready' && synonyms.length > 0 && (
+            <p role="status" className="px-1 text-xs text-fg-muted">
+              {synonyms.length} {synonyms.length === 1 ? 'keyword is' : 'keywords are'} covered in other words, counted at half weight.
             </p>
           )}
           {semanticStatus === 'error' && (
@@ -433,11 +463,15 @@ export function AtsScorePanel() {
           )}
 
           {/* 3. Gaps */}
-          {missing.length > 0 ? (
+          {hasGaps ? (
             <section aria-labelledby={`${ids}-gaps`} className="rounded-card border border-border bg-surface p-4">
               <div className="flex items-baseline justify-between">
-                <h2 id={`${ids}-gaps`} className="text-sm font-medium text-fg-heading">Missing from your CV</h2>
-                <span className="text-xs text-fg-muted">{missing.length} of {missing.length + result.matchedKeywords.length}</span>
+                <h2 id={`${ids}-gaps`} className="text-sm font-medium text-fg-heading">
+                  {missing.length > 0 ? 'Missing from your CV' : "Use the job's exact wording"}
+                </h2>
+                <span className="text-xs text-fg-muted">
+                  {missing.length > 0 ? missing.length : synonyms.length} of {missing.length + result.matchedKeywords.length}
+                </span>
               </div>
               {keywordSource.source === 'basic' && (
                 <div role="note" className="mt-3 rounded-control border border-border-attention bg-surface-attention px-3 py-2 text-xs text-fg-attention">
@@ -476,15 +510,30 @@ export function AtsScorePanel() {
                   </div>
                 </div>
               )}
-              <p className="mt-3 text-xs text-fg-muted">
-                Don&apos;t have one of these? Press <X aria-label="the cross" className="inline h-3 w-3 align-[-2px]" /> on it. It stops counting against you and the AI won&apos;t add it.
-              </p>
+              {missing.length > 0 && (
+                <p className="mt-3 text-xs text-fg-muted">
+                  Don&apos;t have one of these? Press <X aria-label="the cross" className="inline h-3 w-3 align-[-2px]" /> on it. It stops counting against you and the AI won&apos;t add it.
+                </p>
+              )}
+              {synonyms.length > 0 && (
+                <div className="mt-3">
+                  <p className="mb-1.5 text-xs text-fg-muted">In your CV in other words</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {synonyms.map((kw) => (
+                      <SynonymChip key={kw} kw={kw} onIgnore={() => setIgnored(kw, true)} />
+                    ))}
+                  </div>
+                  <p className="mt-1.5 text-xs text-fg-muted">
+                    The job uses different words for these, so they count at half weight. Adding the job&apos;s exact term next to yours earns full credit.
+                  </p>
+                </div>
+              )}
 
               {fixStatus === 'idle' || fixStatus === 'error' ? (
                 <div className="mt-4 border-t border-border-subtle pt-4">
                   <Button size="md" onClick={handleGenerateFixes} className="w-full">
                     <Sparkles aria-hidden="true" className="h-4 w-4" />
-                    Add missing keywords with AI
+                    {missing.length > 0 ? 'Add missing keywords with AI' : "Add the job's exact terms with AI"}
                   </Button>
                   <p className="mt-1.5 text-center text-xs text-fg-muted">
                     Suggests edits to your summary and bullets. Nothing changes until you apply it.
@@ -551,7 +600,7 @@ export function AtsScorePanel() {
           )}
 
           {/* 5. Already covered, and anything the user chose to ignore */}
-          {result.matchedKeywords.length > 0 && (
+          {literalMatched.length > 0 && (
             <section className="rounded-card border border-border bg-surface">
               <button
                 type="button"
@@ -561,25 +610,16 @@ export function AtsScorePanel() {
               >
                 <Check aria-hidden="true" className="h-4 w-4 text-fg-success" />
                 <span className="flex-1 text-sm text-fg-heading">Already in your CV</span>
-                <span className="text-xs text-fg-muted">{result.matchedKeywords.length}</span>
+                <span className="text-xs text-fg-muted">{literalMatched.length}</span>
                 <ChevronDown aria-hidden="true" className={cn('h-4 w-4 text-fg-subtle transition-transform', matchedOpen && 'rotate-180')} />
               </button>
               {matchedOpen && (
                 <div className="flex flex-wrap gap-1.5 border-t border-border-subtle px-4 py-3">
-                  {result.matchedKeywords.map((kw) => {
-                    const semantic = semanticMatches.includes(kw)
-                    return (
-                      <span
-                        key={kw}
-                        title={semantic ? 'Covered by a synonym or related term in your CV' : undefined}
-                        className={cn(CHIP, 'px-2.5', semantic ? 'border-border bg-surface-selected text-fg-body' : 'border-border-success bg-surface text-fg-success')}
-                      >
-                        {semantic && <span aria-hidden="true">≈</span>}
-                        {kw}
-                        {semantic && <span className="sr-only">(synonym match)</span>}
-                      </span>
-                    )
-                  })}
+                  {literalMatched.map((kw) => (
+                    <span key={kw} className={cn(CHIP, 'border-border-success bg-surface px-2.5 text-fg-success')}>
+                      {kw}
+                    </span>
+                  ))}
                 </div>
               )}
             </section>
