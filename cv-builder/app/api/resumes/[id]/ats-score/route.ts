@@ -2,7 +2,15 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { getResume } from '@/lib/api/resumes'
 import { scoreResume } from '@/lib/ats/scorer'
-import { extractJdRequirements, normalizePriority, MAX_JD_LENGTH, type KeywordPriority } from '@/lib/ai/jd-extraction-pipeline'
+import {
+  extractJdRequirements,
+  normalizePriority,
+  MAX_JD_LENGTH,
+  JD_EXTRACTION_VERSION,
+  type ExtractedRequirement,
+  type KeywordPriority,
+} from '@/lib/ai/jd-extraction-pipeline'
+import { aiCacheKey, readAiCache, writeAiCache } from '@/lib/api/ai-cache'
 import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/rate-limit'
 import { apiError, handleRouteError } from '@/lib/api/route-errors'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
@@ -59,15 +67,28 @@ export const POST = auth(async (req, ctx) => {
     // 'cached' means the client supplied the list from an earlier response.
     let keywordSource: 'ai' | 'basic' | 'cached' = jdKeywordsOverride.length > 0 ? 'cached' : 'basic'
     let keywordFallbackReason: 'rate-limited' | 'ai-error' | 'ai-empty' | undefined
-    if (jdKeywordsOverride.length === 0 && jobDescription.trim()) {
+    // A job description already read for this user is answered from the
+    // cache, so the same job always gets the same keyword list (and spends no
+    // AI budget) however many times it is pasted.
+    const jdCacheKey = aiCacheKey(JD_EXTRACTION_VERSION, jobDescription)
+    const cached = jdKeywordsOverride.length === 0 && jobDescription.trim()
+      ? await readAiCache<ExtractedRequirement[]>(req.auth.user.id, 'jd-requirements', jdCacheKey)
+      : null
+    if (cached && cached.length > 0) {
+      jdKeywordsOverride = cached.map(r => r.term)
+      keywordPriorities = Object.fromEntries(cached.map(r => [r.term, normalizePriority(r.priority)]))
+      keywordSource = 'ai'
+    } else if (jdKeywordsOverride.length === 0 && jobDescription.trim()) {
       const rate = checkRateLimit(`${req.auth.user.id}:ai`, AI_RATE_LIMIT)
       if (rate.allowed) {
         try {
           const requirements = await extractJdRequirements(jobDescription)
           jdKeywordsOverride = requirements.map(r => r.term)
           keywordPriorities = Object.fromEntries(requirements.map(r => [r.term, r.priority]))
-          if (requirements.length > 0) keywordSource = 'ai'
-          else keywordFallbackReason = 'ai-empty'
+          if (requirements.length > 0) {
+            keywordSource = 'ai'
+            await writeAiCache(req.auth.user.id, 'jd-requirements', jdCacheKey, requirements)
+          } else keywordFallbackReason = 'ai-empty'
         } catch (err) {
           console.error('POST /api/resumes/[id]/ats-score: extractJdRequirements threw, falling back to regex extraction', err)
           jdKeywordsOverride = []
@@ -81,7 +102,7 @@ export const POST = auth(async (req, ctx) => {
     }
 
     const data = (resume.data ?? {}) as ResumeData
-    const result = scoreResume(data, jobDescription, excludedKeywords, semanticMatches, jdKeywordsOverride)
+    const result = scoreResume(data, jobDescription, excludedKeywords, semanticMatches, jdKeywordsOverride, keywordPriorities)
 
     return NextResponse.json({ ...result, keywordPriorities, keywordSource, keywordFallbackReason })
   } catch (err) {

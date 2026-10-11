@@ -32,9 +32,9 @@ const FALLBACK_REASON: Record<FallbackReason, string> = {
 }
 
 const VECTORS: { key: keyof AtsScoreResult['breakdown']; label: string; hint: string; max: number }[] = [
-  { key: 'keywordDensity', label: 'Keyword coverage', hint: "How many of the job's keywords appear anywhere in your CV", max: 35 },
+  { key: 'keywordDensity', label: 'Keyword coverage', hint: "How many of the job's keywords appear anywhere in your CV. Nice-to-haves count half", max: 35 },
   { key: 'format', label: 'Structure', hint: 'Contact details, a summary, complete roles and real bullet points', max: 25 },
-  { key: 'keywordPlacement', label: 'Keyword placement', hint: 'Keywords in your summary, titles and bullets count the most', max: 25 },
+  { key: 'keywordPlacement', label: 'Keyword placement', hint: 'Keywords in your summary, titles, recent bullets and education count the most', max: 25 },
   { key: 'metrics', label: 'Measurable results', hint: 'Bullets that carry a number, a percentage or a team size', max: 15 },
 ]
 
@@ -127,11 +127,11 @@ function MissingChip({ kw, priority, onIgnore }: { kw: string; priority: Keyword
 }
 
 /** A JD keyword the CV covers only through a synonym: half credit until the job's exact term is added. */
-function SynonymChip({ kw, onIgnore }: { kw: string; onIgnore: () => void }) {
+function SynonymChip({ kw, evidence, onIgnore }: { kw: string; evidence?: string; onIgnore: () => void }) {
   return (
     <span
       className={cn(CHIP, 'border-border bg-surface-selected pl-2.5 pr-0.5 text-fg-body')}
-      title="Your CV covers this in other words. Adding the job's exact term earns full credit."
+      title={`${evidence ? `Your CV says "${evidence}". ` : 'Your CV covers this in other words. '}Adding the job's exact term earns full credit.`}
     >
       <span aria-hidden="true">≈</span>
       {kw}
@@ -182,6 +182,8 @@ export function AtsScorePanel() {
   const [appliedCount, setAppliedCount] = useState(0)
 
   const [semanticMatches, setSemanticMatches] = useState<string[]>([])
+  // Keyword -> the words in the CV the synonym check pointed to.
+  const [synonymEvidence, setSynonymEvidence] = useState<Record<string, string>>({})
   const [semanticStatus, setSemanticStatus] = useState<SemanticStatus>('idle')
   const [matchedOpen, setMatchedOpen] = useState(false)
 
@@ -270,7 +272,8 @@ export function AtsScorePanel() {
         body: JSON.stringify({ missingKeywords: base.missingKeywords }),
       })
       if (!res.ok) throw new Error(await apiErrorMessage(res, 'Synonym check failed.'))
-      const { confirmedMatches } = (await res.json()) as { confirmedMatches: string[] }
+      const { confirmedMatches, evidence } = (await res.json()) as { confirmedMatches: string[]; evidence?: Record<string, string> }
+      setSynonymEvidence(evidence ?? {})
       if (confirmedMatches.length > 0) {
         await score({
           semantic: confirmedMatches,
@@ -287,6 +290,7 @@ export function AtsScorePanel() {
 
   async function handleCheck() {
     setSemanticStatus('idle')
+    setSynonymEvidence({})
     setMatchedOpen(false)
     const json = await score()
     if (!json) return
@@ -520,7 +524,7 @@ export function AtsScorePanel() {
                   <p className="mb-1.5 text-xs text-fg-muted">In your CV in other words</p>
                   <div className="flex flex-wrap gap-1.5">
                     {synonyms.map((kw) => (
-                      <SynonymChip key={kw} kw={kw} onIgnore={() => setIgnored(kw, true)} />
+                      <SynonymChip key={kw} kw={kw} evidence={synonymEvidence[kw]} onIgnore={() => setIgnored(kw, true)} />
                     ))}
                   </div>
                   <p className="mt-1.5 text-xs text-fg-muted">

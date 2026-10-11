@@ -26,6 +26,18 @@ vi.mock('@/lib/ai/jd-extraction-pipeline', async (importOriginal) => {
   }
 })
 
+// The cache module's real key function is used; only its database calls are stubbed.
+vi.mock('@/lib/db', () => ({ default: vi.fn(async () => undefined) }))
+
+vi.mock('@/lib/api/ai-cache', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/ai-cache')>()
+  return {
+    aiCacheKey: actual.aiCacheKey,
+    readAiCache: vi.fn(async () => null),
+    writeAiCache: vi.fn(async () => undefined),
+  }
+})
+
 vi.mock('@/lib/rate-limit', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/rate-limit')>()
   return {
@@ -78,13 +90,13 @@ describe('POST /api/resumes/[id]/ats-score', () => {
     const { scoreResume } = await import('@/lib/ats/scorer')
     const { res } = await authedRequest({ jobDescription: 'React developer', semanticMatches: ['kubernetes'], jdKeywords: ['react'] })
     expect(res.status).toBe(200)
-    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], ['kubernetes'], ['react'])
+    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], ['kubernetes'], ['react'], {})
   })
 
   it('defaults semanticMatches to an empty array when omitted', async () => {
     const { scoreResume } = await import('@/lib/ats/scorer')
     await authedRequest({ jobDescription: 'React developer', jdKeywords: ['react'] })
-    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], ['react'])
+    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], ['react'], {})
   })
 
   it('uses cached jdKeywords from the body without calling the rate limiter or AI extraction', async () => {
@@ -97,7 +109,7 @@ describe('POST /api/resumes/[id]/ats-score', () => {
     expect(res.status).toBe(200)
     expect(checkRateLimit).not.toHaveBeenCalled()
     expect(extractJdRequirements).not.toHaveBeenCalled()
-    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], ['react', 'typescript'])
+    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], ['react', 'typescript'], {})
   })
 
   it('extracts fresh jdKeywords via AI when none are cached and the job description is non-blank', async () => {
@@ -114,7 +126,7 @@ describe('POST /api/resumes/[id]/ats-score', () => {
     expect(res.status).toBe(200)
     expect(checkRateLimit).toHaveBeenCalledWith('user-1:ai', expect.any(Object))
     expect(extractJdRequirements).toHaveBeenCalledWith('Analytics role')
-    expect(scoreResume).toHaveBeenCalledWith({}, 'Analytics role', [], [], ['mixpanel', 'amplitude'])
+    expect(scoreResume).toHaveBeenCalledWith({}, 'Analytics role', [], [], ['mixpanel', 'amplitude'], { mixpanel: 'nice-to-have', amplitude: 'nice-to-have' })
     expect(json.keywordPriorities).toEqual({ mixpanel: 'nice-to-have', amplitude: 'nice-to-have' })
     expect(json.keywordSource).toBe('ai')
     expect(json.keywordFallbackReason).toBeUndefined()
@@ -158,7 +170,7 @@ describe('POST /api/resumes/[id]/ats-score', () => {
 
     expect(res.status).toBe(200)
     expect(extractJdRequirements).not.toHaveBeenCalled()
-    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], [])
+    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], [], {})
     expect(json.keywordPriorities).toEqual({})
     expect(json.keywordSource).toBe('basic')
     expect(json.keywordFallbackReason).toBe('rate-limited')
@@ -172,7 +184,7 @@ describe('POST /api/resumes/[id]/ats-score', () => {
     const { res, json } = await authedRequest({ jobDescription: 'React developer' })
 
     expect(res.status).toBe(200)
-    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], [])
+    expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], [], {})
     expect(json.keywordPriorities).toEqual({})
     expect(json.keywordSource).toBe('basic')
     expect(json.keywordFallbackReason).toBe('ai-error')
@@ -196,7 +208,49 @@ describe('POST /api/resumes/[id]/ats-score', () => {
     expect(res.status).toBe(200)
     expect(checkRateLimit).not.toHaveBeenCalled()
     expect(extractJdRequirements).not.toHaveBeenCalled()
-    expect(scoreResume).toHaveBeenCalledWith({}, '', [], [], [])
+    expect(scoreResume).toHaveBeenCalledWith({}, '', [], [], [], {})
     expect(json.keywordPriorities).toEqual({})
+  })
+
+  it('answers a job description it has read before from the cache, without the rate limiter or AI', async () => {
+    const { readAiCache, writeAiCache, aiCacheKey } = await import('@/lib/api/ai-cache')
+    vi.mocked(readAiCache).mockResolvedValueOnce([
+      { term: 'sql', priority: 'must' },
+      { term: 'payments', priority: 'nice-to-have' },
+    ])
+    const { checkRateLimit } = await import('@/lib/rate-limit')
+    const { extractJdRequirements, JD_EXTRACTION_VERSION } = await import('@/lib/ai/jd-extraction-pipeline')
+    const { scoreResume } = await import('@/lib/ats/scorer')
+
+    const { res, json } = await authedRequest({ jobDescription: 'Fraud analyst' })
+
+    expect(res.status).toBe(200)
+    expect(readAiCache).toHaveBeenCalledWith('user-1', 'jd-requirements', aiCacheKey(JD_EXTRACTION_VERSION, 'Fraud analyst'))
+    expect(checkRateLimit).not.toHaveBeenCalled()
+    expect(extractJdRequirements).not.toHaveBeenCalled()
+    expect(writeAiCache).not.toHaveBeenCalled()
+    expect(scoreResume).toHaveBeenCalledWith({}, 'Fraud analyst', [], [], ['sql', 'payments'], { sql: 'must', payments: 'nice-to-have' })
+    expect(json.keywordSource).toBe('ai')
+  })
+
+  it('saves a fresh extraction under the job description, but not an empty one', async () => {
+    const { writeAiCache, aiCacheKey } = await import('@/lib/api/ai-cache')
+    const { extractJdRequirements, JD_EXTRACTION_VERSION } = await import('@/lib/ai/jd-extraction-pipeline')
+    const requirements = [{ term: 'sql', priority: 'must' as const }]
+    vi.mocked(extractJdRequirements).mockResolvedValueOnce(requirements)
+    await authedRequest({ jobDescription: 'Fraud  analyst\n' })
+    // Whitespace is normalized, so a re-paste of the same text hits the same entry.
+    expect(writeAiCache).toHaveBeenCalledWith('user-1', 'jd-requirements', aiCacheKey(JD_EXTRACTION_VERSION, 'Fraud analyst'), requirements)
+
+    vi.mocked(writeAiCache).mockClear()
+    vi.mocked(extractJdRequirements).mockResolvedValueOnce([])
+    await authedRequest({ jobDescription: 'Another job' })
+    expect(writeAiCache).not.toHaveBeenCalled()
+  })
+
+  it('does not consult the cache when the client already sends the keyword list', async () => {
+    const { readAiCache } = await import('@/lib/api/ai-cache')
+    await authedRequest({ jobDescription: 'React developer', jdKeywords: ['react'] })
+    expect(readAiCache).not.toHaveBeenCalled()
   })
 })

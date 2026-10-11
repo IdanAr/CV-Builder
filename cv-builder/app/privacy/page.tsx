@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: 'How CVitae Studio collects, uses, and protects your personal data.',
 }
 
-const LAST_UPDATED = 'August 9, 2026'
+const LAST_UPDATED = 'October 11, 2026'
 
 export default function PrivacyPolicyPage() {
   return (
@@ -43,8 +43,10 @@ export default function PrivacyPolicyPage() {
         </p>
         <p className="mt-2">
           <strong>Job posting text.</strong> If you paste a job description into the ATS scoring or cover letter
-          tools, that text is processed to generate your results (see Section 3). It is held only in your browser
-          session and is not saved to our database.
+          tools, that text is processed to generate your results (see Section 3). The text itself is held only in
+          your browser session and is not saved to our database. So that checking the same job again gives the same
+          score, we keep the list of keywords found in it, filed under a one-way fingerprint of the text, for 30
+          days. It is included in your data export and deleted with your account.
         </p>
       </section>
 

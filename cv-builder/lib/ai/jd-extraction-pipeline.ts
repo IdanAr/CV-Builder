@@ -4,6 +4,10 @@ import { getAnthropic, DEFAULT_MODEL } from './models'
 
 export const MAX_JD_LENGTH = 10_000
 const MAX_TERMS = 60
+const MAX_TERM_WORDS = 4
+
+/** Part of the cache key for extracted keyword lists: bump it whenever the prompt or parsing changes. */
+export const JD_EXTRACTION_VERSION = 'jd-requirements-v2'
 
 export type KeywordPriority = 'must' | 'nice-to-have' | 'ambiguous'
 
@@ -54,8 +58,10 @@ export async function extractJdRequirements(jobDescription: string): Promise<Ext
 Extract every specific, checkable requirement a candidate's resume should be scored against: hard skills, soft skills, tools, platforms, software, technologies, methodologies, and certifications explicitly named in the text.
 
 Rules:
-- Use the natural, most common spelling and capitalization for each term (e.g. "Google Cloud Platform", "Mixpanel", "Agile", "Stakeholder Management", "React").
-- Combine multi-word terms that name one specific thing into a single item (e.g. "Product Management", not "product" and "management" separately).
+- Write each term the way a recruiter would type it into an ATS search box: the core skill, domain, tool or qualification, 1 to 3 words long. Use the natural, most common spelling and capitalization (e.g. "Google Cloud Platform", "Mixpanel", "Agile", "Stakeholder Management", "React").
+- Do not turn a sentence into a descriptive phrase. Reduce it to the searchable term inside it: "analyze large-scale datasets" -> "Data Analysis"; "knowledge of the payment ecosystem" -> "Payments"; "develop and maintain fraud models" -> "Fraud Modeling".
+- Combine words that name one specific thing into a single item (e.g. "Product Management", not "product" and "management" separately).
+- For a degree requirement, extract each field of study on its own (e.g. "BSc in Statistics or Industrial Engineering" -> "Statistics", "Industrial Engineering").
 - Do not include generic filler, company boilerplate, or vague adjectives (e.g. "team player", "fast-paced environment", "passionate", "detail-oriented").
 - Deduplicate. Return as many distinct terms as the job description actually specifies, up to ${MAX_TERMS}.
 
@@ -77,6 +83,9 @@ Example output: [{"term": "React", "priority": "must"}, {"term": "GraphQL", "pri
   const msg = await anthropic.messages.create({
     model: DEFAULT_MODEL,
     max_tokens: 1500,
+    // The same job description must give the same keyword list: a reworded
+    // or swapped term moves the score by several points.
+    temperature: 0,
     messages: [{ role: 'user', content: prompt }],
   })
 
@@ -118,6 +127,9 @@ Example output: [{"term": "React", "priority": "must"}, {"term": "GraphQL", "pri
     if (!parsed.success) continue
     const trimmed = parsed.data.term.trim().toLowerCase()
     if (!trimmed) continue
+    // A descriptive phrase is not something anyone searches for, and it can
+    // never match a CV literally.
+    if (trimmed.split(/\s+/).length > MAX_TERM_WORDS) continue
     if (seen.has(trimmed)) continue
     seen.add(trimmed)
     requirements.push({ term: trimmed, priority: normalizePriority(parsed.data.priority) })
