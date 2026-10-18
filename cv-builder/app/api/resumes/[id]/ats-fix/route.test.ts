@@ -18,7 +18,7 @@ vi.mock('@/lib/rate-limit', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/rate-limit')>()
   return {
     ...actual,
-    checkRateLimit: vi.fn(() => ({ allowed: true, retryAfterSeconds: 0 })),
+    checkAiRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 0 })),
   }
 })
 
@@ -89,8 +89,8 @@ describe('POST /api/resumes/[id]/ats-fix', () => {
       return handler(Object.assign(req, { auth: { user: { id: 'user-1' } } }) as never, ctx as never)
     })
 
-    const { checkRateLimit } = await import('@/lib/rate-limit')
-    vi.mocked(checkRateLimit).mockReturnValueOnce({ allowed: false, retryAfterSeconds: 42 })
+    const { checkAiRateLimit } = await import('@/lib/rate-limit')
+    vi.mocked(checkAiRateLimit).mockResolvedValueOnce({ allowed: false, retryAfterSeconds: 42, scope: 'minute' })
 
     const { POST } = await import('./route')
     const req = new Request('http://localhost/api/resumes/abc/ats-fix', {

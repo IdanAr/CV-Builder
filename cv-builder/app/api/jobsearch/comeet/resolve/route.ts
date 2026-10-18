@@ -9,7 +9,7 @@ export const POST = auth(async function POST(req) {
     return apiError('UNAUTHORIZED', 'Unauthorized', 401)
   }
 
-  const rate = checkRateLimit(`${req.auth.user.id}:comeet-resolve`, COMEET_RESOLVE_RATE_LIMIT)
+  const rate = await checkRateLimit(`${req.auth.user.id}:comeet-resolve`, COMEET_RESOLVE_RATE_LIMIT)
   if (!rate.allowed) {
     return apiError('RATE_LIMITED', 'Too many requests - please wait a moment.', 429, undefined, rate.retryAfterSeconds)
   }

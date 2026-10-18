@@ -12,7 +12,7 @@ export const POST = auth(async (req, ctx) => {
     return apiError('UNAUTHORIZED', 'Unauthorized', 401)
   }
 
-  const rate = checkRateLimit(`${req.auth.user.id}:export`, EXPORT_RATE_LIMIT)
+  const rate = await checkRateLimit(`${req.auth.user.id}:export`, EXPORT_RATE_LIMIT)
   if (!rate.allowed) {
     return apiError('RATE_LIMITED', 'Too many export requests - please wait a moment.', 429, undefined, rate.retryAfterSeconds)
   }

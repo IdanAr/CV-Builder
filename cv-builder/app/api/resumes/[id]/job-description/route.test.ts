@@ -17,7 +17,7 @@ vi.mock('@/lib/job-url/safe-fetch', async (importOriginal) => {
 
 vi.mock('@/lib/rate-limit', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/rate-limit')>()
-  return { ...actual, checkRateLimit: vi.fn(() => ({ allowed: true, retryAfterSeconds: 0 })) }
+  return { ...actual, checkRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 0 })) }
 })
 
 const longDescription = '<p>' + 'Build and own reliable data pipelines for the analytics team. '.repeat(8) + '</p>'
@@ -68,7 +68,7 @@ describe('POST /api/resumes/[id]/job-description', () => {
   it('returns 429 when rate limited', async () => {
     await signedIn()
     const { checkRateLimit } = await import('@/lib/rate-limit')
-    vi.mocked(checkRateLimit).mockReturnValueOnce({ allowed: false, retryAfterSeconds: 12 })
+    vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: false, retryAfterSeconds: 12 })
     const res = await post({ url: 'https://example.com/job' })
     expect(res.status).toBe(429)
     expect(res.headers.get('Retry-After')).toBe('12')

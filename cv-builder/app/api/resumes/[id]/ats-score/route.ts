@@ -11,7 +11,7 @@ import {
   type KeywordPriority,
 } from '@/lib/ai/jd-extraction-pipeline'
 import { aiCacheKey, readAiCache, writeAiCache } from '@/lib/api/ai-cache'
-import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/rate-limit'
+import { checkAiRateLimit } from '@/lib/rate-limit'
 import { apiError, handleRouteError } from '@/lib/api/route-errors'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
@@ -79,7 +79,7 @@ export const POST = auth(async (req, ctx) => {
       keywordPriorities = Object.fromEntries(cached.map(r => [r.term, normalizePriority(r.priority)]))
       keywordSource = 'ai'
     } else if (jdKeywordsOverride.length === 0 && jobDescription.trim()) {
-      const rate = checkRateLimit(`${req.auth.user.id}:ai`, AI_RATE_LIMIT)
+      const rate = await checkAiRateLimit(req.auth.user.id)
       if (rate.allowed) {
         try {
           const requirements = await extractJdRequirements(jobDescription)

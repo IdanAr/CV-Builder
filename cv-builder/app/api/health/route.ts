@@ -74,7 +74,7 @@ export async function GET(req: Request): Promise<NextResponse> {
 
   if (!authorized) {
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-    const rate = checkRateLimit(`${ip}:health`, HEALTH_RATE_LIMIT)
+    const rate = await checkRateLimit(`${ip}:health`, HEALTH_RATE_LIMIT)
     if (!rate.allowed) {
       return apiError('RATE_LIMITED', 'Too many health checks.', 429, undefined, rate.retryAfterSeconds)
     }

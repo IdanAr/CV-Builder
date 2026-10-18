@@ -4,7 +4,7 @@ import { getResume } from '@/lib/api/resumes'
 import { runSemanticKeywordAnalysis, SYNONYM_CHECK_VERSION, type SemanticMatch } from '@/lib/ai/keyword-analysis-pipeline'
 import { aiCacheKey, readAiCache, writeAiCache } from '@/lib/api/ai-cache'
 import { flattenAllText } from '@/lib/ats/scorer'
-import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/rate-limit'
+import { checkAiRateLimit, aiRateLimitedResponse } from '@/lib/rate-limit'
 import { apiError, handleRouteError } from '@/lib/api/route-errors'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
@@ -47,9 +47,9 @@ export const POST = auth(async (req, ctx) => {
 
     let matches = await readAiCache<SemanticMatch[]>(userId, 'synonym-matches', cacheKey)
     if (!matches) {
-      const rate = checkRateLimit(`${userId}:ai`, AI_RATE_LIMIT)
+      const rate = await checkAiRateLimit(userId)
       if (!rate.allowed) {
-        return apiError('RATE_LIMITED', 'Too many AI requests - please wait a moment.', 429, undefined, rate.retryAfterSeconds)
+        return aiRateLimitedResponse(rate)
       }
       matches = await runSemanticKeywordAnalysis(resumeText, missingKeywords)
       // An empty answer is also what an unparseable reply turns into, so it

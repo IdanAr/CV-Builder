@@ -4,9 +4,16 @@ import { auth } from '@/lib/auth'
 import { Card } from '@/components/ui/Card'
 import { ExportDataSection } from '@/components/account/ExportDataSection'
 import { DeleteAccountSection } from '@/components/account/DeleteAccountSection'
+import { ConnectedAccountsSection, type ConnectedAccountsStatus } from '@/components/account/ConnectedAccountsSection'
+import { listLinkedProviders } from '@/lib/api/account'
+import { connectProvider, disconnectProvider } from './actions'
 
 export const metadata: Metadata = {
   title: 'Settings',
+}
+
+interface SettingsPageProps {
+  searchParams: Promise<ConnectedAccountsStatus>
 }
 
 /**
@@ -16,11 +23,12 @@ export const metadata: Metadata = {
  * and the only route it offered for any of them was an email address. This page
  * is where those rights are actually exercisable.
  */
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const session = await auth()
   if (!session?.user?.id) redirect('/signin')
 
   const { name, email } = session.user
+  const [linked, status] = await Promise.all([listLinkedProviders(session.user.id), searchParams])
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
@@ -49,6 +57,13 @@ export default async function SettingsPage() {
             they will update here the next time you sign in.
           </p>
         </Card>
+
+        <ConnectedAccountsSection
+          linked={linked}
+          status={status}
+          connectAction={connectProvider}
+          disconnectAction={disconnectProvider}
+        />
 
         <ExportDataSection />
 

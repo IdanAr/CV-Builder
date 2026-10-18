@@ -24,7 +24,7 @@ export const POST = auth(async (req) => {
     return apiError('UNAUTHORIZED', 'Unauthorized', 401)
   }
 
-  const rate = checkRateLimit(`${req.auth.user.id}:preview-pagination`, PREVIEW_RATE_LIMIT)
+  const rate = await checkRateLimit(`${req.auth.user.id}:preview-pagination`, PREVIEW_RATE_LIMIT)
   if (!rate.allowed) {
     return apiError('RATE_LIMITED', 'Too many preview renders - please wait a moment.', 429, undefined, rate.retryAfterSeconds)
   }
