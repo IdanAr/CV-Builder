@@ -31,7 +31,7 @@ vi.mock('@/lib/rate-limit', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/rate-limit')>()
   return {
     ...actual,
-    checkRateLimit: vi.fn(() => ({ allowed: true, retryAfterSeconds: 0 })),
+    checkAiRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 0 })),
   }
 })
 
@@ -82,8 +82,8 @@ describe('POST /api/resumes/[id]/ats-semantic-match', () => {
 
     const { getResume } = await import('@/lib/api/resumes')
     vi.mocked(getResume).mockResolvedValueOnce({ title: 'My CV', data: { basics: { summary: 'k8s' } }, meta: {} } as never)
-    const { checkRateLimit } = await import('@/lib/rate-limit')
-    vi.mocked(checkRateLimit).mockReturnValueOnce({ allowed: false, retryAfterSeconds: 42 })
+    const { checkAiRateLimit } = await import('@/lib/rate-limit')
+    vi.mocked(checkAiRateLimit).mockResolvedValueOnce({ allowed: false, retryAfterSeconds: 42, scope: 'minute' })
 
     const { POST } = await import('./route')
     const req = new Request('http://localhost/api/resumes/abc/ats-semantic-match', {
@@ -147,13 +147,13 @@ describe('POST /api/resumes/[id]/ats-semantic-match', () => {
   it('answers an unchanged CV from the cache, without the rate limiter or AI, in the spelling asked for', async () => {
     const { readAiCache } = await import('@/lib/api/ai-cache')
     vi.mocked(readAiCache).mockResolvedValueOnce([{ keyword: 'kubernetes', evidence: 'k8s' }])
-    const { checkRateLimit } = await import('@/lib/rate-limit')
+    const { checkAiRateLimit } = await import('@/lib/rate-limit')
     const { runSemanticKeywordAnalysis } = await import('@/lib/ai/keyword-analysis-pipeline')
 
     const res = await authedPost({ missingKeywords: ['Kubernetes', 'docker'] })
 
     expect(await res.json()).toEqual({ confirmedMatches: ['Kubernetes'], evidence: { Kubernetes: 'k8s' } })
-    expect(checkRateLimit).not.toHaveBeenCalled()
+    expect(checkAiRateLimit).not.toHaveBeenCalled()
     expect(runSemanticKeywordAnalysis).not.toHaveBeenCalled()
   })
 

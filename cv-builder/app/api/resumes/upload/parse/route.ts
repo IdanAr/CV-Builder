@@ -15,7 +15,7 @@ export const POST = auth(async function POST(req) {
     return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 })
   }
 
-  const rate = checkRateLimit(`${req.auth.user.id}:upload`, UPLOAD_RATE_LIMIT)
+  const rate = await checkRateLimit(`${req.auth.user.id}:upload`, UPLOAD_RATE_LIMIT)
   if (!rate.allowed) {
     return apiError('RATE_LIMITED', 'Too many uploads - please wait a moment.', 429, undefined, rate.retryAfterSeconds)
   }

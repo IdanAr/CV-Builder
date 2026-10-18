@@ -22,7 +22,7 @@ export const POST = auth(async (req, ctx) => {
     return apiError('UNAUTHORIZED', 'Unauthorized', 401)
   }
 
-  const rate = checkRateLimit(`${req.auth.user.id}:job-url`, JOB_URL_RATE_LIMIT)
+  const rate = await checkRateLimit(`${req.auth.user.id}:job-url`, JOB_URL_RATE_LIMIT)
   if (!rate.allowed) {
     return apiError('RATE_LIMITED', 'Too many imports - please wait a moment.', 429, undefined, rate.retryAfterSeconds)
   }

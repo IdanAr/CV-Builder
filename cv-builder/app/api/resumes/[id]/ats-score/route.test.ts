@@ -42,7 +42,7 @@ vi.mock('@/lib/rate-limit', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/rate-limit')>()
   return {
     ...actual,
-    checkRateLimit: vi.fn(() => ({ allowed: true, retryAfterSeconds: 0 })),
+    checkAiRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 0 })),
   }
 })
 
@@ -100,20 +100,20 @@ describe('POST /api/resumes/[id]/ats-score', () => {
   })
 
   it('uses cached jdKeywords from the body without calling the rate limiter or AI extraction', async () => {
-    const { checkRateLimit } = await import('@/lib/rate-limit')
+    const { checkAiRateLimit } = await import('@/lib/rate-limit')
     const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
     const { scoreResume } = await import('@/lib/ats/scorer')
 
     const { res } = await authedRequest({ jobDescription: 'React developer', jdKeywords: ['react', 'typescript'] })
 
     expect(res.status).toBe(200)
-    expect(checkRateLimit).not.toHaveBeenCalled()
+    expect(checkAiRateLimit).not.toHaveBeenCalled()
     expect(extractJdRequirements).not.toHaveBeenCalled()
     expect(scoreResume).toHaveBeenCalledWith({}, 'React developer', [], [], ['react', 'typescript'], {})
   })
 
   it('extracts fresh jdKeywords via AI when none are cached and the job description is non-blank', async () => {
-    const { checkRateLimit } = await import('@/lib/rate-limit')
+    const { checkAiRateLimit } = await import('@/lib/rate-limit')
     const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
     vi.mocked(extractJdRequirements).mockResolvedValueOnce([
       { term: 'mixpanel', priority: 'nice-to-have' },
@@ -124,7 +124,7 @@ describe('POST /api/resumes/[id]/ats-score', () => {
     const { res, json } = await authedRequest({ jobDescription: 'Analytics role' })
 
     expect(res.status).toBe(200)
-    expect(checkRateLimit).toHaveBeenCalledWith('user-1:ai', expect.any(Object))
+    expect(checkAiRateLimit).toHaveBeenCalledWith('user-1')
     expect(extractJdRequirements).toHaveBeenCalledWith('Analytics role')
     expect(scoreResume).toHaveBeenCalledWith({}, 'Analytics role', [], [], ['mixpanel', 'amplitude'], { mixpanel: 'nice-to-have', amplitude: 'nice-to-have' })
     expect(json.keywordPriorities).toEqual({ mixpanel: 'nice-to-have', amplitude: 'nice-to-have' })
@@ -133,7 +133,7 @@ describe('POST /api/resumes/[id]/ats-score', () => {
   })
 
   it('reuses cached keywordPriorities from the body instead of recomputing them, when jdKeywords is also cached', async () => {
-    const { checkRateLimit } = await import('@/lib/rate-limit')
+    const { checkAiRateLimit } = await import('@/lib/rate-limit')
     const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
 
     const { res, json } = await authedRequest({
@@ -143,7 +143,7 @@ describe('POST /api/resumes/[id]/ats-score', () => {
     })
 
     expect(res.status).toBe(200)
-    expect(checkRateLimit).not.toHaveBeenCalled()
+    expect(checkAiRateLimit).not.toHaveBeenCalled()
     expect(extractJdRequirements).not.toHaveBeenCalled()
     expect(json.keywordPriorities).toEqual({ react: 'must', kubernetes: 'ambiguous' })
     expect(json.keywordSource).toBe('cached')
@@ -161,8 +161,8 @@ describe('POST /api/resumes/[id]/ats-score', () => {
   })
 
   it('falls back to an empty override and empty priorities (regex extraction inside scoreResume) when rate limited, and still returns 200', async () => {
-    const { checkRateLimit } = await import('@/lib/rate-limit')
-    vi.mocked(checkRateLimit).mockReturnValueOnce({ allowed: false, retryAfterSeconds: 42 })
+    const { checkAiRateLimit } = await import('@/lib/rate-limit')
+    vi.mocked(checkAiRateLimit).mockResolvedValueOnce({ allowed: false, retryAfterSeconds: 42, scope: 'minute' })
     const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
     const { scoreResume } = await import('@/lib/ats/scorer')
 
@@ -199,14 +199,14 @@ describe('POST /api/resumes/[id]/ats-score', () => {
   })
 
   it('does not attempt AI extraction when the job description is blank', async () => {
-    const { checkRateLimit } = await import('@/lib/rate-limit')
+    const { checkAiRateLimit } = await import('@/lib/rate-limit')
     const { extractJdRequirements } = await import('@/lib/ai/jd-extraction-pipeline')
     const { scoreResume } = await import('@/lib/ats/scorer')
 
     const { res, json } = await authedRequest({})
 
     expect(res.status).toBe(200)
-    expect(checkRateLimit).not.toHaveBeenCalled()
+    expect(checkAiRateLimit).not.toHaveBeenCalled()
     expect(extractJdRequirements).not.toHaveBeenCalled()
     expect(scoreResume).toHaveBeenCalledWith({}, '', [], [], [], {})
     expect(json.keywordPriorities).toEqual({})
@@ -218,7 +218,7 @@ describe('POST /api/resumes/[id]/ats-score', () => {
       { term: 'sql', priority: 'must' },
       { term: 'payments', priority: 'nice-to-have' },
     ])
-    const { checkRateLimit } = await import('@/lib/rate-limit')
+    const { checkAiRateLimit } = await import('@/lib/rate-limit')
     const { extractJdRequirements, JD_EXTRACTION_VERSION } = await import('@/lib/ai/jd-extraction-pipeline')
     const { scoreResume } = await import('@/lib/ats/scorer')
 
@@ -226,7 +226,7 @@ describe('POST /api/resumes/[id]/ats-score', () => {
 
     expect(res.status).toBe(200)
     expect(readAiCache).toHaveBeenCalledWith('user-1', 'jd-requirements', aiCacheKey(JD_EXTRACTION_VERSION, 'Fraud analyst'))
-    expect(checkRateLimit).not.toHaveBeenCalled()
+    expect(checkAiRateLimit).not.toHaveBeenCalled()
     expect(extractJdRequirements).not.toHaveBeenCalled()
     expect(writeAiCache).not.toHaveBeenCalled()
     expect(scoreResume).toHaveBeenCalledWith({}, 'Fraud analyst', [], [], ['sql', 'payments'], { sql: 'must', payments: 'nice-to-have' })

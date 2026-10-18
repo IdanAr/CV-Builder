@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { getResume } from '@/lib/api/resumes'
 import { runSuggestionPipeline } from '@/lib/ai/pipeline'
-import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/rate-limit'
+import { checkAiRateLimit, aiRateLimitedResponse } from '@/lib/rate-limit'
 import { apiError, handleRouteError } from '@/lib/api/route-errors'
 import type { SuggestionField } from '@/lib/ai/pipeline'
 
@@ -11,9 +11,9 @@ export const POST = auth(async (req, ctx) => {
     return apiError('UNAUTHORIZED', 'Unauthorized', 401)
   }
 
-  const rate = checkRateLimit(`${req.auth.user.id}:ai`, AI_RATE_LIMIT)
+  const rate = await checkAiRateLimit(req.auth.user.id)
   if (!rate.allowed) {
-    return apiError('RATE_LIMITED', 'Too many AI requests - please wait a moment.', 429, undefined, rate.retryAfterSeconds)
+    return aiRateLimitedResponse(rate)
   }
 
   try {
