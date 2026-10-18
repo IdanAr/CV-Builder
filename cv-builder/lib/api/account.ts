@@ -90,6 +90,42 @@ async function linkedProviders(userId: string): Promise<string[]> {
   return accounts.map((a) => String(a.provider))
 }
 
+/** The sign-in providers attached to this account, for Settings > Connected accounts. */
+export async function listLinkedProviders(userId: string): Promise<string[]> {
+  return [...new Set(await linkedProviders(userId))].sort()
+}
+
+export type UnlinkResult = { ok: true } | { ok: false; code: 'NOT_LINKED' | 'LAST_SIGN_IN_METHOD' }
+
+/**
+ * Detaches one sign-in provider from the account.
+ *
+ * Refuses to remove the last one: this app holds no password, so an account
+ * with no linked provider could never be signed into again, and its data would
+ * be stranded where nobody can export or delete it.
+ *
+ * The check and the delete are separate operations (no transactions on a
+ * standalone mongod; see deleteUserAccount), so the other provider is
+ * re-counted immediately before deleting. That narrows, without closing, the
+ * window in which two concurrent unlinks of *different* providers by the same
+ * signed-in user could both pass. Only the account owner can trigger this.
+ */
+export async function unlinkProvider(userId: string, provider: string): Promise<UnlinkResult> {
+  const oid = toObjectId(userId)
+  if (!oid) return { ok: false, code: 'NOT_LINKED' }
+  const accounts = (await clientPromise).db().collection('accounts')
+
+  const linked = await linkedProviders(userId)
+  if (!linked.includes(provider)) return { ok: false, code: 'NOT_LINKED' }
+  if (new Set(linked).size < 2) return { ok: false, code: 'LAST_SIGN_IN_METHOD' }
+
+  const otherStillLinked = await accounts.countDocuments({ userId: oid, provider: { $ne: provider } })
+  if (otherStillLinked === 0) return { ok: false, code: 'LAST_SIGN_IN_METHOD' }
+
+  await accounts.deleteMany({ userId: oid, provider })
+  return { ok: true }
+}
+
 export type DeletionSummary = Record<string, number>
 
 /**

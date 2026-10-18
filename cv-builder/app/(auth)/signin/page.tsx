@@ -6,12 +6,15 @@ import { BrandLogo } from '@/components/ui/BrandLogo'
 import { PlasmaBackground } from '@/components/ui/PlasmaBackground'
 import { buttonClasses } from '@/components/ui/Button'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
+import { LINK_ERROR_MESSAGES } from '@/lib/sign-in-providers'
 
 // Auth.js redirects back here with ?error=<code> on OAuth failure — surface it
 // instead of silently dropping the user back on this page with no explanation.
 const ERROR_MESSAGES: Record<string, string> = {
   OAuthAccountNotLinked:
-    'That email is already linked to a different sign-in method. Try the provider you used originally.',
+    'An account with this email already exists. Sign in the way you did before, then connect this one under Settings, Connected accounts.',
+  GoogleEmailUnverified:
+    'Your Google account has no verified email address. Verify it with Google, or continue with GitHub.',
   AccessDenied: 'Access was denied, or sign-in was cancelled. Please try again.',
   Configuration: 'Sign-in is temporarily unavailable. Please try again in a moment.',
   Verification: 'That sign-in link is no longer valid. Please try again.',
@@ -23,9 +26,14 @@ interface SignInPageProps {
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const session = await auth()
-  if (session) redirect('/dashboard')
-
   const { error } = await searchParams
+  if (session) {
+    // A signed-in user only reaches this page with an error while connecting
+    // another provider from Settings. Send them back there with it, instead of
+    // to the dashboard with the reason silently dropped.
+    if (error && Object.hasOwn(LINK_ERROR_MESSAGES, error)) redirect(`/dashboard/settings?linkError=${error}`)
+    redirect('/dashboard')
+  }
   const errorMessage = error ? (ERROR_MESSAGES[error] ?? 'Something went wrong signing you in. Please try again.') : null
 
   return (

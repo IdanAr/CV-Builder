@@ -35,6 +35,24 @@ describe('SignIn page', () => {
     expect(redirectMock).toHaveBeenCalledWith('/dashboard')
   })
 
+  it('sends a signed-in user who hit a linking error back to Settings with it', async () => {
+    authMock.mockResolvedValue({ user: { id: 'user-1' } })
+    const { default: SignInPage } = await import('./page')
+    await expect(
+      SignInPage({ searchParams: Promise.resolve({ error: 'OAuthAccountNotLinked' }) })
+    ).rejects.toThrow('NEXT_REDIRECT')
+    expect(redirectMock).toHaveBeenCalledWith('/dashboard/settings?linkError=OAuthAccountNotLinked')
+  })
+
+  it('does not forward arbitrary error codes into the Settings URL', async () => {
+    authMock.mockResolvedValue({ user: { id: 'user-1' } })
+    const { default: SignInPage } = await import('./page')
+    await expect(
+      SignInPage({ searchParams: Promise.resolve({ error: '<script>' }) })
+    ).rejects.toThrow('NEXT_REDIRECT')
+    expect(redirectMock).toHaveBeenCalledWith('/dashboard')
+  })
+
   it('renders a link back to the homepage for signed-out visitors', async () => {
     authMock.mockResolvedValue(null)
     const { default: SignInPage } = await import('./page')
