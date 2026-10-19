@@ -1,0 +1,12 @@
+# Gitleaks configuration (used by .github/workflows/security-scan.yml).
+# Extends the default rules; every allowlist entry needs a reason.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Comeet company token in a test fixture. Comeet embeds this token in every company's public careers page; it is not a credential (security audit R1 triage)."
+paths = ['''^cv-builder/lib/jobsearch/sources/__tests__/comeet-resolve\.test\.ts$''']
+
+[[allowlists]]
+description = "Local tooling output that is never committed"
+paths = ['''(^|/)\.security-audit/''', '''(^|/)node_modules/''', '''(^|/)\.next/''']

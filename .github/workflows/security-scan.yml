@@ -1,0 +1,111 @@
+name: Security scan
+
+# Runs on every pull request and every push to main. Added after security
+# audit R1 (2026-10-19). What blocks a merge, and what only reports:
+#   - Secrets (Gitleaks, full history) ........ blocks
+#   - Code (Semgrep, ERROR severity) .......... blocks
+#   - Workflows (zizmor) ...................... blocks
+#   - Dependencies (npm audit, production) .... reports only (warning +
+#     run summary) until the open dependency findings are cleared.
+#
+# "Blocks" means the check goes red. To make GitHub refuse the merge, require
+# the "Security scan" checks in a branch protection rule on main.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Secrets (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0 # full history: a secret deleted later is still exposed
+          persist-credentials: false
+
+      - name: Install Gitleaks 8.30.1 (checksum-verified)
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          curl -sSLf -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tgz" | sha256sum -c -
+          tar -xzf gitleaks.tgz gitleaks
+          sudo mv gitleaks /usr/local/bin/
+
+      - name: Scan git history
+        run: gitleaks git --redact --no-banner --config .gitleaks.toml --exit-code 1 .
+
+  code:
+    name: Code (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Install Semgrep 1.181.0
+        run: pip install semgrep==1.181.0
+
+      - name: Scan
+        run: |
+          semgrep scan --config p/default --config p/owasp-top-ten --metrics=off \
+            --exclude node_modules --severity ERROR --error
+
+  workflows:
+    name: Workflows (zizmor)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Install zizmor 1.31.1
+        run: pip install zizmor==1.31.1
+
+      - name: Scan
+        run: zizmor --offline .github/workflows
+
+  dependencies:
+    name: Dependencies (npm audit, report only)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cv-builder
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+
+      # Report-only: the result goes to the run summary and a warning
+      # annotation, and the check stays green, so a known open advisory
+      # doesn't turn every PR red. To make it blocking once the open
+      # dependency findings are cleared, replace this whole `run:` with
+      # `npm audit --omit=dev --audit-level=high`.
+      - name: Audit production dependencies
+        run: |
+          set -o pipefail
+          {
+            echo '## npm audit (production dependencies, high and above)'
+            echo '```'
+            npm audit --omit=dev --audit-level=high 2>&1 || echo "::warning title=npm audit::High-severity advisories in production dependencies. See the run summary."
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY" || true
