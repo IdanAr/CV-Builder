@@ -5,8 +5,8 @@ name: Security scan
 #   - Secrets (Gitleaks, full history) ........ blocks
 #   - Code (Semgrep, ERROR severity) .......... blocks
 #   - Workflows (zizmor) ...................... blocks
-#   - Dependencies (npm audit, production) .... reports only, until the open
-#     Low dependency findings are cleared; then delete continue-on-error.
+#   - Dependencies (npm audit, production) .... reports only (warning +
+#     run summary) until the open dependency findings are cleared.
 #
 # "Blocks" means the check goes red. To make GitHub refuse the merge, require
 # the "Security scan" checks in a branch protection rule on main.
@@ -83,7 +83,6 @@ jobs:
   dependencies:
     name: Dependencies (npm audit, report only)
     runs-on: ubuntu-latest
-    continue-on-error: true # remove once the open dependency findings are cleared
     defaults:
       run:
         working-directory: cv-builder
@@ -96,5 +95,17 @@ jobs:
         with:
           node-version: '20'
 
+      # Report-only: the result goes to the run summary and a warning
+      # annotation, and the check stays green, so a known open advisory
+      # doesn't turn every PR red. To make it blocking once the open
+      # dependency findings are cleared, replace this whole `run:` with
+      # `npm audit --omit=dev --audit-level=high`.
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: |
+          set -o pipefail
+          {
+            echo '## npm audit (production dependencies, high and above)'
+            echo '```'
+            npm audit --omit=dev --audit-level=high 2>&1 || echo "::warning title=npm audit::High-severity advisories in production dependencies. See the run summary."
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY" || true
