@@ -72,11 +72,13 @@ describe('writeCoverLetterWithCritique', () => {
     mockParse
       .mockResolvedValueOnce(planReply)
       .mockResolvedValueOnce(letterReply(clean))
-      .mockResolvedValueOnce(critiqueReply([{ sentence: 'At Acme I cut report time by 40%, which is the speed Globex asks for.', problem: 'Reads like a stock opening.' }]))
+      .mockResolvedValueOnce(critiqueReply([{ sentence: 'A sentence only the critique quotes.', problem: 'Reads like a stock opening.' }]))
       .mockResolvedValueOnce(reply(clean))
     const result = await run()
     expect(mockParse).toHaveBeenCalledTimes(4)
-    expect(JSON.stringify(mockParse.mock.calls[3][0].messages)).toContain('At Acme I cut report time by 40%, which is the speed Globex asks for.')
+    const refinePrompt = JSON.stringify(mockParse.mock.calls[3][0].messages)
+    expect(refinePrompt).toContain('A sentence only the critique quotes.')
+    expect(refinePrompt).toContain('Reads like a stock opening.')
     expect(result.refined).toBe(true)
     expect(result.calls).toBe(4)
   })
@@ -133,6 +135,15 @@ describe('writeCoverLetterWithCritique', () => {
     mockParse.mockReset()
     mockParse.mockResolvedValueOnce(planReply).mockResolvedValueOnce(letterReply(clean)).mockResolvedValueOnce(critiqueReply())
     expect((await run()).letter.greeting).toBe('Dear Globex Hiring Team,')
+  })
+
+  it('detects the language from the text of the posting, not from its markup', async () => {
+    const html = {
+      ...POSTING,
+      jobText: `<div class="job-description" data-section="description"><p style="margin:0"><span class="text">אנחנו מחפשים אנליסט נתונים</span></p><ul class="list"><li class="item"><span>להאיץ את הדיווח</span></li></ul></div>`,
+    }
+    mockParse.mockResolvedValueOnce(planReply).mockResolvedValueOnce(letterReply(clean)).mockResolvedValueOnce(critiqueReply()).mockResolvedValueOnce(reply(clean))
+    expect((await run({}, html)).language).toBe('he')
   })
 
   it('reports the language of the posting', async () => {

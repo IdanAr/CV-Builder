@@ -99,5 +99,5 @@ export async function writeCoverLetterWithCritique(
   }
   const run = assembleRun({ written, issues, firstIssues, sheetFacts: sheet.facts.length, name, refined, calls })
   progress('done')
-  return { ...run, language: detectLanguage(input.jobText) }
+  return { ...run, language: detectLanguage(posting.text) }
 }
