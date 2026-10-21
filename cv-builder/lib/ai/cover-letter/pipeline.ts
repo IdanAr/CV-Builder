@@ -18,7 +18,8 @@ import { buildRefinePrompt, buildWritePrompt, type LetterNotes } from './prompt'
 import { WrittenLetterSchema, type LetterPlan, type WrittenLetter } from './schema'
 import { verifyLetter, type VerifyIssue } from './verify'
 
-export type ProgressStep = 'reading' | 'planning' | 'writing' | 'critiquing' | 'checking' | 'refining' | 'done'
+export const PROGRESS_STEPS = ['reading', 'planning', 'writing', 'critiquing', 'checking', 'refining', 'done'] as const
+export type ProgressStep = (typeof PROGRESS_STEPS)[number]
 
 export interface WriteOptions {
   model?: string
