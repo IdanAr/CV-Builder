@@ -1,18 +1,16 @@
 // lib/jobsearch/__tests__/apply.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { mockRunAtsFixPipeline, mockGenerateCoverLetter, mockEnqueueCoverLetter, mockScoreResume, mockCreateResume } = vi.hoisted(() => ({
+const { mockRunAtsFixPipeline, mockEnqueueCoverLetter, mockScoreResume, mockCreateResume } = vi.hoisted(() => ({
   mockRunAtsFixPipeline: vi.fn(),
-  mockGenerateCoverLetter: vi.fn(),
   mockEnqueueCoverLetter: vi.fn(),
   mockScoreResume: vi.fn(),
   mockCreateResume: vi.fn(),
 }))
 
 vi.mock('@/lib/ai/ats-fix-pipeline', () => ({ runAtsFixPipeline: mockRunAtsFixPipeline }))
-// The scan no longer writes letters; both the old writer and the letter queue are
-// mocked only so the tests can prove they are never reached.
-vi.mock('@/lib/ai/cover-letter-pipeline', () => ({ generateCoverLetter: mockGenerateCoverLetter }))
+// The scan no longer writes letters; the letter queue is mocked only so the
+// tests can prove it is never reached.
 vi.mock('@/lib/ai/cover-letter/queue', () => ({ enqueueCoverLetter: mockEnqueueCoverLetter }))
 vi.mock('@/lib/ats/scorer', () => ({ scoreResume: mockScoreResume }))
 vi.mock('@/lib/api/resumes', () => ({ createResume: mockCreateResume }))
@@ -42,7 +40,6 @@ const sourceMeta = {
 beforeEach(() => {
   vi.clearAllMocks()
   mockRunAtsFixPipeline.mockResolvedValue([])
-  mockGenerateCoverLetter.mockResolvedValue({ content: 'Dear Acme, ...', pendingApprovals: ['99%'] })
   mockScoreResume.mockReturnValue({ total: 90, missingKeywords: [] })
   mockCreateResume.mockResolvedValue({ _id: 'r1' })
 })
@@ -130,10 +127,9 @@ describe('runApplyPipeline', () => {
     )
   })
 
-  it('never writes a cover letter: no model call, no queued job, no letter on the draft', async () => {
+  it('never writes a cover letter: no queued job, no letter on the draft', async () => {
     await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1', sourceMeta)
 
-    expect(mockGenerateCoverLetter).not.toHaveBeenCalled()
     expect(mockEnqueueCoverLetter).not.toHaveBeenCalled()
     const created = mockCreateResume.mock.calls[0][1]
     expect(created.data).not.toHaveProperty('coverLetter')

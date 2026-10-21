@@ -1,8 +1,12 @@
-// lib/ai/cover-letter-pipeline.ts
-import { getAnthropic, DEFAULT_MODEL } from './models'
-import { detectHallucinations } from './hallucination-guard'
+// scripts/cover-letter-eval/baseline-pipeline.ts
+// Frozen copy of the original single-shot cover-letter writer (formerly
+// lib/ai/cover-letter-pipeline.ts). The eval harness's `--variant baseline`
+// runs it so the baseline3 results stay reproducible. Do not change its
+// behaviour or prompt.
+import { getAnthropic, DEFAULT_MODEL } from '@/lib/ai/models'
+import { detectHallucinations } from '@/lib/ai/hallucination-guard'
 import { flattenAllText } from '@/lib/ats/scorer'
-import { MAX_JD_LENGTH } from './jd-extraction-pipeline'
+import { MAX_JD_LENGTH } from '@/lib/ai/jd-extraction-pipeline'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
 
 export interface CoverLetterResult {
