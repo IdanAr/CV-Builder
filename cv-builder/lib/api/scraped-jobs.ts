@@ -3,8 +3,8 @@
 import mongoose from 'mongoose'
 import dbConnect from '@/lib/db'
 import ScrapedJob from '@/models/ScrapedJob'
-import Resume from '@/models/Resume'
 import Application from '@/models/Application'
+import { deleteResumeWithLetters } from '@/lib/api/resumes'
 import { createApplication } from '@/lib/api/applications'
 import { ensureJobMetadataColumns, JOB_URL_COLUMN_ID, JOB_LOCATION_COLUMN_ID } from '@/lib/api/board-config'
 import { getJobSearchProfile, getProfileNameMap } from '@/lib/api/jobsearch-profiles'
@@ -347,8 +347,9 @@ export async function deleteScrapedJob(
   })
   if (linkedApplications > 0) return { deleted: true, deletedDraftResume: false }
 
-  const removed = await Resume.deleteOne({ _id: job.draftResumeId, userId })
-  return { deleted: true, deletedDraftResume: removed.deletedCount === 1 }
+  // The draft's cover letters go with it, as when the CV is deleted from the library.
+  const removed = await deleteResumeWithLetters(userId, job.draftResumeId)
+  return { deleted: true, deletedDraftResume: removed }
 }
 
 // Restore drops the tombstone entirely, which lets the next scan rediscover the

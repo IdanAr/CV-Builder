@@ -57,6 +57,7 @@ function mockHook(over: Partial<UseCoverLetters> = {}): UseCoverLetters {
     }),
     save: vi.fn(),
     remove: vi.fn(async () => {}),
+    postingFor: vi.fn(async () => null),
     ...over,
   }
   hook.current = value
@@ -195,6 +196,20 @@ describe('CoverLetterPanel: new letter', () => {
     fireEvent.click(writeButton())
     await waitFor(() => expect(h.create).toHaveBeenCalled())
     expect(jdBox()).toHaveValue('We are hiring a Platform Engineer.')
+  })
+
+  it('shows a failed create next to Write letter as well, announced once', async () => {
+    const message = 'Too many AI requests - please wait a moment.'
+    const h = mockHook({ error: message, create: vi.fn(async () => null) })
+    render(<CoverLetterPanel />)
+    expect(screen.getAllByText(message)).toHaveLength(1)
+    fillForm()
+    fireEvent.click(writeButton())
+    await waitFor(() => expect(h.create).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getAllByText(message)).toHaveLength(2))
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    const nearButton = screen.getAllByText(message).find((el) => el.closest('form'))
+    expect(nearButton).toBeDefined()
   })
 
   it('imports the posting from a link and fills company and role', async () => {
@@ -372,7 +387,7 @@ describe('CoverLetterPanel: a failed letter', () => {
     fireEvent.click(screen.getByRole('button', { name: /^SRE at Hooli/ }))
     expect(screen.getByRole('alert')).toHaveTextContent('Writing this letter took too long. Please try again.')
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    expect(screen.getByLabelText('Company')).toHaveValue('Hooli')
+    expect(await screen.findByLabelText('Company')).toHaveValue('Hooli')
     expect(screen.getByLabelText('Role')).toHaveValue('SRE')
     expect(screen.getByLabelText(/why this company or role/i)).toHaveValue('Big systems.')
     fireEvent.change(jdBox(), { target: { value: 'SRE posting text.' } })
@@ -381,6 +396,29 @@ describe('CoverLetterPanel: a failed letter', () => {
     expect(h.create).toHaveBeenCalledWith({
       company: 'Hooli', role: 'SRE', jobText: 'SRE posting text.', notes: { motivation: 'Big systems.' }, scrapedJobId: 'sj9',
     })
+  })
+})
+
+describe('CoverLetterPanel: Try again', () => {
+  it("prefills the failed letter's own posting", async () => {
+    const l = letter({ status: 'failed', error: 'Could not write this letter. Please try again.', company: 'Initech', role: 'Analyst', content: '' })
+    const h = mockHook({ letters: [l], postingFor: vi.fn(async () => 'Initech needs an analyst.') })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Analyst at Initech/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(jdBox()).toHaveValue('Initech needs an analyst.'))
+    expect(h.postingFor).toHaveBeenCalledWith(l.id)
+    expect(writeButton()).toBeEnabled()
+  })
+
+  it('falls back to the suggested posting of the same job when the letter has none', async () => {
+    const l = letter({ status: 'failed', company: 'Initech', role: 'Analyst', scrapedJobId: 'sj1', content: '' })
+    const suggestedPosting: SuggestedPosting = { company: 'Initech', role: 'Analyst', jobText: 'Suggested posting text.', scrapedJobId: 'sj1' }
+    mockHook({ letters: [l], suggestedPosting })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Analyst at Initech/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(jdBox()).toHaveValue('Suggested posting text.'))
   })
 })
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiErrorMessage } from '@/lib/api/client-errors'
 // Types only: importing the values would drag mongoose into the client bundle.
-import type { CoverLetterView, SuggestedPosting } from '@/lib/api/cover-letters'
+import type { CoverLetterDetail, CoverLetterView, SuggestedPosting } from '@/lib/api/cover-letters'
 import type {
   CoverLetterNotes,
   CreateCoverLetterInput,
@@ -22,6 +22,8 @@ export interface UseCoverLetters {
   /** Optimistic edit. `content` is debounced; every other field is sent at once. */
   save(id: string, patch: UpdateCoverLetterInput): void
   remove(id: string): Promise<void>
+  /** The posting of a failed letter, read from the server for Try again; null when there is none or the read fails. */
+  postingFor(id: string): Promise<string | null>
 }
 
 const POLL_MS = 2000
@@ -136,7 +138,9 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
           return
         }
         if (!res.ok) return
-        const { letter } = (await res.json()) as { letter: CoverLetterView }
+        // A letter that just failed comes back with its posting; the list keeps letters without one.
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { jobText, ...letter } = ((await res.json()) as { letter: CoverLetterDetail }).letter
         if (cancelled) return
         // Only a letter still marked writing is replaced, so a late poll cannot undo a newer state.
         update((prev) => prev.map((l) => (l.id === id && l.status === 'writing' ? letter : l)))
@@ -284,5 +288,20 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
     [resumeId, update]
   )
 
-  return { letters, prefillNotes, suggestedPosting, loading, error, create, save, remove }
+  const postingFor = useCallback(
+    async (id: string): Promise<string | null> => {
+      if (!resumeId) return null
+      try {
+        const res = await fetch(`/api/resumes/${resumeId}/cover-letters/${id}`)
+        if (!res.ok) return null
+        const { letter } = (await res.json()) as { letter: CoverLetterDetail }
+        return letter.jobText || null
+      } catch {
+        return null
+      }
+    },
+    [resumeId]
+  )
+
+  return { letters, prefillNotes, suggestedPosting, loading, error, create, save, remove, postingFor }
 }

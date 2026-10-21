@@ -111,9 +111,17 @@ export async function patchResume(userId: string, id: string, patch: PatchResume
 
 export async function deleteResume(userId: string, id: string): Promise<boolean> {
   await dbConnect()
+  return deleteResumeWithLetters(userId, id)
+}
+
+/**
+ * Deletes a CV and its cover letters: a CV's letters belong to it, nothing
+ * else points at them. Every path that deletes a CV goes through here, so no
+ * letter (and the posting text it keeps) outlives its CV. Expects a connection.
+ */
+export async function deleteResumeWithLetters(userId: string, id: string): Promise<boolean> {
   const result = await Resume.deleteOne({ _id: id, userId })
   if (result.deletedCount === 0) return false
-  // A CV's letters belong to it; nothing else points at them.
   await CoverLetter.deleteMany({ userId, resumeId: id })
   return true
 }

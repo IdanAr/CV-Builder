@@ -177,6 +177,49 @@ describe('useCoverLetters', () => {
     expect(result.current.letters[0]).toMatchObject({ status: 'failed', error: 'Nope' })
   })
 
+  it('does not keep the posting a poll of a now failed letter carries', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1', { status: 'writing' })])),
+      [`GET ${BASE}/l1`]: () => json({ letter: { ...letter('l1', { status: 'failed', error: 'Nope' }), jobText: 'The posting.' } }),
+    })
+    const { result } = await mount()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    expect(result.current.letters[0].status).toBe('failed')
+    expect(result.current.letters[0]).not.toHaveProperty('jobText')
+  })
+
+  it("postingFor reads a failed letter's posting", async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1', { status: 'failed' })])),
+      [`GET ${BASE}/l1`]: () => json({ letter: { ...letter('l1', { status: 'failed' }), jobText: 'The posting.' } }),
+    })
+    const { result } = await mount()
+    let posting: string | null = null
+    await act(async () => {
+      posting = await result.current.postingFor('l1')
+    })
+    expect(posting).toBe('The posting.')
+  })
+
+  it('postingFor answers null when the letter has no posting or the request fails', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody()),
+      [`GET ${BASE}/l1`]: () => json({ letter: letter('l1') }),
+      [`GET ${BASE}/l2`]: () => json({ error: 'boom' }, 500),
+    })
+    const { result } = await mount()
+    let a: string | null = 'x'
+    let b: string | null = 'x'
+    await act(async () => {
+      a = await result.current.postingFor('l1')
+      b = await result.current.postingFor('l2')
+    })
+    expect(a).toBeNull()
+    expect(b).toBeNull()
+  })
+
   it('keeps polling after a failed poll request, without throwing', async () => {
     let polls = 0
     route({

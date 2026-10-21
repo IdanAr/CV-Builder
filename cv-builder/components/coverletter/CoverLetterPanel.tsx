@@ -147,12 +147,16 @@ function NewLetterForm({
   initial,
   situation,
   onSubmit,
+  submitError,
   onBack,
 }: {
   resumeId: string | null
   initial: Draft
   situation: string[]
-  onSubmit: (input: CreateCoverLetterInput) => Promise<void>
+  /** Resolves false when the letter could not be started. */
+  onSubmit: (input: CreateCoverLetterInput) => Promise<boolean>
+  /** The panel's error, repeated by the Write button after a failed start. */
+  submitError?: string | null
   onBack?: () => void
 }) {
   const id = useId()
@@ -166,6 +170,7 @@ function NewLetterForm({
   const [role, setRole] = useState(initial.role)
   const [notes, setNotes] = useState<CoverLetterNotes>(initial.notes)
   const [submitting, setSubmitting] = useState(false)
+  const [startFailed, setStartFailed] = useState(false)
 
   const ready = jobText.trim() !== '' && company.trim() !== '' && role.trim() !== ''
 
@@ -197,8 +202,9 @@ function NewLetterForm({
     e.preventDefault()
     if (!ready || submitting) return
     setSubmitting(true)
+    setStartFailed(false)
     try {
-      await onSubmit({
+      const started = await onSubmit({
         company: company.trim(),
         role: role.trim(),
         jobText: jobText.trim().slice(0, JOB_TEXT_MAX),
@@ -206,6 +212,7 @@ function NewLetterForm({
         ...(initial.scrapedJobId ? { scrapedJobId: initial.scrapedJobId } : {}),
         ...(initial.applicationId ? { applicationId: initial.applicationId } : {}),
       })
+      setStartFailed(!started)
     } finally {
       setSubmitting(false)
     }
@@ -303,6 +310,8 @@ function NewLetterForm({
           {submitting ? <Loader2 aria-hidden="true" className="h-4 w-4 motion-safe:animate-spin" /> : <Sparkles aria-hidden="true" className="h-4 w-4" />}
           Write letter
         </Button>
+        {/* The banner at the top already announces it (role="alert"); this copy is for whoever is looking at the button. */}
+        {startFailed && submitError && <p className="mt-1.5 text-center text-sm text-fg-danger">{submitError}</p>}
         {!ready && <p className="mt-1.5 text-center text-xs text-fg-muted">Add the job description, company and role to write.</p>}
       </div>
     </form>
@@ -397,7 +406,7 @@ function OpenLetter({
               <RotateCcw aria-hidden="true" className="h-4 w-4" />
               Try again
             </Button>
-            <p className="text-xs text-fg-muted">Starts a new letter with the same company, role and notes.</p>
+            <p className="text-xs text-fg-muted">Starts a new letter with the same posting, company, role and notes.</p>
           </div>
         </div>
       )}
@@ -481,7 +490,7 @@ function OpenLetter({
 export function CoverLetterPanel() {
   const resumeId = useResumeEditorStore((s) => s.resumeId)
   const data = useResumeEditorStore((s) => s.data)
-  const { letters, prefillNotes, suggestedPosting, loading, error, create, save, remove } = useCoverLetters(resumeId)
+  const { letters, prefillNotes, suggestedPosting, loading, error, create, save, remove, postingFor } = useCoverLetters(resumeId)
 
   const [view, setView] = useState<View>({ kind: 'auto' })
   // Deletes wait out an undo window, like deleting a CV.
@@ -518,9 +527,12 @@ export function CoverLetterPanel() {
     openForm({ company, role, jobText, scrapedJobId })
   }
 
-  function retry(letter: CoverLetterView) {
-    // The posting is not sent back with a letter; a job-search letter can reuse the suggested one.
-    const posting = suggestedPosting && suggestedPosting.scrapedJobId === letter.scrapedJobId ? suggestedPosting.jobText : ''
+  async function retry(letter: CoverLetterView) {
+    // Lists never carry the posting; a failed letter's own read does. Failing
+    // that, a job-search letter can reuse the suggested posting of its job.
+    const own = await postingFor(letter.id)
+    const suggested = suggestedPosting && suggestedPosting.scrapedJobId === letter.scrapedJobId ? suggestedPosting.jobText : ''
+    const posting = own ?? suggested
     openForm({
       company: letter.company,
       role: letter.role,
@@ -536,6 +548,7 @@ export function CoverLetterPanel() {
     await flushSave().catch(() => {})
     const created = await create(input)
     if (created) setView({ kind: 'open', id: created.id })
+    return created !== null
   }
 
   const hasSomething = visible.length > 0 || suggestedPosting !== null
@@ -564,6 +577,7 @@ export function CoverLetterPanel() {
           initial={draft}
           situation={situation}
           onSubmit={submit}
+          submitError={error}
           onBack={hasSomething ? toList : undefined}
         />
       )
