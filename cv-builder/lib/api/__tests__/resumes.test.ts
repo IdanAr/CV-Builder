@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/lib/db', () => ({ default: vi.fn().mockResolvedValue(undefined) }))
 
 // Use vi.hoisted so mock references are available when the factory is hoisted
-const { mockSort, mockLean, mockFind, mockFindOne, mockCreate, mockFindOneAndUpdate, mockDeleteOne, mockBulkWrite } =
+const { mockSort, mockLean, mockFind, mockFindOne, mockCreate, mockFindOneAndUpdate, mockDeleteOne, mockBulkWrite, mockLettersDeleteMany } =
   vi.hoisted(() => {
     const mockSort = vi.fn()
     const mockLean = vi.fn()
@@ -14,7 +14,8 @@ const { mockSort, mockLean, mockFind, mockFindOne, mockCreate, mockFindOneAndUpd
     const mockFindOneAndUpdate = vi.fn()
     const mockDeleteOne = vi.fn()
     const mockBulkWrite = vi.fn()
-    return { mockSort, mockLean, mockFind, mockFindOne, mockCreate, mockFindOneAndUpdate, mockDeleteOne, mockBulkWrite }
+    const mockLettersDeleteMany = vi.fn()
+    return { mockSort, mockLean, mockFind, mockFindOne, mockCreate, mockFindOneAndUpdate, mockDeleteOne, mockBulkWrite, mockLettersDeleteMany }
   })
 
 vi.mock('@/models/Resume', () => ({
@@ -27,6 +28,8 @@ vi.mock('@/models/Resume', () => ({
     bulkWrite: mockBulkWrite,
   },
 }))
+
+vi.mock('@/models/CoverLetter', () => ({ default: { deleteMany: mockLettersDeleteMany } }))
 
 import { listResumes, getResume, createResume, patchResume, deleteResume, duplicateResume } from '../resumes'
 
@@ -288,10 +291,17 @@ describe('deleteResume', () => {
     expect(mockDeleteOne).toHaveBeenCalledWith({ _id: 'r1', userId: 'u1' })
   })
 
+  it("deletes the résumé's cover letters with it", async () => {
+    mockDeleteOne.mockResolvedValue({ deletedCount: 1 })
+    await deleteResume('u1', 'r1')
+    expect(mockLettersDeleteMany).toHaveBeenCalledWith({ userId: 'u1', resumeId: 'r1' })
+  })
+
   it('returns false when nothing was deleted', async () => {
     mockDeleteOne.mockResolvedValue({ deletedCount: 0 })
     const result = await deleteResume('u1', 'r1')
     expect(result).toBe(false)
+    expect(mockLettersDeleteMany).not.toHaveBeenCalled()
   })
 })
 

@@ -1,5 +1,6 @@
 import dbConnect from '@/lib/db'
 import Resume from '@/models/Resume'
+import CoverLetter from '@/models/CoverLetter'
 import { sectionsFilledCount } from '@/lib/sections'
 import type { CreateResumeInput, PatchResumeInput, ResumeData } from '@/lib/schemas/resume.zod'
 import { scoreResume } from '@/lib/ats/scorer'
@@ -111,7 +112,10 @@ export async function patchResume(userId: string, id: string, patch: PatchResume
 export async function deleteResume(userId: string, id: string): Promise<boolean> {
   await dbConnect()
   const result = await Resume.deleteOne({ _id: id, userId })
-  return result.deletedCount > 0
+  if (result.deletedCount === 0) return false
+  // A CV's letters belong to it; nothing else points at them.
+  await CoverLetter.deleteMany({ userId, resumeId: id })
+  return true
 }
 
 export async function duplicateResume(
