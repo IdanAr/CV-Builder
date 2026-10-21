@@ -7,6 +7,7 @@ import type { ResumeMeta } from '@/lib/schemas/resume.zod'
 import type { CoverLetterView, SuggestedPosting } from '@/lib/api/cover-letters'
 import type { UseCoverLetters } from './use-cover-letters'
 import { CoverLetterPanel } from './CoverLetterPanel'
+import { Toaster } from '@/components/ui/Toaster'
 
 const hook = vi.hoisted(() => ({ current: null as unknown }))
 vi.mock('./use-cover-letters', () => ({ useCoverLetters: () => hook.current }))
@@ -297,6 +298,24 @@ describe('CoverLetterPanel: an open letter', () => {
     expect(h.save).toHaveBeenCalledWith(l.id, { pendingApprovals: [] })
   })
 
+  it('repeated reasons and notices each get their own line', () => {
+    mockHook({ letters: [letter({ pendingApprovals: ['same reason', 'same reason'], notices: ['same notice', 'same notice'] })] })
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    expect(screen.getAllByText('same reason')).toHaveLength(2)
+    expect(screen.getAllByText('same notice')).toHaveLength(2)
+    expect(errors.mock.calls.some((c) => String(c[0]).includes('same key'))).toBe(false)
+    errors.mockRestore()
+  })
+
+  it('caps the letter at the save limit', () => {
+    mockHook({ letters: [letter()] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    expect(letterBox()).toHaveAttribute('maxLength', '20000')
+  })
+
   it('shows notices as plain info lines', () => {
     mockHook({ letters: [letter({ notices: ['The posting was cut to 10,000 characters.'] })] })
     render(<CoverLetterPanel />)
@@ -391,13 +410,48 @@ describe('CoverLetterPanel: delete', () => {
     expect(h.remove).not.toHaveBeenCalled()
   })
 
-  it('a pending delete is sent at once when the panel unmounts', () => {
+  it('a pending delete is sent at once when the panel unmounts, and its toast goes with it', () => {
     const l = letter({ company: 'Hooli', role: 'SRE' })
     const h = mockHook({ letters: [l] })
     const { unmount } = render(<CoverLetterPanel />)
     fireEvent.click(screen.getByRole('button', { name: 'Delete letter for SRE at Hooli' }))
+    expect(useToastStore.getState().toasts).toHaveLength(1)
     unmount()
     expect(h.remove).toHaveBeenCalledWith(l.id)
+    expect(useToastStore.getState().toasts).toHaveLength(0)
+  })
+
+  it('the countdown pauses while the toast has focus, so a late Undo still works', async () => {
+    vi.useFakeTimers()
+    const l = letter({ company: 'Hooli', role: 'SRE' })
+    const h = mockHook({ letters: [l] })
+    render(<><CoverLetterPanel /><Toaster /></>)
+    fireEvent.click(screen.getByRole('button', { name: 'Delete letter for SRE at Hooli' }))
+    await act(async () => { vi.advanceTimersByTime(4000) })
+    const undo = screen.getByRole('button', { name: 'Undo' })
+    fireEvent.focus(undo)
+    await act(async () => { vi.advanceTimersByTime(5000) })
+    expect(h.remove).not.toHaveBeenCalled()
+    fireEvent.click(undo)
+    expect(screen.getByRole('button', { name: /^SRE at Hooli/ })).toBeInTheDocument()
+    await act(async () => { vi.advanceTimersByTime(10000) })
+    expect(h.remove).not.toHaveBeenCalled()
+  })
+
+  it('Undo after the DELETE was sent does nothing', async () => {
+    vi.useFakeTimers()
+    const l = letter({ company: 'Hooli', role: 'SRE' })
+    // The DELETE stays in flight.
+    const h = mockHook({ letters: [l, letter()], remove: vi.fn(() => new Promise<void>(() => {})) })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'Delete letter for SRE at Hooli' }))
+    const onUndo = useToastStore.getState().toasts[0].onAction!
+    await act(async () => { vi.advanceTimersByTime(6000) })
+    expect(h.remove).toHaveBeenCalledWith(l.id)
+    expect(useToastStore.getState().toasts).toHaveLength(0)
+    act(() => { onUndo() })
+    expect(screen.queryByRole('button', { name: /^SRE at Hooli/ })).toBeNull()
+    expect(h.remove).toHaveBeenCalledTimes(1)
   })
 })
 

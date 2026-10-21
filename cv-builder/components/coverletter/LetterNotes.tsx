@@ -57,8 +57,8 @@ export function LetterNotes({
       <div>
         {situation.length > 0 && (
           <div id={situationId} className="mb-1.5 space-y-1">
-            {situation.map((line) => (
-              <p key={line} className="rounded-control bg-surface-attention px-2.5 py-1.5 text-xs text-fg-attention">
+            {situation.map((line, i) => (
+              <p key={`${i}-${line}`} className="rounded-control bg-surface-attention px-2.5 py-1.5 text-xs text-fg-attention">
                 {line}
               </p>
             ))}

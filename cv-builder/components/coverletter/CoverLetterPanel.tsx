@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ArrowLeft, Check, Copy, FileDown, Info, Link2, Loader2, RotateCcw, Sparkles, Type } from 'lucide-react'
 import { useResumeEditorStore, flushSave } from '@/lib/stores/resume-editor.store'
-import { toast, useToastStore } from '@/lib/stores/toast.store'
 import { fetchWithTimeout, requestErrorMessage } from '@/lib/fetch-with-timeout'
 import { inputClass } from '@/components/editor/forms/field-styles'
 import { SegmentedControl } from '@/components/editor/design/SegmentedControl'
@@ -12,11 +11,11 @@ import { apiErrorMessage } from '@/lib/api/client-errors'
 import { detectGaps, type DetectedGap } from '@/lib/ai/cover-letter/gaps'
 import { Button } from '@/components/ui/Button'
 import { ErrorBanner } from '@/components/ui/ErrorBanner'
-import { UNDO_DELETE_DURATION } from '@/components/cvs/use-cv-deletion'
 // Types only: the values would drag mongoose into the client bundle.
 import type { CoverLetterView } from '@/lib/api/cover-letters'
 import type { CoverLetterNotes, CreateCoverLetterInput } from '@/lib/schemas/cover-letter.zod'
 import { useCoverLetters } from './use-cover-letters'
+import { useLetterDeletion } from './use-letter-deletion'
 import { LetterList, letterCompany, letterDate, letterTitle } from './LetterList'
 import { LetterNotes } from './LetterNotes'
 import { LetterProgress } from './LetterProgress'
@@ -33,6 +32,8 @@ const SOURCE_OPTIONS = [
 // longer paste is cut, as the old route did, instead of being refused.
 const NAME_MAX = 200
 const JOB_TEXT_MAX = 10_000
+// UpdateCoverLetterSchema's content cap, so typing stops before the save is refused.
+const CONTENT_MAX = 20_000
 
 interface ImportedJob {
   text: string
@@ -115,6 +116,7 @@ function LetterEditor({ id, value, onChange }: { id: string; value: string; onCh
       id={id}
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      maxLength={CONTENT_MAX}
       placeholder="Write your letter here."
       spellCheck
       className={cn(
@@ -433,7 +435,7 @@ function OpenLetter({
                   : `${approvals.length} details could not be traced to your CV. Check them, edit the letter if needed, then keep it.`}
               </p>
               <ul className="mt-2 list-disc space-y-1 pl-10 text-xs text-fg-attention" aria-label="Details to check">
-                {approvals.map((reason) => <li key={reason}>{reason}</li>)}
+                {approvals.map((reason, i) => <li key={`${i}-${reason}`}>{reason}</li>)}
               </ul>
               <div className="mt-3 pl-6">
                 <Button size="sm" onClick={() => onSave(letter.id, { pendingApprovals: [] })}>Keep this letter</Button>
@@ -443,8 +445,8 @@ function OpenLetter({
 
           {letter.notices.length > 0 && (
             <ul className="space-y-1" aria-label="Notes about this letter">
-              {letter.notices.map((notice) => (
-                <li key={notice} className="flex items-start gap-1.5 text-xs text-fg-muted">
+              {letter.notices.map((notice, i) => (
+                <li key={`${i}-${notice}`} className="flex items-start gap-1.5 text-xs text-fg-muted">
                   <Info aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   {notice}
                 </li>
@@ -482,7 +484,8 @@ export function CoverLetterPanel() {
   const { letters, prefillNotes, suggestedPosting, loading, error, create, save, remove } = useCoverLetters(resumeId)
 
   const [view, setView] = useState<View>({ kind: 'auto' })
-  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set())
+  // Deletes wait out an undo window, like deleting a CV.
+  const { hidden, requestDelete: requestLetterDelete } = useLetterDeletion(remove)
   const formKey = useRef(0)
 
   const situation = useMemo(() => detectGaps(data, thisMonth()).map(situationLine), [data])
@@ -495,53 +498,8 @@ export function CoverLetterPanel() {
     [letters, hidden]
   )
 
-  // Deletes wait out an undo window, like deleting a CV. One still waiting when
-  // the panel goes away is sent at once, or the letter would come back next time.
-  const deleteTimers = useRef(new Map<string, number>())
-  const removeRef = useRef(remove)
-  useEffect(() => {
-    removeRef.current = remove
-  }, [remove])
-  useEffect(() => {
-    const timers = deleteTimers.current
-    return () => {
-      for (const [letterId, timer] of timers) {
-        window.clearTimeout(timer)
-        void removeRef.current(letterId)
-      }
-      timers.clear()
-    }
-  }, [])
-
-  const unhide = (letterId: string) =>
-    setHidden((prev) => {
-      if (!prev.has(letterId)) return prev
-      const next = new Set(prev)
-      next.delete(letterId)
-      return next
-    })
-
-  function requestDelete(letter: CoverLetterView) {
-    if (deleteTimers.current.has(letter.id)) return
-    setHidden((prev) => new Set(prev).add(letter.id))
-    const timer = window.setTimeout(async () => {
-      deleteTimers.current.delete(letter.id)
-      await removeRef.current(letter.id)
-      // Gone from the list on success; a failed delete shows the hook's error and the letter again.
-      unhide(letter.id)
-    }, UNDO_DELETE_DURATION)
-    deleteTimers.current.set(letter.id, timer)
-    const toastId = toast.withAction(`Deleted letter for ${letterTitle(letter)}`, 'Undo', () => {
-      const pending = deleteTimers.current.get(letter.id)
-      if (pending !== undefined) {
-        window.clearTimeout(pending)
-        deleteTimers.current.delete(letter.id)
-      }
-      unhide(letter.id)
-    })
-    // Keep the toast alive no longer than the window it describes.
-    window.setTimeout(() => useToastStore.getState().dismiss(toastId), UNDO_DELETE_DURATION)
-  }
+  const requestDelete = (letter: CoverLetterView) =>
+    requestLetterDelete(letter.id, `Deleted letter for ${letterTitle(letter)}`)
 
   const blankNotes = (): CoverLetterNotes => (prefillNotes.explain ? { explain: prefillNotes.explain } : {})
 
