@@ -25,4 +25,24 @@ describe('CoverLetterPdfTemplate', () => {
     expect(text).toContain('Dear Hiring Manager')
     expect(text).toContain('Jane Smith')
   })
+
+  it('renders a Hebrew date and contact line in the header with real glyphs', async () => {
+    const { buffer, runs } = await renderToBufferAndRuns(
+      React.createElement(CoverLetterPdfTemplate, {
+        content: 'שלום עולם',
+        name: 'ישראל ישראלי',
+        contact: '050-0000000 · חיפה',
+        date: '21 באוקטובר 2026',
+        language: 'he',
+      })
+    )
+    const diag = fontDiagnostics(buffer)
+    expect(diag.embedded).toBe(true)
+    expect(diag.usesBase14).toBe(false)
+    const extracted = runs.map((r) => r.str).join(' ')
+    // pdfjs splits an RTL word across runs, so check the glyphs rather than the word.
+    for (const ch of new Set('באוקטובר')) expect(extracted).toContain(ch)
+    expect(extracted).toContain('2026')
+    expect(extracted).toContain('חיפה')
+  })
 })

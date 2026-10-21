@@ -508,8 +508,24 @@ describe('CoverLetterPanel: copy and export act on the open letter', () => {
     await waitFor(() => expect(clickSpy).toHaveBeenCalled())
     const [url, opts] = fetchMock.mock.calls[0]
     expect(url).toBe('/api/resumes/r1/cover-letter/export/docx')
-    expect(JSON.parse(opts.body)).toEqual({ content: 'Open letter text.' })
+    expect(JSON.parse(opts.body)).toEqual({ content: 'Open letter text.', language: 'en' })
     expect(downloaded).toBe('Cover-Letter-Acme-Corp.docx')
+    clickSpy.mockRestore()
+  })
+
+  it('PDF export sends a Hebrew letter\'s language so the file is dated and tagged in Hebrew', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, blob: async () => new Blob(['pdf-bytes']) })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:fake'), revokeObjectURL: vi.fn() })
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    mockHook({ letters: [letter({ content: 'שלום רב', language: 'he' })] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^pdf$/i }))
+    await waitFor(() => expect(clickSpy).toHaveBeenCalled())
+    const [url, opts] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/resumes/r1/cover-letter/export/pdf')
+    expect(JSON.parse(opts.body)).toEqual({ content: 'שלום רב', language: 'he' })
     clickSpy.mockRestore()
   })
 

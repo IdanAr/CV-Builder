@@ -359,7 +359,7 @@ function OpenLetter({
       const res = await fetch(`/api/resumes/${resumeId}/cover-letter/export/${format}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: letter.content }),
+        body: JSON.stringify({ content: letter.content, language: letter.language }),
       })
       if (!res.ok) throw new Error(await apiErrorMessage(res, 'Export failed. Please try again.'))
       const blob = await res.blob()
