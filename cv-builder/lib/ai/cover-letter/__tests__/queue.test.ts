@@ -42,7 +42,14 @@ describe('enqueueCoverLetter', () => {
     expect(mockRunJob).not.toHaveBeenCalled()
 
     await mockAfter.mock.calls[0][0]()
-    expect(mockRunJob).toHaveBeenCalledWith('u1', 'l1')
+    expect(mockRunJob).toHaveBeenCalledWith('u1', 'l1', {})
+  })
+
+  it('passes the request start on to the job in after(), so the request counts against the budget', async () => {
+    await enqueueCoverLetter('u1', 'l1', { startedAt: 1_000 })
+
+    await mockAfter.mock.calls[0][0]()
+    expect(mockRunJob).toHaveBeenCalledWith('u1', 'l1', { startedAt: 1_000 })
   })
 
   it('logs and swallows a job that throws inside after()', async () => {
@@ -69,6 +76,53 @@ describe('enqueueCoverLetter', () => {
       headers: undefined,
     })
     expect(mockAfter).not.toHaveBeenCalled()
+  })
+
+  it('writes in after() with a warning when QStash is set but the app URL is localhost', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    process.env.QSTASH_TOKEN = 'test-token'
+    process.env.APP_URL = 'http://localhost:3000'
+
+    await enqueueCoverLetter('u1', 'l1')
+
+    expect(mockPublishJSON).not.toHaveBeenCalled()
+    expect(mockAfter).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(String(warn.mock.calls[0][0])).toContain('http://localhost:3000')
+    warn.mockRestore()
+  })
+
+  it('treats 127.0.0.1 as local too', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    process.env.QSTASH_TOKEN = 'test-token'
+    process.env.APP_URL = 'http://127.0.0.1:3000'
+
+    await enqueueCoverLetter('u1', 'l1')
+
+    expect(mockPublishJSON).not.toHaveBeenCalled()
+    expect(mockAfter).toHaveBeenCalledTimes(1)
+    warn.mockRestore()
+  })
+
+  it('still publishes to the local QStash dev server, which can reach localhost', async () => {
+    process.env.QSTASH_TOKEN = 'test-token'
+    process.env.QSTASH_URL = 'http://127.0.0.1:8080'
+    process.env.APP_URL = 'http://localhost:3000'
+
+    await enqueueCoverLetter('u1', 'l1')
+
+    expect(mockPublishJSON).toHaveBeenCalledWith(expect.objectContaining({ url: 'http://localhost:3000/api/cover-letters/worker' }))
+    expect(mockAfter).not.toHaveBeenCalled()
+  })
+
+  it('does not warn without QStash', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    process.env.APP_URL = 'http://localhost:3000'
+
+    await enqueueCoverLetter('u1', 'l1')
+
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
   })
 
   it('forwards the Vercel protection bypass header', async () => {

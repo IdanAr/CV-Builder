@@ -17,6 +17,7 @@ import type {
 /** A letter still "writing" this long after it started (or was created) has been lost. */
 export const STALE_WRITING_MS = 90_000
 export const STALE_MESSAGE = 'Writing this letter took too long. Please try again.'
+export const START_FAILED_MESSAGE = 'Could not start this letter. Please try again.'
 
 // A migrated letter has no posting; the schema requires some job text.
 const LEGACY_JOB_TEXT = 'Imported from the cover letter saved with this CV.'
@@ -27,6 +28,8 @@ const MAX_CONTENT_LENGTH = 20_000
 
 /** What the API returns: the stored letter without the posting text or Mongo internals. */
 export type CoverLetterView = Omit<ICoverLetter, 'jobText'> & { id: string }
+/** One letter read on its own: a failed letter also carries its posting, so Try again can start from it. */
+export type CoverLetterDetail = CoverLetterView & { jobText?: string }
 
 type StoredLetter = ICoverLetter & { _id: unknown; __v?: number }
 
@@ -34,6 +37,10 @@ function toView(doc: StoredLetter): CoverLetterView {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { _id, __v, jobText, ...rest } = doc
   return { ...rest, id: String(_id) }
+}
+
+function toDetail(doc: StoredLetter): CoverLetterDetail {
+  return doc.status === 'failed' ? { ...toView(doc), jobText: doc.jobText } : toView(doc)
 }
 
 function isStale(doc: StoredLetter, now = Date.now()): boolean {
@@ -103,12 +110,12 @@ export async function getCoverLetter(
   userId: string,
   resumeId: string,
   id: string
-): Promise<CoverLetterView | null> {
+): Promise<CoverLetterDetail | null> {
   await dbConnect()
   const doc = await CoverLetter.findOne({ _id: id, userId, resumeId }).lean<StoredLetter>()
   if (!doc) return null
   const settled = await settleStale(doc)
-  return settled ? toView(settled) : null
+  return settled ? toDetail(settled) : null
 }
 
 export async function createCoverLetter(
@@ -119,6 +126,12 @@ export async function createCoverLetter(
   await dbConnect()
   const created = await CoverLetter.create({ ...input, userId, resumeId, status: 'writing' })
   return toView(created.toObject() as StoredLetter)
+}
+
+/** Fails a letter that is still "writing", e.g. when its job could not be enqueued; a letter already past that is left alone. */
+export async function failWritingLetter(userId: string, resumeId: string, id: string, message: string): Promise<void> {
+  await dbConnect()
+  await CoverLetter.updateOne({ _id: id, userId, resumeId, status: 'writing' }, { $set: { status: 'failed', error: message } })
 }
 
 /** Edits a finished letter. Returns 'writing' when the letter is still being written, null when it is not found. */

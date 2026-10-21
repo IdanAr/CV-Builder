@@ -23,8 +23,10 @@ export type ProgressStep = (typeof PROGRESS_STEPS)[number]
 
 export interface WriteOptions {
   model?: string
-  /** Total time budget in ms; the route's maxDuration is 60 s. */
+  /** Total time budget in ms, counted from the writer's start; the route's maxDuration is 60 s. */
   deadlineMs?: number
+  /** An absolute deadline on the now() clock, for a caller whose own work counts against the same budget. Wins over deadlineMs. */
+  deadlineAt?: number
   now?: () => number
   notes?: LetterNotes
   /** YYYY-MM; defaults to the current month. */
@@ -186,6 +188,11 @@ export async function writeCoverLetter(
   return run
 }
 
+/** "<sentence>: <reason>", the sentence cut to 60 characters, as the panel lists a pending approval. */
+export function approvalText(i: Pick<VerifyIssue, 'sentence' | 'detail'>): string {
+  return i.sentence ? `${i.sentence.length > 60 ? `${i.sentence.slice(0, 60).trimEnd()}…` : i.sentence}: ${i.detail}` : i.detail
+}
+
 /** Turns the final letter and its remaining issues into what the user sees: pending approvals for facts, notices for the rest. */
 export function assembleRun(input: { written: WrittenLetter; issues: VerifyIssue[]; firstIssues: VerifyIssue[]; sheetFacts: number; name: string; refined: boolean; calls: number }): CoverLetterRun {
   const { written, issues, name } = input
@@ -193,9 +200,7 @@ export function assembleRun(input: { written: WrittenLetter; issues: VerifyIssue
   if (input.sheetFacts < 3) notices.push(THIN_CV_NOTICE)
   const body = written.letter.paragraphs.flat().map((s) => s.text).join(' ')
   if (name && HEBREW.test(name) !== HEBREW.test(body)) notices.push(SCRIPT_NOTICE)
-  const pendingApprovals = issues
-    .filter((i) => APPROVAL_KINDS.has(i.kind))
-    .map((i) => (i.sentence ? `${i.sentence.length > 60 ? `${i.sentence.slice(0, 60).trimEnd()}…` : i.sentence}: ${i.detail}` : i.detail))
+  const pendingApprovals = issues.filter((i) => APPROVAL_KINDS.has(i.kind)).map(approvalText)
   return {
     content: renderLetter(written.letter),
     letter: written.letter,

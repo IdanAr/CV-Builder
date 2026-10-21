@@ -76,8 +76,27 @@ describe('runCoverLetterJob', () => {
     const [data, input, opts] = mockWrite.mock.calls[0]
     expect(data.basics.name).toBe('Dana Levi')
     expect(input).toEqual({ company: 'Northwind', role: 'Platform Engineer', jobText: 'We build tools for small shops.' })
-    expect(opts.deadlineMs).toBe(55_000)
+    expect(opts.deadlineAt).toBeTypeOf('number')
     expect(opts.notes).toMatchObject({ motivation: 'I like small tools.', hiringManager: 'Sam Cohen' })
+  })
+
+  it('counts the 55 s budget from the start it is given, so the database work and the request before it count too', async () => {
+    const { letterId } = await seed()
+    mockWrite.mockResolvedValue(RUN)
+
+    await runCoverLetterJob('u1', letterId, { startedAt: 1_000 })
+    expect(mockWrite.mock.calls[0][2].deadlineAt).toBe(56_000)
+  })
+
+  it('counts the budget from its own start when given none', async () => {
+    const { letterId } = await seed()
+    mockWrite.mockResolvedValue(RUN)
+    const before = Date.now()
+
+    await runCoverLetterJob('u1', letterId)
+    const { deadlineAt } = mockWrite.mock.calls[0][2]
+    expect(deadlineAt).toBeGreaterThanOrEqual(before + 55_000)
+    expect(deadlineAt).toBeLessThanOrEqual(Date.now() + 55_000)
   })
 
   it('does not run a second time on the same letter', async () => {

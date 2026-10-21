@@ -6,6 +6,8 @@ import {
   createCoverLetter,
   latestNotes,
   suggestedPostingFor,
+  failWritingLetter,
+  START_FAILED_MESSAGE,
 } from '@/lib/api/cover-letters'
 import { enqueueCoverLetter } from '@/lib/ai/cover-letter/queue'
 import { CreateCoverLetterSchema } from '@/lib/schemas/cover-letter.zod'
@@ -41,6 +43,8 @@ export const GET = auth(async (req, ctx) => {
 })
 
 export const POST = auth(async (req, ctx) => {
+  // On the after() path the job runs in this request, so its budget counts from here.
+  const startedAt = Date.now()
   const userId = req.auth?.user?.id
   if (!userId) {
     return apiError('UNAUTHORIZED', 'Unauthorized', 401)
@@ -66,8 +70,14 @@ export const POST = auth(async (req, ctx) => {
     }
 
     const letter = await createCoverLetter(userId, id, parsed.data)
-    // If this throws the letter stays "writing" and the read-time stale rule fails it.
-    await enqueueCoverLetter(userId, letter.id)
+    try {
+      await enqueueCoverLetter(userId, letter.id, { startedAt })
+    } catch (err) {
+      // No job will write it: fail it now rather than leave it "writing" until
+      // the stale rule. If even that write fails, the stale rule still will.
+      await failWritingLetter(userId, id, letter.id, START_FAILED_MESSAGE).catch(() => {})
+      throw err
+    }
     return NextResponse.json({ letter }, { status: 202 })
   } catch (err) {
     return handleRouteError(err, 'POST /api/resumes/[id]/cover-letters')

@@ -54,7 +54,7 @@ import {
 import { checkLetter, htmlToText, type LetterChecks } from './checks'
 import { inferCitations, inferQuotes, parsePlainLetter } from './infer-citations'
 import { generateCoverLetter } from './baseline-pipeline'
-import { HUMAN_READ_TARGET, buildHumanRead, parseAnswers, scoreHumanRead, type HumanReadKeyItem } from './human-read'
+import { HUMAN_READ_TARGET, buildHumanRead, checkSheet, parseAnswers, scoreHumanRead, type HumanReadKeyItem } from './human-read'
 import { writeCoverLetterB } from './variant-b'
 import { EVAL_PAIRS, EVAL_SET_VERSION, GAP_VARIANT_END_DATE, NOTES, type EvalPair } from './pairs'
 import { SYNTHETIC_CVS } from './synthetic-cvs'
@@ -108,6 +108,8 @@ interface Generated {
   issues?: VerifyIssue[]
   firstIssues?: VerifyIssue[]
   refined?: boolean
+  /** Variant B only: false when the critique was skipped for time or failed. */
+  reviewed?: boolean
   notices?: string[]
 }
 
@@ -326,6 +328,7 @@ async function generate(label: string, samples: number, opts: GenerateOptions = 
           issues: run.issues,
           firstIssues: run.firstIssues,
           refined: run.refined,
+          reviewed: 'reviewed' in run ? (run.reviewed as boolean) : undefined,
           notices: run.notices,
         }
       }
@@ -333,7 +336,8 @@ async function generate(label: string, samples: number, opts: GenerateOptions = 
       result = { caseId: c.id, sample, content: '', pendingApprovals: [], calls, ms: Date.now() - started, error: String(err), variant: opts.variant, model: opts.model }
     }
     writeJson(path.join(dir, `${c.id}.s${sample}.json`), result)
-    console.log(`${c.id}.s${sample} ${result.error ? `ERROR ${result.error}` : `${result.content.split(/\s+/).length} words, ${(result.ms / 1000).toFixed(1)} s`}`)
+    const review = result.reviewed === false ? ', critique skipped' : ''
+    console.log(`${c.id}.s${sample} ${result.error ? `ERROR ${result.error}` : `${result.content.split(/\s+/).length} words, ${(result.ms / 1000).toFixed(1)} s${review}`}`)
   })
 }
 
@@ -979,13 +983,19 @@ function humanReadSheet(oldLabel: string, newLabel: string) {
 /** The new letter's preference rate from the filled sheet, against the spec's target. */
 function humanScore() {
   const key = readJson<HumanReadKeyItem[]>(path.join(HUMAN_READ_DIR, 'key.json'))
-  const s = scoreHumanRead(key, parseAnswers(readFileSync(path.join(HUMAN_READ_DIR, 'sheet.md'), 'utf8')))
-  console.log(`Answered: ${s.answered} of ${s.total} (${s.unanswered} unanswered, ignored)`)
+  const sheet = readFileSync(path.join(HUMAN_READ_DIR, 'sheet.md'), 'utf8')
+  for (const w of checkSheet(sheet, key)) console.log(`Warning: ${w}`)
+  const s = scoreHumanRead(key, parseAnswers(sheet))
+  const pct = (n: number | null) => (n === null ? 'n/a' : `${(n * 100).toFixed(1)}%`)
+  console.log(`Answered: ${s.answered} of ${s.total} (${s.unanswered} unanswered)`)
   console.log(`New preferred: ${s.newPreferred}`)
   console.log(`Old preferred: ${s.oldPreferred}`)
   console.log(`Same: ${s.same}`)
-  console.log(`New letter preference rate, excluding "same": ${s.rate === null ? 'n/a (no case decided)' : `${(s.rate * 100).toFixed(1)}% (${s.newPreferred} of ${s.newPreferred + s.oldPreferred})`}`)
-  console.log(`Target: at least ${HUMAN_READ_TARGET * 100}% -> ${s.rate === null ? 'PENDING (no case decided yet)' : s.pass ? 'PASS' : 'FAIL'}`)
+  console.log(`New letter preferred in ${pct(s.pairRate)} of answered pairs (${s.newPreferred} of ${s.answered}, "same" counts as not preferred)`)
+  console.log(`New letter preferred in ${pct(s.rate)} of decided pairs (${s.newPreferred} of ${s.newPreferred + s.oldPreferred}, "same" left out)`)
+  console.log(
+    `Target: new preferred in at least ${HUMAN_READ_TARGET * 100}% of pairs -> ${s.verdict}${s.verdict === 'PENDING' ? ` (${s.unanswered} of ${s.total} unanswered)` : ''}`
+  )
 }
 
 // ---------------------------------------------------------------------------

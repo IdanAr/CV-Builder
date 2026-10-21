@@ -11,6 +11,7 @@ let Resume: typeof import('@/models/Resume')['default']
 let ScrapedJob: typeof import('@/models/ScrapedJob')['default']
 let deleteResume: typeof import('../resumes')['deleteResume']
 let duplicateResume: typeof import('../resumes')['duplicateResume']
+let deleteScrapedJob: typeof import('../scraped-jobs')['deleteScrapedJob']
 
 beforeAll(async () => {
   await connectMemoryMongo()
@@ -19,6 +20,7 @@ beforeAll(async () => {
   Resume = (await import('@/models/Resume')).default
   ScrapedJob = (await import('@/models/ScrapedJob')).default
   ;({ deleteResume, duplicateResume } = await import('../resumes'))
+  ;({ deleteScrapedJob } = await import('../scraped-jobs'))
   await CoverLetter.init()
 }, 60000)
 
@@ -401,5 +403,82 @@ describe('deleteResume cascade', () => {
     await api.createCoverLetter('u1', cv, input)
     expect(await deleteResume('u2', cv)).toBe(false)
     expect(await CoverLetter.countDocuments({ resumeId: cv })).toBe(1)
+  })
+})
+
+describe('deleteScrapedJob cascade', () => {
+  it("deletes the draft CV's letters along with the draft, and keeps other CVs' letters", async () => {
+    const draft = await makeResume()
+    const keep = await makeResume()
+    const sj = await ScrapedJob.create({
+      userId: 'u1',
+      profileId: 'p1',
+      source: 'comeet',
+      sourceId: 'invented-1',
+      title: 'Platform Engineer',
+      company: 'Northwind',
+      url: 'https://example.test/job',
+      description: 'We build tools for small shops.',
+      firstSeenAt: new Date(),
+      draftResumeId: draft,
+    })
+    await api.createCoverLetter('u1', draft, { ...input, scrapedJobId: String(sj._id) })
+    await api.createCoverLetter('u1', keep, input)
+
+    expect(await deleteScrapedJob('u1', String(sj._id))).toEqual({ deleted: true, deletedDraftResume: true })
+    expect(await Resume.countDocuments({ _id: draft })).toBe(0)
+    expect(await CoverLetter.countDocuments({ resumeId: draft })).toBe(0)
+    expect(await CoverLetter.countDocuments({ resumeId: keep })).toBe(1)
+  })
+})
+
+describe('getCoverLetter posting text', () => {
+  it('returns the posting for a failed letter, so Try again can reuse it', async () => {
+    const cv = await makeResume()
+    const created = await api.createCoverLetter('u1', cv, input)
+    await CoverLetter.updateOne({ _id: created.id }, { $set: { status: 'failed', error: 'x' } })
+    expect((await api.getCoverLetter('u1', cv, created.id))?.jobText).toBe(input.jobText)
+  })
+
+  it('returns it once the stale rule fails a letter', async () => {
+    const cv = await makeResume()
+    const created = await api.createCoverLetter('u1', cv, input)
+    await CoverLetter.updateOne({ _id: created.id }, { $set: { startedAt: new Date(Date.now() - 91_000) } })
+    expect((await api.getCoverLetter('u1', cv, created.id))?.jobText).toBe(input.jobText)
+  })
+
+  it('leaves it out for writing and ready letters, and from every list', async () => {
+    const cv = await makeResume()
+    const writing = await api.createCoverLetter('u1', cv, input)
+    const ready = await api.createCoverLetter('u1', cv, input)
+    const failed = await api.createCoverLetter('u1', cv, input)
+    await CoverLetter.updateOne({ _id: ready.id }, { $set: { status: 'ready' } })
+    await CoverLetter.updateOne({ _id: failed.id }, { $set: { status: 'failed', error: 'x' } })
+    expect((await api.getCoverLetter('u1', cv, writing.id))?.jobText).toBeUndefined()
+    expect((await api.getCoverLetter('u1', cv, ready.id))?.jobText).toBeUndefined()
+    for (const l of await api.listCoverLetters('u1', cv)) expect((l as Record<string, unknown>).jobText).toBeUndefined()
+  })
+})
+
+describe('failWritingLetter', () => {
+  it('fails a writing letter with the message', async () => {
+    const cv = await makeResume()
+    const created = await api.createCoverLetter('u1', cv, input)
+    await api.failWritingLetter('u1', cv, created.id, api.START_FAILED_MESSAGE)
+    const stored = await CoverLetter.findById(created.id).lean()
+    expect(stored?.status).toBe('failed')
+    expect(stored?.error).toBe(api.START_FAILED_MESSAGE)
+  })
+
+  it('leaves a letter that is no longer writing, or another user\'s, alone', async () => {
+    const cv = await makeResume()
+    const ready = await api.createCoverLetter('u1', cv, input)
+    await CoverLetter.updateOne({ _id: ready.id }, { $set: { status: 'ready', content: 'Done.' } })
+    await api.failWritingLetter('u1', cv, ready.id, api.START_FAILED_MESSAGE)
+    expect((await CoverLetter.findById(ready.id).lean())?.status).toBe('ready')
+
+    const theirs = await api.createCoverLetter('u1', cv, input)
+    await api.failWritingLetter('u2', cv, theirs.id, api.START_FAILED_MESSAGE)
+    expect((await CoverLetter.findById(theirs.id).lean())?.status).toBe('writing')
   })
 })

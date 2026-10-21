@@ -12,11 +12,19 @@ import { writeCoverLetterWithCritique } from './write-with-critique'
 export type JobOutcome = 'written' | 'already-started' | 'gone' | 'failed'
 
 export const FAILED_MESSAGE = 'Could not write this letter. Please try again.'
-/** The worker route's maxDuration is 60 s; this leaves room to store the result. */
+/**
+ * The route's maxDuration is 60 s; this leaves room to store the result. It
+ * counts from startedAt, so the claim, the CV read and (on the after() path)
+ * the create request itself all come out of the same budget.
+ */
 const WRITE_DEADLINE_MS = 55_000
 const OBJECT_ID = /^[0-9a-f]{24}$/i
 
-export async function runCoverLetterJob(userId: string, letterId: string): Promise<JobOutcome> {
+export async function runCoverLetterJob(
+  userId: string,
+  letterId: string,
+  { startedAt = Date.now() }: { startedAt?: number } = {}
+): Promise<JobOutcome> {
   // A malformed id would throw a CastError from every query below.
   if (!OBJECT_ID.test(letterId)) return 'gone'
   await dbConnect()
@@ -47,7 +55,7 @@ export async function runCoverLetterJob(userId: string, letterId: string): Promi
       resume.data,
       { company: letter.company, role: letter.role, jobText: letter.jobText },
       {
-        deadlineMs: WRITE_DEADLINE_MS,
+        deadlineAt: startedAt + WRITE_DEADLINE_MS,
         notes: letter.notes,
         // Fire and forget: a lost progress write only leaves the bar a step behind.
         onProgress: (step: ProgressStep) => {

@@ -19,6 +19,8 @@ vi.mock('@/lib/api/cover-letters', () => ({
   createCoverLetter: vi.fn(),
   latestNotes: vi.fn(),
   suggestedPostingFor: vi.fn(),
+  failWritingLetter: vi.fn(),
+  START_FAILED_MESSAGE: 'Could not start this letter. Please try again.',
 }))
 
 vi.mock('@/lib/ai/cover-letter/queue', () => ({
@@ -217,7 +219,7 @@ describe('/api/resumes/[id]/cover-letters', () => {
       expect(checkAiRateLimit).toHaveBeenCalledTimes(1)
       expect(api.createCoverLetter).toHaveBeenCalledWith('user-1', 'cv-1', VALID_BODY)
       expect(enqueueCoverLetter).toHaveBeenCalledTimes(1)
-      expect(enqueueCoverLetter).toHaveBeenCalledWith('user-1', 'l1')
+      expect(enqueueCoverLetter).toHaveBeenCalledWith('user-1', 'l1', { startedAt: expect.any(Number) })
     })
 
     it('answers 500 when enqueueing throws after the letter was created', async () => {
@@ -226,6 +228,24 @@ describe('/api/resumes/[id]/cover-letters', () => {
       vi.mocked(getResume).mockResolvedValueOnce({ title: 'My CV' } as never)
       const api = await import('@/lib/api/cover-letters')
       vi.mocked(api.createCoverLetter).mockResolvedValueOnce({ id: 'l1', status: 'writing' } as never)
+      const { enqueueCoverLetter } = await import('@/lib/ai/cover-letter/queue')
+      vi.mocked(enqueueCoverLetter).mockRejectedValueOnce(new Error('qstash down'))
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      const { POST } = await import('./route')
+      const res = (await POST(post(VALID_BODY) as never, ctx)) as Response
+      expect(res.status).toBe(500)
+      // Failed at once, not left "writing" for the stale rule to find 90 s later.
+      expect(api.failWritingLetter).toHaveBeenCalledWith('user-1', 'cv-1', 'l1', 'Could not start this letter. Please try again.')
+    })
+
+    it('still answers 500 when marking the letter failed throws too', async () => {
+      signIn()
+      const { getResume } = await import('@/lib/api/resumes')
+      vi.mocked(getResume).mockResolvedValueOnce({ title: 'My CV' } as never)
+      const api = await import('@/lib/api/cover-letters')
+      vi.mocked(api.createCoverLetter).mockResolvedValueOnce({ id: 'l1', status: 'writing' } as never)
+      vi.mocked(api.failWritingLetter).mockRejectedValueOnce(new Error('db down'))
       const { enqueueCoverLetter } = await import('@/lib/ai/cover-letter/queue')
       vi.mocked(enqueueCoverLetter).mockRejectedValueOnce(new Error('qstash down'))
       vi.spyOn(console, 'error').mockImplementation(() => {})
