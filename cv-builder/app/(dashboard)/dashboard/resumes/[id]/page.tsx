@@ -3,17 +3,21 @@ import { auth } from '@/lib/auth'
 import { getResume } from '@/lib/api/resumes'
 import { EditorShell } from '@/components/editor/EditorShell'
 import { UnverifiedClaimsBanner } from '@/components/editor/UnverifiedClaimsBanner'
+import { parseEditorTab } from '@/lib/editor/tabs'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
 export default async function ResumePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ tab?: string | string[] }>
 }) {
   const session = await auth()
   if (!session?.user?.id) notFound()
 
   const { id } = await params
+  const { tab } = await searchParams
   const resume = await getResume(session.user.id, id)
   if (!resume) notFound()
 
@@ -30,6 +34,7 @@ export default async function ResumePage({
       title={resume.title}
       data={(resume.data ?? {}) as ResumeData}
       meta={resume.meta as ResumeMeta}
+      initialTab={parseEditorTab(tab)}
       />
     </>
   )

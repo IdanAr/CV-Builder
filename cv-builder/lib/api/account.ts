@@ -16,11 +16,12 @@ import JobSearchProfile from '@/models/JobSearchProfile'
 import JobSearchRule from '@/models/JobSearchRule'
 import ScrapedJob from '@/models/ScrapedJob'
 import AiCache from '@/models/AiCache'
+import CoverLetter from '@/models/CoverLetter'
 
 /**
  * Every collection that holds something belonging to a user.
  *
- * All eight are keyed by `userId` directly — including ApplicationActivity and
+ * All nine are keyed by `userId` directly — including ApplicationActivity and
  * ScrapedJob, which could plausibly have been keyed only by their parent — so
  * both export and deletion are a flat sweep rather than a cascade. Anything
  * added later that stores user data has to be added here; the count assertion
@@ -35,6 +36,7 @@ const USER_OWNED = [
   ['jobSearchRules', JobSearchRule],
   ['scrapedJobs', ScrapedJob],
   ['aiCache', AiCache],
+  ['coverLetters', CoverLetter],
 ] as const
 
 export type AccountExport = {
@@ -59,7 +61,7 @@ export async function exportUserData(
 
   const collections = await Promise.all(
     USER_OWNED.map(async ([key, model]) => {
-      // `as never` narrows the union of eight distinct Mongoose model types,
+      // `as never` narrows the union of nine distinct Mongoose model types,
       // which TypeScript cannot resolve to one call signature; the filter shape
       // is identical for all of them.
       const docs = await (model as never as typeof Resume).find({ userId }).lean()

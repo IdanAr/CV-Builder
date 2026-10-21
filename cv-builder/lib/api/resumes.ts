@@ -1,5 +1,6 @@
 import dbConnect from '@/lib/db'
 import Resume from '@/models/Resume'
+import CoverLetter from '@/models/CoverLetter'
 import { sectionsFilledCount } from '@/lib/sections'
 import type { CreateResumeInput, PatchResumeInput, ResumeData } from '@/lib/schemas/resume.zod'
 import { scoreResume } from '@/lib/ats/scorer'
@@ -110,8 +111,19 @@ export async function patchResume(userId: string, id: string, patch: PatchResume
 
 export async function deleteResume(userId: string, id: string): Promise<boolean> {
   await dbConnect()
+  return deleteResumeWithLetters(userId, id)
+}
+
+/**
+ * Deletes a CV and its cover letters: a CV's letters belong to it, nothing
+ * else points at them. Every path that deletes a CV goes through here, so no
+ * letter (and the posting text it keeps) outlives its CV. Expects a connection.
+ */
+export async function deleteResumeWithLetters(userId: string, id: string): Promise<boolean> {
   const result = await Resume.deleteOne({ _id: id, userId })
-  return result.deletedCount > 0
+  if (result.deletedCount === 0) return false
+  await CoverLetter.deleteMany({ userId, resumeId: id })
+  return true
 }
 
 export async function duplicateResume(
@@ -124,7 +136,7 @@ export async function duplicateResume(
   if (!source) return null
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { _id, createdAt, updatedAt, __v, ...rest } = source as typeof source & { __v?: number }
+  const { _id, createdAt, updatedAt, __v, coverLetterMigrated, ...rest } = source as typeof source & { __v?: number }
   const copy = await Resume.create({
     ...rest,
     userId,

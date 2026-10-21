@@ -1,15 +1,17 @@
 // lib/jobsearch/__tests__/apply.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { mockRunAtsFixPipeline, mockGenerateCoverLetter, mockScoreResume, mockCreateResume } = vi.hoisted(() => ({
+const { mockRunAtsFixPipeline, mockEnqueueCoverLetter, mockScoreResume, mockCreateResume } = vi.hoisted(() => ({
   mockRunAtsFixPipeline: vi.fn(),
-  mockGenerateCoverLetter: vi.fn(),
+  mockEnqueueCoverLetter: vi.fn(),
   mockScoreResume: vi.fn(),
   mockCreateResume: vi.fn(),
 }))
 
 vi.mock('@/lib/ai/ats-fix-pipeline', () => ({ runAtsFixPipeline: mockRunAtsFixPipeline }))
-vi.mock('@/lib/ai/cover-letter-pipeline', () => ({ generateCoverLetter: mockGenerateCoverLetter }))
+// The scan no longer writes letters; the letter queue is mocked only so the
+// tests can prove it is never reached.
+vi.mock('@/lib/ai/cover-letter/queue', () => ({ enqueueCoverLetter: mockEnqueueCoverLetter }))
 vi.mock('@/lib/ats/scorer', () => ({ scoreResume: mockScoreResume }))
 vi.mock('@/lib/api/resumes', () => ({ createResume: mockCreateResume }))
 
@@ -38,7 +40,6 @@ const sourceMeta = {
 beforeEach(() => {
   vi.clearAllMocks()
   mockRunAtsFixPipeline.mockResolvedValue([])
-  mockGenerateCoverLetter.mockResolvedValue({ content: 'Dear Acme, ...', pendingApprovals: [] })
   mockScoreResume.mockReturnValue({ total: 90, missingKeywords: [] })
   mockCreateResume.mockResolvedValue({ _id: 'r1' })
 })
@@ -90,7 +91,7 @@ describe('runApplyPipeline', () => {
     expect(result.status).toBe('needs_review')
   })
 
-  it('returns status "needs_review" when a fix or the cover letter has pending approvals, even with a high score', async () => {
+  it('returns status "needs_review" when a fix has pending approvals, even with a high score', async () => {
     mockRunAtsFixPipeline.mockResolvedValue([
       { id: 'fix-summary', section: 'summary', original: '', suggested: 'Grew revenue 40%.', targetKeywords: ['revenue'], pendingApprovals: ['40%'] },
     ])
@@ -117,7 +118,6 @@ describe('runApplyPipeline', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           basics: expect.objectContaining({ summary: 'Backend engineer with Node experience.' }),
-          coverLetter: 'Dear Acme, ...',
         }),
         applicationStatus: 'draft',
         targetCompany: 'Acme',
@@ -125,6 +125,24 @@ describe('runApplyPipeline', () => {
       }),
       expect.anything()
     )
+  })
+
+  it('never writes a cover letter: no queued job, no letter on the draft', async () => {
+    await runApplyPipeline('u1', baseResumeData as never, posting, [], 75, 'source-r1', sourceMeta)
+
+    expect(mockEnqueueCoverLetter).not.toHaveBeenCalled()
+    const created = mockCreateResume.mock.calls[0][1]
+    expect(created.data).not.toHaveProperty('coverLetter')
+  })
+
+  it('does not carry the source resume\'s own letter onto a draft for a different posting', async () => {
+    await runApplyPipeline(
+      'u1',
+      { ...baseResumeData, coverLetter: 'Dear someone else, ...' } as never,
+      posting, [], 75, 'source-r1', sourceMeta
+    )
+
+    expect(mockCreateResume.mock.calls[0][1].data).not.toHaveProperty('coverLetter')
   })
 
   it('passes sourceResumeId through as parentResumeId so the draft records lineage', async () => {

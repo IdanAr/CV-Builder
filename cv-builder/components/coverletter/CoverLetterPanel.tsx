@@ -1,14 +1,24 @@
 'use client'
 
-import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { AlertTriangle, Check, Copy, FileDown, Link2, Loader2, Sparkles, Type } from 'lucide-react'
+import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle, ArrowLeft, Check, Copy, FileDown, Info, Link2, Loader2, RotateCcw, Sparkles, Type } from 'lucide-react'
 import { useResumeEditorStore, flushSave } from '@/lib/stores/resume-editor.store'
 import { fetchWithTimeout, requestErrorMessage } from '@/lib/fetch-with-timeout'
 import { inputClass } from '@/components/editor/forms/field-styles'
 import { SegmentedControl } from '@/components/editor/design/SegmentedControl'
 import { cn } from '@/lib/utils'
 import { apiErrorMessage } from '@/lib/api/client-errors'
+import { detectGaps, type DetectedGap } from '@/lib/ai/cover-letter/gaps'
 import { Button } from '@/components/ui/Button'
+import { ErrorBanner } from '@/components/ui/ErrorBanner'
+// Types only: the values would drag mongoose into the client bundle.
+import type { CoverLetterView } from '@/lib/api/cover-letters'
+import type { CoverLetterNotes, CreateCoverLetterInput } from '@/lib/schemas/cover-letter.zod'
+import { useCoverLetters } from './use-cover-letters'
+import { useLetterDeletion } from './use-letter-deletion'
+import { LetterList, letterCompany, letterDate, letterTitle } from './LetterList'
+import { LetterNotes } from './LetterNotes'
+import { LetterProgress } from './LetterProgress'
 
 type Source = 'paste' | 'link'
 
@@ -17,11 +27,13 @@ const SOURCE_OPTIONS = [
   { id: 'link', label: 'From a link' },
 ]
 
-/** A freshly generated letter that contains claims the user must approve first. */
-interface PendingLetter {
-  content: string
-  approvals: string[]
-}
+// CreateCoverLetterSchema's caps. The posting cap is MAX_JD_LENGTH, repeated
+// here because importing it would bring the AI SDK into the client bundle; a
+// longer paste is cut, as the old route did, instead of being refused.
+const NAME_MAX = 200
+const JOB_TEXT_MAX = 10_000
+// UpdateCoverLetterSchema's content cap, so typing stops before the save is refused.
+const CONTENT_MAX = 20_000
 
 interface ImportedJob {
   text: string
@@ -30,25 +42,21 @@ interface ImportedJob {
   host: string
 }
 
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+/** What the new-letter form starts from: blank, a suggested posting, or a failed letter being tried again. */
+interface Draft {
+  jobText: string
+  company: string
+  role: string
+  notes: CoverLetterNotes
+  scrapedJobId?: string
+  applicationId?: string
 }
 
-/** Approvals that still appear in the (possibly edited) letter. */
-function openApprovals(text: string, approvals: string[]): string[] {
-  const lower = text.toLowerCase()
-  return approvals.filter((a) => a.trim() && lower.includes(a.toLowerCase()))
-}
-
-/** Text with every occurrence of each phrase wrapped in a <mark>, for the highlight layer. */
-function markPhrases(text: string, phrases: string[]): ReactNode {
-  const live = phrases.filter((p) => p.trim())
-  if (live.length === 0) return text
-  const re = new RegExp(`(${live.map(escapeRegExp).join('|')})`, 'gi')
-  return text.split(re).map((part, i) =>
-    i % 2 === 1 ? <mark key={i} className="rounded-chip bg-surface-attention text-transparent">{part}</mark> : part
-  )
-}
+type View =
+  | { kind: 'auto' }
+  | { kind: 'list' }
+  | { kind: 'new'; draft: Draft; key: number }
+  | { kind: 'open'; id: string }
 
 function wordCount(text: string): number {
   const t = text.trim()
@@ -59,25 +67,41 @@ function fileSafe(s: string): string {
   return s.trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 40)
 }
 
-// Shared by the textarea and the highlight layer behind it: any difference in
-// font, padding, border or wrapping would let the highlights drift off the words.
+/** Notes with blank fields left out, so an untouched field is not sent as an empty string. */
+function filledNotes(notes: CoverLetterNotes): CoverLetterNotes {
+  const out: CoverLetterNotes = {}
+  for (const key of ['motivation', 'explain', 'hiringManager'] as const) {
+    const v = notes[key]?.trim()
+    if (v) out[key] = v
+  }
+  return out
+}
+
+function thisMonth(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+/** "2020-01" as "Jan 2020"; anything else (a CV date written another way) as written. */
+function monthLabel(value: string): string {
+  const m = value.match(/^(\d{4})-(\d{2})$/)
+  if (!m) return value
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, 1)).toLocaleDateString('en-US', {
+    month: 'short', year: 'numeric', timeZone: 'UTC',
+  })
+}
+
+function situationLine(gap: DetectedGap): string {
+  const ask = 'If you want the letter to explain it, add a sentence here.'
+  return gap.exactStart
+    ? `Your CV shows no role from ${monthLabel(gap.from)} to ${monthLabel(gap.to)}. ${ask}`
+    : `Your CV shows no role for at least ${gap.months} months after ${monthLabel(gap.after)}. ${ask}`
+}
+
 const LETTER_TEXT = 'w-full whitespace-pre-wrap break-words border px-4 py-3 text-sm leading-relaxed'
 
-/**
- * The letter is one auto-growing textarea over a layer that paints highlights
- * for unverified claims. A textarea cannot style its own text, so the layer
- * repeats the text invisibly with the claims marked, exactly underneath.
- */
-function LetterEditor({
-  id, value, onChange, highlights, busy, placeholder,
-}: {
-  id: string
-  value: string
-  onChange: (v: string) => void
-  highlights: string[]
-  busy: boolean
-  placeholder: string
-}) {
+/** One auto-growing textarea for the letter, edited where it was written. */
+function LetterEditor({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
   const ref = useRef<HTMLTextAreaElement>(null)
   useLayoutEffect(() => {
     const el = ref.current
@@ -87,76 +111,68 @@ function LetterEditor({
   }, [value])
 
   return (
-    <div className="relative rounded-card bg-surface">
-      {highlights.length > 0 && (
-        <div aria-hidden="true" className={cn(LETTER_TEXT, 'pointer-events-none absolute inset-0 overflow-hidden rounded-card border-transparent text-transparent')}>
-          {markPhrases(value, highlights)}
-          {'\n '}
-        </div>
+    <textarea
+      ref={ref}
+      id={id}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      maxLength={CONTENT_MAX}
+      placeholder="Write your letter here."
+      spellCheck
+      className={cn(
+        LETTER_TEXT,
+        'block min-h-80 resize-none overflow-hidden rounded-card border-border bg-surface text-fg placeholder:text-fg-subtle',
+        'focus-visible:border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
       )}
-      <textarea
-        ref={ref}
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        readOnly={busy}
-        aria-busy={busy}
-        placeholder={placeholder}
-        spellCheck
-        className={cn(
-          LETTER_TEXT,
-          'relative block min-h-80 resize-none overflow-hidden rounded-card border-border bg-transparent text-fg placeholder:text-fg-subtle',
-          'focus-visible:border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          busy && 'opacity-40'
-        )}
-      />
-      {busy && (
-        <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-card bg-surface/70">
-          <Loader2 aria-hidden="true" className="h-5 w-5 text-primary motion-safe:animate-spin" />
-          <p className="text-sm text-fg-body">Writing your letter…</p>
-          <p className="text-xs text-fg-muted">Draft, critique, refine. About 20 seconds.</p>
-        </div>
-      )}
-    </div>
+    />
+  )
+}
+
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button size="xs" variant="ghost" onClick={onClick} className="-ml-2.5">
+      <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
+      All letters
+    </Button>
   )
 }
 
 /**
- * Job in, letter out, in one place: paste a job description or import it from
- * a link, generate, and edit the letter in the same box it was written into.
- * A letter whose facts all trace back to the CV is written straight to the
- * document (Undo in the top bar brings the old one back); one with claims the
- * hallucination guard could not trace is held in the box, highlighted, until
- * the user keeps or discards it.
+ * The job in: paste or import the posting, name the company and role, add
+ * optional notes. Write hands it to the background job; nothing is sent
+ * before that, including for a suggested posting.
  */
-export function CoverLetterPanel() {
+function NewLetterForm({
+  resumeId,
+  initial,
+  situation,
+  onSubmit,
+  submitError,
+  onBack,
+}: {
+  resumeId: string | null
+  initial: Draft
+  situation: string[]
+  /** Resolves false when the letter could not be started. */
+  onSubmit: (input: CreateCoverLetterInput) => Promise<boolean>
+  /** The panel's error, repeated by the Write button after a failed start. */
+  submitError?: string | null
+  onBack?: () => void
+}) {
   const id = useId()
-  const resumeId = useResumeEditorStore((s) => s.resumeId)
-  const coverLetter = useResumeEditorStore((s) => s.data.coverLetter ?? '')
-  const setData = useResumeEditorStore((s) => s.setData)
-
   const [source, setSource] = useState<Source>('paste')
-  const [jobDescription, setJobDescription] = useState('')
+  const [jobText, setJobText] = useState(initial.jobText)
   const [jobUrl, setJobUrl] = useState('')
   const [imported, setImported] = useState<ImportedJob | null>(null)
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
-  const [companyName, setCompanyName] = useState('')
-  const [roleName, setRoleName] = useState('')
+  const [company, setCompany] = useState(initial.company)
+  const [role, setRole] = useState(initial.role)
+  const [notes, setNotes] = useState<CoverLetterNotes>(initial.notes)
+  const [submitting, setSubmitting] = useState(false)
+  const [startFailed, setStartFailed] = useState(false)
 
-  const [generating, setGenerating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [pending, setPending] = useState<PendingLetter | null>(null)
-  const [justWritten, setJustWritten] = useState(false)
-
-  const [copied, setCopied] = useState(false)
-  const [exporting, setExporting] = useState<'docx' | 'pdf' | null>(null)
-  const [exportError, setExportError] = useState<string | null>(null)
-
-  const letter = pending ? pending.content : coverLetter
-  const open = pending ? openApprovals(pending.content, pending.approvals) : []
-  const hasLetter = letter.trim().length > 0
-  const canExport = hasLetter && !pending && !generating
+  const ready = jobText.trim() !== '' && company.trim() !== '' && role.trim() !== ''
 
   async function handleImport() {
     if (!resumeId || !jobUrl.trim()) return
@@ -171,9 +187,9 @@ export function CoverLetterPanel() {
       if (!res.ok) throw new Error(await apiErrorMessage(res, "Couldn't import that link. Paste the job description instead."))
       const job: ImportedJob = await res.json()
       setImported(job)
-      setJobDescription(job.text)
-      if (job.company && !companyName.trim()) setCompanyName(job.company)
-      if (job.title && !roleName.trim()) setRoleName(job.title)
+      setJobText(job.text)
+      if (job.company && !company.trim()) setCompany(job.company.slice(0, NAME_MAX))
+      if (job.title && !role.trim()) setRole(job.title.slice(0, NAME_MAX))
       setSource('paste')
     } catch (err) {
       setImportError(requestErrorMessage(err, "Couldn't import that link. Paste the job description instead."))
@@ -182,101 +198,35 @@ export function CoverLetterPanel() {
     }
   }
 
-  async function handleGenerate() {
-    if (!resumeId || !jobDescription.trim()) return
-    setGenerating(true)
-    setError(null)
-    setJustWritten(false)
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!ready || submitting) return
+    setSubmitting(true)
+    setStartFailed(false)
     try {
-      // The route writes from the saved CV, so recent edits must land first.
-      await flushSave().catch(() => {})
-      const res = await fetchWithTimeout(`/api/resumes/${resumeId}/cover-letter`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobDescription,
-          companyName: companyName.trim() || undefined,
-          roleName: roleName.trim() || undefined,
-        }),
+      const started = await onSubmit({
+        company: company.trim(),
+        role: role.trim(),
+        jobText: jobText.trim().slice(0, JOB_TEXT_MAX),
+        notes: filledNotes(notes),
+        ...(initial.scrapedJobId ? { scrapedJobId: initial.scrapedJobId } : {}),
+        ...(initial.applicationId ? { applicationId: initial.applicationId } : {}),
       })
-      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Could not write a cover letter. Please try again.'))
-      const result: { content: string; pendingApprovals?: string[] } = await res.json()
-      const approvals = result.pendingApprovals ?? []
-      if (approvals.length > 0) {
-        setPending({ content: result.content, approvals })
-      } else {
-        setPending(null)
-        setData({ coverLetter: result.content })
-        setJustWritten(true)
-      }
-    } catch (err) {
-      setError(requestErrorMessage(err, 'Could not write a cover letter. Please try again.'))
+      setStartFailed(!started)
     } finally {
-      setGenerating(false)
-    }
-  }
-
-  function handleEdit(value: string) {
-    setJustWritten(false)
-    if (pending) setPending({ ...pending, content: value })
-    else setData({ coverLetter: value })
-  }
-
-  function keepPending() {
-    if (!pending) return
-    setData({ coverLetter: pending.content })
-    setPending(null)
-    setJustWritten(true)
-  }
-
-  async function handleCopy() {
-    if (!canExport) return
-    try {
-      await navigator.clipboard.writeText(letter)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      setExportError("Couldn't copy. Select the text and copy it yourself.")
-    }
-  }
-
-  async function handleExport(format: 'docx' | 'pdf') {
-    if (!resumeId || !canExport) return
-    setExporting(format)
-    setExportError(null)
-    try {
-      const res = await fetch(`/api/resumes/${resumeId}/cover-letter/export/${format}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: letter }),
-      })
-      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Export failed. Please try again.'))
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      const suffix = fileSafe(companyName)
-      a.download = `Cover-Letter${suffix ? `-${suffix}` : ''}.${format}`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
-    } catch (err) {
-      setExportError(err instanceof Error ? err.message : 'Export failed. Please try again.')
-    } finally {
-      setExporting(null)
+      setSubmitting(false)
     }
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-5 px-4 py-5">
-      {/* 1. The job */}
-      <section aria-labelledby={`${id}-job`} className="space-y-3">
-        <div>
-          <h2 id={`${id}-job`} className="text-base font-medium text-fg-heading">Write a cover letter</h2>
-          <p className="mt-0.5 text-sm text-fg-muted">Add the job, and the AI writes a letter from the facts in your CV.</p>
-        </div>
+    <form onSubmit={handleSubmit} aria-labelledby={`${id}-title`} className="space-y-4">
+      {onBack && <BackButton onClick={onBack} />}
+      <div>
+        <h2 id={`${id}-title`} className="text-base font-medium text-fg-heading">New cover letter</h2>
+        <p className="mt-0.5 text-sm text-fg-muted">Add the job, and the AI writes a letter from the facts in your CV.</p>
+      </div>
 
+      <div className="space-y-3">
         <SegmentedControl
           label="Job description source"
           options={SOURCE_OPTIONS}
@@ -317,8 +267,8 @@ export function CoverLetterPanel() {
             <label htmlFor={`${id}-jd`} className="sr-only">Job description</label>
             <textarea
               id={`${id}-jd`}
-              value={jobDescription}
-              onChange={(e) => { setJobDescription(e.target.value); setImported(null) }}
+              value={jobText}
+              onChange={(e) => { setJobText(e.target.value); setImported(null) }}
               placeholder="Paste the job description here…"
               className={cn(inputClass, 'h-36 resize-y py-2 leading-relaxed')}
             />
@@ -333,90 +283,322 @@ export function CoverLetterPanel() {
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label htmlFor={`${id}-company`} className="mb-1 block text-xs text-fg-muted">Company <span className="text-fg-subtle">(optional)</span></label>
-            <input id={`${id}-company`} type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} className={inputClass} />
+            <label htmlFor={`${id}-company`} className="mb-1 block text-xs text-fg-muted">Company</label>
+            <input
+              id={`${id}-company`} type="text" required maxLength={NAME_MAX}
+              value={company} onChange={(e) => setCompany(e.target.value)} className={inputClass}
+            />
           </div>
           <div>
-            <label htmlFor={`${id}-role`} className="mb-1 block text-xs text-fg-muted">Role <span className="text-fg-subtle">(optional)</span></label>
-            <input id={`${id}-role`} type="text" value={roleName} onChange={(e) => setRoleName(e.target.value)} className={inputClass} />
+            <label htmlFor={`${id}-role`} className="mb-1 block text-xs text-fg-muted">Role</label>
+            <input
+              id={`${id}-role`} type="text" required maxLength={NAME_MAX}
+              value={role} onChange={(e) => setRole(e.target.value)} className={inputClass}
+            />
           </div>
         </div>
+      </div>
 
-        <div>
-          <Button size="md" onClick={handleGenerate} disabled={generating || !jobDescription.trim()} className="w-full">
-            {generating ? <Loader2 aria-hidden="true" className="h-4 w-4 motion-safe:animate-spin" /> : <Sparkles aria-hidden="true" className="h-4 w-4" />}
-            {generating ? 'Writing…' : hasLetter ? 'Rewrite cover letter' : 'Write cover letter'}
-          </Button>
-          {hasLetter && !generating && (
-            <p className="mt-1.5 text-center text-xs text-fg-muted">Replaces the letter below. Undo in the top bar brings it back.</p>
-          )}
-          {error && <p role="alert" className="mt-2 text-sm text-fg-danger">{error}</p>}
-        </div>
-      </section>
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium text-fg-heading">Your notes</legend>
+        <p className="text-xs text-fg-muted">Optional, in your own words. The letter only says what you write here or what your CV shows.</p>
+        <LetterNotes idPrefix={id} value={notes} onChange={setNotes} situation={situation} />
+      </fieldset>
 
-      {/* 2. The letter, edited where it was written */}
-      <section aria-labelledby={`${id}-letter`} className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-baseline gap-2">
-            <h2 id={`${id}-letter`} className="text-sm font-medium text-fg-heading">
-              <label htmlFor={`${id}-output`}>Cover letter</label>
-            </h2>
-            {hasLetter && <span className="text-xs text-fg-muted">{wordCount(letter)} words</span>}
+      <div>
+        <Button type="submit" size="md" disabled={!ready || submitting} className="w-full">
+          {submitting ? <Loader2 aria-hidden="true" className="h-4 w-4 motion-safe:animate-spin" /> : <Sparkles aria-hidden="true" className="h-4 w-4" />}
+          Write letter
+        </Button>
+        {/* The banner at the top already announces it (role="alert"); this copy is for whoever is looking at the button. */}
+        {startFailed && submitError && <p className="mt-1.5 text-center text-sm text-fg-danger">{submitError}</p>}
+        {!ready && <p className="mt-1.5 text-center text-xs text-fg-muted">Add the job description, company and role to write.</p>}
+      </div>
+    </form>
+  )
+}
+
+/** One letter: its progress while writing, its error if it failed, its editor once ready. */
+function OpenLetter({
+  letter,
+  resumeId,
+  onSave,
+  onBack,
+  onRetry,
+}: {
+  letter: CoverLetterView
+  resumeId: string | null
+  onSave: ReturnType<typeof useCoverLetters>['save']
+  onBack: () => void
+  onRetry: (letter: CoverLetterView) => void
+}) {
+  const id = useId()
+  const [notes, setNotes] = useState<CoverLetterNotes>(letter.notes ?? {})
+  const [copied, setCopied] = useState(false)
+  const [exporting, setExporting] = useState<'docx' | 'pdf' | null>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
+
+  const approvals = letter.pendingApprovals
+  const hasLetter = letter.content.trim().length > 0
+  const canExport = hasLetter && approvals.length === 0
+
+  function saveNotes() {
+    const saved = letter.notes ?? {}
+    const changed = (['motivation', 'explain', 'hiringManager'] as const).some((k) => (notes[k] ?? '') !== (saved[k] ?? ''))
+    // The whole object, so the hook's optimistic copy does not lose the untouched fields.
+    if (changed) onSave(letter.id, { notes: { ...saved, ...notes } })
+  }
+
+  async function handleCopy() {
+    if (!canExport) return
+    try {
+      await navigator.clipboard.writeText(letter.content)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setExportError("Couldn't copy. Select the text and copy it yourself.")
+    }
+  }
+
+  async function handleExport(format: 'docx' | 'pdf') {
+    if (!resumeId || !canExport) return
+    setExporting(format)
+    setExportError(null)
+    try {
+      const res = await fetch(`/api/resumes/${resumeId}/cover-letter/export/${format}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: letter.content, language: letter.language }),
+      })
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Export failed. Please try again.'))
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const suffix = fileSafe(letterCompany(letter))
+      a.download = `Cover-Letter${suffix ? `-${suffix}` : ''}.${format}`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Export failed. Please try again.')
+    } finally {
+      setExporting(null)
+    }
+  }
+
+  return (
+    <section aria-labelledby={`${id}-title`} className="space-y-3">
+      <BackButton onClick={onBack} />
+      <div>
+        <h2 id={`${id}-title`} className="text-base font-medium text-fg-heading">{letterTitle(letter)}</h2>
+        <p className="mt-0.5 text-xs text-fg-muted">{letterDate(letter.createdAt)}</p>
+      </div>
+
+      {letter.status === 'writing' && <LetterProgress progress={letter.progress} />}
+
+      {letter.status === 'failed' && (
+        <div className="space-y-3">
+          <ErrorBanner>{letter.error || 'This letter could not be written.'}</ErrorBanner>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" onClick={() => onRetry(letter)}>
+              <RotateCcw aria-hidden="true" className="h-4 w-4" />
+              Try again
+            </Button>
+            <p className="text-xs text-fg-muted">Starts a new letter with the same posting, company, role and notes.</p>
           </div>
-          <div className="flex gap-1" title={pending ? 'Keep or discard the new letter first' : undefined}>
-            <Button size="xs" variant="ghost" onClick={handleCopy} disabled={!canExport}>
-              {copied ? <Check aria-hidden="true" className="h-3.5 w-3.5" /> : <Copy aria-hidden="true" className="h-3.5 w-3.5" />}
-              {copied ? 'Copied!' : 'Copy'}
-            </Button>
-            <Button size="xs" variant="ghost" onClick={() => handleExport('pdf')} disabled={!canExport || exporting !== null}>
-              <FileDown aria-hidden="true" className="h-3.5 w-3.5" />
-              {exporting === 'pdf' ? 'Exporting…' : 'PDF'}
-            </Button>
-            <Button size="xs" variant="ghost" onClick={() => handleExport('docx')} disabled={!canExport || exporting !== null}>
-              <Type aria-hidden="true" className="h-3.5 w-3.5" />
-              {exporting === 'docx' ? 'Exporting…' : 'DOCX'}
-            </Button>
-          </div>
         </div>
-        {exportError && <p role="alert" className="text-xs text-fg-danger">{exportError}</p>}
+      )}
 
-        {pending && (
-          <div role="region" aria-label="Unverified details" className="rounded-card border border-border-attention bg-surface-attention p-3">
-            <p className="flex items-start gap-2 text-sm text-fg-attention">
-              <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-              {open.length > 0
-                ? `${open.length} ${open.length === 1 ? 'detail is' : 'details are'} not in your CV. Check the highlighted text, edit or remove it, then keep the letter.`
-                : 'Every unverified detail has been edited out. Keep the letter to save it.'}
-            </p>
-            {open.length > 0 && (
-              <ul className="mt-2 flex flex-wrap gap-1.5 pl-6" aria-label="Details to check">
-                {open.map((a) => (
-                  <li key={a} className="rounded-full border border-border-attention bg-surface px-2 py-0.5 text-xs text-fg-attention">{a}</li>
-                ))}
-              </ul>
-            )}
-            <div className="mt-3 flex gap-2 pl-6">
-              <Button size="sm" onClick={keepPending}>Keep letter</Button>
-              <Button size="sm" variant="ghost" onClick={() => setPending(null)}>Discard</Button>
+      {letter.status === 'ready' && (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-baseline gap-2">
+              <label htmlFor={`${id}-output`} className="text-sm font-medium text-fg-heading">Cover letter</label>
+              {hasLetter && <span className="text-xs text-fg-muted">{wordCount(letter.content)} words</span>}
+            </div>
+            <div className="flex gap-1" title={approvals.length > 0 ? 'Keep the letter first' : undefined}>
+              <Button size="xs" variant="ghost" onClick={handleCopy} disabled={!canExport}>
+                {copied ? <Check aria-hidden="true" className="h-3.5 w-3.5" /> : <Copy aria-hidden="true" className="h-3.5 w-3.5" />}
+                {copied ? 'Copied!' : 'Copy'}
+              </Button>
+              <Button size="xs" variant="ghost" onClick={() => handleExport('pdf')} disabled={!canExport || exporting !== null}>
+                <FileDown aria-hidden="true" className="h-3.5 w-3.5" />
+                {exporting === 'pdf' ? 'Exporting…' : 'PDF'}
+              </Button>
+              <Button size="xs" variant="ghost" onClick={() => handleExport('docx')} disabled={!canExport || exporting !== null}>
+                <Type aria-hidden="true" className="h-3.5 w-3.5" />
+                {exporting === 'docx' ? 'Exporting…' : 'DOCX'}
+              </Button>
             </div>
           </div>
-        )}
+          {exportError && <p role="alert" className="text-xs text-fg-danger">{exportError}</p>}
 
-        <LetterEditor
-          id={`${id}-output`}
-          value={letter}
-          onChange={handleEdit}
-          highlights={open}
-          busy={generating}
-          placeholder="Your letter appears here, ready to edit. You can also write it yourself."
+          {approvals.length > 0 && (
+            <div role="region" aria-label="Unverified details" className="rounded-card border border-border-attention bg-surface-attention p-3">
+              <p className="flex items-start gap-2 text-sm text-fg-attention">
+                <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+                {approvals.length === 1
+                  ? '1 detail could not be traced to your CV. Check it, edit the letter if needed, then keep it.'
+                  : `${approvals.length} details could not be traced to your CV. Check them, edit the letter if needed, then keep it.`}
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-10 text-xs text-fg-attention" aria-label="Details to check">
+                {approvals.map((reason, i) => <li key={`${i}-${reason}`}>{reason}</li>)}
+              </ul>
+              <div className="mt-3 pl-6">
+                <Button size="sm" onClick={() => onSave(letter.id, { pendingApprovals: [] })}>Keep this letter</Button>
+              </div>
+            </div>
+          )}
+
+          {letter.notices.length > 0 && (
+            <ul className="space-y-1" aria-label="Notes about this letter">
+              {letter.notices.map((notice, i) => (
+                <li key={`${i}-${notice}`} className="flex items-start gap-1.5 text-xs text-fg-muted">
+                  <Info aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  {notice}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <LetterEditor id={`${id}-output`} value={letter.content} onChange={(v) => onSave(letter.id, { content: v })} />
+          <p className="text-xs text-fg-muted">Saves as you type.</p>
+        </>
+      )}
+
+      {letter.status !== 'writing' && (
+        <details className="rounded-card border border-border bg-surface px-4 py-3">
+          <summary className="cursor-pointer text-sm font-medium text-fg-heading">Your notes for this letter</summary>
+          <div className="mt-3 space-y-2">
+            <p className="text-xs text-fg-muted">Kept with this letter for next time. Changing them does not rewrite the text.</p>
+            <LetterNotes idPrefix={id} value={notes} onChange={setNotes} onBlur={saveNotes} />
+          </div>
+        </details>
+      )}
+    </section>
+  )
+}
+
+/**
+ * The CV's cover letters: a list of letters (one per job), a form for a new
+ * one, and each letter's own editor. Letters are written by a background job
+ * and live in their own collection, so nothing here touches `data.coverLetter`.
+ * Text edits autosave to the open letter through `useCoverLetters`.
+ */
+export function CoverLetterPanel() {
+  const resumeId = useResumeEditorStore((s) => s.resumeId)
+  const data = useResumeEditorStore((s) => s.data)
+  const { letters, prefillNotes, suggestedPosting, loading, error, create, save, remove, postingFor } = useCoverLetters(resumeId)
+
+  const [view, setView] = useState<View>({ kind: 'auto' })
+  // Deletes wait out an undo window, like deleting a CV.
+  const { hidden, requestDelete: requestLetterDelete } = useLetterDeletion(remove)
+  const formKey = useRef(0)
+
+  const situation = useMemo(() => detectGaps(data, thisMonth()).map(situationLine), [data])
+
+  const visible = useMemo(
+    () =>
+      letters
+        .filter((l) => !hidden.has(l.id))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [letters, hidden]
+  )
+
+  const requestDelete = (letter: CoverLetterView) =>
+    requestLetterDelete(letter.id, `Deleted letter for ${letterTitle(letter)}`)
+
+  const blankNotes = (): CoverLetterNotes => (prefillNotes.explain ? { explain: prefillNotes.explain } : {})
+
+  function openForm(draft: Partial<Draft> = {}) {
+    formKey.current += 1
+    setView({
+      kind: 'new',
+      key: formKey.current,
+      draft: { jobText: '', company: '', role: '', notes: blankNotes(), ...draft },
+    })
+  }
+
+  function openSuggestion() {
+    if (!suggestedPosting) return
+    const { company, role, jobText, scrapedJobId } = suggestedPosting
+    openForm({ company, role, jobText, scrapedJobId })
+  }
+
+  async function retry(letter: CoverLetterView) {
+    // Lists never carry the posting; a failed letter's own read does. Failing
+    // that, a job-search letter can reuse the suggested posting of its job.
+    const own = await postingFor(letter.id)
+    const suggested = suggestedPosting && suggestedPosting.scrapedJobId === letter.scrapedJobId ? suggestedPosting.jobText : ''
+    const posting = own ?? suggested
+    openForm({
+      company: letter.company,
+      role: letter.role,
+      jobText: posting,
+      notes: letter.notes ?? {},
+      scrapedJobId: letter.scrapedJobId,
+      applicationId: letter.applicationId,
+    })
+  }
+
+  async function submit(input: CreateCoverLetterInput) {
+    // The job writes from the saved CV, so recent edits must land first.
+    await flushSave().catch(() => {})
+    const created = await create(input)
+    if (created) setView({ kind: 'open', id: created.id })
+    return created !== null
+  }
+
+  const hasSomething = visible.length > 0 || suggestedPosting !== null
+  const toList = () => setView({ kind: 'list' })
+
+  let body: React.ReactNode
+  if (loading) {
+    body = (
+      <p role="status" className="flex items-center gap-2 py-6 text-sm text-fg-muted">
+        <Loader2 aria-hidden="true" className="h-4 w-4 motion-safe:animate-spin" />
+        Loading your letters…
+      </p>
+    )
+  } else {
+    const openLetter = view.kind === 'open' ? visible.find((l) => l.id === view.id) : undefined
+    if (openLetter) {
+      body = (
+        <OpenLetter key={openLetter.id} letter={openLetter} resumeId={resumeId} onSave={save} onBack={toList} onRetry={retry} />
+      )
+    } else if (view.kind === 'new' || (view.kind === 'auto' && !hasSomething)) {
+      const draft = view.kind === 'new' ? view.draft : { jobText: '', company: '', role: '', notes: blankNotes() }
+      body = (
+        <NewLetterForm
+          key={view.kind === 'new' ? view.key : 0}
+          resumeId={resumeId}
+          initial={draft}
+          situation={situation}
+          onSubmit={submit}
+          submitError={error}
+          onBack={hasSomething ? toList : undefined}
         />
-        {justWritten && !pending && (
-          <p role="status" className="flex items-center gap-1.5 text-xs text-fg-success">
-            <Check aria-hidden="true" className="h-3.5 w-3.5" />
-            Letter written. Edit it right here, it saves as you type.
-          </p>
-        )}
-      </section>
+      )
+    } else {
+      body = (
+        <LetterList
+          letters={visible}
+          suggestion={suggestedPosting}
+          onOpen={(letterId) => setView({ kind: 'open', id: letterId })}
+          onNew={() => openForm()}
+          onSuggestion={openSuggestion}
+          onDelete={requestDelete}
+        />
+      )
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-xl space-y-4 px-4 py-5">
+      {error && <ErrorBanner>{error}</ErrorBanner>}
+      {body}
     </div>
   )
 }

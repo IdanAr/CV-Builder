@@ -32,6 +32,8 @@ const { mockResumeDeleteOne, mockApplicationCountDocuments } = vi.hoisted(() => 
   mockApplicationCountDocuments: vi.fn(),
 }))
 vi.mock('@/models/Resume', () => ({ default: { deleteOne: mockResumeDeleteOne } }))
+const { mockLettersDeleteMany } = vi.hoisted(() => ({ mockLettersDeleteMany: vi.fn() }))
+vi.mock('@/models/CoverLetter', () => ({ default: { deleteMany: mockLettersDeleteMany } }))
 vi.mock('@/models/Application', () => ({
   default: { countDocuments: mockApplicationCountDocuments },
 }))
@@ -592,6 +594,27 @@ describe('deleteScrapedJob', () => {
 
     expect(mockResumeDeleteOne).toHaveBeenCalledWith({ _id: 'r1', userId: 'u1' })
     expect(result).toEqual({ deleted: true, deletedDraftResume: true })
+  })
+
+  it("deletes the draft resume's cover letters with it", async () => {
+    mockFindOne.mockReturnValue(leanChain({ draftResumeId: 'r1' }))
+    mockUpdateOne.mockResolvedValue({ matchedCount: 1 })
+    mockApplicationCountDocuments.mockResolvedValue(0)
+    mockResumeDeleteOne.mockResolvedValue({ deletedCount: 1 })
+
+    await deleteScrapedJob('u1', 'j1')
+
+    expect(mockLettersDeleteMany).toHaveBeenCalledWith({ userId: 'u1', resumeId: 'r1' })
+  })
+
+  it('leaves the letters alone when the draft resume was not deleted', async () => {
+    mockFindOne.mockReturnValue(leanChain({ draftResumeId: 'r1' }))
+    mockUpdateOne.mockResolvedValue({ matchedCount: 1 })
+    mockApplicationCountDocuments.mockResolvedValue(1)
+
+    await deleteScrapedJob('u1', 'j1')
+
+    expect(mockLettersDeleteMany).not.toHaveBeenCalled()
   })
 
   it('keeps a draft resume that an application row already points at', async () => {

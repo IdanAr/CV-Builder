@@ -30,6 +30,7 @@ vi.mock('@/models/JobSearchProfile', () => ({ default: mockModel('JobSearchProfi
 vi.mock('@/models/JobSearchRule', () => ({ default: mockModel('JobSearchRule', [], 6) }))
 vi.mock('@/models/ScrapedJob', () => ({ default: mockModel('ScrapedJob', [], 7) }))
 vi.mock('@/models/AiCache', () => ({ default: mockModel('AiCache', [], 8) }))
+vi.mock('@/models/CoverLetter', () => ({ default: mockModel('CoverLetter', [], 9) }))
 
 const accountsCollection = {
   find: vi.fn(() => ({
@@ -81,7 +82,7 @@ describe('exportUserData', () => {
     const { exportUserData } = await import('../account')
     await exportUserData(VALID_ID, {})
     const finds = calls.filter((c) => c.startsWith('find:'))
-    expect(finds).toHaveLength(8)
+    expect(finds).toHaveLength(9)
     for (const call of finds) {
       expect(call, `unscoped query: ${call}`).toContain(`{"userId":"${VALID_ID}"}`)
     }

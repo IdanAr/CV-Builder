@@ -28,7 +28,7 @@ Env vars live in `cv-builder/.env.local` (copy from `.env.local.example`): `MONG
 
 ## Architecture
 
-CVitae Studio is a Next.js 16 App Router app (React 19, Turbopack dev): AI-assisted résumé builder (JSON Resume schema) with PDF/DOCX export and a separate job-application tracking supertable. Auth via Auth.js v5 (GitHub/Google OAuth, MongoDB adapter, JWT sessions). AI features run on a single model, Claude Haiku 4.5 via `@anthropic-ai/sdk` (`lib/ai/models.ts`) — there is no multi-provider router despite what an old PRD might suggest.
+CVitae Studio is a Next.js 16 App Router app (React 19, Turbopack dev): AI-assisted résumé builder (JSON Resume schema) with PDF/DOCX export and a separate job-application tracking supertable. Auth via Auth.js v5 (GitHub/Google OAuth, MongoDB adapter, JWT sessions). AI features run on Claude Haiku 4.5 (`DEFAULT_MODEL`) via `@anthropic-ai/sdk`, except cover letters, which use `COVER_LETTER_MODEL` (Claude Haiku 5.5), both in `lib/ai/models.ts` — there is no multi-provider router despite what an old PRD might suggest.
 
 ### Two-tree document model (core invariant)
 
@@ -37,7 +37,7 @@ Every résumé document has two decoupled trees plus tracking fields:
 ```
 {
   title: string
-  data: ResumeData   // JSON Resume v1.0.0 payload — all career facts, incl. coverLetter
+  data: ResumeData   // JSON Resume v1.0.0 payload — all career facts; coverLetter is legacy only (letters now live in the `CoverLetter` collection, one per job; old `data.coverLetter` text is imported once into a legacy letter)
   meta: ResumeMeta    // design metadata — template, fonts, colors, margins, layout
   applicationStatus: 'draft' | 'applied' | 'interviewing' | 'offer' | 'rejected'
   targetCompany?: string
@@ -55,7 +55,7 @@ Schemas are defined once in Zod (`lib/schemas/resume.zod.ts`, `lib/schemas/appli
 
 ### AI pipeline: Generate → Critique → Refine
 
-Every AI-authored piece of content (bullet points, summaries, ATS rewrites, cover letters) goes through the same three-step chain in `lib/ai/pipeline.ts` (plus `ats-fix-pipeline.ts`, `cover-letter-pipeline.ts`): generate a draft → critique it against the source input (numbers traceable? action verbs? tone?) → refine into final text. Independently, `hallucination-guard.ts`'s `detectHallucinations()` compares the final output's numeric claims and skill terms against the user's original text; anything unmatched is returned as `pendingApprovals` and must be surfaced in the UI for explicit user approval before being written to the schema. **Any new AI-generated content must pass through this guard.** All AI and upload endpoints are rate-limited (`lib/rate-limit.ts`): counters live in MongoDB (`models/RateLimitCounter.ts`, fixed window, TTL-expired) so the limit holds across serverless instances, with the in-memory bucket as the Vitest store and the database-failure fallback. AI routes go through `checkAiRateLimit` (10/min plus `AI_DAILY_LIMIT` per UTC day, default 100) and answer with `aiRateLimitedResponse`; new AI routes must use the same gate.
+Every AI-authored piece of content (bullet points, summaries, ATS rewrites, cover letters) goes through the same three-step chain in `lib/ai/pipeline.ts` (plus `ats-fix-pipeline.ts`, `lib/ai/cover-letter/`): generate a draft → critique it against the source input (numbers traceable? action verbs? tone?) → refine into final text. Cover letters are written by a background job (`lib/ai/cover-letter/job.ts`, QStash worker at `/api/cover-letters/worker`, `after()` fallback), and their verifier runs the hallucination guard. Independently, `hallucination-guard.ts`'s `detectHallucinations()` compares the final output's numeric claims and skill terms against the user's original text; anything unmatched is returned as `pendingApprovals` and must be surfaced in the UI for explicit user approval before being written to the schema. **Any new AI-generated content must pass through this guard.** All AI and upload endpoints are rate-limited (`lib/rate-limit.ts`): counters live in MongoDB (`models/RateLimitCounter.ts`, fixed window, TTL-expired) so the limit holds across serverless instances, with the in-memory bucket as the Vitest store and the database-failure fallback. AI routes go through `checkAiRateLimit` (10/min plus `AI_DAILY_LIMIT` per UTC day, default 100) and answer with `aiRateLimitedResponse`; new AI routes must use the same gate.
 
 ### Templates & export modes
 
@@ -101,7 +101,7 @@ cv-builder/
 │   ├── templates/     # HTML/CSS live-preview templates (5)
 │   ├── ats/            # AtsScorePanel, AtsFixReviewPanel
 │   ├── ai/              # AiSuggestButton
-│   ├── coverletter/      # CoverLetterPanel
+│   ├── coverletter/      # CoverLetterPanel, LetterList, LetterNotes, LetterProgress, use-cover-letters
 │   ├── applications/      # ApplicationsView, Board, Table, Filters, ActivityLog, ColumnForm
 │   ├── jobsearch/           # ProfileList, ProfileFormDialog (+ profile-form/ steps), ProfileSettings, RuleBuilder (Sources and rules)
 │   ├── pipeline/            # PipelineInbox, StageTabs, PipelineList, JobDetail, hooks (usePipelineJobs, usePipelineActions)
@@ -111,9 +111,9 @@ cv-builder/
 │   ├── account/        # ExportDataSection, DeleteAccountSection (settings page)
 │   └── ui/              # Button, Card, Badge, Popover, Menu, Dialog, Toaster, Skeleton, ...; AppNavbar and Plasma serve marketing/legal pages only
 ├── lib/
-│   ├── ai/             # pipeline.ts, ats-fix-pipeline.ts, cover-letter-pipeline.ts, jd-extraction-pipeline.ts, keyword-analysis-pipeline.ts, hallucination-guard.ts, models.ts
+│   ├── ai/             # pipeline.ts, ats-fix-pipeline.ts, cover-letter/ (plan-write-critique-refine writer, verifier, background job), jd-extraction-pipeline.ts, keyword-analysis-pipeline.ts, hallucination-guard.ts, models.ts
 │   ├── ats/             # scorer.ts, keywords.ts
-│   ├── api/              # data-access layer used by app/api/** routes: resumes.ts, applications.ts, board-config.ts, jobsearch-profiles.ts, jobsearch-rules.ts, scraped-jobs.ts
+│   ├── api/              # data-access layer used by app/api/** routes: resumes.ts, applications.ts, board-config.ts, jobsearch-profiles.ts, jobsearch-rules.ts, scraped-jobs.ts, cover-letters.ts
 │   ├── applications/       # cells.ts, filter.ts, order.ts, sort.ts, types.ts
 │   ├── jobsearch/            # apply.ts, scan.ts, rules.ts, queue.ts, sources/ (Comeet adapter+resolver)
 │   │                         # stages.ts, pipeline-url.ts, job-actions.ts  # the funnel: stageOf/stageQuery, inbox URL state, action table
@@ -123,10 +123,10 @@ cv-builder/
 │   ├── stores/                      # resume-editor.store.ts, toast.store.ts (Zustand)
 │   ├── upload/                        # parse-file.ts, extract-resume.ts
 │   ├── job-url/                       # safe-fetch.ts (SSRF-guarded fetch of a user-supplied job link), extract.ts (JSON-LD JobPosting, else page text)
-│   ├── editor/design-presets.ts, editor/use-format-score.ts, fonts/pairings.ts   # spacing/margin presets, font pairings for the Design panel
+│   ├── editor/design-presets.ts, editor/use-format-score.ts, editor/tabs.ts, fonts/pairings.ts   # spacing/margin presets, font pairings for the Design panel
 │   ├── design/            # color-tokens.ts (semantic colours), tokens.ts, font-scale.ts; __tests__/legacy-utilities.test.ts is the ratchet
 │   └── rate-limit.ts, export-mode.ts, preview-pagination.ts, mongodb.ts, auth.ts, db.ts
-├── models/                # Mongoose models: Resume.ts, Application.ts, ApplicationActivity.ts, BoardConfig.ts, JobSearchProfile.ts, JobSearchRule.ts, ScrapedJob.ts
+├── models/                # Mongoose models: Resume.ts, Application.ts, ApplicationActivity.ts, BoardConfig.ts, JobSearchProfile.ts, JobSearchRule.ts, ScrapedJob.ts, CoverLetter.ts
 └── docs/superpowers/       # sprint-by-sprint specs/ and plans/ — git-ignored, local only
 ```
 

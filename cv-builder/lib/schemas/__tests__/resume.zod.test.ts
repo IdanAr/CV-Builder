@@ -417,3 +417,12 @@ describe('ResumeMetaSchema fontScale and lineSpacing', () => {
     expect(parsed.meta).toEqual({ fontScale: 1.05 })
   })
 })
+
+describe('coverLetterMigrated', () => {
+  it('is a server-only field: neither create nor patch bodies carry it', async () => {
+    const { CreateResumeSchema, PatchResumeSchema, ResumeServerFieldsSchema } = await import('../resume.zod')
+    expect(ResumeServerFieldsSchema.parse({ coverLetterMigrated: true })).toEqual({ coverLetterMigrated: true })
+    expect('coverLetterMigrated' in CreateResumeSchema.parse({ title: 'T', coverLetterMigrated: true })).toBe(false)
+    expect('coverLetterMigrated' in PatchResumeSchema.parse({ coverLetterMigrated: false })).toBe(false)
+  })
+})

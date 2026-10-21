@@ -25,7 +25,7 @@ describe('buildCoverLetterDocx', () => {
   })
 
   it('includes the name as a leading paragraph when provided', async () => {
-    const buffer = await Packer.toBuffer(buildCoverLetterDocx('Some letter text.', 'Jane Smith'))
+    const buffer = await Packer.toBuffer(buildCoverLetterDocx('Some letter text.', { name: 'Jane Smith' }))
     const zip = await JSZip.loadAsync(buffer)
     const xml = await zip.file('word/document.xml')!.async('string')
     expect(xml).toContain('Jane Smith')

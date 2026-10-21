@@ -5,6 +5,7 @@ import { getResume } from '@/lib/api/resumes'
 import { apiError, handleRouteError } from '@/lib/api/route-errors'
 import { checkRateLimit, EXPORT_RATE_LIMIT } from '@/lib/rate-limit'
 import { CoverLetterPdfTemplate } from '@/lib/pdf/templates/CoverLetterPdfTemplate'
+import { letterHeader, parseLetterLanguage } from '@/lib/coverletter/header'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
 export const POST = auth(async (req, ctx) => {
@@ -30,11 +31,17 @@ export const POST = auth(async (req, ctx) => {
       return apiError('VALIDATION_ERROR', 'content is required', 400)
     }
 
+    // Anything but 'he' is English, so a bad value cannot reach the renderer.
+    const language = parseLetterLanguage((body as { language?: unknown }).language)
     const data = (resume.data ?? {}) as ResumeData
     const meta = resume.meta as ResumeMeta
+    const header = letterHeader(data.basics, new Date(), language)
     const element = React.createElement(CoverLetterPdfTemplate, {
       content,
-      name: data.basics?.name,
+      name: header.name || undefined,
+      contact: header.contact || undefined,
+      date: header.date,
+      language,
       font: meta?.fontFamily,
     })
     const buffer = await renderToBuffer(element as React.ReactElement<never>)

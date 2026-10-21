@@ -4,6 +4,7 @@ import { getResume } from '@/lib/api/resumes'
 import { buildCoverLetterDocx } from '@/lib/docx/cover-letter-docx'
 import { apiError, handleRouteError } from '@/lib/api/route-errors'
 import { checkRateLimit, EXPORT_RATE_LIMIT } from '@/lib/rate-limit'
+import { letterHeader, parseLetterLanguage } from '@/lib/coverletter/header'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
 export const POST = auth(async (req, ctx) => {
@@ -29,9 +30,17 @@ export const POST = auth(async (req, ctx) => {
       return apiError('VALIDATION_ERROR', 'content is required', 400)
     }
 
+    // Anything but 'he' is English, so a bad value cannot reach the renderer.
+    const language = parseLetterLanguage((body as { language?: unknown }).language)
     const data = (resume.data ?? {}) as ResumeData
     const meta = resume.meta as ResumeMeta
-    const doc = buildCoverLetterDocx(content, data.basics?.name, meta?.fontFamily ?? 'Arial')
+    const header = letterHeader(data.basics, new Date(), language)
+    const doc = buildCoverLetterDocx(
+      content,
+      { name: header.name || undefined, contact: header.contact || undefined, date: header.date },
+      meta?.fontFamily ?? 'Arial',
+      language,
+    )
     const buffer = await Packer.toBuffer(doc)
 
     const baseName = resume.title.replace(/[^a-z0-9]/gi, '-')

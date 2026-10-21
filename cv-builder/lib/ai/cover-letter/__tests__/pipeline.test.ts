@@ -1,0 +1,188 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const mockParse = vi.fn()
+
+vi.mock('@/lib/ai/models', () => ({
+  getAnthropic: vi.fn(() => ({ messages: { parse: mockParse } })),
+  DEFAULT_MODEL: 'claude-haiku-4-5-20251001',
+}))
+
+import { BANNED_PHRASES, renderLetter, type LetterSentence } from '../letter'
+import { writeCoverLetter } from '../pipeline'
+import { buildWritePrompt } from '../prompt'
+import { buildFactSheet, renderFactSheet } from '../fact-sheet'
+import { preparePosting } from '../posting'
+import type { WrittenLetter } from '../schema'
+import { FIXTURE_CV } from './fixture-cv'
+
+const POSTING = { company: 'Globex', role: 'Data Analyst', jobText: 'Globex needs an analyst who can speed up reporting. You will own the roadmap.' }
+
+// About 270 words with no numbers, names or stock phrases, so only what a test adds can fail the verifier.
+const FILLER: LetterSentence = {
+  text: Array.from({ length: 30 }, () => 'Clear reporting helps people decide quickly and calmly.').join(' '),
+  facts: [],
+  quotes: [],
+}
+
+function written(sentences: LetterSentence[]): WrittenLetter {
+  return {
+    plan: {
+      needs: [{ need: 'faster reporting', postingQuote: 'speed up reporting', evidence: 'strong', facts: ['F4'] }],
+      situation: null,
+      openingAngle: 'reporting speed',
+      whyCompany: { source: 'posting', text: 'own the roadmap' },
+      sparse: false,
+    },
+    letter: { greeting: 'Hello there,', paragraphs: [sentences, [FILLER]], signOff: 'Best regards,\nDana Levi' },
+  }
+}
+
+const clean = written([{ text: 'At Acme I cut report time by 40%, which is the speed Globex asks for.', facts: ['F4'], quotes: ['speed up reporting'] }])
+const uncited = written([{ text: 'At Acme I cut report time by 45%.', facts: ['F4'], quotes: [] }])
+
+const reply = (w: WrittenLetter) => ({ parsed_output: w, stop_reason: 'end_turn', content: [], usage: { input_tokens: 1, output_tokens: 1 } })
+
+beforeEach(() => mockParse.mockReset())
+
+describe('writeCoverLetter', () => {
+  it('returns a clean letter after one call', async () => {
+    mockParse.mockResolvedValueOnce(reply(clean))
+    const run = await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10' })
+    expect(mockParse).toHaveBeenCalledTimes(1)
+    expect(run.refined).toBe(false)
+    expect(run.pendingApprovals).toEqual([])
+    expect(run.content).toBe(renderLetter(run.letter))
+    expect(run.calls).toBe(1)
+  })
+
+  it('refines once when the verifier finds a problem, naming the sentence', async () => {
+    mockParse.mockResolvedValueOnce(reply(uncited)).mockResolvedValueOnce(reply(clean))
+    const run = await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10' })
+    expect(mockParse).toHaveBeenCalledTimes(2)
+    expect(JSON.stringify(mockParse.mock.calls[1][0].messages)).toContain('At Acme I cut report time by 45%.')
+    expect(run.refined).toBe(true)
+    expect(run.pendingApprovals).toEqual([])
+  })
+
+  it('does not spend a second call on length alone; a short letter gets a notice', async () => {
+    const short = written([{ text: 'At Acme I cut report time by 40%, which is the speed Globex asks for.', facts: ['F4'], quotes: ['speed up reporting'] }])
+    short.letter.paragraphs = [short.letter.paragraphs[0]]
+    mockParse.mockResolvedValueOnce(reply(short))
+    const run = await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10' })
+    expect(mockParse).toHaveBeenCalledTimes(1)
+    expect(run.notices.some((n) => n.includes('words'))).toBe(true)
+  })
+
+  it('never refines twice, and leaves what is still wrong for the user to approve', async () => {
+    mockParse.mockResolvedValueOnce(reply(uncited)).mockResolvedValueOnce(reply(uncited))
+    const run = await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10' })
+    expect(mockParse).toHaveBeenCalledTimes(2)
+    expect(run.pendingApprovals).toHaveLength(1)
+    expect(run.pendingApprovals[0]).toContain('45%')
+  })
+
+  it('skips the refine when less than 20 seconds of the budget remain', async () => {
+    mockParse.mockResolvedValueOnce(reply(uncited))
+    let t = 0
+    const run = await writeCoverLetter(FIXTURE_CV, POSTING, {
+      today: '2026-10',
+      now: () => t,
+      onProgress: (step) => {
+        if (step === 'checking') t = 41_000
+      },
+    })
+    expect(mockParse).toHaveBeenCalledTimes(1)
+    expect(run.refined).toBe(false)
+    expect(run.pendingApprovals).toHaveLength(1)
+  })
+
+  it('sets the greeting itself: the hiring team, a named manager, or no employer for an intermediary', async () => {
+    mockParse.mockResolvedValue(reply(clean))
+    expect((await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10' })).letter.greeting).toBe('Dear Globex Hiring Team,')
+    expect((await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10', notes: { hiringManager: 'Dana Cohen' } })).letter.greeting).toBe('Dear Dana Cohen,')
+    const viaPartner = { ...POSTING, company: 'jobgether', jobText: 'This position is listed on behalf of a partner company.' }
+    expect((await writeCoverLetter(FIXTURE_CV, viaPartner, { today: '2026-10' })).letter.greeting).toBe('Dear Hiring Team,')
+  })
+
+  it('signs with the CV name as written', async () => {
+    mockParse.mockResolvedValueOnce(reply({ ...clean, letter: { ...clean.letter, signOff: 'Sincerely,\nD. Levi' } }))
+    expect((await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10' })).letter.signOff).toBe('Sincerely,\nDana Levi')
+  })
+
+  it('tells the user when the CV is too thin for a strong letter', async () => {
+    // The mocked letter's facts are not in this CV, so the pipeline refines; both calls get the same reply.
+    mockParse.mockResolvedValue(reply(clean))
+    const thin = { basics: { name: 'Dana Levi' }, work: [{ name: 'Acme', position: 'Analyst' }] }
+    const run = await writeCoverLetter(thin, POSTING, { today: '2026-10' })
+    expect(run.notices).toContain('This CV has very little detail, so the letter is short. Adding results to the CV will make it stronger.')
+  })
+
+  it('tells the user when the name is in a different script from the letter', async () => {
+    mockParse.mockResolvedValueOnce(reply(clean))
+    const run = await writeCoverLetter({ ...FIXTURE_CV, basics: { ...FIXTURE_CV.basics, name: 'דנה לוי' } }, POSTING, { today: '2026-10' })
+    expect(run.notices).toContain('Your name is in a different script from the letter. Check the sign-off before sending.')
+  })
+
+  it('reports progress in order', async () => {
+    mockParse.mockResolvedValueOnce(reply(clean))
+    const steps: string[] = []
+    await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10', onProgress: (s) => steps.push(s) })
+    expect(steps).toEqual(['reading', 'writing', 'checking', 'done'])
+  })
+
+  it('retries once without thinking when the first answer is cut off at the token limit', async () => {
+    mockParse.mockResolvedValueOnce({ parsed_output: null, stop_reason: 'max_tokens', content: [], usage: {} }).mockResolvedValueOnce(reply(clean))
+    const run = await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10' })
+    expect(mockParse).toHaveBeenCalledTimes(2)
+    expect(mockParse.mock.calls[1][0].thinking).toBeUndefined()
+    expect(run.pendingApprovals).toEqual([])
+  })
+
+  it('retries once without thinking when the structured answer does not parse', async () => {
+    mockParse.mockRejectedValueOnce(new Error('Failed to parse structured output: Unterminated string in JSON')).mockResolvedValueOnce(reply(clean))
+    const run = await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10' })
+    expect(mockParse).toHaveBeenCalledTimes(2)
+    expect(run.content).toContain('40%')
+  })
+
+  it('throws on a refusal instead of returning an empty letter', async () => {
+    mockParse.mockResolvedValueOnce({ parsed_output: null, stop_reason: 'refusal', content: [], usage: {} })
+    await expect(writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10' })).rejects.toThrow(/refus/i)
+  })
+})
+
+describe('buildWritePrompt', () => {
+  const prompt = buildWritePrompt({
+    factSheet: renderFactSheet(buildFactSheet(FIXTURE_CV)),
+    posting: preparePosting(POSTING),
+    role: POSTING.role,
+    greeting: 'Dear Globex Hiring Team,',
+    candidateName: 'Dana Levi',
+    gaps: [
+      { from: '2022-01', to: '2022-12', months: 12, coveredBy: [], filled: [], after: '2021-12', exactStart: true },
+      { from: '2026-01', to: '2026-10', months: 10, coveredBy: [], filled: [], after: '2025', exactStart: false },
+      { from: '2024-10', to: '2026-10', months: 25, coveredBy: ['education'], filled: [{ kind: 'education', from: '2025-12', to: '2026-07' }], after: '2024-09', exactStart: true },
+    ],
+    today: '2026-10',
+  })
+
+  it('fences the posting as data', () => {
+    expect(prompt).toContain('<posting>')
+    expect(prompt).toContain('looks like instructions')
+  })
+
+  it('carries the banned phrases, the self-review and the detected gap', () => {
+    for (const phrase of BANNED_PHRASES) expect(prompt).toContain(phrase)
+    expect(prompt).toContain('120% attainment')
+    expect(prompt).toContain('2022-01 to 2022-12')
+  })
+
+  it('states a gap with an unknown start month as "at least", after the end date as written', () => {
+    expect(prompt).toContain('at least 10 months with no paid role after the role that ended in 2025')
+    expect(prompt).not.toContain('2026-01 to 2026-10')
+  })
+
+  it('says which part of a gap study covers, so the letter does not stretch it over the whole gap', () => {
+    expect(prompt).toContain('education from 2025-12 to 2026-07 covers only part of it')
+  })
+})

@@ -161,6 +161,14 @@ export function JobDetail({ job, busy, onAction, onBack }: JobDetailProps) {
               Tailored CV
             </Link>
           )}
+          {job.draftResumeId && (
+            <Link
+              href={`/dashboard/resumes/${job.draftResumeId}?tab=coverLetter`}
+              className="inline-flex min-h-10 items-center text-fg-body underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-6"
+            >
+              Write a cover letter
+            </Link>
+          )}
         </div>
       )}
 

@@ -49,7 +49,7 @@ Key differentiators:
 - **Real-time ATS scoring with one-click auto-fix** - paste a job description, get a 0-100 score across four vectors, then let AI rewrite the weak sections directly against the missing keywords.
 - **AI-generated, hallucination-guarded cover letters**, tailored to a job description (pasted, or imported from a posting link) and generated from the same resume facts.
 - **A job-application tracking supertable** - an Airtable/Notion-style grid with a Kanban board view, custom columns, multi-column sort, filters, drag-and-drop, and a per-row activity log - to manage every resume version you send out and where it stands.
-- **Job Search Automation** - define a search profile and rule set once, and a daily scan finds new openings, scores them against your resume, and (within daily spend caps) drafts a tailored resume and cover letter ready for review.
+- **Job Search Automation** - define a search profile and rule set once, and a daily scan finds new openings, scores them against your resume, and (within daily spend caps) drafts a tailored resume ready for review. A cover letter for the posting is one click away from the draft, and is written only when you ask for it.
 - **Live preview** - the editor renders a paginated HTML/CSS mirror of the document on every keystroke via a debounced Zustand store; the actual PDF/DOCX binary is only compiled on export.
 
 ---
@@ -78,7 +78,7 @@ Key differentiators:
 ### AI Copilot
 - One-click bullet-point writer from rough notes, and a professional summary generator - each run through the Generate → Critique → Refine pipeline.
 - **ATS Fix**: analyzes the score gap against a job description and proposes targeted rewrites (or a brand-new summary) that weave in missing keywords, shown inline with the added words highlighted over the original.
-- **Cover letter generator**: drafts a 3-paragraph letter tailored to a job description, using only facts already present in the resume. The Cover Letter tab is built around one editable letter box: a generated letter lands in it, Copy / PDF / DOCX and a word count sit on its toolbar, and a rewrite replaces it in one undoable step. The job can be pasted or imported from a posting link, and company and role fill themselves from the posting when empty.
+- **Cover letters**: each CV keeps a list of letters, one per job. A new letter starts from a pasted posting or a posting link (company and role fill themselves from the posting when empty), plus optional notes in your own words: why this company, anything to explain, the hiring manager's name. The letter is written in the background (plan, write, an editor critique, at most one refine) from a fact sheet of the CV, and the panel shows its progress step by step. Every number, name and quote is checked against the CV and the posting; whatever cannot be traced, and any critique point no refine fixed, is listed for you to check before **Keep this letter** unlocks Copy / PDF / DOCX. A letter for a job-search draft starts from that posting, and a failed letter can be tried again from the same posting and notes.
 - Hallucination guard: any metric or skill in AI output not traceable to the user's original input is highlighted for explicit approval before it's committed to the schema.
 - Per-user rate limiting on all AI and upload endpoints.
 
@@ -110,7 +110,7 @@ Key differentiators:
 - Define one or more **search profiles**: target roles, work mode, locations, seniority, categories, industries, posting recency, and a minimum ATS-score threshold, each optionally tied to a specific resume.
 - Build **rules** per profile (or shared across all of them) that match on ATS score, company, work mode, posting age, or title, and resolve to `notify`, `draft_and_queue`, or `ignore`.
 - A daily scan (Vercel Cron → QStash → per-profile worker) searches active job boards, scores every new posting against the linked resume, and evaluates it against the profile's rules.
-- Postings resolved to `draft_and_queue` run through the same tailor → cover-letter → hallucination-guard → re-score pipeline used elsewhere, subject to daily per-profile and per-user drafting caps, so spend never runs away.
+- Postings resolved to `draft_and_queue` run through the same tailor → hallucination-guard → re-score pipeline used elsewhere, subject to daily per-profile and per-user drafting caps, so spend never runs away. The scan writes no cover letters; the draft's Cover Letter panel offers one for the posting.
 - A **review queue** surfaces drafted matches for approval, rejection, or one-click conversion into a tracked application; matches resolved to `notify` appear in the Matched stage and the sidebar waiting count.
 
 ### Auth
@@ -130,9 +130,9 @@ Key differentiators:
 | Styling | Tailwind CSS | 3.4.x |
 | State Management | Zustand | 5.x |
 | Schema Validation | Zod | 4.x |
-| PDF Export | @react-pdf/renderer | 4.5.x |
+| PDF Export | @react-pdf/renderer | 4.9.x |
 | DOCX Export | docx | 9.7.x |
-| AI | Anthropic Claude (Haiku 4.5) via `@anthropic-ai/sdk` | 0.100.x |
+| AI | Anthropic Claude (Haiku 4.5; Haiku 5.5 for cover letters) via `@anthropic-ai/sdk` | 0.100.x |
 | Database | MongoDB via Mongoose | 9.x |
 | Auth | Auth.js (NextAuth) v5 beta + `@auth/mongodb-adapter` | 5.0.0-beta.31 |
 | Job Queue | Upstash QStash (`@upstash/qstash`) | 2.11.x |
@@ -141,7 +141,7 @@ Key differentiators:
 | Drag & Drop | @dnd-kit (core, sortable, utilities) | 6.x / 10.x |
 | Testing | Vitest + @testing-library/react + jsdom | 4.x |
 
-> **Note:** the original PRD scoped a multi-model AI router (Claude / GPT-4o / Groq). The implementation consolidated on a single model - **Claude Haiku 4.5** - for every AI feature (suggestions, ATS fix, cover letters, job-search tailoring); there is no OpenAI or Groq dependency in the codebase today.
+> **Note:** the original PRD scoped a multi-model AI router (Claude / GPT-4o / Groq). The implementation uses two Claude models, both set in `lib/ai/models.ts`: **Claude Haiku 4.5** (`DEFAULT_MODEL`) for suggestions, ATS fix, upload extraction and job-search tailoring, and **Claude Haiku 5.5** with low-effort thinking (`COVER_LETTER_MODEL`) for cover letters, the model an eval of the letter writer chose. There is no router, and no OpenAI or Groq dependency in the codebase today.
 
 ---
 
@@ -154,7 +154,7 @@ Every resume in the database is stored as two decoupled trees, plus lightweight 
 ```
 {
   title: string
-  data: ResumeData            // JSON Resume v1.0.0 payload - all career facts, incl. coverLetter
+  data: ResumeData            // JSON Resume v1.0.0 payload - all career facts (coverLetter is legacy, see below)
   meta: ResumeMeta             // Design metadata - template, fonts, colors, margins, layout
   applicationStatus: 'draft' | 'applied' | 'interviewing' | 'offer' | 'rejected'
   targetCompany?: string
@@ -224,8 +224,8 @@ publishScanJob() per profile  --------> Upstash QStash
                                    draft_and_queue AND caps have room?
                                               |
                                               v
-                              runApplyPipeline(): ATS-fix tailor -> cover letter ->
-                              hallucination guard -> re-score -> persist draft Resume
+                              runApplyPipeline(): ATS-fix tailor -> hallucination guard ->
+                              re-score -> persist draft Resume (no cover letter)
                                               |
                                    pendingApprovals empty AND score >= threshold?
                                         yes -> status 'queued'    no -> status 'needs_review'
@@ -252,7 +252,9 @@ cv-builder/
 │   │   ├── resumes/[id]/ats-score/          # ATS scoring endpoint
 │   │   ├── resumes/[id]/ats-fix/            # AI-proposed ATS rewrites
 │   │   ├── resumes/[id]/ats-semantic-match/ # AI synonym check for missing keywords
-│   │   ├── resumes/[id]/cover-letter/       # AI cover letter generator
+│   │   ├── resumes/[id]/cover-letters/      # A CV's letters: list, start (202, written in the background), read, edit, delete
+│   │   ├── resumes/[id]/cover-letter/export/ # Letter export {pdf,docx}
+│   │   ├── cover-letters/worker/            # QStash worker that writes one letter (signature-verified)
 │   │   ├── resumes/[id]/job-description/    # Import a job description from a posting link
 │   │   ├── resumes/[id]/export/{pdf,docx}/  # Export (pdf supports mode: ats | designed)
 │   │   ├── resumes/[id]/duplicate/          # Fork a resume (links version, resets status)
@@ -276,7 +278,7 @@ cv-builder/
 │   ├── templates/                           # HTML/CSS live-preview templates (5 templates) + RichText
 │   ├── ats/                                 # AtsScorePanel, AtsFixReviewPanel
 │   ├── ai/                                  # AiSuggestButton
-│   ├── coverletter/                         # CoverLetterPanel
+│   ├── coverletter/                         # CoverLetterPanel, LetterList, LetterNotes, LetterProgress, use-cover-letters
 │   ├── applications/                        # ApplicationsView, Board, Table, Filters, ActivityLog, ColumnForm
 │   ├── jobsearch/                           # ProfileList, ProfileFormDialog (+ profile-form/ steps), ProfileSettings, RuleBuilder
 │   ├── pipeline/                            # PipelineInbox, StageTabs, PipelineList, PipelineRow, JobDetail, keyboard shortcuts
@@ -284,8 +286,8 @@ cv-builder/
 │   ├── marketing/                           # Landing and legal page sections
 │   └── ui/                                  # Button, Card, Badge, Popover, Menu, Dialog, Toaster, Skeleton, ... (AppNavbar, Plasma: marketing and legal pages only)
 ├── lib/
-│   ├── ai/                                  # pipeline.ts, ats-fix-pipeline.ts, cover-letter-pipeline.ts, hallucination-guard.ts, models.ts
-│   ├── api/                                 # Shared route handler logic: resumes.ts, applications.ts, board-config.ts, jobsearch-profiles.ts, jobsearch-rules.ts, scraped-jobs.ts, ai-cache.ts, route-errors.ts
+│   ├── ai/                                  # pipeline.ts, ats-fix-pipeline.ts, cover-letter/ (fact sheet, writer, verifier, background job and queue), hallucination-guard.ts, models.ts
+│   ├── api/                                 # Shared route handler logic: resumes.ts, applications.ts, board-config.ts, jobsearch-profiles.ts, jobsearch-rules.ts, scraped-jobs.ts, cover-letters.ts, ai-cache.ts, route-errors.ts
 │   ├── ats/                                 # scorer.ts, keywords.ts, stem.ts (conservative word-root matching)
 │   ├── applications/                        # cells.ts, filter.ts, order.ts, sort.ts, types.ts
 │   ├── jobsearch/                           # scan.ts, apply.ts, rules.ts, queue.ts, countries.ts, stages.ts, pipeline-url.ts, job-actions.ts, sources/ (freehire.ts, comeet.ts)
@@ -295,7 +297,7 @@ cv-builder/
 │   ├── fonts/                                # families.ts, registry.ts - web-font → ATS-safe system font mapping
 │   ├── hooks/                                # use-debounce.ts, use-media-query.ts, use-pdf-pagination.ts
 │   ├── pdf/                                  # extract-pagination.ts, select-template.ts, templates/ (6 @react-pdf/renderer templates incl. AtsPdfTemplate)
-│   ├── schemas/                             # resume.zod.ts, application.zod.ts, jobsearch.zod.ts
+│   ├── schemas/                             # resume.zod.ts, application.zod.ts, jobsearch.zod.ts, cover-letter.zod.ts
 │   ├── stores/                              # resume-editor.store.ts, toast.store.ts (Zustand)
 │   ├── upload/                              # parse-file.ts, extract-resume.ts
 │   ├── job-url/                             # safe-fetch.ts (SSRF-guarded fetch of a user-supplied job link), extract.ts (JSON-LD JobPosting, else page text)
@@ -304,8 +306,8 @@ cv-builder/
 │   ├── rich-text.ts                         # Bold/italic/underline markers + blank-line paragraph splitting
 │   ├── preview-pagination.ts, preview-anchor.ts
 │   └── mongodb.ts, auth.ts, db.ts, sections.ts, text-diff.ts, format-date.ts, ...
-├── models/                                  # Resume.ts, Application.ts, ApplicationActivity.ts, BoardConfig.ts, JobSearchProfile.ts, JobSearchRule.ts, ScrapedJob.ts, AiCache.ts
-├── scripts/                                 # seed-demo.ts + demo-seed/ (demo account seed), font/token/favicon build helpers
+├── models/                                  # Resume.ts, Application.ts, ApplicationActivity.ts, BoardConfig.ts, JobSearchProfile.ts, JobSearchRule.ts, ScrapedJob.ts, CoverLetter.ts, AiCache.ts
+├── scripts/                                 # seed-demo.ts + demo-seed/ (demo account seed), cover-letter-eval/ (the letter writer's eval harness), font/token/favicon build helpers
 ├── vercel.json                              # Vercel Cron schedule for the job-search scan
 └── types/                                   # Global TypeScript types
 ```
@@ -343,11 +345,13 @@ DOCX export always uses native paragraph styling regardless of mode, since Word 
 
 ## AI Copilot - Generate → Critique → Refine
 
-Every AI-authored piece of content - bullet points, summaries, ATS-targeted rewrites, cover letters, and job-search draft resumes - runs through the same three-step chain, all on **Claude Haiku 4.5**:
+Every AI-authored piece of content - bullet points, summaries, ATS-targeted rewrites and job-search draft resumes - runs through the same three-step chain on **Claude Haiku 4.5**:
 
 1. **Generate** - drafts content from the user's rough notes (or, for ATS Fix, from the gap between the resume and a job description).
 2. **Critique** - a second pass checks the draft against the original input: is every number/percentage traceable to source text? Does it start with a strong action verb? Is the tone professional?
 3. **Refine** - applies the critique's corrections and returns the final text.
+
+**Cover letters** follow the same idea with more steps, on **Claude Haiku 5.5** (`lib/ai/cover-letter/`). Starting a letter (`POST /api/resumes/:id/cover-letters`) stores it as `writing` and answers `202` at once; a background job writes it, delivered by QStash to `POST /api/cover-letters/worker` when QStash is configured, or run in `after()` in the same request otherwise. The job claims the letter once, so a redelivery never pays for it twice, and works to a 55-second budget counted from the start of the job (on the `after()` path, from the start of the request). It plans the letter, writes it from a fact sheet of the CV, has a separate call critique it, and refines it at most once if the critique or the deterministic verifier found problems and time allows. The verifier and the hallucination guard check every number, name and quote against the CV and the posting. What is still unverified, any critique point no refine fixed, and a letter the critique could not review in time all become pending approvals the user clears with **Keep this letter**. A letter still `writing` 90 seconds after it started is failed on its next read, so the panel never waits forever.
 
 **Hallucination guard:** independent of the critique step, `detectHallucinations()` compares the final output's numeric claims and skill/technology terms against the user's original text. Anything not found in the source is returned as a `pendingApprovals` list and surfaced in the UI - nothing is silently written to the JSON schema without the user explicitly accepting it. Job-search draft resumes carry the same `pendingApprovals` list through to the review queue.
 
@@ -405,7 +409,7 @@ Each **search profile** (`JobSearchProfile`) captures what "a good match" means 
 | Action | Effect |
 |---|---|
 | `notify` | Shown in the pipeline's Matched stage; no draft is created. |
-| `draft_and_queue` | Runs the semi-auto apply pipeline to produce a tailored draft resume and cover letter. |
+| `draft_and_queue` | Runs the semi-auto apply pipeline to produce a tailored draft resume. |
 | `ignore` | The posting is suppressed outright and never stored, even as a dismissed row. |
 
 Conditions match on ATS score, company (in/not-in a list), work mode, posting age, or title (contains/not-contains). A rule can be scoped to one profile or left unscoped to apply across all of a user's profiles. If any matched rule resolves to `ignore`, that verdict wins outright regardless of what else matched.
@@ -424,10 +428,11 @@ For each profile, a scan:
 For a posting resolved to `draft_and_queue`, `runApplyPipeline()` reuses the same building blocks as the manual AI Copilot:
 
 1. **ATS Fix** rewrites the resume against the posting's missing keywords.
-2. **Cover letter generation** drafts a letter tailored to the posting.
-3. **Hallucination guard** flags any unverifiable claim across both.
-4. The tailored resume is **re-scored** against the posting.
-5. A new draft `Resume` is persisted (linked back to its source resume, title reading `"<role> at <company> (tailored)"`), and the `ScrapedJob` is updated with the draft's id, its post-tailor score, and any pending approvals.
+2. **Hallucination guard** flags any unverifiable claim in the rewrite.
+3. The tailored resume is **re-scored** against the posting.
+4. A new draft `Resume` is persisted (linked back to its source resume, title reading `"<role> at <company> (tailored)"`), and the `ScrapedJob` is updated with the draft's id, its post-tailor score, and any pending approvals.
+
+No cover letter is written here: the draft's Cover Letter panel suggests one for the posting, and the user starts it after reading the posting. Deleting the posting deletes its draft resume (unless an application row points at it) and that draft's letters.
 
 A match reaches status `queued` only if it has **zero** pending approvals **and** its post-tailor score meets the profile's threshold; otherwise it lands in `needs_review` for the user to resolve by hand. Two rolling 24-hour caps bound total AI spend: **3 drafts per profile** and **10 drafts per user** across all profiles.
 
@@ -445,7 +450,7 @@ A match reaches status `queued` only if it has **zero** pending approvals **and*
 
 A stage is always derived from a job's stored status and resolved actions (`stageOf` in `lib/jobsearch/stages.ts`), never stored separately. The list is cursor-paginated, searchable, and filterable by profile, with per-stage counts on the tabs.
 
-A posting moves through the funnel like this: a scan finds it, the profile's rules resolve it (`notify`, `draft_and_queue` or `ignore`), `draft_and_queue` matches get a tailored resume and cover letter, flagged claims are approved by hand, and **Mark applied** records it and creates a tracked `Application` row. Each stage offers only the actions that make sense there (open the posting, track, dismiss, approve, open the CV, mark applied, restore, delete).
+A posting moves through the funnel like this: a scan finds it, the profile's rules resolve it (`notify`, `draft_and_queue` or `ignore`), `draft_and_queue` matches get a tailored resume (and, when you ask, a cover letter from its Cover Letter panel), flagged claims are approved by hand, and **Mark applied** records it and creates a tracked `Application` row. Each stage offers only the actions that make sense there (open the posting, track, dismiss, approve, open the CV, mark applied, restore, delete).
 
 Keyboard shortcuts in the list: `J` / `K` move the selection, `Enter` opens the job, `A` runs the primary one-step action (such as approve or mark applied), and `D` dismisses.
 
@@ -459,7 +464,7 @@ Deleting a posting soft-deletes it as a tombstone so the next scan does not resu
 ## Data Model
 
 ```typescript
-// JSON Resume v1.0.0 payload, extended with a cover letter field
+// JSON Resume v1.0.0 payload, plus the legacy cover letter field
 interface ResumeData {
   basics?: Basics
   work?: Work[]
@@ -473,7 +478,7 @@ interface ResumeData {
   interests?: Interest[]
   projects?: Project[]
   customSections?: CustomSection[]
-  coverLetter?: string
+  coverLetter?: string        // legacy: imported once into a CoverLetter of its own, then unused
 }
 
 interface ResumeMeta {
@@ -612,9 +617,9 @@ Copy `cv-builder/.env.local.example` to `cv-builder/.env.local` and fill in:
 | `AUTH_SECRET` | **Yes** | Auth.js session secret (`openssl rand -base64 32`) |
 | `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | **Yes** | GitHub OAuth app credentials |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | **Yes** | Google OAuth app credentials |
-| `ANTHROPIC_API_KEY` | **Yes** | Powers all AI Copilot features (suggestions, ATS Fix, cover letters, upload extraction, job-search tailoring) - Claude Haiku 4.5 |
-| `QSTASH_TOKEN` | No | Upstash QStash publish token, used to fan out the daily job-search scan |
-| `QSTASH_CURRENT_SIGNING_KEY` / `QSTASH_NEXT_SIGNING_KEY` | No | Verify that scan-worker callbacks genuinely came from QStash |
+| `ANTHROPIC_API_KEY` | **Yes** | Powers all AI Copilot features (suggestions, ATS Fix, cover letters, upload extraction, job-search tailoring) - Claude Haiku 4.5, and Haiku 5.5 for cover letters |
+| `QSTASH_TOKEN` | No | Upstash QStash publish token, used to fan out the daily job-search scan and to deliver cover letter jobs (without it, letters are written in `after()`; with an `APP_URL` on localhost they are too, since QStash cannot call back to localhost) |
+| `QSTASH_CURRENT_SIGNING_KEY` / `QSTASH_NEXT_SIGNING_KEY` | No | Verify that scan-worker and cover-letter-worker callbacks genuinely came from QStash |
 | `QSTASH_URL` | No | Only needed if your QStash instance is not the default EU region |
 | `CRON_SECRET` | No | Bearer token Vercel Cron sends when calling the scan fan-out route (`openssl rand -base64 32`). Also unlocks the detailed `/api/health` output. |
 | `APP_URL` | No | This app's own canonical base URL, so the QStash publish call knows where to send the worker callback |
@@ -656,7 +661,11 @@ All routes below are session-authenticated via Auth.js (`auth()` wrapper) and sc
 | `POST` | `/api/resumes/:id/ats-score` | Score against a pasted job description; returns `keywordSource` and, on fallback, `keywordFallbackReason` |
 | `POST` | `/api/resumes/:id/ats-semantic-match` | AI synonym check of missing keywords against the resume; each match carries a verified CV quote (cached per user) |
 | `POST` | `/api/resumes/:id/ats-fix` | Propose AI rewrites targeting missing keywords (and `synonymKeywords`, added next to the user's wording) |
-| `POST` | `/api/resumes/:id/cover-letter` | Generate a tailored cover letter |
+| `GET` / `POST` | `/api/resumes/:id/cover-letters` | List the CV's letters (with the notes to prefill and the job-search posting to suggest) / start a letter: stored as `writing`, `202`, written in the background (AI rate limit) |
+| `GET` / `PATCH` / `DELETE` | `/api/resumes/:id/cover-letters/:letterId` | Read one letter (polled while it is written; a failed letter also returns its posting for Try again) / edit its text, notes or approvals / delete it |
+| `POST` | `/api/resumes/:id/cover-letter/export/pdf` | Export a letter as PDF, headed with the CV's contact line and the date in the letter's language |
+| `POST` | `/api/resumes/:id/cover-letter/export/docx` | Export a letter as DOCX, with the same header |
+| `POST` | `/api/cover-letters/worker` | QStash callback target - signature-verified, writes one cover letter (`{ userId, letterId }`) |
 | `POST` | `/api/resumes/:id/job-description` | `{ url }` → `{ text, title?, company?, source, host }`: import a job description from a public posting link (SSRF-guarded, 2 MB / 10 s cap, 422 when the page has no readable posting) |
 | `POST` | `/api/resumes/:id/export/pdf` | Export PDF (`mode: 'designed' \| 'ats'`) |
 | `POST` | `/api/resumes/:id/export/docx` | Export DOCX |

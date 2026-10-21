@@ -55,6 +55,8 @@ vi.mock('./DesignPanel', async () => {
   }
 })
 vi.mock('@/components/ats/AtsScorePanel', () => ({ AtsScorePanel: () => <div>AtsScorePanelContent</div> }))
+// The panel loads its letters on mount, which would show up in the fetch assertions below.
+vi.mock('@/components/coverletter/CoverLetterPanel', () => ({ CoverLetterPanel: () => <div>CoverLetterPanelContent</div> }))
 vi.mock('./ExportMenu', () => ({
   ExportMenu: ({
     onExport,
@@ -114,6 +116,20 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+})
+
+describe('EditorShell — initial tab', () => {
+  it('starts on the Edit tab by default', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    expect(screen.getByRole('tab', { name: 'Edit' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('starts on the Cover Letter tab when initialTab names it', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} initialTab="coverLetter" />)
+    expect(screen.getByRole('tab', { name: 'Cover Letter' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Edit' })).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByText('CoverLetterPanelContent').closest('[role="tabpanel"]')).toHaveClass('block')
+  })
 })
 
 describe('EditorShell — desktop layout (>= breakpoint)', () => {

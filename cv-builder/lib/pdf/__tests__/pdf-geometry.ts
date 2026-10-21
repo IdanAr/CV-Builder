@@ -168,3 +168,27 @@ export function fontDiagnostics(buffer: Buffer): {
       /\/BaseFont\s*\/(?:[A-Z]{6}\+)?(?:Helvetica|Times|Courier|Symbol|ZapfDingbats)\b/.test(raw),
   }
 }
+
+/**
+ * Text of each visual line, left to right, with bidi control marks and spaces
+ * removed. pdfjs reports the character each glyph was drawn as, so a word that
+ * is scrambled on the page (wrong font drawing a glyph id) is scrambled here.
+ * A right-to-left word is read back reversed, so callers should accept either
+ * direction.
+ */
+export function lineTexts(runs: GlyphRun[]): string[] {
+  const lines = new Map<string, GlyphRun[]>()
+  for (const r of runs) {
+    const key = `${r.page}:${Math.round(r.y)}`
+    lines.set(key, [...(lines.get(key) ?? []), r])
+  }
+  return [...lines.values()].map((rs) =>
+    rs.sort((a, b) => a.x - b.x).map((r) => r.str).join('').replace(/[\s‎‏‪-‮]+/g, '')
+  )
+}
+
+/** True when `word` appears on some line, in either reading direction. */
+export function lineHasWord(lines: string[], word: string): boolean {
+  const reversed = [...word].reverse().join('')
+  return lines.some((t) => t.includes(word) || t.includes(reversed))
+}
