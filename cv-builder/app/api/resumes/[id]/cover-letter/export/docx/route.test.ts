@@ -79,6 +79,7 @@ describe('POST /api/resumes/[id]/cover-letter/export/docx', () => {
       const { xml, styles } = await exportParts(bad)
       expect(xml).toContain('21 October 2026')
       expect(styles).toContain('en-GB')
+      expect(styles).not.toContain('he-IL')
     }
   })
 

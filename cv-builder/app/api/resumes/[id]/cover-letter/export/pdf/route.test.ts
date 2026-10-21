@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { _resetRateLimits } from '@/lib/rate-limit'
-import { glyphRunsFromBuffer } from '@/lib/pdf/__tests__/pdf-geometry'
+import { glyphRunsFromBuffer, lineTexts, lineHasWord } from '@/lib/pdf/__tests__/pdf-geometry'
 
 let mockSession: { user: { id: string } } | null = { user: { id: 'user-1' } }
 
@@ -43,7 +43,7 @@ function req(content = 'Dear hiring manager,', language?: unknown): Request {
   })
 }
 
-async function exportText(language?: unknown, content = 'Dear hiring manager,'): Promise<{ lines: string[]; buffer: Buffer }> {
+async function exportText(language?: unknown, content = 'Dear hiring manager,'): Promise<{ lines: string[]; visualLines: string[]; buffer: Buffer }> {
   const { POST } = await import('./route')
   const res = await POST(req(content, language) as never, { params: Promise.resolve({ id: 'abc' }) } as never) as Response
   expect(res.status).toBe(200)
@@ -51,7 +51,7 @@ async function exportText(language?: unknown, content = 'Dear hiring manager,'):
   const runs = await glyphRunsFromBuffer(buffer)
   // Reading order: top of the page first.
   const lines = [...runs].sort((a, b) => b.y - a.y).map((r) => r.str)
-  return { lines, buffer }
+  return { lines, visualLines: lineTexts(runs), buffer }
 }
 
 describe('POST /api/resumes/[id]/cover-letter/export/pdf', () => {
@@ -82,15 +82,15 @@ describe('POST /api/resumes/[id]/cover-letter/export/pdf', () => {
   })
 
   it('writes the date in Hebrew and tags the file he-IL for a he letter', async () => {
-    // Hebrew-only on purpose: the font chain garbles Latin and Hebrew letters
-    // that share one document (see the task report), which is not under test here.
-    mockBasics = { name: 'דנה לוי', phone: '050-0000000', location: { city: 'חיפה' } }
-    const { lines, buffer } = await exportText('he', 'שלום רב')
-    const text = lines.join(' ')
-    // pdfjs splits an RTL word across runs, so check the glyphs rather than the word.
-    for (const ch of new Set('באוקטובר')) expect(text).toContain(ch)
-    expect(text).toContain('2026')
-    expect(text).toContain('חיפה')
+    // The realistic case: Hebrew name and city, a Latin email, a digit date and
+    // a Latin company name in the body. Mixed scripts used to draw scrambled
+    // glyphs (see CoverLetterPdfTemplate.test.tsx).
+    mockBasics = { name: 'דנה לוי', email: 'dana@example.com', phone: '050-0000000', location: { city: 'חיפה' } }
+    const { visualLines, buffer } = await exportText('he', 'שלום רב, אני כותבת בנוגע למשרה ב-Acme Corp.')
+    for (const word of ['באוקטובר', 'חיפה', 'dana@example.com', 'שלום', 'בנוגע', 'AcmeCorp']) {
+      expect(lineHasWord(visualLines, word), `"${word}" intact in ${JSON.stringify(visualLines)}`).toBe(true)
+    }
+    expect(visualLines.join('')).toContain('2026')
     expect(buffer.toString('latin1')).toContain('he-IL')
   })
 

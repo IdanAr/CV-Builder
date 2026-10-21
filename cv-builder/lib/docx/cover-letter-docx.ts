@@ -58,7 +58,7 @@ export function buildCoverLetterDocx(
   return new Document({
     styles: {
       default: {
-        document: { run: { language: { value: locale, bidirectional: 'he-IL' } } },
+        document: { run: { language: language === 'he' ? { value: locale, bidirectional: locale } : { value: locale } } },
       },
     },
     sections: [{
