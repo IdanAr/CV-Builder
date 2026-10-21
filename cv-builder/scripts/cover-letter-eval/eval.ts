@@ -16,6 +16,8 @@
 //   npx tsx scripts/cover-letter-eval/eval.ts compare baseline3 a1     # side by side, with the spec's decision rule
 //   npx tsx scripts/cover-letter-eval/eval.ts confirm a1,b1             # blind sheet of every judge-flagged factual error
 //   npx tsx scripts/cover-letter-eval/eval.ts confirm-score a1,b1       # confirmed-<label>.json from the person's labels
+//   npx tsx scripts/cover-letter-eval/eval.ts human-read baseline3 b3   # blind A/B sheet (sample 1 of each run) for a person to read
+//   npx tsx scripts/cover-letter-eval/eval.ts human-score               # the new letter's preference rate from the filled sheet
 //
 // Everything it writes holds real CV text, so it goes to the git-ignored
 // docs/superpowers/cover-letter-eval/ directory.
@@ -52,6 +54,7 @@ import {
 import { checkLetter, htmlToText, type LetterChecks } from './checks'
 import { inferCitations, inferQuotes, parsePlainLetter } from './infer-citations'
 import { generateCoverLetter } from './baseline-pipeline'
+import { HUMAN_READ_TARGET, buildHumanRead, parseAnswers, scoreHumanRead, type HumanReadKeyItem } from './human-read'
 import { writeCoverLetterB } from './variant-b'
 import { EVAL_PAIRS, EVAL_SET_VERSION, GAP_VARIANT_END_DATE, NOTES, type EvalPair } from './pairs'
 import { SYNTHETIC_CVS } from './synthetic-cvs'
@@ -953,6 +956,38 @@ function confirmScore(labels: string[]) {
   }
 }
 
+const HUMAN_READ_DIR = path.join(OUT_DIR, 'human-read')
+
+/** Blind A/B sheet: sample 1 of the old and the new run for each case, sides in a seeded order. */
+function humanReadSheet(oldLabel: string, newLabel: string) {
+  if (!newLabel) throw new Error('Usage: eval.ts human-read <oldLabel> <newLabel>')
+  const sheet = path.join(HUMAN_READ_DIR, 'sheet.md')
+  if (existsSync(sheet)) throw new Error(`${sheet} already exists and may hold answers; move it away first.`)
+  const { cases } = loadFixtures()
+  const built = buildHumanRead({
+    cases: cases.map((c) => ({ caseId: c.id, company: c.company, role: c.role, cvTitle: c.resumeTitle })),
+    oldRun: loadRun(oldLabel),
+    newRun: loadRun(newLabel),
+  })
+  mkdirSync(HUMAN_READ_DIR, { recursive: true })
+  writeFileSync(sheet, built.sheet)
+  writeJson(path.join(HUMAN_READ_DIR, 'key.json'), built.key)
+  console.log(`Wrote ${built.key.length} cases to ${sheet} (key: key.json, not for the reader)`)
+  for (const s of built.skipped) console.log(`Skipped ${s.caseId}: ${s.reason}`)
+}
+
+/** The new letter's preference rate from the filled sheet, against the spec's target. */
+function humanScore() {
+  const key = readJson<HumanReadKeyItem[]>(path.join(HUMAN_READ_DIR, 'key.json'))
+  const s = scoreHumanRead(key, parseAnswers(readFileSync(path.join(HUMAN_READ_DIR, 'sheet.md'), 'utf8')))
+  console.log(`Answered: ${s.answered} of ${s.total} (${s.unanswered} unanswered, ignored)`)
+  console.log(`New preferred: ${s.newPreferred}`)
+  console.log(`Old preferred: ${s.oldPreferred}`)
+  console.log(`Same: ${s.same}`)
+  console.log(`New letter preference rate, excluding "same": ${s.rate === null ? 'n/a (no case decided)' : `${(s.rate * 100).toFixed(1)}% (${s.newPreferred} of ${s.newPreferred + s.oldPreferred})`}`)
+  console.log(`Target: at least ${HUMAN_READ_TARGET * 100}% -> ${s.rate === null ? 'PENDING (no case decided yet)' : s.pass ? 'PASS' : 'FAIL'}`)
+}
+
 // ---------------------------------------------------------------------------
 
 async function main() {
@@ -981,6 +1016,8 @@ async function main() {
   if (command === 'compare') return compare(label, arg)
   if (command === 'confirm') return confirmSheet(label.split(','))
   if (command === 'confirm-score') return confirmScore(label.split(','))
+  if (command === 'human-read') return humanReadSheet(label, arg ?? '')
+  if (command === 'human-score') return humanScore()
   if (command === 'score') return score(label, Number(arg ?? 6))
   if (command === 'negatives') return negatives(label)
   if (command === 'report') return report(label)
@@ -989,7 +1026,7 @@ async function main() {
   if (command === 'recheck') return recheck(label)
   if (command === 'import-cvs') return importCvs()
   if (command === 'verify') return verifyRun(label, arg)
-  console.error('Usage: eval.ts fixtures | generate <label> [samples] | score <label> [repeats] | negatives <label> | report <label> | calibration <label> | agreement | verify <label> [set] | compare <labelA> <labelB> | confirm <labels> | confirm-score <labels>')
+  console.error('Usage: eval.ts fixtures | generate <label> [samples] | score <label> [repeats] | negatives <label> | report <label> | calibration <label> | agreement | verify <label> [set] | compare <labelA> <labelB> | confirm <labels> | confirm-score <labels> | human-read <oldLabel> <newLabel> | human-score')
   process.exitCode = 2
 }
 
