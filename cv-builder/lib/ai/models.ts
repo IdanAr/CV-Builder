@@ -5,6 +5,11 @@ import Anthropic from '@anthropic-ai/sdk'
 // previously duplicated as a string literal in 6 separate files.
 export const DEFAULT_MODEL = 'claude-haiku-4-5-20251001'
 
+// The cover letter writer runs on a newer model than the rest of the app: the
+// eval chose Haiku 5.5 with low-effort adaptive thinking (variant B).
+export const COVER_LETTER_MODEL = 'claude-haiku-5-5'
+export const COVER_LETTER_THINKING = { effort: 'low' } as const
+
 let _anthropic: Anthropic | null = null
 
 export function getAnthropic(): Anthropic {

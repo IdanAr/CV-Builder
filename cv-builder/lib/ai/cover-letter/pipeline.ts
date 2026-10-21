@@ -18,7 +18,7 @@ import { buildRefinePrompt, buildWritePrompt, type LetterNotes } from './prompt'
 import { WrittenLetterSchema, type LetterPlan, type WrittenLetter } from './schema'
 import { verifyLetter, type VerifyIssue } from './verify'
 
-export type ProgressStep = 'reading' | 'writing' | 'checking' | 'refining' | 'done'
+export type ProgressStep = 'reading' | 'planning' | 'writing' | 'critiquing' | 'checking' | 'refining' | 'done'
 
 export interface WriteOptions {
   model?: string
