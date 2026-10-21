@@ -1,12 +1,13 @@
 // scripts/cover-letter-eval/human-read.ts
 // The human read check (spec 9): a person compares two letters per case
 // without knowing which run wrote which, and the new writer's letter should
-// win at least 70% of the decided cases. This module is pure: it builds the
+// be preferred in at least 70% of the pairs, a "same" counting as not
+// preferred. A verdict is only given once every pair is answered. This module is pure: it builds the
 // blind sheet and its answer key from two runs, parses the person's answers
 // and scores them. File handling lives in eval.ts.
 import { seededShuffle } from './calibration'
 
-/** Share of decided cases (ties excluded) the new letter must win. */
+/** Share of all pairs ("same" included) in which the new letter must be preferred. */
 export const HUMAN_READ_TARGET = 0.7
 
 export type Side = 'A' | 'B'
@@ -59,7 +60,7 @@ Replace the line "Prefer: A | B | same" under each case with exactly one of thes
 - Prefer: B
 - Prefer: same
 
-Leave a case as it is to skip it. Which letter came from where is not shown on purpose.
+Please answer every case: the comparison is only scored once all of them are answered. Which letter came from where is not shown on purpose.
 `
 
 export function buildHumanRead({ cases, oldRun, newRun, seed = HUMAN_READ_SEED }: HumanReadInput): {
@@ -110,13 +111,37 @@ export function parseAnswers(markdown: string): Map<string, Answer> {
   for (const line of markdown.split('\n')) {
     const heading = line.match(/^## (H\d+)\b/)
     if (heading) current = heading[1]
-    const answer = line.match(/^Prefer:\s*(A|B|same)\s*$/i)
+    const answer = line.match(ANSWER_LINE)
     if (current && answer) {
       const v = answer[1]
       answers.set(current, v.toLowerCase() === 'same' ? 'same' : (v.toUpperCase() as Side))
     }
   }
   return answers
+}
+
+const TEMPLATE_LINE = /^Prefer:\s*A \| B \| same\s*$/
+const ANSWER_LINE = /^Prefer:\s*(A|B|same)\s*$/i
+
+/** Problems with a filled sheet that would make its score quietly wrong: odd answer lines and ids that do not match the key. */
+export function checkSheet(markdown: string, key: HumanReadKeyItem[]): string[] {
+  const warnings: string[] = []
+  const seen = new Set<string>()
+  let current: string | null = null
+  for (const line of markdown.split('\n')) {
+    const heading = line.match(/^## (H\d+)\b/)
+    if (heading) {
+      current = heading[1]
+      seen.add(current)
+    }
+    if (/^Prefer:/i.test(line) && !ANSWER_LINE.test(line) && !TEMPLATE_LINE.test(line)) {
+      warnings.push(`${current ?? 'before the first case'}: "${line.trim()}" is not an answer and was ignored (write exactly Prefer: A, Prefer: B or Prefer: same)`)
+    }
+  }
+  const keyIds = new Set(key.map((k) => k.id))
+  for (const id of seen) if (!keyIds.has(id)) warnings.push(`${id} is on the sheet but not in key.json`)
+  for (const id of keyIds) if (!seen.has(id)) warnings.push(`${id} is in key.json but missing from the sheet`)
+  return warnings
 }
 
 export interface HumanReadScore {
@@ -126,13 +151,28 @@ export interface HumanReadScore {
   newPreferred: number
   oldPreferred: number
   same: number
-  /** New letter's share of the decided cases, or null when none were decided. */
+  /** New letter's share of the answered pairs, "same" included, or null when none were answered. */
+  pairRate: number | null
+  /** New letter's share of the decided pairs (ties excluded), or null when none were decided. */
   rate: number | null
+  /** PENDING until every pair is answered; then the pair rate against the target. */
+  verdict: 'PASS' | 'FAIL' | 'PENDING'
   pass: boolean
 }
 
 export function scoreHumanRead(key: HumanReadKeyItem[], answers: Map<string, Answer>): HumanReadScore {
-  const score: HumanReadScore = { total: key.length, answered: 0, unanswered: 0, newPreferred: 0, oldPreferred: 0, same: 0, rate: null, pass: false }
+  const score: HumanReadScore = {
+    total: key.length,
+    answered: 0,
+    unanswered: 0,
+    newPreferred: 0,
+    oldPreferred: 0,
+    same: 0,
+    pairRate: null,
+    rate: null,
+    verdict: 'PENDING',
+    pass: false,
+  }
   for (const item of key) {
     const answer = answers.get(item.id)
     if (!answer) {
@@ -145,9 +185,11 @@ export function scoreHumanRead(key: HumanReadKeyItem[], answers: Map<string, Ans
     else score.oldPreferred++
   }
   const decided = score.newPreferred + score.oldPreferred
-  if (decided > 0) {
-    score.rate = score.newPreferred / decided
-    score.pass = score.rate >= HUMAN_READ_TARGET
+  if (decided > 0) score.rate = score.newPreferred / decided
+  if (score.answered > 0) score.pairRate = score.newPreferred / score.answered
+  if (score.total > 0 && score.unanswered === 0) {
+    score.pass = score.pairRate! >= HUMAN_READ_TARGET
+    score.verdict = score.pass ? 'PASS' : 'FAIL'
   }
   return score
 }

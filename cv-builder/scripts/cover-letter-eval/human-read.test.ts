@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { HUMAN_READ_TARGET, buildHumanRead, parseAnswers, scoreHumanRead, type HumanReadCase, type HumanReadLetter } from './human-read'
+import { HUMAN_READ_TARGET, buildHumanRead, checkSheet, parseAnswers, scoreHumanRead, type HumanReadCase, type HumanReadLetter } from './human-read'
 
 const cases: HumanReadCase[] = [
   { caseId: 'x01', company: 'Acme Robotics', role: 'Data Analyst', cvTitle: 'Jane Doe (invented)' },
@@ -72,34 +72,66 @@ describe('parseAnswers', () => {
   })
 })
 
+describe('checkSheet', () => {
+  const key = [
+    { id: 'H01', caseId: 'x01', newIs: 'A' as const },
+    { id: 'H02', caseId: 'x02', newIs: 'B' as const },
+  ]
+
+  it('has nothing to say about a clean sheet, filled or not', () => {
+    expect(checkSheet('## H01\n\nPrefer: A | B | same\n\n## H02\n\nPrefer: b\n', key)).toEqual([])
+  })
+
+  it('warns on a Prefer line that is neither an answer nor the template', () => {
+    const warnings = checkSheet('## H01\n\nPrefer: A, because it is shorter\n\n## H02\n\nPrefer: B\n', key)
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain('H01')
+    expect(warnings[0]).toContain('Prefer: A, because it is shorter')
+  })
+
+  it("warns when the sheet's ids do not match key.json", () => {
+    const warnings = checkSheet('## H01\n\nPrefer: A\n\n## H03\n\nPrefer: B\n', key)
+    expect(warnings.some((w) => w.includes('H03') && /not in key\.json/.test(w))).toBe(true)
+    expect(warnings.some((w) => w.includes('H02') && /missing from the sheet/.test(w))).toBe(true)
+  })
+})
+
 describe('scoreHumanRead', () => {
   const key = ['A', 'B', 'A', 'B', 'A', 'B'].map((newIs, i) => ({ id: `H0${i + 1}`, caseId: `x0${i + 1}`, newIs: newIs as 'A' | 'B' }))
+  const all = (values: string[]) => new Map(values.map((v, i) => [`H0${i + 1}`, v as 'A' | 'B' | 'same']))
 
-  it('counts the new letter preferred, ignores same and unanswered, and passes at 70%', () => {
-    // new wins H01 (A), H02 (B), H03 (A), H04 (B), H05 (A); old wins none; H06 unanswered, so 5 of 5
-    const answers = new Map([['H01', 'A'], ['H02', 'B'], ['H03', 'A'], ['H04', 'B'], ['H05', 'same']] as const)
-    const s = scoreHumanRead(key, answers)
-    expect(s).toMatchObject({ total: 6, answered: 5, unanswered: 1, newPreferred: 4, oldPreferred: 0, same: 1, rate: 1, pass: true })
+  it('counts the new letter preferred over all pairs and over the decided ones', () => {
+    // new wins H01-H04, H05 same, H06 old: 4 of 6 pairs, 4 of 5 decided
+    const s = scoreHumanRead(key, all(['A', 'B', 'A', 'B', 'same', 'A']))
+    expect(s).toMatchObject({ total: 6, answered: 6, unanswered: 0, newPreferred: 4, oldPreferred: 1, same: 1 })
+    expect(s.pairRate).toBeCloseTo(4 / 6)
+    expect(s.rate).toBeCloseTo(4 / 5)
     expect(HUMAN_READ_TARGET).toBe(0.7)
   })
 
-  it('maps A/B through the key and fails below 70%', () => {
-    // 2 new, 1 old = 66.7%
-    const answers = new Map([['H01', 'A'], ['H02', 'B'], ['H03', 'B']] as const)
-    const s = scoreHumanRead(key, answers)
-    expect(s.newPreferred).toBe(2)
-    expect(s.oldPreferred).toBe(1)
-    expect(s.rate).toBeCloseTo(2 / 3)
+  it('judges on all pairs, so ties count against the new letter', () => {
+    // 4 new, 2 same: 100% of decided, 66.7% of pairs
+    const s = scoreHumanRead(key, all(['A', 'B', 'A', 'B', 'same', 'same']))
+    expect(s.rate).toBe(1)
+    expect(s.verdict).toBe('FAIL')
     expect(s.pass).toBe(false)
   })
 
-  it('passes exactly at 70% and has no rate when nobody chose a side', () => {
+  it('passes exactly at 70% of pairs', () => {
     const ten = Array.from({ length: 10 }, (_, i) => ({ id: `H${i + 1}`, caseId: `c${i}`, newIs: 'A' as const }))
-    const answers = new Map(ten.map((k, i) => [k.id, i < 7 ? 'A' : 'B'] as const))
-    expect(scoreHumanRead(ten, answers)).toMatchObject({ rate: 0.7, pass: true })
-    const none = scoreHumanRead(key, new Map())
-    expect(none).toMatchObject({ answered: 0, unanswered: 6, rate: null, pass: false })
-    expect(scoreHumanRead(key, new Map([['H01', 'same']] as const))).toMatchObject({ answered: 1, same: 1, rate: null, pass: false })
+    const answers = new Map(ten.map((k, i) => [k.id, i < 7 ? 'A' : i < 9 ? 'B' : 'same'] as const))
+    expect(scoreHumanRead(ten, answers)).toMatchObject({ pairRate: 0.7, verdict: 'PASS', pass: true })
+  })
+
+  it('stays PENDING until every case is answered, however good the answers so far', () => {
+    const s = scoreHumanRead(key, all(['A', 'B', 'A', 'B', 'A']))
+    expect(s).toMatchObject({ answered: 5, unanswered: 1, newPreferred: 5, verdict: 'PENDING', pass: false })
+    expect(scoreHumanRead(key, new Map())).toMatchObject({ answered: 0, unanswered: 6, rate: null, pairRate: null, verdict: 'PENDING' })
+  })
+
+  it('has no decided rate when nobody chose a side', () => {
+    const s = scoreHumanRead(key, all(['same', 'same', 'same', 'same', 'same', 'same']))
+    expect(s).toMatchObject({ rate: null, pairRate: 0, verdict: 'FAIL' })
   })
 
   it('ignores answers for ids not in the key', () => {
