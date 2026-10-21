@@ -55,6 +55,8 @@ vi.mock('./DesignPanel', async () => {
   }
 })
 vi.mock('@/components/ats/AtsScorePanel', () => ({ AtsScorePanel: () => <div>AtsScorePanelContent</div> }))
+// The panel loads its letters on mount, which would show up in the fetch assertions below.
+vi.mock('@/components/coverletter/CoverLetterPanel', () => ({ CoverLetterPanel: () => <div>CoverLetterPanelContent</div> }))
 vi.mock('./ExportMenu', () => ({
   ExportMenu: ({
     onExport,

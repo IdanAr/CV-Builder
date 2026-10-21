@@ -1,9 +1,15 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react'
 import { useResumeEditorStore } from '@/lib/stores/resume-editor.store'
-import { CoverLetterPanel } from './CoverLetterPanel'
+import { useToastStore } from '@/lib/stores/toast.store'
 import type { ResumeMeta } from '@/lib/schemas/resume.zod'
+import type { CoverLetterView, SuggestedPosting } from '@/lib/api/cover-letters'
+import type { UseCoverLetters } from './use-cover-letters'
+import { CoverLetterPanel } from './CoverLetterPanel'
+
+const hook = vi.hoisted(() => ({ current: null as unknown }))
+vi.mock('./use-cover-letters', () => ({ useCoverLetters: () => hook.current }))
 
 const defaultMeta: ResumeMeta = {
   templateId: 'classic', fontFamily: 'Calibri', headerFontFamily: 'Calibri',
@@ -12,19 +18,67 @@ const defaultMeta: ResumeMeta = {
   columnAssignment: {}, excludedAtsKeywords: [], fontScale: 1,
 }
 
+let seq = 0
+function letter(over: Partial<CoverLetterView> = {}): CoverLetterView {
+  seq += 1
+  return {
+    id: `l${seq}`,
+    userId: 'u1',
+    resumeId: 'r1',
+    company: 'Acme Corp',
+    role: 'Engineer',
+    notes: {},
+    content: 'Dear Acme Corp Hiring Team, I build things.',
+    pendingApprovals: [],
+    notices: [],
+    language: 'en',
+    status: 'ready',
+    // Dates arrive as ISO strings over JSON, whatever the type says.
+    createdAt: '2026-10-12T10:00:00.000Z' as unknown as Date,
+    updatedAt: '2026-10-12T10:00:00.000Z' as unknown as Date,
+    ...over,
+  }
+}
+
+function mockHook(over: Partial<UseCoverLetters> = {}): UseCoverLetters {
+  const value: UseCoverLetters = {
+    letters: [],
+    prefillNotes: {},
+    suggestedPosting: null,
+    loading: false,
+    error: null,
+    // Like the real hook: the new letter joins the list before create resolves.
+    create: vi.fn(async () => {
+      const created = letter({ status: 'writing', progress: 'reading', content: '' })
+      const cur = hook.current as UseCoverLetters
+      hook.current = { ...cur, letters: [created, ...cur.letters] }
+      return created
+    }),
+    save: vi.fn(),
+    remove: vi.fn(async () => {}),
+    ...over,
+  }
+  hook.current = value
+  return value
+}
+
 function jsonResponse(body: unknown, ok = true, status = 200) {
   return { ok, status, headers: new Headers(), json: async () => body }
 }
 
-const letterBox = () => screen.getByRole('textbox', { name: 'Cover letter' }) as HTMLTextAreaElement
 const jdBox = () => screen.getByLabelText('Job description') as HTMLTextAreaElement
-const writeButton = () => screen.getByRole('button', { name: /(write|rewrite) cover letter/i })
+const writeButton = () => screen.getByRole('button', { name: 'Write letter' })
+const letterBox = () => screen.getByRole('textbox', { name: 'Cover letter' }) as HTMLTextAreaElement
 
-function pasteJob(text = 'We are looking for a Software Engineer.') {
-  fireEvent.change(jdBox(), { target: { value: text } })
+function fillForm() {
+  fireEvent.change(jdBox(), { target: { value: 'We are hiring a Platform Engineer.' } })
+  fireEvent.change(screen.getByLabelText('Company'), { target: { value: 'Globex' } })
+  fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'Platform Engineer' } })
 }
 
 beforeEach(() => {
+  seq = 0
+  useToastStore.setState({ toasts: [] })
   useResumeEditorStore.setState({
     resumeId: 'r1',
     title: 'CV',
@@ -39,191 +93,355 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.unstubAllGlobals()
 })
 
-describe('CoverLetterPanel: one letter box', () => {
-  it('has exactly one letter textarea, bound to data.coverLetter, and edits write straight to it', () => {
-    useResumeEditorStore.setState({ data: { coverLetter: 'Old letter.' } })
+describe('CoverLetterPanel: the letter list', () => {
+  it("renders the CV's letters newest first, with company, role and date, plus New letter", () => {
+    mockHook({
+      letters: [
+        letter({ company: 'Older Co', role: 'Analyst', createdAt: '2026-09-01T10:00:00.000Z' as unknown as Date }),
+        letter({ company: 'Newer Co', role: 'Designer', createdAt: '2026-10-12T10:00:00.000Z' as unknown as Date }),
+      ],
+    })
     render(<CoverLetterPanel />)
-    expect(screen.getAllByRole('textbox').filter((t) => t.tagName === 'TEXTAREA')).toHaveLength(2) // job + letter
-    expect(letterBox()).toHaveValue('Old letter.')
-    fireEvent.change(letterBox(), { target: { value: 'My handwritten letter.' } })
-    expect(useResumeEditorStore.getState().data.coverLetter).toBe('My handwritten letter.')
+    const items = screen.getAllByRole('button', { name: / at / }).filter((b) => !b.getAttribute('aria-label'))
+    expect(items.map((b) => b.textContent)).toEqual([
+      expect.stringContaining('Designer at Newer Co'),
+      expect.stringContaining('Analyst at Older Co'),
+    ])
+    expect(items[0]).toHaveTextContent('Oct 12, 2026')
+    expect(screen.getByRole('button', { name: 'New letter' })).toBeInTheDocument()
   })
 
-  it('gives every field an accessible name', () => {
+  it('a letter migrated from the old field without a target reads "Earlier letter"', () => {
+    mockHook({ letters: [letter({ legacy: true, company: 'Unspecified', role: 'Unspecified' })] })
+    render(<CoverLetterPanel />)
+    expect(screen.getByRole('button', { name: /^Earlier letter/ })).toBeInTheDocument()
+    expect(screen.queryByText(/Unspecified/)).toBeNull()
+  })
+
+  it('opens straight on the new-letter form when there are no letters and no suggestion', () => {
+    mockHook()
     render(<CoverLetterPanel />)
     expect(jdBox()).toBeInTheDocument()
-    expect(screen.getByLabelText(/company/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/role/i)).toBeInTheDocument()
-    expect(letterBox()).toBeInTheDocument()
-  })
-
-  it('disables Write until a job is pasted, and never calls the API without one', () => {
-    const fetchMock = vi.fn()
-    vi.stubGlobal('fetch', fetchMock)
-    render(<CoverLetterPanel />)
     expect(writeButton()).toBeDisabled()
-    fireEvent.click(writeButton())
-    expect(fetchMock).not.toHaveBeenCalled()
-    pasteJob()
-    expect(writeButton()).toBeEnabled()
   })
 
-  it('a verified letter is written into the same box and the document in one undoable step', async () => {
-    useResumeEditorStore.setState({ data: { coverLetter: 'Previous letter.' } })
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ content: 'Dear team, ...', pendingApprovals: [] })))
+  it('shows a loading state, not the form, while the list loads', () => {
+    mockHook({ loading: true })
     render(<CoverLetterPanel />)
-    expect(writeButton()).toHaveTextContent('Rewrite cover letter')
-    pasteJob()
-    fireEvent.click(writeButton())
-
-    await waitFor(() => expect(letterBox()).toHaveValue('Dear team, ...'))
-    expect(useResumeEditorStore.getState().data.coverLetter).toBe('Dear team, ...')
-    expect(screen.getByText(/letter written/i)).toBeInTheDocument()
-    useResumeEditorStore.getState().undo()
-    expect(useResumeEditorStore.getState().data.coverLetter).toBe('Previous letter.')
+    expect(screen.queryByLabelText('Job description')).toBeNull()
+    expect(screen.getByText(/loading/i)).toBeInTheDocument()
   })
 
-  it('sends the job, company and role', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ content: 'Dear Hiring Manager, ...', pendingApprovals: [] }))
-    vi.stubGlobal('fetch', fetchMock)
+  it('shows the hook error', () => {
+    mockHook({ letters: [letter()], error: 'Failed to load cover letters.' })
     render(<CoverLetterPanel />)
-    pasteJob()
-    fireEvent.change(screen.getByLabelText(/company/i), { target: { value: 'Acme Corp' } })
-    fireEvent.change(screen.getByLabelText(/role/i), { target: { value: 'Senior Engineer' } })
+    expect(screen.getByRole('alert')).toHaveTextContent('Failed to load cover letters.')
+  })
+})
+
+describe('CoverLetterPanel: new letter', () => {
+  it('New letter, filled and submitted, calls create with the notes, then shows the letter being written', async () => {
+    const h = mockHook({ letters: [letter()] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'New letter' }))
+    expect(writeButton()).toBeDisabled()
+    fillForm()
+    fireEvent.change(screen.getByLabelText(/why this company or role/i), { target: { value: 'I use Globex daily.' } })
+    fireEvent.change(screen.getByLabelText(/anything to explain/i), { target: { value: 'I took a year to study.' } })
+    fireEvent.change(screen.getByLabelText(/hiring manager's name/i), { target: { value: 'Sam Lee' } })
     fireEvent.click(writeButton())
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
-    const [url, opts] = fetchMock.mock.calls[0]
-    expect(url).toBe('/api/resumes/r1/cover-letter')
-    expect(JSON.parse(opts.body)).toEqual({
-      jobDescription: 'We are looking for a Software Engineer.',
-      companyName: 'Acme Corp',
-      roleName: 'Senior Engineer',
+
+    await waitFor(() => expect(h.create).toHaveBeenCalledTimes(1))
+    expect(h.create).toHaveBeenCalledWith({
+      company: 'Globex',
+      role: 'Platform Engineer',
+      jobText: 'We are hiring a Platform Engineer.',
+      notes: { motivation: 'I use Globex daily.', explain: 'I took a year to study.', hiringManager: 'Sam Lee' },
+    })
+    expect(await screen.findByText('Reading the posting')).toBeInTheDocument()
+  })
+
+  it('leaves empty notes out and caps the fields', async () => {
+    const h = mockHook()
+    render(<CoverLetterPanel />)
+    fillForm()
+    expect(screen.getByLabelText('Company')).toHaveAttribute('maxLength', '200')
+    expect(screen.getByLabelText('Role')).toHaveAttribute('maxLength', '200')
+    expect(screen.getByLabelText(/why this company or role/i)).toHaveAttribute('maxLength', '1000')
+    expect(screen.getByLabelText(/anything to explain/i)).toHaveAttribute('maxLength', '1000')
+    expect(screen.getByLabelText(/hiring manager's name/i)).toHaveAttribute('maxLength', '120')
+    fireEvent.click(writeButton())
+    await waitFor(() => expect(h.create).toHaveBeenCalledTimes(1))
+    expect(h.create).toHaveBeenCalledWith({
+      company: 'Globex', role: 'Platform Engineer', jobText: 'We are hiring a Platform Engineer.', notes: {},
     })
   })
 
-  it('shows the server error inline when writing fails', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ error: 'The model is busy.' }, false, 503)))
+  it('prefills "Anything to explain" from the previous letter', () => {
+    mockHook({ prefillNotes: { explain: 'I moved country in 2024.' } })
     render(<CoverLetterPanel />)
-    pasteJob()
+    expect(screen.getByLabelText(/anything to explain/i)).toHaveValue('I moved country in 2024.')
+  })
+
+  it('keeps the form and its text when create fails', async () => {
+    const h = mockHook({ create: vi.fn(async () => null) })
+    render(<CoverLetterPanel />)
+    fillForm()
     fireEvent.click(writeButton())
-    expect(await screen.findByRole('alert')).toHaveTextContent('The model is busy.')
-    expect(useResumeEditorStore.getState().data.coverLetter).toBeUndefined()
+    await waitFor(() => expect(h.create).toHaveBeenCalled())
+    expect(jdBox()).toHaveValue('We are hiring a Platform Engineer.')
+  })
+
+  it('imports the posting from a link and fills company and role', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({
+      text: 'Senior Engineer. Requirements: React.', title: 'Senior Engineer', company: 'Initech', host: 'jobs.example.com',
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+    mockHook()
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('radio', { name: 'From a link' }))
+    fireEvent.change(screen.getByLabelText('Job posting link'), { target: { value: 'https://jobs.example.com/1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Import' }))
+    await waitFor(() => expect(jdBox()).toHaveValue('Senior Engineer. Requirements: React.'))
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/resumes/r1/job-description')
+    expect(screen.getByLabelText('Company')).toHaveValue('Initech')
+    expect(screen.getByLabelText('Role')).toHaveValue('Senior Engineer')
   })
 })
 
-describe('CoverLetterPanel: unverified claims', () => {
-  const flagged = { content: 'I led a team of 40 people at Acme.', pendingApprovals: ['team of 40'] }
-
-  async function writeFlagged() {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(flagged)))
+describe('CoverLetterPanel: detected situation', () => {
+  it('a gap in the CV shows the situation line above "Anything to explain"', () => {
+    useResumeEditorStore.setState({
+      data: {
+        work: [
+          { name: 'First Co', position: 'Dev', startDate: '2018-01', endDate: '2019-12' },
+          { name: 'Second Co', position: 'Dev', startDate: '2021-06', endDate: 'Present' },
+        ],
+      },
+    })
+    mockHook()
     render(<CoverLetterPanel />)
-    pasteJob()
-    fireEvent.click(writeButton())
-    await screen.findByRole('region', { name: 'Unverified details' })
-  }
-
-  it('holds the letter in the box, lists and highlights the claims, and does not save it yet', async () => {
-    useResumeEditorStore.setState({ data: { coverLetter: 'Previous letter.' } })
-    await writeFlagged()
-    expect(letterBox()).toHaveValue(flagged.content)
-    expect(useResumeEditorStore.getState().data.coverLetter).toBe('Previous letter.')
-    const bar = screen.getByRole('region', { name: 'Unverified details' })
-    expect(within(bar).getByText('team of 40')).toBeInTheDocument()
-    expect(document.querySelector('mark')?.textContent).toBe('team of 40')
+    const line = screen.getByText(
+      'Your CV shows no role from Jan 2020 to May 2021. If you want the letter to explain it, add a sentence here.'
+    )
+    const explain = screen.getByLabelText(/anything to explain/i)
+    expect(line.compareDocumentPosition(explain) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(explain).toHaveAccessibleDescription(line.textContent!)
   })
 
-  it('blocks copy and export until the letter is kept or discarded', async () => {
-    await writeFlagged()
+  it('a gap after a year-only end date says "at least N months after"', () => {
+    useResumeEditorStore.setState({
+      data: {
+        work: [
+          { name: 'First Co', position: 'Dev', startDate: '2016', endDate: '2019' },
+          { name: 'Second Co', position: 'Dev', startDate: '2021-06', endDate: 'Present' },
+        ],
+      },
+    })
+    mockHook()
+    render(<CoverLetterPanel />)
+    expect(screen.getByText(
+      'Your CV shows no role for at least 17 months after 2019. If you want the letter to explain it, add a sentence here.'
+    )).toBeInTheDocument()
+  })
+
+  it('no gap, no line', () => {
+    useResumeEditorStore.setState({
+      data: { work: [{ name: 'First Co', position: 'Dev', startDate: '2018-01', endDate: 'Present' }] },
+    })
+    mockHook()
+    render(<CoverLetterPanel />)
+    expect(screen.queryByText(/your cv shows no role/i)).toBeNull()
+  })
+})
+
+describe('CoverLetterPanel: an open letter', () => {
+  it('a writing letter shows its progress step as text in a live region', () => {
+    mockHook({ letters: [letter({ status: 'writing', progress: 'critiquing', content: '' })] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    const status = screen.getByRole('status')
+    expect(status).toHaveAttribute('aria-live', 'polite')
+    expect(status).toHaveTextContent('Checking it like an editor')
+    expect(screen.queryByRole('textbox', { name: 'Cover letter' })).toBeNull()
+  })
+
+  it('the editor replaces the progress once the letter is ready', () => {
+    const h = mockHook({ letters: [letter({ status: 'writing', progress: 'refining', content: '' })] })
+    const { rerender } = render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    expect(screen.getByText('Fixing flagged sentences')).toBeInTheDocument()
+    mockHook({ ...h, letters: [{ ...h.letters[0], status: 'ready', progress: 'done', content: 'Dear team, hello.' }] })
+    rerender(<CoverLetterPanel />)
+    expect(letterBox()).toHaveValue('Dear team, hello.')
+    expect(screen.queryByText('Fixing flagged sentences')).toBeNull()
+  })
+
+  it('a ready letter with 2 approvals shows both reasons and Keep this letter', () => {
+    const l = letter({
+      content: 'I led a team of 40 and grew revenue 3x.',
+      pendingApprovals: ['number 40 not in cited fact F2', 'number 3x not in cited fact F5'],
+    })
+    const h = mockHook({ letters: [l] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    const box = screen.getByRole('region', { name: 'Unverified details' })
+    expect(within(box).getByText('number 40 not in cited fact F2')).toBeInTheDocument()
+    expect(within(box).getByText('number 3x not in cited fact F5')).toBeInTheDocument()
     for (const name of [/copy/i, /^pdf$/i, /^docx$/i]) expect(screen.getByRole('button', { name })).toBeDisabled()
+    fireEvent.click(within(box).getByRole('button', { name: 'Keep this letter' }))
+    expect(h.save).toHaveBeenCalledWith(l.id, { pendingApprovals: [] })
   })
 
-  it('Keep letter writes the (possibly edited) letter to the document', async () => {
-    await writeFlagged()
-    fireEvent.change(letterBox(), { target: { value: 'I led a team at Acme.' } })
-    expect(screen.getByText(/every unverified detail has been edited out/i)).toBeInTheDocument()
-    expect(document.querySelector('mark')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Keep letter' }))
-    expect(useResumeEditorStore.getState().data.coverLetter).toBe('I led a team at Acme.')
+  it('shows notices as plain info lines', () => {
+    mockHook({ letters: [letter({ notices: ['The posting was cut to 10,000 characters.'] })] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    expect(screen.getByText('The posting was cut to 10,000 characters.')).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Unverified details' })).toBeNull()
   })
 
-  it('Discard brings back the previous letter untouched', async () => {
-    useResumeEditorStore.setState({ data: { coverLetter: 'Previous letter.' } })
-    await writeFlagged()
-    fireEvent.click(screen.getByRole('button', { name: 'Discard' }))
-    expect(letterBox()).toHaveValue('Previous letter.')
-    expect(useResumeEditorStore.getState().data.coverLetter).toBe('Previous letter.')
+  it('editing calls save and never setData', () => {
+    const setData = vi.fn()
+    useResumeEditorStore.setState({ setData, data: { coverLetter: 'Legacy text.' } })
+    const l = letter()
+    const h = mockHook({ letters: [l] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    expect(letterBox()).toHaveValue(l.content)
+    fireEvent.change(letterBox(), { target: { value: 'My own words.' } })
+    expect(h.save).toHaveBeenCalledWith(l.id, { content: 'My own words.' })
+    expect(setData).not.toHaveBeenCalled()
+    expect(useResumeEditorStore.getState().data.coverLetter).toBe('Legacy text.')
+  })
+
+  it("saves the letter's notes on blur, not per keystroke", () => {
+    const l = letter({ notes: { motivation: 'Old reason.' } })
+    const h = mockHook({ letters: [l] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    const field = screen.getByLabelText(/why this company or role/i)
+    expect(field).toHaveValue('Old reason.')
+    fireEvent.change(field, { target: { value: 'New reason.' } })
+    expect(h.save).not.toHaveBeenCalled()
+    fireEvent.blur(field)
+    expect(h.save).toHaveBeenCalledWith(l.id, { notes: { motivation: 'New reason.' } })
+  })
+
+  it('All letters goes back to the list', () => {
+    mockHook({ letters: [letter()] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'All letters' }))
+    expect(screen.getByRole('button', { name: 'New letter' })).toBeInTheDocument()
   })
 })
 
-describe('CoverLetterPanel: import from a link', () => {
-  function openLinkMode() {
+describe('CoverLetterPanel: a failed letter', () => {
+  it('shows the error, and Try again opens the form prefilled from it', async () => {
+    const l = letter({
+      status: 'failed',
+      error: 'Writing this letter took too long. Please try again.',
+      company: 'Hooli', role: 'SRE', notes: { motivation: 'Big systems.' }, scrapedJobId: 'sj9', content: '',
+    })
+    const h = mockHook({ letters: [l] })
     render(<CoverLetterPanel />)
-    fireEvent.click(screen.getByRole('radio', { name: 'From a link' }))
+    fireEvent.click(screen.getByRole('button', { name: /^SRE at Hooli/ }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Writing this letter took too long. Please try again.')
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(screen.getByLabelText('Company')).toHaveValue('Hooli')
+    expect(screen.getByLabelText('Role')).toHaveValue('SRE')
+    expect(screen.getByLabelText(/why this company or role/i)).toHaveValue('Big systems.')
+    fireEvent.change(jdBox(), { target: { value: 'SRE posting text.' } })
+    fireEvent.click(writeButton())
+    await waitFor(() => expect(h.create).toHaveBeenCalledTimes(1))
+    expect(h.create).toHaveBeenCalledWith({
+      company: 'Hooli', role: 'SRE', jobText: 'SRE posting text.', notes: { motivation: 'Big systems.' }, scrapedJobId: 'sj9',
+    })
+  })
+})
+
+describe('CoverLetterPanel: delete', () => {
+  it('hides the letter at once with an Undo toast, and deletes it after the undo window', async () => {
+    vi.useFakeTimers()
+    const l = letter({ company: 'Hooli', role: 'SRE' })
+    const h = mockHook({ letters: [l, letter()] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'Delete letter for SRE at Hooli' }))
+    expect(screen.queryByRole('button', { name: /^SRE at Hooli/ })).toBeNull()
+    expect(useToastStore.getState().toasts[0].message).toBe('Deleted letter for SRE at Hooli')
+    expect(h.remove).not.toHaveBeenCalled()
+    await act(async () => { vi.advanceTimersByTime(6000) })
+    expect(h.remove).toHaveBeenCalledWith(l.id)
+  })
+
+  it('Undo brings the letter back and nothing is deleted', async () => {
+    vi.useFakeTimers()
+    const l = letter({ company: 'Hooli', role: 'SRE' })
+    const h = mockHook({ letters: [l] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'Delete letter for SRE at Hooli' }))
+    act(() => { useToastStore.getState().toasts[0].onAction?.() })
+    expect(screen.getByRole('button', { name: /^SRE at Hooli/ })).toBeInTheDocument()
+    await act(async () => { vi.advanceTimersByTime(6000) })
+    expect(h.remove).not.toHaveBeenCalled()
+  })
+
+  it('a pending delete is sent at once when the panel unmounts', () => {
+    const l = letter({ company: 'Hooli', role: 'SRE' })
+    const h = mockHook({ letters: [l] })
+    const { unmount } = render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'Delete letter for SRE at Hooli' }))
+    unmount()
+    expect(h.remove).toHaveBeenCalledWith(l.id)
+  })
+})
+
+describe('CoverLetterPanel: suggested posting', () => {
+  const posting: SuggestedPosting = { company: 'Umbrella', role: 'Data Engineer', jobText: 'Umbrella needs a data engineer.', scrapedJobId: 'sj1' }
+
+  it('the suggestion fills the form and makes no request; Write calls create with scrapedJobId', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const h = mockHook({ suggestedPosting: posting, prefillNotes: { explain: 'Career break in 2023.' } })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'Write a letter for Data Engineer at Umbrella' }))
+    expect(jdBox()).toHaveValue('Umbrella needs a data engineer.')
+    expect(screen.getByLabelText('Company')).toHaveValue('Umbrella')
+    expect(screen.getByLabelText('Role')).toHaveValue('Data Engineer')
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(h.create).not.toHaveBeenCalled()
+
+    fireEvent.click(writeButton())
+    await waitFor(() => expect(h.create).toHaveBeenCalledTimes(1))
+    expect(h.create).toHaveBeenCalledWith({
+      company: 'Umbrella', role: 'Data Engineer', jobText: 'Umbrella needs a data engineer.',
+      notes: { explain: 'Career break in 2023.' }, scrapedJobId: 'sj1',
+    })
+  })
+})
+
+describe('CoverLetterPanel: copy and export act on the open letter', () => {
+  function openReady() {
+    mockHook({ letters: [letter({ content: 'Open letter text.' }), letter({ company: 'Other', role: 'Other role', content: 'Other text.' })] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
   }
 
-  it('imports the job text, fills empty company and role, and returns to the text view', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({
-      text: 'Senior Engineer. Requirements: React.', title: 'Senior Engineer', company: 'Acme', source: 'structured', host: 'boards.greenhouse.io',
-    }))
-    vi.stubGlobal('fetch', fetchMock)
-    openLinkMode()
-    fireEvent.change(screen.getByLabelText('Job posting link'), { target: { value: 'https://boards.greenhouse.io/acme/1' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Import' }))
-
-    await waitFor(() => expect(jdBox()).toHaveValue('Senior Engineer. Requirements: React.'))
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/resumes/r1/job-description')
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ url: 'https://boards.greenhouse.io/acme/1' })
-    expect(screen.getByLabelText(/company/i)).toHaveValue('Acme')
-    expect(screen.getByLabelText(/role/i)).toHaveValue('Senior Engineer')
-    expect(screen.getByText(/imported from boards.greenhouse.io/i)).toBeInTheDocument()
-  })
-
-  it('does not overwrite a company the user already typed', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ text: 'Job text.', company: 'Scraped Co', host: 'x.com' })))
-    render(<CoverLetterPanel />)
-    fireEvent.change(screen.getByLabelText(/company/i), { target: { value: 'My Co' } })
-    fireEvent.click(screen.getByRole('radio', { name: 'From a link' }))
-    fireEvent.change(screen.getByLabelText('Job posting link'), { target: { value: 'https://x.com/job' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Import' }))
-    await waitFor(() => expect(jdBox()).toHaveValue('Job text.'))
-    expect(screen.getByLabelText(/company/i)).toHaveValue('My Co')
-  })
-
-  it("shows the server's reason when a page can't be imported, and stays on the link", async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ error: "Couldn't find a job description on that page." }, false, 422)))
-    openLinkMode()
-    fireEvent.change(screen.getByLabelText('Job posting link'), { target: { value: 'https://linkedin.com/jobs/1' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Import' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't find a job description")
-    expect(screen.getByLabelText('Job posting link')).toBeInTheDocument()
-  })
-})
-
-describe('CoverLetterPanel: copy and export', () => {
-  beforeEach(() => {
-    useResumeEditorStore.setState({ data: { basics: { name: 'Jane Doe' }, coverLetter: 'Existing letter text.' } })
-  })
-
-  it('are disabled when there is no letter', () => {
-    useResumeEditorStore.setState({ data: {} })
-    render(<CoverLetterPanel />)
-    for (const name of [/copy/i, /^pdf$/i, /^docx$/i]) expect(screen.getByRole('button', { name })).toBeDisabled()
-  })
-
-  it('Copy writes the letter to the clipboard', async () => {
+  it('Copy copies the open letter', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
-    render(<CoverLetterPanel />)
+    openReady()
     fireEvent.click(screen.getByRole('button', { name: /copy/i }))
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith('Existing letter text.'))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('Open letter text.'))
     expect(await screen.findByText('Copied!')).toBeInTheDocument()
   })
 
-  it('DOCX export posts the letter and names the file after the company', async () => {
+  it('DOCX export posts the open letter and names the file after its company', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, blob: async () => new Blob(['docx-bytes']) })
     vi.stubGlobal('fetch', fetchMock)
     vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:fake'), revokeObjectURL: vi.fn() })
@@ -231,21 +449,19 @@ describe('CoverLetterPanel: copy and export', () => {
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
       downloaded = this.download
     })
-    render(<CoverLetterPanel />)
-    fireEvent.change(screen.getByLabelText(/company/i), { target: { value: 'Acme Corp' } })
+    openReady()
     fireEvent.click(screen.getByRole('button', { name: /^docx$/i }))
-
     await waitFor(() => expect(clickSpy).toHaveBeenCalled())
     const [url, opts] = fetchMock.mock.calls[0]
     expect(url).toBe('/api/resumes/r1/cover-letter/export/docx')
-    expect(JSON.parse(opts.body)).toEqual({ content: 'Existing letter text.' })
+    expect(JSON.parse(opts.body)).toEqual({ content: 'Open letter text.' })
     expect(downloaded).toBe('Cover-Letter-Acme-Corp.docx')
     clickSpy.mockRestore()
   })
 
   it('a failed export shows an inline error', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: false, status: 500, headers: new Headers(), json: async () => ({}) }))
-    render(<CoverLetterPanel />)
+    openReady()
     fireEvent.click(screen.getByRole('button', { name: /^pdf$/i }))
     expect(await screen.findByText(/export failed/i)).toBeInTheDocument()
   })
