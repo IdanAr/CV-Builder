@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, useReducedMotion } from 'framer-motion'
 import { FileText, Gauge, Mail, Palette, type LucideIcon } from 'lucide-react'
+import { EDITOR_TABS, type EditorTab } from '@/lib/editor/tabs'
 import { handleTablistKeyDown, tabIndexFor } from '@/lib/tablist-keys'
 import { useMediaQuery } from '@/lib/hooks/use-media-query'
 import { useResumeEditorStore, initAutoSave, flushSave } from '@/lib/stores/resume-editor.store'
@@ -20,7 +21,7 @@ import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import { apiErrorMessage } from '@/lib/api/client-errors'
 import { requestErrorMessage } from '@/lib/fetch-with-timeout'
 
-type Tab = 'edit' | 'design' | 'ats' | 'coverLetter'
+type Tab = EditorTab
 
 const TAB_LABELS: Record<Tab, string> = { edit: 'Edit', design: 'Design', ats: 'ATS', coverLetter: 'Cover Letter' }
 const TAB_ICONS: Record<Tab, LucideIcon> = { edit: FileText, design: Palette, ats: Gauge, coverLetter: Mail }
@@ -63,10 +64,12 @@ export interface EditorShellProps {
   title: string
   data: ResumeData
   meta: ResumeMeta
+  /** Tab to open on, already validated by the page from `?tab=`. */
+  initialTab?: EditorTab
 }
 
-export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('edit')
+export function EditorShell({ resumeId, title, data, meta, initialTab = 'edit' }: EditorShellProps) {
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab)
   const [previewExpanded, setPreviewExpanded] = useState(false)
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
   const [dividerActive, setDividerActive] = useState(false)
@@ -297,7 +300,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
         onKeyDown={handleTablistKeyDown}
         className="flex border-b border-border shrink-0 bg-surface"
       >
-        {(['edit', 'design', 'ats', 'coverLetter'] as Tab[]).map((tab) => {
+        {EDITOR_TABS.map((tab) => {
           const Icon = TAB_ICONS[tab]
           return (
           <button
@@ -445,7 +448,7 @@ export function EditorShell({ resumeId, title, data, meta }: EditorShellProps) {
             {/* Left panel */}
             {previewExpanded ? (
               <div className="w-9 min-w-[36px] bg-surface-subtle flex flex-col items-center py-3 gap-4 border-r border-border shrink-0">
-                {(['edit', 'design', 'ats', 'coverLetter'] as Tab[]).map((tab) => (
+                {EDITOR_TABS.map((tab) => (
                   <button
                     key={tab}
                     type="button"

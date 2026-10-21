@@ -1,9 +1,10 @@
-// Semi-auto apply pipeline: tailor -> cover letter -> hallucination guard ->
-// re-score -> persist draft (design spec §7). Invoked by scan.ts for every
-// posting whose resolved actions include 'draft_and_queue', subject to the
-// daily caps below (design spec §7's "Cost/spend safety valves").
+// Semi-auto apply pipeline: tailor -> hallucination guard -> re-score ->
+// persist draft (design spec §7). It writes no cover letter: the user starts
+// one from the draft's Cover Letter panel after reading the posting. Invoked
+// by scan.ts for every posting whose resolved actions include
+// 'draft_and_queue', subject to the daily caps below (design spec §7's
+// "Cost/spend safety valves").
 import { runAtsFixPipeline } from '@/lib/ai/ats-fix-pipeline'
-import { generateCoverLetter } from '@/lib/ai/cover-letter-pipeline'
 import { applyAtsFixToResumeData } from '@/lib/ai/apply-ats-fix'
 import { scoreResume } from '@/lib/ats/scorer'
 import { createResume } from '@/lib/api/resumes'
@@ -55,14 +56,12 @@ export async function runApplyPipeline(
     tailoredKeywords.push(...fix.targetKeywords)
   }
 
-  const coverLetter = await generateCoverLetter(tailoredData, posting.description, {
-    companyName: posting.company,
-    roleName: posting.title,
-  })
+  // A letter on the source resume was written for some other posting, so the
+  // draft starts without one rather than inheriting it.
+  const draftData: ResumeData = { ...tailoredData }
+  delete draftData.coverLetter
 
-  const pendingApprovals = [
-    ...new Set([...fixes.flatMap((f) => f.pendingApprovals), ...coverLetter.pendingApprovals]),
-  ]
+  const pendingApprovals = [...new Set(fixes.flatMap((f) => f.pendingApprovals))]
 
   const postTailorScore = scoreResume(tailoredData, posting.description).total
   // Both gates from design spec §7 steps 3-4: unresolved flagged claims
@@ -81,7 +80,7 @@ export async function runApplyPipeline(
     // so opening the draft directly showed nothing at all.
     pendingApprovals,
     title: truncate(`${posting.title} at ${posting.company} (tailored)`, 200),
-    data: { ...tailoredData, coverLetter: coverLetter.content },
+    data: draftData,
     // Carry over the source resume's own design metadata verbatim —
     // template, colors, spacing, and (critically) sectionOrder, which is
     // the only thing that makes a custom section render at all. Falling

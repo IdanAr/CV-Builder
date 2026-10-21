@@ -38,6 +38,18 @@ describe('JobDetail', () => {
     expect(screen.getByRole('link', { name: 'Tailored CV' }).getAttribute('href')).toBe('/dashboard/resumes/r1')
   })
 
+  it('links a drafted job to the draft\'s cover letter panel, and only then', () => {
+    const { unmount } = render(
+      <JobDetail job={mk({ draftResumeId: 'r1' })} busy={false} onAction={vi.fn()} onBack={vi.fn()} />
+    )
+    expect(screen.getByRole('link', { name: 'Write a cover letter' }).getAttribute('href')).toBe(
+      '/dashboard/resumes/r1?tab=coverLetter'
+    )
+    unmount()
+    setup(mk({ draftResumeId: undefined }))
+    expect(screen.queryByRole('link', { name: 'Write a cover letter' })).toBeNull()
+  })
+
   it('explains when no rule matched', () => {
     setup(mk({ matchedRules: [] }))
     expect(screen.getByText('No rule matched this posting directly.')).toBeTruthy()

@@ -118,6 +118,20 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+describe('EditorShell — initial tab', () => {
+  it('starts on the Edit tab by default', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
+    expect(screen.getByRole('tab', { name: 'Edit' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('starts on the Cover Letter tab when initialTab names it', () => {
+    render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} initialTab="coverLetter" />)
+    expect(screen.getByRole('tab', { name: 'Cover Letter' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Edit' })).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByText('CoverLetterPanelContent').closest('[role="tabpanel"]')).toHaveClass('block')
+  })
+})
+
 describe('EditorShell — desktop layout (>= breakpoint)', () => {
   it('renders both the edit panel and the preview panel side-by-side', () => {
     render(<EditorShell resumeId="r1" title="CV" data={{}} meta={defaultMeta} />)
