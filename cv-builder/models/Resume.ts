@@ -1,7 +1,7 @@
 import { Schema, model, models, type Document } from 'mongoose'
-import type { ApplicationStatus, ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
+import type { ApplicationStatus, ResumeData, ResumeMeta, ResumeServerFields } from '@/lib/schemas/resume.zod'
 
-export interface IResume extends Document {
+export interface IResume extends Document, ResumeServerFields {
   userId: string
   title: string
   data: ResumeData
@@ -34,6 +34,7 @@ const ResumeSchema = new Schema<IResume>(
     pendingApprovals: { type: [String], default: [] },
     cachedFormatScore: { type: Number },
     formatScoreComputedAt: { type: Date },
+    coverLetterMigrated: { type: Boolean },
   },
   { timestamps: true }
 )

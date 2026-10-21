@@ -283,6 +283,18 @@ export const PatchResumeSchema = z.object({
   pendingApprovals: z.array(z.string()).optional(),
 })
 
+/**
+ * Fields the server keeps on the stored résumé document that no client may
+ * read through ResumeData or write through CreateResumeSchema/PatchResumeSchema
+ * (autosave sends `data` wholesale, so anything inside it can be overwritten).
+ */
+export const ResumeServerFieldsSchema = z.object({
+  // Set once the old data.coverLetter text has been imported into the CoverLetter
+  // collection, so deleting the imported letter does not bring it back.
+  coverLetterMigrated: z.boolean().optional(),
+})
+export type ResumeServerFields = z.infer<typeof ResumeServerFieldsSchema>
+
 export type ResumeData = z.infer<typeof ResumeDataSchema>
 export type ResumeMeta = z.infer<typeof ResumeMetaSchema>
 export type CustomSection = z.infer<typeof CustomSectionSchema>

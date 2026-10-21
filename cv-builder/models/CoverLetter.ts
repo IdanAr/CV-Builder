@@ -58,7 +58,7 @@ const CoverLetterSchema = new Schema<ICoverLetter>(
 )
 
 // A résumé's letter list, newest first.
-CoverLetterSchema.index({ userId: 1, resumeId: 1, updatedAt: -1 })
+CoverLetterSchema.index({ userId: 1, resumeId: 1, createdAt: -1 })
 // At most one migrated legacy letter per résumé; ordinary letters are not indexed here.
 CoverLetterSchema.index({ resumeId: 1, legacy: 1 }, { unique: true, partialFilterExpression: { legacy: true } })
 // Finds the letter written for a scraped job.

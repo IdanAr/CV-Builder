@@ -128,7 +128,7 @@ export async function duplicateResume(
   if (!source) return null
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { _id, createdAt, updatedAt, __v, ...rest } = source as typeof source & { __v?: number }
+  const { _id, createdAt, updatedAt, __v, coverLetterMigrated, ...rest } = source as typeof source & { __v?: number }
   const copy = await Resume.create({
     ...rest,
     userId,

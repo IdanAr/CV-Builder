@@ -10,6 +10,7 @@ let CoverLetter: typeof import('@/models/CoverLetter')['default']
 let Resume: typeof import('@/models/Resume')['default']
 let ScrapedJob: typeof import('@/models/ScrapedJob')['default']
 let deleteResume: typeof import('../resumes')['deleteResume']
+let duplicateResume: typeof import('../resumes')['duplicateResume']
 
 beforeAll(async () => {
   await connectMemoryMongo()
@@ -17,7 +18,7 @@ beforeAll(async () => {
   CoverLetter = (await import('@/models/CoverLetter')).default
   Resume = (await import('@/models/Resume')).default
   ScrapedJob = (await import('@/models/ScrapedJob')).default
-  ;({ deleteResume } = await import('../resumes'))
+  ;({ deleteResume, duplicateResume } = await import('../resumes'))
   await CoverLetter.init()
 }, 60000)
 
@@ -58,6 +59,19 @@ describe('listCoverLetters', () => {
     expect(view.__v).toBeUndefined()
     expect(typeof view.id).toBe('string')
     expect(await api.listCoverLetters('u2', other)).toEqual([])
+  })
+})
+
+describe('ordering', () => {
+  it('keeps creation order when an older letter is edited, and latestNotes follows it', async () => {
+    const cv = await makeResume()
+    const older = await api.createCoverLetter('u1', cv, { ...input, notes: { explain: 'older' } })
+    await new Promise((r) => setTimeout(r, 5))
+    const newer = await api.createCoverLetter('u1', cv, { ...input, notes: { explain: 'newer' } })
+    await CoverLetter.updateOne({ _id: older.id }, { $set: { status: 'ready' } })
+    await api.updateCoverLetter('u1', cv, older.id, { content: 'Edited later' })
+    expect((await api.listCoverLetters('u1', cv)).map((l) => l.id)).toEqual([newer.id, older.id])
+    expect(await api.latestNotes('u1', cv)).toEqual({ explain: 'newer' })
   })
 })
 
@@ -121,6 +135,38 @@ describe('migrateLegacyCoverLetter', () => {
     const cv = await makeResume('u1', { data: { coverLetter: 'Old text' } })
     await api.migrateLegacyCoverLetter('u2', cv)
     expect(await CoverLetter.countDocuments({})).toBe(0)
+  })
+
+  it('does not bring a deleted legacy letter back', async () => {
+    const cv = await makeResume('u1', { data: { coverLetter: 'Old text' } })
+    const [legacy] = await api.listCoverLetters('u1', cv)
+    expect(await api.deleteCoverLetter('u1', cv, legacy.id)).toBe(true)
+    expect(await api.listCoverLetters('u1', cv)).toEqual([])
+    expect((await Resume.findById(cv).lean())?.coverLetterMigrated).toBe(true)
+  })
+
+  it('does not count the migration as an edit of the CV', async () => {
+    const cv = await makeResume('u1', { data: { coverLetter: 'Old text' } })
+    const before = (await Resume.findById(cv).lean())?.updatedAt
+    await api.migrateLegacyCoverLetter('u1', cv)
+    expect((await Resume.findById(cv).lean())?.updatedAt).toEqual(before)
+  })
+
+  it('gives a duplicate of a migrated CV its own legacy letter', async () => {
+    const cv = await makeResume('u1', { data: { coverLetter: 'Old text' } })
+    await api.listCoverLetters('u1', cv)
+    const copy = await duplicateResume('u1', cv)
+    expect(copy?.coverLetterMigrated).toBeUndefined()
+    const letters = await api.listCoverLetters('u1', String(copy?._id))
+    expect(letters).toHaveLength(1)
+    expect(letters[0]).toMatchObject({ legacy: true, content: 'Old text' })
+  })
+
+  it('cuts a legacy text longer than a letter can hold instead of failing', async () => {
+    const cv = await makeResume('u1', { data: { coverLetter: 'x'.repeat(25_000) } })
+    const list = await api.listCoverLetters('u1', cv)
+    expect(list).toHaveLength(1)
+    expect(list[0].content).toHaveLength(20_000)
   })
 
   it('runs as part of listCoverLetters', async () => {
@@ -198,6 +244,31 @@ describe('stale writing letters', () => {
     }
     const stored = await CoverLetter.findById(created.id).lean()
     expect(stored?.status).toBe('ready')
+  })
+
+  it('returns null when the letter is deleted between the read and the stale mark', async () => {
+    const cv = await makeResume()
+    const created = await api.createCoverLetter('u1', cv, input)
+    await CoverLetter.updateOne({ _id: created.id }, { $set: { startedAt: ago(91_000) } })
+    const realFind = CoverLetter.findOne.bind(CoverLetter)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(CoverLetter as any).findOne = (...args: unknown[]) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const q = (realFind as any)(...args)
+      const origLean = q.lean.bind(q)
+      q.lean = async () => {
+        const doc = await origLean()
+        await CoverLetter.deleteOne({ _id: created.id })
+        return doc
+      }
+      return q
+    }
+    try {
+      expect(await api.getCoverLetter('u1', cv, created.id)).toBeNull()
+    } finally {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(CoverLetter as any).findOne = realFind
+    }
   })
 
   it('listCoverLetters applies the rule too', async () => {

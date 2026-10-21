@@ -22,6 +22,8 @@ export const STALE_MESSAGE = 'Writing this letter took too long. Please try agai
 const LEGACY_JOB_TEXT = 'Imported from the cover letter saved with this CV.'
 const LEGACY_FALLBACK = 'Unspecified'
 const DUPLICATE_KEY = 11000
+// CoverLetter.content's maxlength; a longer legacy text is cut rather than failing every list.
+const MAX_CONTENT_LENGTH = 20_000
 
 /** What the API returns: the stored letter without the posting text or Mongo internals. */
 export type CoverLetterView = Omit<ICoverLetter, 'jobText'> & { id: string }
@@ -43,9 +45,10 @@ function isStale(doc: StoredLetter, now = Date.now()): boolean {
 /**
  * Marks a stale writing letter as failed. The update is conditional on the
  * letter still being "writing", so a job that finishes at the same moment is
- * not overwritten; in that case the finished letter is returned instead.
+ * not overwritten; in that case the finished letter is returned instead, or
+ * null when the letter was deleted meanwhile.
  */
-async function settleStale(doc: StoredLetter): Promise<StoredLetter> {
+async function settleStale(doc: StoredLetter): Promise<StoredLetter | null> {
   if (!isStale(doc)) return doc
   const updated = await CoverLetter.findOneAndUpdate(
     { _id: doc._id, status: 'writing' },
@@ -53,17 +56,21 @@ async function settleStale(doc: StoredLetter): Promise<StoredLetter> {
     { returnDocument: 'after' }
   ).lean<StoredLetter>()
   if (updated) return updated
-  const current = await CoverLetter.findById(doc._id).lean<StoredLetter>()
-  return current ?? doc
+  // Not "writing" any more: it finished, or it was deleted in the meantime.
+  return CoverLetter.findById(doc._id).lean<StoredLetter>()
 }
 
-/** Moves the old ResumeData.coverLetter text into a letter of its own, once per CV. */
+/**
+ * Moves the old ResumeData.coverLetter text into a letter of its own, once per CV.
+ * "Once" is recorded on the résumé (coverLetterMigrated), not inferred from the
+ * letter existing, so deleting the imported letter does not import it again.
+ */
 export async function migrateLegacyCoverLetter(userId: string, resumeId: string): Promise<void> {
   await dbConnect()
   const resume = await Resume.findOne({ _id: resumeId, userId }).lean()
-  const text = resume?.data?.coverLetter
-  if (!resume || typeof text !== 'string' || !text.trim()) return
-  if (await CoverLetter.exists({ resumeId, legacy: true })) return
+  if (!resume || resume.coverLetterMigrated) return
+  const text = resume.data?.coverLetter
+  if (typeof text !== 'string' || !text.trim()) return
 
   try {
     await CoverLetter.create({
@@ -72,7 +79,7 @@ export async function migrateLegacyCoverLetter(userId: string, resumeId: string)
       company: resume.targetCompany || LEGACY_FALLBACK,
       role: resume.targetRole || LEGACY_FALLBACK,
       jobText: LEGACY_JOB_TEXT,
-      content: text,
+      content: text.slice(0, MAX_CONTENT_LENGTH),
       status: 'ready',
       legacy: true,
     })
@@ -80,14 +87,16 @@ export async function migrateLegacyCoverLetter(userId: string, resumeId: string)
     // A concurrent call won the race; the unique partial index kept it to one.
     if ((err as { code?: number }).code !== DUPLICATE_KEY) throw err
   }
+  // timestamps: false, so recording the import does not count as an edit of the CV.
+  await Resume.updateOne({ _id: resumeId, userId }, { $set: { coverLetterMigrated: true } }, { timestamps: false })
 }
 
 export async function listCoverLetters(userId: string, resumeId: string): Promise<CoverLetterView[]> {
   await dbConnect()
   await migrateLegacyCoverLetter(userId, resumeId)
-  const docs = await CoverLetter.find({ userId, resumeId }).sort({ updatedAt: -1 }).lean<StoredLetter[]>()
+  const docs = await CoverLetter.find({ userId, resumeId }).sort({ createdAt: -1, _id: -1 }).lean<StoredLetter[]>()
   const settled = await Promise.all(docs.map(settleStale))
-  return settled.map(toView)
+  return settled.filter((d): d is StoredLetter => d !== null).map(toView)
 }
 
 export async function getCoverLetter(
@@ -98,7 +107,8 @@ export async function getCoverLetter(
   await dbConnect()
   const doc = await CoverLetter.findOne({ _id: id, userId, resumeId }).lean<StoredLetter>()
   if (!doc) return null
-  return toView(await settleStale(doc))
+  const settled = await settleStale(doc)
+  return settled ? toView(settled) : null
 }
 
 export async function createCoverLetter(
@@ -140,6 +150,7 @@ export async function updateCoverLetter(
   if (!current) return null
   // Stale means the job is gone: the letter is failed, not writing, and can be edited.
   const settled = await settleStale(current)
+  if (!settled) return null
   if (settled.status === 'writing') return 'writing'
   return updateCoverLetter(userId, resumeId, id, patch)
 }
@@ -154,7 +165,7 @@ export async function deleteCoverLetter(userId: string, resumeId: string, id: st
 export async function latestNotes(userId: string, resumeId: string): Promise<CoverLetterNotes> {
   await dbConnect()
   const latest = await CoverLetter.findOne({ userId, resumeId }, 'notes')
-    .sort({ updatedAt: -1 })
+    .sort({ createdAt: -1, _id: -1 })
     .lean<Pick<StoredLetter, 'notes'>>()
   const explain = latest?.notes?.explain
   return explain ? { explain } : {}
