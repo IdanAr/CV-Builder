@@ -101,7 +101,7 @@ cv-builder/
 │   ├── templates/     # HTML/CSS live-preview templates (5)
 │   ├── ats/            # AtsScorePanel, AtsFixReviewPanel
 │   ├── ai/              # AiSuggestButton
-│   ├── coverletter/      # CoverLetterPanel, LetterList, LetterNotes, LetterProgress, use-cover-letters
+│   ├── coverletter/      # CoverLetterPanel, LetterList, LetterNotes, LetterProgress, DesignPicker, use-cover-letters
 │   ├── applications/      # ApplicationsView, Board, Table, Filters, ActivityLog, ColumnForm
 │   ├── jobsearch/           # ProfileList, ProfileFormDialog (+ profile-form/ steps), ProfileSettings, RuleBuilder (Sources and rules)
 │   ├── pipeline/            # PipelineInbox, StageTabs, PipelineList, JobDetail, hooks (usePipelineJobs, usePipelineActions)
@@ -112,6 +112,7 @@ cv-builder/
 │   └── ui/              # Button, Card, Badge, Popover, Menu, Dialog, Toaster, Skeleton, ...; AppNavbar and Plasma serve marketing/legal pages only
 ├── lib/
 │   ├── ai/             # pipeline.ts, ats-fix-pipeline.ts, cover-letter/ (plan-write-critique-refine writer, verifier, background job), jd-extraction-pipeline.ts, keyword-analysis-pipeline.ts, hallucination-guard.ts, models.ts
+│   ├── coverletter/      # design.ts (Classic / Accent edge, defaulting from the CV template), header.ts, body.ts (text and list blocks), accent.ts, render-input.ts, export-input.ts: what the letter PDF/DOCX export is handed
 │   ├── ats/             # scorer.ts, keywords.ts
 │   ├── api/              # data-access layer used by app/api/** routes: resumes.ts, applications.ts, board-config.ts, jobsearch-profiles.ts, jobsearch-rules.ts, scraped-jobs.ts, cover-letters.ts
 │   ├── applications/       # cells.ts, filter.ts, order.ts, sort.ts, types.ts
