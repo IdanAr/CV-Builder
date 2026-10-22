@@ -1,5 +1,6 @@
 import { Schema, model, models } from 'mongoose'
 import { PROGRESS_STEPS, type ProgressStep } from '@/lib/ai/cover-letter/pipeline'
+import { LETTER_DESIGNS, type LetterDesign } from '@/lib/coverletter/design'
 import {
   COVER_LETTER_STATUSES,
   type CoverLetterNotes,
@@ -20,6 +21,8 @@ export interface ICoverLetter {
   pendingApprovals: string[]
   notices: string[]
   language: 'en' | 'he'
+  // The export design; unset means "follow the CV's template".
+  design?: LetterDesign
   status: CoverLetterStatus
   progress?: ProgressStep
   error?: string
@@ -48,6 +51,7 @@ const CoverLetterSchema = new Schema<ICoverLetter>(
     pendingApprovals: { type: [String], default: [] },
     notices: { type: [String], default: [] },
     language: { type: String, enum: ['en', 'he'], default: 'en' },
+    design: { type: String, enum: LETTER_DESIGNS },
     status: { type: String, enum: COVER_LETTER_STATUSES, default: 'writing' },
     progress: { type: String, enum: PROGRESS_STEPS },
     error: { type: String },

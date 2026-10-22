@@ -318,6 +318,17 @@ describe('updateCoverLetter', () => {
     })
   })
 
+  it('persists the chosen design and returns it in the view', async () => {
+    const cv = await makeResume()
+    const created = await api.createCoverLetter('u1', cv, input)
+    expect(created.design).toBeUndefined()
+    await CoverLetter.updateOne({ _id: created.id }, { $set: { status: 'ready' } })
+    const updated = await api.updateCoverLetter('u1', cv, created.id, { design: 'accent-edge' })
+    expect(updated).toMatchObject({ design: 'accent-edge' })
+    expect((await CoverLetter.findById(created.id).lean())?.design).toBe('accent-edge')
+    expect(await api.getCoverLetter('u1', cv, created.id)).toMatchObject({ design: 'accent-edge' })
+  })
+
   it('returns null for an unknown letter or another user', async () => {
     const cv = await makeResume()
     const created = await api.createCoverLetter('u1', cv, input)

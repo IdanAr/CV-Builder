@@ -4,6 +4,7 @@ import {
   CoverLetterNotesSchema,
   CoverLetterStatusEnum,
   CreateCoverLetterSchema,
+  LetterDesignEnum,
   UpdateCoverLetterSchema,
 } from '../cover-letter.zod'
 
@@ -72,6 +73,21 @@ describe('UpdateCoverLetterSchema', () => {
   it('rejects content over 20000 characters', () => {
     expect(UpdateCoverLetterSchema.safeParse({ content: 'x'.repeat(20001) }).success).toBe(false)
     expect(UpdateCoverLetterSchema.safeParse({ content: 'x'.repeat(20000) }).success).toBe(true)
+  })
+})
+
+describe('design', () => {
+  it('accepts a known design on update', () => {
+    expect(UpdateCoverLetterSchema.safeParse({ design: 'accent-edge' }).success).toBe(true)
+    expect(UpdateCoverLetterSchema.safeParse({ design: 'classic' }).success).toBe(true)
+  })
+
+  it('rejects an unknown design on update', () => {
+    expect(UpdateCoverLetterSchema.safeParse({ design: 'banner' }).success).toBe(false)
+  })
+
+  it('exposes the shared list as the enum options', () => {
+    expect(LetterDesignEnum.options).toEqual(['classic', 'accent-edge'])
   })
 })
 

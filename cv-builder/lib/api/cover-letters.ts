@@ -8,6 +8,7 @@ import CoverLetter, { type ICoverLetter } from '@/models/CoverLetter'
 import Resume from '@/models/Resume'
 import ScrapedJob from '@/models/ScrapedJob'
 import { preparePosting } from '@/lib/ai/cover-letter/posting'
+import { LEGACY_PLACEHOLDER } from '@/lib/coverletter/header'
 import type {
   CoverLetterNotes,
   CreateCoverLetterInput,
@@ -21,7 +22,6 @@ export const START_FAILED_MESSAGE = 'Could not start this letter. Please try aga
 
 // A migrated letter has no posting; the schema requires some job text.
 const LEGACY_JOB_TEXT = 'Imported from the cover letter saved with this CV.'
-const LEGACY_FALLBACK = 'Unspecified'
 const DUPLICATE_KEY = 11000
 // CoverLetter.content's maxlength; a longer legacy text is cut rather than failing every list.
 const MAX_CONTENT_LENGTH = 20_000
@@ -83,8 +83,8 @@ export async function migrateLegacyCoverLetter(userId: string, resumeId: string)
     await CoverLetter.create({
       userId,
       resumeId,
-      company: resume.targetCompany || LEGACY_FALLBACK,
-      role: resume.targetRole || LEGACY_FALLBACK,
+      company: resume.targetCompany || LEGACY_PLACEHOLDER,
+      role: resume.targetRole || LEGACY_PLACEHOLDER,
       jobText: LEGACY_JOB_TEXT,
       content: text.slice(0, MAX_CONTENT_LENGTH),
       status: 'ready',
@@ -144,6 +144,7 @@ export async function updateCoverLetter(
   await dbConnect()
   const $set: Record<string, unknown> = {}
   if (patch.content !== undefined) $set.content = patch.content
+  if (patch.design !== undefined) $set.design = patch.design
   if (patch.pendingApprovals !== undefined) $set.pendingApprovals = patch.pendingApprovals
   if (patch.notes !== undefined) {
     for (const [key, value] of Object.entries(patch.notes)) {
