@@ -10,6 +10,7 @@ import { getColumnSide, SIDEBAR_COLUMN_DEFAULTS } from '@/lib/get-column-side'
 import { resolveSectionOrder } from '@/lib/sections'
 import { formatDate, formatDateRange } from '@/lib/format-date'
 import { buildDocxStyles } from './styles'
+import { mapFont } from './fonts'
 import { resolveProfiles } from '@/lib/basics-profiles'
 import { resolveWorkRoles, resolveEducationRoles, resolveCustomSectionRoles } from '@/lib/roles'
 
@@ -62,16 +63,6 @@ function richTextParagraphs(
     .map(paragraphText =>
       new Paragraph({ ...paraProps, children: richTextRuns(paragraphText, font, size, extraProps) })
     )
-}
-
-function mapFont(font: string): string {
-  const map: Record<string, string> = {
-    'Lato': 'Arial',
-    'Roboto': 'Arial',
-    'IBM Plex Sans': 'Calibri',
-    'Helvetica': 'Arial',
-  }
-  return map[font] ?? font
 }
 
 interface DocxTheme {

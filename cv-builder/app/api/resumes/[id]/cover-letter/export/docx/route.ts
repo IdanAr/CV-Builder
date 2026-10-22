@@ -5,6 +5,7 @@ import { buildCoverLetterDocx } from '@/lib/docx/cover-letter-docx'
 import { apiError, handleRouteError } from '@/lib/api/route-errors'
 import { checkRateLimit, EXPORT_RATE_LIMIT } from '@/lib/rate-limit'
 import { letterHeader, parseLetterLanguage } from '@/lib/coverletter/header'
+import { resolveDesign } from '@/lib/coverletter/design'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
 export const POST = auth(async (req, ctx) => {
@@ -35,12 +36,20 @@ export const POST = auth(async (req, ctx) => {
     const data = (resume.data ?? {}) as ResumeData
     const meta = resume.meta as ResumeMeta
     const header = letterHeader(data.basics, new Date(), language)
-    const doc = buildCoverLetterDocx(
+    const doc = buildCoverLetterDocx({
       content,
-      { name: header.name || undefined, contact: header.contact || undefined, date: header.date },
-      meta?.fontFamily ?? 'Arial',
+      name: header.name || undefined,
+      contact: header.contact || undefined,
+      date: header.date,
       language,
-    )
+      design: resolveDesign(undefined, meta?.templateId),
+      recipient: [],
+      subject: null,
+      title: 'Cover Letter',
+      font: meta?.fontFamily ?? 'Arial',
+      headerFont: meta?.headerFontFamily,
+      accentColor: meta?.accentColor,
+    })
     const buffer = await Packer.toBuffer(doc)
 
     const baseName = resume.title.replace(/[^a-z0-9]/gi, '-')
