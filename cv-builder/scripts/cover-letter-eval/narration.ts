@@ -5,7 +5,9 @@
 // testable without a network or a fixture file.
 import { z } from 'zod'
 import { detectGaps } from '@/lib/ai/cover-letter/gaps'
+import { listIssues } from '@/lib/ai/cover-letter/verify'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
+import { parsePlainLetter } from './infer-citations'
 
 /** The judge for the history-narration question (a separate call, outside rubric v3). */
 export const NARRATION_MODEL = 'claude-sonnet-5-5'
@@ -13,9 +15,9 @@ export const NARRATION_MODEL = 'claude-sonnet-5-5'
 /** Cases that carry a dated gap or an "Anything to explain" note, whatever detectGaps says. */
 export const FIXED_SITUATION_CASES = ['p07', 's02', 's04', 's07', 's08'] as const
 
-/** Spec 6 (d): at least 26 of 30 letters free of history narration. */
-const CLEAN_NUMERATOR = 26
-const CLEAN_DENOMINATOR = 30
+/** Spec 6 (d): at least 26 clean letters out of 30. The bar is fixed; a run with fewer than 30 letters cannot be decided. */
+const REQUIRED_LETTERS = 30
+const REQUIRED_CLEAN = 26
 /** Spec 6 (b): no_factual_errors may not fall this many points below the old run. */
 const FACTS_DROP_POINTS = 10
 /** Spec 6 (e): sentences a non-situation letter may spend on the candidate's situation. */
@@ -30,6 +32,8 @@ export type NarrationResult = z.infer<typeof NarrationSchema>
 export interface NarrationEntry extends NarrationResult {
   caseId: string
   sample: number
+  /** Sentences the judge quoted that are not in the letter, left out of the two lists. */
+  dropped?: number
 }
 
 /** runs/<label>/narration.json */
@@ -87,31 +91,61 @@ export type Verdict = 'pass' | 'fail' | 'n/a'
 export type LetterVerdicts = Partial<Record<string, Verdict>>
 
 export interface RunSummary {
-  letters: { caseId: string; sample: number; verdicts: LetterVerdicts }[]
+  letters: {
+    caseId: string
+    sample: number
+    verdicts: LetterVerdicts
+    /** The stored letter text, for the list-shape check. */
+    text?: string
+    /** Generation time in milliseconds, for the latency check. */
+    ms?: number
+  }[]
   /** Absent until `narration <label>` has run. */
   narration?: NarrationEntry[]
 }
 
 export interface ShipCheck {
   pass: boolean
-  rules: { id: 'a' | 'b' | 'c' | 'd' | 'e'; pass: boolean | 'pending'; detail: string }[]
+  rules: { id: 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g'; pass: boolean | 'pending'; detail: string }[]
+}
+
+/** p-quantile as `report` computes it (nearest rank); 0 for no values. */
+export function quantile(values: number[], q: number): number {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  return sorted[Math.min(sorted.length - 1, Math.ceil(q * sorted.length) - 1)]
+}
+
+const tally = (verdicts: Verdict[]) => {
+  const counted = verdicts.filter((v) => v !== 'n/a')
+  return { passes: counted.filter((v) => v === 'pass').length, n: counted.length }
 }
 
 /** Pass rate in points (0-100) with n/a left out; the same scale `compare` prints. */
 export function passRate(verdicts: Verdict[]): { rate: number; n: number } {
-  const counted = verdicts.filter((v) => v !== 'n/a')
-  return { rate: counted.length ? (100 * counted.filter((v) => v === 'pass').length) / counted.length : 0, n: counted.length }
+  const { passes, n } = tally(verdicts)
+  return { rate: n ? (100 * passes) / n : 0, n }
 }
 
-const rateOf = (run: RunSummary, criterion: string, only?: (caseId: string) => boolean) =>
-  passRate(
-    run.letters
-      .filter((l) => !only || only(l.caseId))
-      .map((l) => l.verdicts[criterion])
-      .filter((v): v is Verdict => v !== undefined)
-  )
+/** A criterion's tallies over a run, plus how many of the run's letters carry a verdict for it at all. */
+function criterionOf(run: RunSummary, criterion: string, only?: (caseId: string) => boolean) {
+  const letters = run.letters.filter((l) => !only || only(l.caseId))
+  const verdicts = letters.map((l) => l.verdicts[criterion]).filter((v): v is Verdict => v !== undefined)
+  return { ...tally(verdicts), letters: letters.length, scored: verdicts.length }
+}
 
 const pts = (n: number) => `${n.toFixed(0)}%`
+const rateText = (t: { passes: number; n: number }) => pts(t.n ? (100 * t.passes) / t.n : 0)
+
+/** Why a score-based rule cannot be decided, or null when both runs have the scores it needs. */
+function scoreGap(what: string, old: ReturnType<typeof criterionOf>, nu: ReturnType<typeof criterionOf>): string | null {
+  const problems: string[] = []
+  if (old.n === 0) problems.push('the old run has no scored letters')
+  if (nu.n === 0) problems.push('the new run has no scored letters')
+  if (nu.scored < nu.letters) problems.push(`the new run scored ${nu.scored} of ${nu.letters} letters`)
+  if (old.scored < old.letters) problems.push(`the old run scored ${old.scored} of ${old.letters} letters`)
+  return problems.length ? `${what} cannot be decided: ${problems.join('; ')}; run \`score\` first` : null
+}
 
 export function shipCheck(input: {
   old: RunSummary
@@ -125,29 +159,32 @@ export function shipCheck(input: {
   // (a) confirmed errors are not more than the old run's
   const { old: oldErrors, new: newErrors } = input.confirmedErrors
   if (oldErrors === null || newErrors === null) {
-    rules.push({ id: 'a', pass: 'pending', detail: `confirmed errors: old ${oldErrors ?? 'not labelled'}, new ${newErrors ?? 'not labelled'}; run confirm and confirm-score` })
+    rules.push({ id: 'a', pass: 'pending', detail: `confirmed errors: old ${oldErrors ?? 'not fully labelled'}, new ${newErrors ?? 'not fully labelled'}; label every item of the confirm sheet, then run confirm-score` })
   } else {
     rules.push({ id: 'a', pass: newErrors <= oldErrors, detail: `confirmed errors: old ${oldErrors}, new ${newErrors}` })
   }
 
-  // (b) no_factual_errors is not 10 or more points below the old run's
-  const factsOld = rateOf(input.old, 'no_factual_errors')
-  const factsNew = rateOf(input.new, 'no_factual_errors')
-  rules.push({
-    id: 'b',
-    pass: factsOld.rate - factsNew.rate < FACTS_DROP_POINTS,
-    detail: `no_factual_errors: old ${pts(factsOld.rate)}, new ${pts(factsNew.rate)} (${(factsNew.rate - factsOld.rate >= 0 ? '+' : '') + (factsNew.rate - factsOld.rate).toFixed(0)} points; fails at -${FACTS_DROP_POINTS} or lower)`,
-  })
+  // (b) no_factual_errors is not 10 or more points below the old run's (integer arithmetic: no float edge at exactly 10)
+  const factsOld = criterionOf(input.old, 'no_factual_errors')
+  const factsNew = criterionOf(input.new, 'no_factual_errors')
+  const factsGap = scoreGap('no_factual_errors', factsOld, factsNew)
+  if (factsGap) rules.push({ id: 'b', pass: 'pending', detail: factsGap })
+  else {
+    const drop = (100 * (factsOld.passes * factsNew.n - factsNew.passes * factsOld.n)) / (factsOld.n * factsNew.n)
+    rules.push({
+      id: 'b',
+      pass: 10 * (factsOld.passes * factsNew.n - factsNew.passes * factsOld.n) < factsOld.n * factsNew.n,
+      detail: `no_factual_errors: old ${rateText(factsOld)}, new ${rateText(factsNew)} (${drop > 0 ? '-' : '+'}${Math.abs(drop).toFixed(1)} points; fails at -${FACTS_DROP_POINTS} or lower)`,
+    })
+  }
 
   // (c) situation_addressed on the situation cases is not lower than the old run's
-  const sitOld = rateOf(input.old, 'situation_addressed', isSituation)
-  const sitNew = rateOf(input.new, 'situation_addressed', isSituation)
-  const sitLetters = input.new.letters.filter((l) => isSituation(l.caseId)).length
-  rules.push({
-    id: 'c',
-    pass: sitNew.rate >= sitOld.rate,
-    detail: `situation_addressed on ${input.situationCases.length} situation cases (${sitLetters} new letters${sitLetters < 10 ? ', fewer than the 10 the spec expects' : ''}): old ${pts(sitOld.rate)} of ${sitOld.n}, new ${pts(sitNew.rate)} of ${sitNew.n}`,
-  })
+  const sitOld = criterionOf(input.old, 'situation_addressed', isSituation)
+  const sitNew = criterionOf(input.new, 'situation_addressed', isSituation)
+  const sitGap = scoreGap('situation_addressed on the situation cases', sitOld, sitNew)
+  const sitDetail = `situation_addressed on ${input.situationCases.length} situation cases (${sitNew.letters} new letters${sitNew.letters < 10 ? ', fewer than the 10 the spec expects' : ''}): old ${rateText(sitOld)} of ${sitOld.n}, new ${rateText(sitNew)} of ${sitNew.n}`
+  if (sitGap) rules.push({ id: 'c', pass: 'pending', detail: sitGap })
+  else rules.push({ id: 'c', pass: sitNew.passes * sitOld.n >= sitOld.passes * sitNew.n, detail: sitDetail })
 
   // (d) and (e) need b4's narration for every letter
   const narration = input.new.narration
@@ -168,13 +205,18 @@ export function shipCheck(input: {
   } else {
     const byLetter = narration.filter((n) => input.new.letters.some((l) => l.caseId === n.caseId && l.sample === n.sample))
     const withHistory = byLetter.filter((n) => n.historySentences.length > 0)
-    const needClean = Math.ceil((total * CLEAN_NUMERATOR) / CLEAN_DENOMINATOR)
     const clean = total - withHistory.length
-    rules.push({
-      id: 'd',
-      pass: clean >= needClean,
-      detail: `${withHistory.length} of ${total} letters have a history sentence (${clean} clean; ${needClean} needed)${withHistory.length ? `: ${withHistory.map((n) => `${n.caseId}.s${n.sample}`).join(', ')}` : ''}`,
-    })
+    const dropped = byLetter.reduce((sum, n) => sum + (n.dropped ?? 0), 0)
+    const droppedNote = dropped ? `; ${dropped} judge-quoted sentences were not found in the letters and were ignored` : ''
+    if (total < REQUIRED_LETTERS) {
+      rules.push({ id: 'd', pass: 'pending', detail: `only ${total} letters judged; ${REQUIRED_LETTERS} are needed (${withHistory.length} of ${total} have a history sentence so far)${droppedNote}` })
+    } else {
+      rules.push({
+        id: 'd',
+        pass: clean >= REQUIRED_CLEAN,
+        detail: `${withHistory.length} of ${total} letters have a history sentence (${clean} clean; ${REQUIRED_CLEAN} needed)${withHistory.length ? `: ${withHistory.map((n) => `${n.caseId}.s${n.sample}`).join(', ')}` : ''}${droppedNote}`,
+      })
+    }
     const over = byLetter.filter((n) => !isSituation(n.caseId) && n.situationSentences.length > MAX_SITUATION_SENTENCES)
     rules.push({
       id: 'e',
@@ -185,6 +227,35 @@ export function shipCheck(input: {
     })
   }
 
+  // (f) lists: each letter's list is 2 to 4 full-sentence items, and there is at most one (the verifier's own form rules)
+  const texts = input.new.letters.map((l) => ({ id: `${l.caseId}.s${l.sample}`, text: l.text }))
+  if (texts.length === 0 || texts.some((t) => t.text === undefined)) {
+    rules.push({ id: 'f', pass: 'pending', detail: texts.length === 0 ? 'no letters in the run' : `letter text missing for ${texts.filter((t) => t.text === undefined).length} letters` })
+  } else {
+    const parsed = texts.map((t) => {
+      const letter = parsePlainLetter(t.text!)
+      const hasList = letter.paragraphs.some((p) => p.some((s) => s.bullet))
+      return { id: t.id, hasList, issues: listIssues(letter) }
+    })
+    const broken = parsed.filter((p) => p.issues.length > 0)
+    rules.push({
+      id: 'f',
+      pass: broken.length === 0,
+      detail: `${parsed.filter((p) => p.hasList).length} of ${parsed.length} letters have a list; ${broken.length} break the shape (2 to 4 items of 6+ words, at most one list)${broken.length ? `: ${broken.map((b) => `${b.id} (${b.issues.map((i) => i.detail).join(' ')})`).join('; ')}` : ''}`,
+    })
+  }
+
+  // (g) latency: p95 of generation time is not above the old run's
+  const times = (run: RunSummary) => (run.letters.length > 0 && run.letters.every((l) => typeof l.ms === 'number') ? run.letters.map((l) => l.ms as number) : null)
+  const oldMs = times(input.old)
+  const newMs = times(input.new)
+  if (!oldMs || !newMs) {
+    rules.push({ id: 'g', pass: 'pending', detail: `generation times missing for the ${!oldMs && !newMs ? 'old and new runs' : !oldMs ? 'old run' : 'new run'}` })
+  } else {
+    const [po, pn] = [quantile(oldMs, 0.95), quantile(newMs, 0.95)]
+    rules.push({ id: 'g', pass: pn <= po, detail: `latency p95: old ${(po / 1000).toFixed(1)} s, new ${(pn / 1000).toFixed(1)} s` })
+  }
+
   return { pass: rules.every((r) => r.pass === true), rules }
 }
 
@@ -193,12 +264,24 @@ export function verdictOf(check: ShipCheck): 'PASS' | 'FAIL' | 'PENDING' {
   return check.rules.some((r) => r.pass === 'pending') ? 'PENDING' : 'PASS'
 }
 
+/**
+ * The confirmed-error total for a run, or null while it cannot be trusted:
+ * no counts file, no status record, or any flagged item still unlabelled (a
+ * blank or "unsure" label is not a decision).
+ */
+export function confirmedCount(counts: Record<string, number> | undefined, status: { flagged: number; unresolved: number } | undefined): number | null {
+  if (!counts || !status || status.unresolved > 0) return null
+  return Object.values(counts).reduce((a, b) => a + b, 0)
+}
+
 const RULE_TITLES: Record<ShipCheck['rules'][number]['id'], string> = {
   a: 'confirmed errors not above the old run',
   b: 'no_factual_errors not 10+ points below the old run',
   c: 'situation_addressed on situation cases not below the old run',
   d: 'at least 26 of 30 letters without a history sentence',
   e: 'non-situation letters spend at most one sentence on the situation',
+  f: 'every list is 2 to 4 full-sentence items, at most one list',
+  g: 'latency p95 not above the old run',
 }
 
 export function renderShipCheck(oldLabel: string, newLabel: string, check: ShipCheck): string {

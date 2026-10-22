@@ -141,7 +141,7 @@ const MIN_BULLET_WORDS = 6
 const LIST_ITEMS = { min: 2, max: 4 } as const
 
 /** A list is a run of consecutive bullet sentences in one paragraph; the letter may have one, of 2 to 4 full sentences. */
-function listIssues(letter: StructuredLetter): VerifyIssue[] {
+export function listIssues(letter: StructuredLetter): VerifyIssue[] {
   const lists = letter.paragraphs.flatMap((p) => {
     const runs: LetterSentence[][] = []
     p.forEach((s, i) => {

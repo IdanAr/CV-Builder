@@ -17,7 +17,7 @@
 //   npx tsx scripts/cover-letter-eval/eval.ts confirm a1,b1             # blind sheet of every judge-flagged factual error
 //   npx tsx scripts/cover-letter-eval/eval.ts confirm-score a1,b1       # confirmed-<label>.json from the person's labels
 //   npx tsx scripts/cover-letter-eval/eval.ts narration b4            # history-narration judge over a run's letters -> runs/b4/narration.json
-//   npx tsx scripts/cover-letter-eval/eval.ts ship-check b3 b4         # the five ship rules of spec 2026-10-23 section 6, PASS/FAIL/PENDING
+//   npx tsx scripts/cover-letter-eval/eval.ts ship-check b3 b4         # rules a-e of spec 2026-10-23 section 6 plus list shape (f) and latency (g), PASS/FAIL/PENDING
 //   npx tsx scripts/cover-letter-eval/eval.ts human-read baseline3 b3   # blind A/B sheet (sample 1 of each run) for a person to read
 //   npx tsx scripts/cover-letter-eval/eval.ts human-score               # the new letter's preference rate from the filled sheet
 //
@@ -60,13 +60,14 @@ import {
   NARRATION_MODEL,
   NarrationSchema,
   buildNarrationPrompt,
+  confirmedCount,
   groundSentences,
   isLetterFile,
   passRate,
+  quantile,
   renderShipCheck,
   shipCheck,
   situationCaseIds,
-  verdictOf,
   type NarrationEntry,
   type NarrationFile,
   type RunSummary,
@@ -840,12 +841,6 @@ function verifyRun(label: string, set = String(EVAL_SET_VERSION)) {
 // pipeline measurements and variant comparison
 // ---------------------------------------------------------------------------
 
-const quantile = (values: number[], q: number) => {
-  if (values.length === 0) return 0
-  const sorted = [...values].sort((a, b) => a - b)
-  return sorted[Math.min(sorted.length - 1, Math.ceil(q * sorted.length) - 1)]
-}
-
 /** Latency, refines, verifier flags and pending approvals for a run. */
 function pipelineSection(letters: Generated[]): string[] {
   const done = letters.filter((g) => !g.error)
@@ -960,6 +955,15 @@ function confirmSheet(labels: string[]) {
   console.log(`Wrote ${items.length} items from ${labels.join(', ')} to ${sheet}`)
 }
 
+const confirmStatusFile = (label: string) => path.join(OUT_DIR, `confirmed-${label}.status.json`)
+
+/** The confirmed-error total for ship-check: null until confirm-score has run on a sheet with every flagged item labelled error or ok. */
+function checkedConfirmed(label: string): number | null {
+  const counts = path.join(OUT_DIR, `confirmed-${label}.json`)
+  const status = confirmStatusFile(label)
+  return confirmedCount(existsSync(counts) ? readJson<Record<string, number>>(counts) : undefined, existsSync(status) ? readJson<{ flagged: number; unresolved: number }>(status) : undefined)
+}
+
 /** Confirmed errors per letter from the person's labels, as confirmed-<label>.json for compare. */
 function confirmScore(labels: string[]) {
   const dir = confirmDir(labels)
@@ -971,6 +975,10 @@ function confirmScore(labels: string[]) {
       if (marks.get(item.id) === 'error') counts[item.letterId] = (counts[item.letterId] ?? 0) + 1
     }
     writeJson(path.join(OUT_DIR, `confirmed-${label}.json`), counts)
+    // A blank or "unsure" label is not a decision: ship-check treats the run's count as pending until none is left.
+    const flagged = items.filter((i) => i.label === label)
+    const unresolved = flagged.filter((i) => marks.get(i.id) !== 'error' && marks.get(i.id) !== 'ok').length
+    writeJson(confirmStatusFile(label), { flagged: flagged.length, unresolved })
     const labelled = items.filter((i) => i.label === label && marks.has(i.id)).length
     console.log(`${label}: ${Object.values(counts).reduce((a, b) => a + b, 0)} confirmed of ${items.filter((i) => i.label === label).length} flagged (${labelled} labelled)`)
   }
@@ -1005,7 +1013,7 @@ async function narration(label: string) {
       const situation = groundSentences(g.content, response.parsed_output.situationSentences)
       const dropped = history.dropped + situation.dropped
       console.log(`${g.caseId}.s${g.sample} history ${history.kept.length}, situation ${situation.kept.length}${dropped ? ` (${dropped} quoted sentences not found in the letter, ignored)` : ''}`)
-      return { caseId: g.caseId, sample: g.sample, historySentences: history.kept, situationSentences: situation.kept }
+      return { caseId: g.caseId, sample: g.sample, historySentences: history.kept, situationSentences: situation.kept, dropped }
     } catch (err) {
       console.log(`${g.caseId}.s${g.sample} narration failed: ${String(err)}`)
       return null
@@ -1030,27 +1038,26 @@ function summariseRun(label: string): RunSummary {
         const verdicts = Object.fromEntries(
           s?.judge ? JUDGE_CRITERIA.map((cr) => [cr.id, effectiveVerdict(byId.get(g.caseId)!, cr.id, s.judge!.criteria[cr.id].verdict)]) : []
         )
-        return { caseId: g.caseId, sample: g.sample, verdicts }
+        return { caseId: g.caseId, sample: g.sample, verdicts, text: g.content, ms: g.ms }
       }),
     narration: existsSync(file) ? readJson<NarrationFile>(file).letters : undefined,
   }
 }
 
-/** Rules a-e of spec section 6 for the new run against the old one; the verdict is PASS only when none fails and none is pending. */
+/** Rules a-e of spec section 6, plus list shape (f) and latency (g), for the new run against the old one; the verdict is PASS only when none fails and none is pending. */
 function shipCheckCommand(oldLabel: string, newLabel: string) {
   if (!newLabel) throw new Error('Usage: eval.ts ship-check <oldLabel> <newLabel>')
   const { cases, builtAt } = loadFixtures()
   const check = shipCheck({
     old: summariseRun(oldLabel),
     new: summariseRun(newLabel),
-    confirmedErrors: { old: factualErrors(oldLabel).confirmed, new: factualErrors(newLabel).confirmed },
+    confirmedErrors: { old: checkedConfirmed(oldLabel), new: checkedConfirmed(newLabel) },
     // The same month `generate` gave the writer as today.
     situationCases: situationCaseIds(cases, builtAt.slice(0, 7)),
   })
   const text = renderShipCheck(oldLabel, newLabel, check)
   writeFileSync(path.join(OUT_DIR, `ship-check-${oldLabel}-vs-${newLabel}.md`), text + '\n')
   console.log(text)
-  console.log(`\n(${verdictOf(check)}; latency p95 is checked separately against the harness timings)`)
 }
 
 const HUMAN_READ_DIR = path.join(OUT_DIR, 'human-read')
