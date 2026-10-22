@@ -10,7 +10,7 @@
 import { detectHallucinations } from '@/lib/ai/hallucination-guard'
 import { monthRange, parseMonth } from './dates'
 import { renderFactSheet, type Fact, type FactSheet, type FactSource } from './fact-sheet'
-import { BANNED_PHRASES, SPARSE_WORD_FLOOR, WORD_BAND, renderLetter, wordCount, type StructuredLetter } from './letter'
+import { BANNED_PHRASES, SPARSE_WORD_FLOOR, WORD_BAND, renderLetter, wordCount, type LetterSentence, type StructuredLetter } from './letter'
 import { foldName, mentionsName, nameVariants, parentheticalAliases } from './names'
 import { extractNumbers, sameNumber, type NumberMention } from './numbers'
 
@@ -135,6 +135,34 @@ const contentWords = (text: string) =>
 function overlap(a: string, b: string): number {
   const bw = contentWords(b)
   return [...contentWords(a)].filter((w) => bw.has(w)).length
+}
+
+const MIN_BULLET_WORDS = 6
+const LIST_ITEMS = { min: 2, max: 4 } as const
+
+/** A list is a run of consecutive bullet sentences in one paragraph; the letter may have one, of 2 to 4 full sentences. */
+function listIssues(letter: StructuredLetter): VerifyIssue[] {
+  const lists = letter.paragraphs.flatMap((p) => {
+    const runs: LetterSentence[][] = []
+    p.forEach((s, i) => {
+      if (!s.bullet) return
+      if (i > 0 && p[i - 1].bullet) runs[runs.length - 1].push(s)
+      else runs.push([s])
+    })
+    return runs
+  })
+  const issues: VerifyIssue[] = []
+  const form = (sentence: string | null, detail: string) => issues.push({ kind: 'form', sentence, detail })
+  if (lists.length > 1) form(null, `The letter has ${lists.length} lists; use at most one.`)
+  for (const list of lists) {
+    if (list.length < LIST_ITEMS.min || list.length > LIST_ITEMS.max) {
+      form(null, `A list has ${list.length} ${list.length === 1 ? 'item' : 'items'}; use ${LIST_ITEMS.min} to ${LIST_ITEMS.max}, or write it as prose.`)
+    }
+    for (const item of list) {
+      if (wordCount(item.text) < MIN_BULLET_WORDS) form(item.text, `This list item is a fragment; write each item as a full sentence of at least ${MIN_BULLET_WORDS} words.`)
+    }
+  }
+  return issues
 }
 
 export function verifyLetter(input: VerifyInput): VerifyIssue[] {
@@ -269,6 +297,7 @@ export function verifyLetter(input: VerifyInput): VerifyIssue[] {
   if (words > WORD_BAND.max) issues.push({ kind: 'form', sentence: null, detail: `The letter has ${words} words; aim for at most ${WORD_BAND.max}.` })
   if (!letter.greeting.trim()) issues.push({ kind: 'form', sentence: null, detail: 'The letter has no greeting.' })
   if (!letter.signOff.trim()) issues.push({ kind: 'form', sentence: null, detail: 'The letter has no sign-off.' })
+  issues.push(...listIssues(letter))
 
   return issues
 }

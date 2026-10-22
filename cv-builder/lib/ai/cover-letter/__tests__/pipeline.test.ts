@@ -22,6 +22,7 @@ const FILLER: LetterSentence = {
   text: Array.from({ length: 30 }, () => 'Clear reporting helps people decide quickly and calmly.').join(' '),
   facts: [],
   quotes: [],
+  bullet: false,
 }
 
 function written(sentences: LetterSentence[]): WrittenLetter {
@@ -37,8 +38,8 @@ function written(sentences: LetterSentence[]): WrittenLetter {
   }
 }
 
-const clean = written([{ text: 'At Acme I cut report time by 40%, which is the speed Globex asks for.', facts: ['F4'], quotes: ['speed up reporting'] }])
-const uncited = written([{ text: 'At Acme I cut report time by 45%.', facts: ['F4'], quotes: [] }])
+const clean = written([{ text: 'At Acme I cut report time by 40%, which is the speed Globex asks for.', facts: ['F4'], quotes: ['speed up reporting'], bullet: false }])
+const uncited = written([{ text: 'At Acme I cut report time by 45%.', facts: ['F4'], quotes: [], bullet: false }])
 
 const reply = (w: WrittenLetter) => ({ parsed_output: w, stop_reason: 'end_turn', content: [], usage: { input_tokens: 1, output_tokens: 1 } })
 
@@ -65,7 +66,7 @@ describe('writeCoverLetter', () => {
   })
 
   it('does not spend a second call on length alone; a short letter gets a notice', async () => {
-    const short = written([{ text: 'At Acme I cut report time by 40%, which is the speed Globex asks for.', facts: ['F4'], quotes: ['speed up reporting'] }])
+    const short = written([{ text: 'At Acme I cut report time by 40%, which is the speed Globex asks for.', facts: ['F4'], quotes: ['speed up reporting'], bullet: false }])
     short.letter.paragraphs = [short.letter.paragraphs[0]]
     mockParse.mockResolvedValueOnce(reply(short))
     const run = await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10' })
@@ -163,6 +164,7 @@ describe('buildWritePrompt', () => {
       { from: '2026-01', to: '2026-10', months: 10, coveredBy: [], filled: [], after: '2025', exactStart: false },
       { from: '2024-10', to: '2026-10', months: 25, coveredBy: ['education'], filled: [{ kind: 'education', from: '2025-12', to: '2026-07' }], after: '2024-09', exactStart: true },
     ],
+    situationAllowed: true,
     today: '2026-10',
   })
 

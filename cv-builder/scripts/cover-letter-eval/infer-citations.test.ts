@@ -42,7 +42,7 @@ describe('inferCitations', () => {
   const nameIssues = (text: string) => {
     const facts = inferCitations(text, sheet, ['Globex'])
     const issues = verifyLetter({
-      letter: { greeting: 'Dear Globex Hiring Team,', paragraphs: [[{ text, facts, quotes: [] }]], signOff: 'Best,\nDana' },
+      letter: { greeting: 'Dear Globex Hiring Team,', paragraphs: [[{ text, facts, quotes: [], bullet: false }]], signOff: 'Best,\nDana' },
       sheet,
       jobText: '',
       company: 'Globex',

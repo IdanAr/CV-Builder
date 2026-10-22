@@ -22,6 +22,7 @@ const FILLER: LetterSentence = {
   text: Array.from({ length: 30 }, () => 'Clear reporting helps people decide quickly and calmly.').join(' '),
   facts: [],
   quotes: [],
+  bullet: false,
 }
 
 const PLAN: LetterPlan = {
@@ -36,8 +37,8 @@ function written(sentences: LetterSentence[]): WrittenLetter {
   return { plan: PLAN, letter: { greeting: 'Hello there,', paragraphs: [sentences, [FILLER]], signOff: 'Best regards,\nDana Levi' } }
 }
 
-const clean = written([{ text: 'At Acme I cut report time by 40%, which is the speed Globex asks for.', facts: ['F4'], quotes: ['speed up reporting'] }])
-const uncited = written([{ text: 'At Acme I cut report time by 45%.', facts: ['F4'], quotes: [] }])
+const clean = written([{ text: 'At Acme I cut report time by 40%, which is the speed Globex asks for.', facts: ['F4'], quotes: ['speed up reporting'], bullet: false }])
+const uncited = written([{ text: 'At Acme I cut report time by 45%.', facts: ['F4'], quotes: [], bullet: false }])
 
 const reply = (parsed: unknown) => ({ parsed_output: parsed, stop_reason: 'end_turn', content: [], usage: { input_tokens: 1, output_tokens: 1 } })
 const planReply = reply(PLAN)
@@ -57,6 +58,22 @@ describe('writeCoverLetterWithCritique', () => {
     expect(result.calls).toBe(3)
     expect(result.refined).toBe(false)
     expect(result.pendingApprovals).toEqual([])
+  })
+
+  it('forces the plan situation to null when there is no gap and no explanation', async () => {
+    // FIXTURE_CV has no employment gap; the model still names a "career change".
+    const model: LetterPlan = { ...PLAN, situation: 'career change' }
+    mockParse.mockResolvedValueOnce(reply(model)).mockResolvedValueOnce(letterReply(clean)).mockResolvedValueOnce(critiqueReply())
+    const result = await run()
+    expect(result.plan.situation).toBeNull()
+    expect(JSON.stringify(mockParse.mock.calls[1][0].messages)).not.toContain('"situation":"career change"')
+  })
+
+  it('keeps a situation the candidate asked to explain', async () => {
+    const model: LetterPlan = { ...PLAN, situation: 'a move from nursing' }
+    mockParse.mockResolvedValueOnce(reply(model)).mockResolvedValueOnce(letterReply(clean)).mockResolvedValueOnce(critiqueReply())
+    const result = await run({ notes: { explain: 'I moved from nursing to analytics' } })
+    expect(result.plan.situation).toBe('a move from nursing')
   })
 
   it('uses the cover letter model with its thinking tuning by default', async () => {

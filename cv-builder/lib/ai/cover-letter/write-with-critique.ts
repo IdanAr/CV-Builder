@@ -17,6 +17,7 @@ import {
   assembleRun,
   callStructured,
   CutOffError,
+  gateSituation,
   greetingFor,
   signOffFor,
   worthARefine,
@@ -25,7 +26,7 @@ import {
   type WriteOptions,
 } from './pipeline'
 import { preparePosting } from './posting'
-import { buildCritiquePrompt, buildRefinePrompt, buildWritePrompt } from './prompt'
+import { buildCritiquePrompt, buildRefinePrompt, buildWritePrompt, situationAllowed } from './prompt'
 import { LetterPlanSchema, StructuredLetterSchema, WrittenLetterSchema, type WrittenLetter } from './schema'
 import { verifyLetter, type VerifyIssue } from './verify'
 
@@ -64,8 +65,10 @@ export async function writeCoverLetterWithCritique(
   const factSheet = renderFactSheet(sheet)
   const name = sheet.candidateName ?? ''
   const greeting = greetingFor(posting, opts.notes)
-  const base = buildWritePrompt({ factSheet, posting, role: input.role, greeting, candidateName: name, notes: opts.notes, gaps: detectGaps(data, today), today })
-  const settle = (w: WrittenLetter): WrittenLetter => ({ ...w, letter: { ...w.letter, greeting, signOff: signOffFor(w.letter.signOff, name) } })
+  const gaps = detectGaps(data, today)
+  const allowed = situationAllowed(gaps, opts.notes)
+  const base = buildWritePrompt({ factSheet, posting, role: input.role, greeting, candidateName: name, notes: opts.notes, gaps, situationAllowed: allowed, today })
+  const settle = (w: WrittenLetter): WrittenLetter => ({ ...w, plan: gateSituation(w.plan, allowed), letter: { ...w.letter, greeting, signOff: signOffFor(w.letter.signOff, name) } })
   const check = (w: WrittenLetter) =>
     verifyLetter({ letter: w.letter, sheet, jobText: posting.text, company: posting.company, role: input.role, today, sparse: w.plan.sparse })
 
@@ -89,7 +92,11 @@ export async function writeCoverLetterWithCritique(
   }
 
   progress('planning')
-  const plan = await call(`${base}\n\nFor this step, return only the plan (step 1). The letter is written in a separate step.`, LetterPlanSchema)
+  // The model may name a situation the code did not allow; the letter step must not see it.
+  const plan = gateSituation(
+    await call(`${base}\n\nFor this step, return only the plan (step 1). The letter is written in a separate step.`, LetterPlanSchema),
+    allowed,
+  )
   progress('writing')
   const letter = await call(
     `${base}\n\nThe plan is already made:\n<plan>\n${JSON.stringify(plan)}\n</plan>\nFor this step, write only the letter (step 2), following this plan.`,
@@ -103,7 +110,7 @@ export async function writeCoverLetterWithCritique(
   if (left() >= CRITIQUE_FLOOR_MS) {
     progress('critiquing')
     try {
-      const critique = await call(buildCritiquePrompt(written, factSheet, posting.text), CritiqueSchema)
+      const critique = await call(buildCritiquePrompt(written, factSheet, posting.text, allowed), CritiqueSchema)
       critiqued = critique.problems.map((p) => ({ kind: 'form', sentence: p.sentence, detail: p.problem }))
     } catch {
       critiqued = null

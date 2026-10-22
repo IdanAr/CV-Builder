@@ -14,7 +14,7 @@ import { buildFactSheet, renderFactSheet } from './fact-sheet'
 import { detectGaps } from './gaps'
 import { renderLetter, type StructuredLetter } from './letter'
 import { preparePosting, type PostingInfo } from './posting'
-import { buildRefinePrompt, buildWritePrompt, type LetterNotes } from './prompt'
+import { buildRefinePrompt, buildWritePrompt, situationAllowed, type LetterNotes } from './prompt'
 import { WrittenLetterSchema, type LetterPlan, type WrittenLetter } from './schema'
 import { verifyLetter, type VerifyIssue } from './verify'
 
@@ -71,6 +71,11 @@ export function greetingFor(posting: PostingInfo, notes?: LetterNotes): string {
   const manager = notes?.hiringManager?.trim()
   if (manager) return `Dear ${manager},`
   return posting.employerNamed ? `Dear ${posting.company} Hiring Team,` : 'Dear Hiring Team,'
+}
+
+/** The plan's situation is the code's decision, not the model's: without a gap or an explanation in the notes it is null. */
+export function gateSituation(plan: LetterPlan, allowed: boolean): LetterPlan {
+  return allowed || plan.situation === null ? plan : { ...plan, situation: null }
 }
 
 /** The model's closing word, then the CV name exactly as written. */
@@ -142,8 +147,11 @@ export async function writeCoverLetter(
   const factSheet = renderFactSheet(sheet)
   const name = sheet.candidateName ?? ''
   const greeting = greetingFor(posting, opts.notes)
+  const gaps = detectGaps(data, today)
+  const allowed = situationAllowed(gaps, opts.notes)
   const settle = (w: WrittenLetter): WrittenLetter => ({
     ...w,
+    plan: gateSituation(w.plan, allowed),
     letter: { ...w.letter, greeting, signOff: signOffFor(w.letter.signOff, name) },
   })
   const check = (w: WrittenLetter) =>
@@ -157,7 +165,8 @@ export async function writeCoverLetter(
     greeting,
     candidateName: name,
     notes: opts.notes,
-    gaps: detectGaps(data, today),
+    gaps,
+    situationAllowed: allowed,
     today,
   })
   let calls = 1

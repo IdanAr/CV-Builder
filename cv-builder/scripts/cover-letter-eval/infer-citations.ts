@@ -15,7 +15,7 @@ const SENTENCE_SPLIT = /(?<=[.!?])\s+(?=[\p{Lu}"“])/u
 const GREETING = /^(dear|hello|hi|to)\b/i
 const SIGN_OFF = /^(sincerely|best|kind regards|warm regards|regards|thank you|thanks|respectfully|yours|with appreciation)\b/i
 
-const sentence = (text: string): LetterSentence => ({ text, facts: [], quotes: [] })
+const sentence = (text: string): LetterSentence => ({ text, facts: [], quotes: [], bullet: false })
 
 export function parsePlainLetter(text: string): StructuredLetter {
   const blocks = text.replace(/\r\n/g, '\n').split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean)
