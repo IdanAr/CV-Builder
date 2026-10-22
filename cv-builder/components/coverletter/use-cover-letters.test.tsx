@@ -272,6 +272,66 @@ describe('useCoverLetters', () => {
     expect(polls).toBe(1)
   })
 
+  it('flush sends the held content edit at once and resolves after that PATCH settles', async () => {
+    let settled = false
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: async () => {
+        await new Promise((r) => setTimeout(r, 300))
+        settled = true
+        return json({ letter: letter('l1', { content: 'typed' }) })
+      },
+    })
+    const { result } = await mount()
+
+    act(() => {
+      result.current.save('l1', { content: 'typed' })
+    })
+    expect(calls('PATCH', `${BASE}/l1`)).toHaveLength(0)
+
+    let flushed = false
+    await act(async () => {
+      const p = result.current.flush().then(() => {
+        flushed = true
+      })
+      // Well short of the 800 ms debounce: flush must not wait for it.
+      await vi.advanceTimersByTimeAsync(100)
+      expect(calls('PATCH', `${BASE}/l1`)).toHaveLength(1)
+      expect(flushed).toBe(false)
+      await vi.advanceTimersByTimeAsync(300)
+      await p
+    })
+    expect(settled).toBe(true)
+    expect(flushed).toBe(true)
+    expect(bodyOf(calls('PATCH', `${BASE}/l1`)[0])).toEqual({ content: 'typed' })
+
+    // The debounce timer was cancelled: no second PATCH later.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    expect(calls('PATCH', `${BASE}/l1`)).toHaveLength(1)
+  })
+
+  it('flush resolves at once when nothing is waiting, and does not throw on a failed PATCH', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () => json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, 500),
+    })
+    const { result } = await mount()
+    await act(async () => {
+      await result.current.flush()
+    })
+    expect(fetchMock.mock.calls.filter((c) => (c[1] as RequestInit | undefined)?.method === 'PATCH')).toHaveLength(0)
+
+    act(() => {
+      result.current.save('l1', { content: 'x' })
+    })
+    await act(async () => {
+      await expect(result.current.flush()).resolves.toBeUndefined()
+    })
+    expect(result.current.error).toBe('Internal server error')
+  })
+
   it('three quick content saves send one PATCH with the last content after 800 ms', async () => {
     route({
       [`GET ${BASE}`]: () => json(listBody([letter('l1')])),

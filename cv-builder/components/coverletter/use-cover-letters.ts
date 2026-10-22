@@ -22,6 +22,8 @@ export interface UseCoverLetters {
   /** Optimistic edit. `content` is debounced; every other field is sent at once. */
   save(id: string, patch: UpdateCoverLetterInput): void
   remove(id: string): Promise<void>
+  /** Sends the held content edit now and resolves once every save in flight has settled. Never throws: a failed save is reported through `error`. */
+  flush(): Promise<void>
   /** The posting of a failed letter, read from the server for Try again; null when there is none or the read fails. */
   postingFor(id: string): Promise<string | null>
 }
@@ -61,6 +63,8 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
   const resumeRef = useRef<string | null>(resumeId)
   const aliveRef = useRef(true)
   const pendingRef = useRef<PendingContent | null>(null)
+  // Saves that have been sent and not yet answered, so flush can wait for them.
+  const inflightRef = useRef(new Set<Promise<void>>())
   // Bumped by every save of a letter; a response that finds the number moved on
   // knows the user kept typing and must not overwrite the local text.
   const editSeqRef = useRef(new Map<string, number>())
@@ -197,14 +201,29 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
     [update]
   )
 
+  /** Sends a save and tracks it until it settles. sendPatch handles its own errors, so the promise never rejects. */
+  const track = useCallback(
+    (rid: string, id: string, patch: UpdateCoverLetterInput, seq: number) => {
+      const p = sendPatch(rid, id, patch, seq).finally(() => inflightRef.current.delete(p))
+      inflightRef.current.add(p)
+      return p
+    },
+    [sendPatch]
+  )
+
   /** Sends the held content edit now. */
   const flushPending = useCallback(() => {
     const pending = pendingRef.current
     if (!pending) return
     clearTimeout(pending.timer)
     pendingRef.current = null
-    void sendPatch(pending.resumeId, pending.id, { content: pending.content }, editSeqRef.current.get(pending.id) ?? 0)
-  }, [sendPatch])
+    void track(pending.resumeId, pending.id, { content: pending.content }, editSeqRef.current.get(pending.id) ?? 0)
+  }, [track])
+
+  const flush = useCallback(async () => {
+    flushPending()
+    await Promise.all([...inflightRef.current])
+  }, [flushPending])
 
   // Switching CV or leaving the editor must not drop the last keystrokes.
   useEffect(() => flushPending, [resumeId, flushPending])
@@ -220,7 +239,7 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
       update((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)))
 
       const { content, ...rest } = patch
-      if (Object.keys(rest).length > 0) void sendPatch(resumeId, id, rest, seq)
+      if (Object.keys(rest).length > 0) void track(resumeId, id, rest, seq)
       if (content !== undefined) {
         if (pendingRef.current) clearTimeout(pendingRef.current.timer)
         pendingRef.current = {
@@ -231,7 +250,7 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
         }
       }
     },
-    [resumeId, flushPending, sendPatch, update]
+    [resumeId, flushPending, track, update]
   )
 
   const create = useCallback(
@@ -303,5 +322,5 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
     [resumeId]
   )
 
-  return { letters, prefillNotes, suggestedPosting, loading, error, create, save, remove, postingFor }
+  return { letters, prefillNotes, suggestedPosting, loading, error, create, save, remove, flush, postingFor }
 }

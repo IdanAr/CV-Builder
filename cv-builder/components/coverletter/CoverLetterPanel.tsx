@@ -16,6 +16,8 @@ import type { CoverLetterView } from '@/lib/api/cover-letters'
 import type { CoverLetterNotes, CreateCoverLetterInput } from '@/lib/schemas/cover-letter.zod'
 import { useCoverLetters } from './use-cover-letters'
 import { useLetterDeletion } from './use-letter-deletion'
+import { resolveDesign, type LetterDesign } from '@/lib/coverletter/design'
+import { DesignPicker } from './DesignPicker'
 import { LetterList, letterCompany, letterDate, letterTitle } from './LetterList'
 import { LetterNotes } from './LetterNotes'
 import { LetterProgress } from './LetterProgress'
@@ -65,6 +67,22 @@ function wordCount(text: string): number {
 
 function fileSafe(s: string): string {
   return s.trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 40)
+}
+
+/** The download name the export route put in Content-Disposition: the UTF-8 `filename*` when there is one, else the ASCII `filename`. */
+function dispositionFilename(header: string | null): string | null {
+  if (!header) return null
+  const encoded = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(header)?.[1]
+  if (encoded) {
+    try {
+      const name = decodeURIComponent(encoded.trim())
+      if (name) return name
+    } catch {
+      // A malformed escape: fall through to the plain filename.
+    }
+  }
+  const plain = /filename\s*=\s*"([^"]+)"/i.exec(header)?.[1] ?? /filename\s*=\s*([^;]+)/i.exec(header)?.[1]
+  return plain?.trim() || null
 }
 
 /** Notes with blank fields left out, so an untouched field is not sent as an empty string. */
@@ -323,12 +341,14 @@ function OpenLetter({
   letter,
   resumeId,
   onSave,
+  onFlush,
   onBack,
   onRetry,
 }: {
   letter: CoverLetterView
   resumeId: string | null
   onSave: ReturnType<typeof useCoverLetters>['save']
+  onFlush: ReturnType<typeof useCoverLetters>['flush']
   onBack: () => void
   onRetry: (letter: CoverLetterView) => void
 }) {
@@ -337,6 +357,8 @@ function OpenLetter({
   const [copied, setCopied] = useState(false)
   const [exporting, setExporting] = useState<'docx' | 'pdf' | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
+  const templateId = useResumeEditorStore((s) => s.meta.templateId)
+  const design = resolveDesign(letter.design, templateId)
 
   const approvals = letter.pendingApprovals
   const hasLetter = letter.content.trim().length > 0
@@ -365,18 +387,16 @@ function OpenLetter({
     setExporting(format)
     setExportError(null)
     try {
-      const res = await fetch(`/api/resumes/${resumeId}/cover-letter/export/${format}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: letter.content, language: letter.language }),
-      })
+      // The server exports the saved letter, so the last keystrokes must land first.
+      await onFlush()
+      const res = await fetch(`/api/resumes/${resumeId}/cover-letters/${letter.id}/export/${format}`, { method: 'POST' })
       if (!res.ok) throw new Error(await apiErrorMessage(res, 'Export failed. Please try again.'))
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       const suffix = fileSafe(letterCompany(letter))
-      a.download = `Cover-Letter${suffix ? `-${suffix}` : ''}.${format}`
+      a.download = dispositionFilename(res.headers.get('Content-Disposition')) ?? `Cover-Letter${suffix ? `-${suffix}` : ''}.${format}`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -434,6 +454,10 @@ function OpenLetter({
             </div>
           </div>
           {exportError && <p role="alert" className="text-xs text-fg-danger">{exportError}</p>}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <span className="text-xs text-fg-muted">Design for PDF and DOCX</span>
+            <DesignPicker value={design} onChange={(d: LetterDesign) => onSave(letter.id, { design: d })} />
+          </div>
 
           {approvals.length > 0 && (
             <div role="region" aria-label="Unverified details" className="rounded-card border border-border-attention bg-surface-attention p-3">
@@ -490,7 +514,7 @@ function OpenLetter({
 export function CoverLetterPanel() {
   const resumeId = useResumeEditorStore((s) => s.resumeId)
   const data = useResumeEditorStore((s) => s.data)
-  const { letters, prefillNotes, suggestedPosting, loading, error, create, save, remove, postingFor } = useCoverLetters(resumeId)
+  const { letters, prefillNotes, suggestedPosting, loading, error, create, save, remove, flush, postingFor } = useCoverLetters(resumeId)
 
   const [view, setView] = useState<View>({ kind: 'auto' })
   // Deletes wait out an undo window, like deleting a CV.
@@ -566,7 +590,7 @@ export function CoverLetterPanel() {
     const openLetter = view.kind === 'open' ? visible.find((l) => l.id === view.id) : undefined
     if (openLetter) {
       body = (
-        <OpenLetter key={openLetter.id} letter={openLetter} resumeId={resumeId} onSave={save} onBack={toList} onRetry={retry} />
+        <OpenLetter key={openLetter.id} letter={openLetter} resumeId={resumeId} onSave={save} onFlush={flush} onBack={toList} onRetry={retry} />
       )
     } else if (view.kind === 'new' || (view.kind === 'auto' && !hasSomething)) {
       const draft = view.kind === 'new' ? view.draft : { jobText: '', company: '', role: '', notes: blankNotes() }

@@ -6,23 +6,21 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 // Types only: the values would drag mongoose into the client bundle.
 import type { CoverLetterView, SuggestedPosting } from '@/lib/api/cover-letters'
+import { LEGACY_PLACEHOLDER } from '@/lib/coverletter/header'
 
 /** Dates arrive over JSON as ISO strings, whatever the type says, so always go through `new Date`. */
 export function letterDate(value: Date | string): string {
   return new Date(value).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-// What the server stores for a letter migrated from the old single-letter field when the CV named no target (lib/api/cover-letters.ts).
-const LEGACY_FALLBACK = 'Unspecified'
-
 /** The company, or '' for a migrated letter that never had one. */
 export function letterCompany(letter: Pick<CoverLetterView, 'company' | 'legacy'>): string {
-  return letter.legacy && letter.company === LEGACY_FALLBACK ? '' : letter.company
+  return letter.legacy && letter.company === LEGACY_PLACEHOLDER ? '' : letter.company
 }
 
 export function letterTitle(letter: Pick<CoverLetterView, 'company' | 'role'> & { legacy?: boolean }): string {
   if (!letter.legacy) return `${letter.role} at ${letter.company}`
-  const role = letter.role === LEGACY_FALLBACK ? '' : letter.role
+  const role = letter.role === LEGACY_PLACEHOLDER ? '' : letter.role
   const company = letterCompany(letter)
   if (role && company) return `${role} at ${company}`
   return role || company ? `Earlier letter: ${role || company}` : 'Earlier letter'
