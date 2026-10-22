@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiErrorMessage } from '@/lib/api/client-errors'
+import type { LetterDesign } from '@/lib/coverletter/design'
 // Types only: importing the values would drag mongoose into the client bundle.
 import type { CoverLetterDetail, CoverLetterView, SuggestedPosting } from '@/lib/api/cover-letters'
 import type {
@@ -168,7 +169,15 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
   }, [resumeId, anyWriting, update])
 
   const sendPatch = useCallback(
-    async (rid: string, id: string, patch: UpdateCoverLetterInput, seq: number) => {
+    async (rid: string, id: string, patch: UpdateCoverLetterInput, seq: number, previousDesign?: LetterDesign) => {
+      // A design the server did not store must not stay on screen. Only undone
+      // while the screen still shows this save's choice, so a newer pick survives.
+      const revertDesign = () => {
+        if (patch.design === undefined) return
+        update((prev) =>
+          prev.map((l) => (l.id === id && l.design === patch.design ? { ...l, design: previousDesign } : l))
+        )
+      }
       try {
         const res = await fetch(`/api/resumes/${rid}/cover-letters/${id}`, {
           method: 'PATCH',
@@ -178,6 +187,7 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
         // Nothing to update once the hook is gone or showing another CV.
         if (!aliveRef.current || resumeRef.current !== rid) return
         if (!res.ok) {
+          revertDesign()
           setError(await apiErrorMessage(res, SAVE_ERROR))
           return
         }
@@ -189,13 +199,16 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
           prev.map((l) =>
             l.id === id
               ? keepLocalText
-                ? { ...letter, content: l.content, notes: l.notes }
+                ? { ...letter, content: l.content, notes: l.notes, design: l.design }
                 : letter
               : l
           )
         )
       } catch {
-        if (aliveRef.current && resumeRef.current === rid) setError(SAVE_ERROR)
+        if (aliveRef.current && resumeRef.current === rid) {
+          revertDesign()
+          setError(SAVE_ERROR)
+        }
       }
     },
     [update]
@@ -203,8 +216,8 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
 
   /** Sends a save and tracks it until it settles. sendPatch handles its own errors, so the promise never rejects. */
   const track = useCallback(
-    (rid: string, id: string, patch: UpdateCoverLetterInput, seq: number) => {
-      const p = sendPatch(rid, id, patch, seq).finally(() => inflightRef.current.delete(p))
+    (rid: string, id: string, patch: UpdateCoverLetterInput, seq: number, previousDesign?: LetterDesign) => {
+      const p = sendPatch(rid, id, patch, seq, previousDesign).finally(() => inflightRef.current.delete(p))
       inflightRef.current.add(p)
       return p
     },
@@ -236,10 +249,11 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
       const seq = (editSeqRef.current.get(id) ?? 0) + 1
       editSeqRef.current.set(id, seq)
       setError(null)
+      const previousDesign = lettersRef.current.find((l) => l.id === id)?.design
       update((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)))
 
       const { content, ...rest } = patch
-      if (Object.keys(rest).length > 0) void track(resumeId, id, rest, seq)
+      if (Object.keys(rest).length > 0) void track(resumeId, id, rest, seq, previousDesign)
       if (content !== undefined) {
         if (pendingRef.current) clearTimeout(pendingRef.current.timer)
         pendingRef.current = {

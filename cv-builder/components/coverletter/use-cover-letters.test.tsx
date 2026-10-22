@@ -332,6 +332,124 @@ describe('useCoverLetters', () => {
     expect(result.current.error).toBe('Internal server error')
   })
 
+  it('two quick design saves answered in reverse order leave the last choice in place', async () => {
+    const resolvers: Array<() => void> = []
+    let n = 0
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () => {
+        const design = n++ === 0 ? 'accent-edge' : 'classic'
+        return new Promise<Response>((resolve) => {
+          resolvers.push(() => resolve(json({ letter: letter('l1', { design }) })))
+        })
+      },
+    })
+    const { result } = await mount()
+
+    act(() => {
+      result.current.save('l1', { design: 'accent-edge' })
+      result.current.save('l1', { design: 'classic' })
+    })
+    expect(result.current.letters[0].design).toBe('classic')
+    expect(resolvers).toHaveLength(2)
+
+    // The second answer lands first, then the stale first one.
+    await act(async () => {
+      resolvers[1]()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    await act(async () => {
+      resolvers[0]()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.letters[0].design).toBe('classic')
+  })
+
+  it('a stale answer to an earlier design save does not undo a newer choice', async () => {
+    const resolvers: Array<() => void> = []
+    let n = 0
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () => {
+        const design = n++ === 0 ? 'accent-edge' : 'classic'
+        return new Promise<Response>((resolve) => {
+          resolvers.push(() => resolve(json({ letter: letter('l1', { design }) })))
+        })
+      },
+    })
+    const { result } = await mount()
+    act(() => {
+      result.current.save('l1', { design: 'accent-edge' })
+      result.current.save('l1', { design: 'classic' })
+    })
+    // The first answer arrives while the second is still out.
+    await act(async () => {
+      resolvers[0]()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.letters[0].design).toBe('classic')
+  })
+
+  it('a failed design save puts the previous design back and reports the error', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1', { design: 'classic' })])),
+      [`PATCH ${BASE}/l1`]: () => json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, 500),
+    })
+    const { result } = await mount()
+    await act(async () => {
+      result.current.save('l1', { design: 'accent-edge' })
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.letters[0].design).toBe('classic')
+    expect(result.current.error).toBe('Internal server error')
+  })
+
+  it('a failed design save on a letter with no stored design goes back to none', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () => json({ error: 'nope', code: 'INTERNAL_ERROR' }, 500),
+    })
+    const { result } = await mount()
+    await act(async () => {
+      result.current.save('l1', { design: 'accent-edge' })
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.letters[0].design).toBeUndefined()
+  })
+
+  it('flush waits for a design save that is already in flight', async () => {
+    let release: () => void = () => {}
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () =>
+        new Promise<Response>((resolve) => {
+          release = () => resolve(json({ letter: letter('l1', { design: 'accent-edge' }) }))
+        }),
+    })
+    const { result } = await mount()
+    act(() => {
+      result.current.save('l1', { design: 'accent-edge' })
+    })
+    expect(calls('PATCH', `${BASE}/l1`)).toHaveLength(1)
+
+    let flushed = false
+    await act(async () => {
+      void result.current.flush().then(() => {
+        flushed = true
+      })
+      await vi.advanceTimersByTimeAsync(50)
+    })
+    expect(flushed).toBe(false)
+    // No second request: there was no held content to send.
+    expect(calls('PATCH', `${BASE}/l1`)).toHaveLength(1)
+
+    await act(async () => {
+      release()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(flushed).toBe(true)
+  })
+
   it('three quick content saves send one PATCH with the last content after 800 ms', async () => {
     route({
       [`GET ${BASE}`]: () => json(listBody([letter('l1')])),

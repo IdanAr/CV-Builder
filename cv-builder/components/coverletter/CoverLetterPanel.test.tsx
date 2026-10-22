@@ -583,8 +583,9 @@ describe('CoverLetterPanel: copy and export act on the open letter', () => {
     clickSpy.mockRestore()
   })
 
-  it('typing in the editor and clicking PDF flushes the save before the export request', async () => {
+  it('typing in the editor and clicking PDF sends no export request until the flush resolves', async () => {
     const order: string[] = []
+    let release: () => void = () => {}
     const fetchMock = vi.fn().mockImplementation(async () => {
       order.push('fetch')
       return exportResponse()
@@ -594,12 +595,24 @@ describe('CoverLetterPanel: copy and export act on the open letter', () => {
     const hookValue = mockHook({
       letters: [letter({ content: 'Open letter text.' })],
       save: vi.fn(() => { order.push('save') }),
-      flush: vi.fn(async () => { order.push('flush') }),
+      flush: vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            order.push('flush')
+            release = resolve
+          })
+      ),
     })
     render(<CoverLetterPanel />)
     fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
     fireEvent.change(letterBox(), { target: { value: 'Edited text.' } })
     fireEvent.click(screen.getByRole('button', { name: /^pdf$/i }))
+    await waitFor(() => expect(hookValue.flush).toHaveBeenCalled())
+    // Give a missing await every chance to fire the request early.
+    await act(async () => { await new Promise((r) => setTimeout(r, 20)) })
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    await act(async () => { release() })
     await waitFor(() => expect(clickSpy).toHaveBeenCalled())
     expect(hookValue.save).toHaveBeenCalledWith('l1', { content: 'Edited text.' })
     expect(order).toEqual(['save', 'flush', 'fetch'])
@@ -684,10 +697,25 @@ describe('CoverLetterPanel: design picker', () => {
     expect(value.save).toHaveBeenCalledWith('l1', { design: 'accent-edge' })
   })
 
-  it('is not shown for a letter that is still writing or has failed', () => {
+  it('is not shown for a letter that is still writing', () => {
     mockHook({ letters: [letter({ status: 'writing', progress: 'reading', content: '' })] })
     render(<CoverLetterPanel />)
     fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
     expect(screen.queryByRole('radiogroup')).toBeNull()
+  })
+
+  it('is not shown for a letter that failed', () => {
+    mockHook({ letters: [letter({ status: 'failed', error: 'Could not write it.', content: '' })] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    expect(screen.getByText('Could not write it.')).toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup')).toBeNull()
+  })
+
+  it('the group is named by the visible label, and a helper line says the CV styles it', () => {
+    openReady()
+    const group = screen.getByRole('radiogroup', { name: 'Design for PDF and DOCX' })
+    expect(group).toBeInTheDocument()
+    expect(screen.getByText("Uses your CV's colours and fonts.")).toBeInTheDocument()
   })
 })

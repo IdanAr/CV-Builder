@@ -60,7 +60,16 @@ function AccentEdgePreview() {
  * panel's segmented controls. The previews are static markup in design
  * tokens, not the CV's own colours.
  */
-export function DesignPicker({ value, onChange }: { value: LetterDesign; onChange: (design: LetterDesign) => void }) {
+export function DesignPicker({
+  value,
+  onChange,
+  labelledBy,
+}: {
+  value: LetterDesign
+  onChange: (design: LetterDesign) => void
+  /** Id of a visible label that names the group; without one the group is named "Letter design". */
+  labelledBy?: string
+}) {
   const refs = useRef<Array<HTMLButtonElement | null>>([])
   const selectedIndex = OPTIONS.findIndex((o) => o.id === value)
   const tabbable = selectedIndex === -1 ? 0 : selectedIndex
@@ -79,7 +88,12 @@ export function DesignPicker({ value, onChange }: { value: LetterDesign; onChang
   }
 
   return (
-    <div role="radiogroup" aria-label="Letter design" className="flex gap-2">
+    <div
+      role="radiogroup"
+      aria-labelledby={labelledBy}
+      aria-label={labelledBy ? undefined : 'Letter design'}
+      className="flex gap-2"
+    >
       {OPTIONS.map((o, i) => {
         const checked = i === selectedIndex
         return (

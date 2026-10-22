@@ -454,9 +454,16 @@ function OpenLetter({
             </div>
           </div>
           {exportError && <p role="alert" className="text-xs text-fg-danger">{exportError}</p>}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <span className="text-xs text-fg-muted">Design for PDF and DOCX</span>
-            <DesignPicker value={design} onChange={(d: LetterDesign) => onSave(letter.id, { design: d })} />
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <span id={`${id}-design`} className="text-xs text-fg-muted">Design for PDF and DOCX</span>
+              <DesignPicker
+                value={design}
+                labelledBy={`${id}-design`}
+                onChange={(d: LetterDesign) => onSave(letter.id, { design: d })}
+              />
+            </div>
+            <p className="text-xs text-fg-muted">Uses your CV&apos;s colours and fonts.</p>
           </div>
 
           {approvals.length > 0 && (
