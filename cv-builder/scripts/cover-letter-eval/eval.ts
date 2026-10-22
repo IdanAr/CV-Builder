@@ -16,6 +16,8 @@
 //   npx tsx scripts/cover-letter-eval/eval.ts compare baseline3 a1     # side by side, with the spec's decision rule
 //   npx tsx scripts/cover-letter-eval/eval.ts confirm a1,b1             # blind sheet of every judge-flagged factual error
 //   npx tsx scripts/cover-letter-eval/eval.ts confirm-score a1,b1       # confirmed-<label>.json from the person's labels
+//   npx tsx scripts/cover-letter-eval/eval.ts narration b4            # history-narration judge over a run's letters -> runs/b4/narration.json
+//   npx tsx scripts/cover-letter-eval/eval.ts ship-check b3 b4         # the five ship rules of spec 2026-10-23 section 6, PASS/FAIL/PENDING
 //   npx tsx scripts/cover-letter-eval/eval.ts human-read baseline3 b3   # blind A/B sheet (sample 1 of each run) for a person to read
 //   npx tsx scripts/cover-letter-eval/eval.ts human-score               # the new letter's preference rate from the filled sheet
 //
@@ -54,6 +56,21 @@ import {
 import { checkLetter, htmlToText, type LetterChecks } from './checks'
 import { inferCitations, inferQuotes, parsePlainLetter } from './infer-citations'
 import { generateCoverLetter } from './baseline-pipeline'
+import {
+  NARRATION_MODEL,
+  NarrationSchema,
+  buildNarrationPrompt,
+  groundSentences,
+  isLetterFile,
+  passRate,
+  renderShipCheck,
+  shipCheck,
+  situationCaseIds,
+  verdictOf,
+  type NarrationEntry,
+  type NarrationFile,
+  type RunSummary,
+} from './narration'
 import { HUMAN_READ_TARGET, buildHumanRead, checkSheet, parseAnswers, scoreHumanRead, type HumanReadKeyItem } from './human-read'
 import { writeCoverLetterB } from './variant-b'
 import { EVAL_PAIRS, EVAL_SET_VERSION, GAP_VARIANT_END_DATE, NOTES, type EvalPair } from './pairs'
@@ -174,7 +191,7 @@ function scoresFile(label: string): string {
 function loadRun(label: string): Generated[] {
   const dir = path.join(OUT_DIR, 'runs', label)
   return readdirSync(dir)
-    .filter((f) => f.endsWith('.json'))
+    .filter(isLetterFile)
     .sort()
     .map((f) => readJson<Generated>(path.join(dir, f)))
 }
@@ -858,8 +875,7 @@ function passRates(label: string): Record<string, { rate: number; n: number }> {
   const ok = readJson<Scored[]>(scoresFile(label)).filter((s) => s.judge)
   const out: Record<string, { rate: number; n: number }> = {}
   for (const cr of JUDGE_CRITERIA) {
-    const v = ok.map((s) => effectiveVerdict(byId.get(s.caseId)!, cr.id, s.judge!.criteria[cr.id].verdict)).filter((x) => x !== 'n/a')
-    out[cr.id] = { rate: v.length ? (100 * v.filter((x) => x === 'pass').length) / v.length : 0, n: v.length }
+    out[cr.id] = passRate(ok.map((s) => effectiveVerdict(byId.get(s.caseId)!, cr.id, s.judge!.criteria[cr.id].verdict)))
   }
   return out
 }
@@ -960,6 +976,83 @@ function confirmScore(labels: string[]) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// narration + ship-check: the situation/chronology writer change (spec 2026-10-23 section 6)
+// ---------------------------------------------------------------------------
+
+const narrationFile = (label: string) => path.join(OUT_DIR, 'runs', label, 'narration.json')
+
+/** One call per letter: which sentences only narrate career history, and which are about the candidate's situation. */
+async function narration(label: string) {
+  judgeClient ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 5 * 60_000, maxRetries: 2 })
+  const client = judgeClient
+  const letters = loadRun(label).filter((g) => g.content && !g.error)
+  const file = narrationFile(label)
+  const previous = existsSync(file) ? readJson<NarrationFile>(file).letters : []
+  const entries = await pool(letters, CONCURRENCY, async (g): Promise<NarrationEntry | null> => {
+    const kept = previous.find((p) => p.caseId === g.caseId && p.sample === g.sample)
+    if (kept) return kept
+    try {
+      const response = await client.messages.parse({
+        model: NARRATION_MODEL,
+        max_tokens: 4000,
+        output_config: { format: zodOutputFormat(NarrationSchema) },
+        messages: [{ role: 'user', content: buildNarrationPrompt(g.content) }],
+      })
+      if (response.stop_reason === 'refusal') throw new Error(`refused: ${response.stop_details?.category ?? 'no category'}`)
+      if (!response.parsed_output) throw new Error(`output did not parse (stop_reason ${response.stop_reason})`)
+      const history = groundSentences(g.content, response.parsed_output.historySentences)
+      const situation = groundSentences(g.content, response.parsed_output.situationSentences)
+      const dropped = history.dropped + situation.dropped
+      console.log(`${g.caseId}.s${g.sample} history ${history.kept.length}, situation ${situation.kept.length}${dropped ? ` (${dropped} quoted sentences not found in the letter, ignored)` : ''}`)
+      return { caseId: g.caseId, sample: g.sample, historySentences: history.kept, situationSentences: situation.kept }
+    } catch (err) {
+      console.log(`${g.caseId}.s${g.sample} narration failed: ${String(err)}`)
+      return null
+    }
+  })
+  const done = entries.filter((e): e is NarrationEntry => e !== null)
+  writeJson(file, { model: NARRATION_MODEL, judgedAt: new Date().toISOString(), letters: done } satisfies NarrationFile)
+  console.log(`Wrote ${done.length} of ${letters.length} letters to ${file}`)
+}
+
+/** What ship-check needs from a run: each generated letter's effective criterion verdicts, plus the narration file when there is one. */
+function summariseRun(label: string): RunSummary {
+  const { cases } = loadFixtures()
+  const byId = new Map(cases.map((c) => [c.id, c]))
+  const scored = readJson<Scored[]>(scoresFile(label))
+  const file = narrationFile(label)
+  return {
+    letters: loadRun(label)
+      .filter((g) => g.content && !g.error)
+      .map((g) => {
+        const s = scored.find((x) => x.caseId === g.caseId && x.sample === g.sample)
+        const verdicts = Object.fromEntries(
+          s?.judge ? JUDGE_CRITERIA.map((cr) => [cr.id, effectiveVerdict(byId.get(g.caseId)!, cr.id, s.judge!.criteria[cr.id].verdict)]) : []
+        )
+        return { caseId: g.caseId, sample: g.sample, verdicts }
+      }),
+    narration: existsSync(file) ? readJson<NarrationFile>(file).letters : undefined,
+  }
+}
+
+/** Rules a-e of spec section 6 for the new run against the old one; the verdict is PASS only when none fails and none is pending. */
+function shipCheckCommand(oldLabel: string, newLabel: string) {
+  if (!newLabel) throw new Error('Usage: eval.ts ship-check <oldLabel> <newLabel>')
+  const { cases, builtAt } = loadFixtures()
+  const check = shipCheck({
+    old: summariseRun(oldLabel),
+    new: summariseRun(newLabel),
+    confirmedErrors: { old: factualErrors(oldLabel).confirmed, new: factualErrors(newLabel).confirmed },
+    // The same month `generate` gave the writer as today.
+    situationCases: situationCaseIds(cases, builtAt.slice(0, 7)),
+  })
+  const text = renderShipCheck(oldLabel, newLabel, check)
+  writeFileSync(path.join(OUT_DIR, `ship-check-${oldLabel}-vs-${newLabel}.md`), text + '\n')
+  console.log(text)
+  console.log(`\n(${verdictOf(check)}; latency p95 is checked separately against the harness timings)`)
+}
+
 const HUMAN_READ_DIR = path.join(OUT_DIR, 'human-read')
 
 /** Blind A/B sheet: sample 1 of the old and the new run for each case, sides in a seeded order. */
@@ -1026,6 +1119,8 @@ async function main() {
   if (command === 'compare') return compare(label, arg)
   if (command === 'confirm') return confirmSheet(label.split(','))
   if (command === 'confirm-score') return confirmScore(label.split(','))
+  if (command === 'narration') return narration(label)
+  if (command === 'ship-check') return shipCheckCommand(label, arg ?? '')
   if (command === 'human-read') return humanReadSheet(label, arg ?? '')
   if (command === 'human-score') return humanScore()
   if (command === 'score') return score(label, Number(arg ?? 6))
@@ -1036,7 +1131,7 @@ async function main() {
   if (command === 'recheck') return recheck(label)
   if (command === 'import-cvs') return importCvs()
   if (command === 'verify') return verifyRun(label, arg)
-  console.error('Usage: eval.ts fixtures | generate <label> [samples] | score <label> [repeats] | negatives <label> | report <label> | calibration <label> | agreement | verify <label> [set] | compare <labelA> <labelB> | confirm <labels> | confirm-score <labels> | human-read <oldLabel> <newLabel> | human-score')
+  console.error('Usage: eval.ts fixtures | generate <label> [samples] | score <label> [repeats] | negatives <label> | report <label> | calibration <label> | agreement | verify <label> [set] | compare <labelA> <labelB> | confirm <labels> | confirm-score <labels> | narration <label> | ship-check <oldLabel> <newLabel> | human-read <oldLabel> <newLabel> | human-score')
   process.exitCode = 2
 }
 
