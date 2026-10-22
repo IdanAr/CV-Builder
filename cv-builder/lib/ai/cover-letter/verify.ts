@@ -10,7 +10,7 @@
 import { detectHallucinations } from '@/lib/ai/hallucination-guard'
 import { monthRange, parseMonth } from './dates'
 import { renderFactSheet, type Fact, type FactSheet, type FactSource } from './fact-sheet'
-import { BANNED_PHRASES, SPARSE_WORD_FLOOR, WORD_BAND, renderLetter, wordCount, type LetterSentence, type StructuredLetter } from './letter'
+import { BANNED_PHRASES, SPARSE_WORD_FLOOR, WORD_BAND, renderLetter, wordCount, stripBulletMarker, type LetterSentence, type StructuredLetter } from './letter'
 import { foldName, mentionsName, nameVariants, parentheticalAliases } from './names'
 import { extractNumbers, sameNumber, type NumberMention } from './numbers'
 
@@ -159,7 +159,7 @@ function listIssues(letter: StructuredLetter): VerifyIssue[] {
       form(null, `A list has ${list.length} ${list.length === 1 ? 'item' : 'items'}; use ${LIST_ITEMS.min} to ${LIST_ITEMS.max}, or write it as prose.`)
     }
     for (const item of list) {
-      if (wordCount(item.text) < MIN_BULLET_WORDS) form(item.text, `This list item is a fragment; write each item as a full sentence of at least ${MIN_BULLET_WORDS} words.`)
+      if (wordCount(stripBulletMarker(item.text)) < MIN_BULLET_WORDS) form(item.text, `This list item is a fragment; write each item as a full sentence of at least ${MIN_BULLET_WORDS} words.`)
     }
   }
   return issues
@@ -291,7 +291,8 @@ export function verifyLetter(input: VerifyInput): VerifyIssue[] {
     if (lower.includes(phrase)) issues.push({ kind: 'form', sentence: null, detail: `Uses the stock phrase "${phrase}".` })
   }
   if (rendered.includes('—')) issues.push({ kind: 'form', sentence: null, detail: 'Uses an em-dash.' })
-  const words = wordCount(rendered)
+  // The "- " that marks a list item is not a word.
+  const words = wordCount(rendered.replace(/^- /gm, ''))
   const floor = input.sparse ? SPARSE_WORD_FLOOR : WORD_BAND.min
   if (words < floor) issues.push({ kind: 'form', sentence: null, detail: `The letter has ${words} words; aim for at least ${floor}.` })
   if (words > WORD_BAND.max) issues.push({ kind: 'form', sentence: null, detail: `The letter has ${words} words; aim for at most ${WORD_BAND.max}.` })

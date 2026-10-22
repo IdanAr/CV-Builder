@@ -165,6 +165,17 @@ describe('verifyLetter: lists', () => {
     expect(issues[0].sentence).toBe('Cut report time by 40%.')
   })
 
+  it('does not count the "- " marker as a word, in the length floor or the 6-word floor', () => {
+    const words = (n: number) => Array.from({ length: n }, () => 'steady').join(' ') + '.'
+    // 4 (greeting) + 4 (sign-off) + 221 + 3 x 6 = 247 real words; counting the three markers would make 250.
+    const l = letter([s(words(221)), b(words(6)), b(words(6)), b(words(6))])
+    expect(of('form', verify(l)).some((i) => /^The letter has 247 words/.test(i.detail))).toBe(true)
+    // "- five word item here" is five words once the marker is gone.
+    const typed = lists(verify(letter([lead, item(1), item(2), b('- five word item here')])))
+    expect(typed).toHaveLength(1)
+    expect(typed[0].sentence).toBe('- five word item here')
+  })
+
   it('still checks a bullet like any sentence', () => {
     expect(of('number', verify(letter([lead, item(1), item(2), { ...b('At Acme I cut report time by 45% with the finance team.'), facts: ['F4'] }])))).toHaveLength(1)
   })

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { renderLetter } from '@/lib/ai/cover-letter/letter'
 import { buildFactSheet } from '@/lib/ai/cover-letter/fact-sheet'
 import { verifyLetter } from '@/lib/ai/cover-letter/verify'
 import { FIXTURE_CV } from '@/lib/ai/cover-letter/__tests__/fixture-cv'
@@ -24,6 +25,30 @@ describe('parsePlainLetter', () => {
     const parsed = parsePlainLetter('Dear Team,\n\nThank you for considering my application for this role at your company.\n\nBest regards,\nDana')
     expect(parsed.paragraphs).toHaveLength(1)
     expect(parsed.signOff).toBe('Best regards,\nDana')
+  })
+})
+
+describe('parsePlainLetter: lists', () => {
+  const text = 'Dear Team,\n\nThree results stand out. They matter here.\n- First result was a reporting rebuild for ten teams.\n- Second result cut manual checks across the group.\n- Third result moved the weekly review online.\nThat is why I applied.\n\nBest,\nDana'
+
+  it('keeps each "- " line as its own bullet sentence, without the marker', () => {
+    const [body] = parsePlainLetter(text).paragraphs
+    expect(body.map((s) => [s.text, s.bullet])).toEqual([
+      ['Three results stand out.', false],
+      ['They matter here.', false],
+      ['First result was a reporting rebuild for ten teams.', true],
+      ['Second result cut manual checks across the group.', true],
+      ['Third result moved the weekly review online.', true],
+      ['That is why I applied.', false],
+    ])
+  })
+
+  it('round-trips through renderLetter', () => {
+    expect(renderLetter(parsePlainLetter(text))).toBe(text)
+  })
+
+  it('leaves prose-only paragraphs as before', () => {
+    expect(parsePlainLetter('Dear Team,\n\nOne. Two.\n\nBest,\nDana').paragraphs.flat().every((s) => !s.bullet)).toBe(true)
   })
 })
 

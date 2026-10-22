@@ -14,7 +14,7 @@ import { buildFactSheet, renderFactSheet } from './fact-sheet'
 import { detectGaps } from './gaps'
 import { renderLetter, type StructuredLetter } from './letter'
 import { preparePosting, type PostingInfo } from './posting'
-import { buildRefinePrompt, buildWritePrompt, situationAllowed, type LetterNotes } from './prompt'
+import { buildRefinePrompt, buildWritePrompt, situationAllowed, situationRequired, type LetterNotes } from './prompt'
 import { WrittenLetterSchema, type LetterPlan, type WrittenLetter } from './schema'
 import { verifyLetter, type VerifyIssue } from './verify'
 
@@ -76,6 +76,19 @@ export function greetingFor(posting: PostingInfo, notes?: LetterNotes): string {
 /** The plan's situation is the code's decision, not the model's: without a gap or an explanation in the notes it is null. */
 export function gateSituation(plan: LetterPlan, allowed: boolean): LetterPlan {
   return allowed || plan.situation === null ? plan : { ...plan, situation: null }
+}
+
+/** The code requires a sentence about the situation, but the model's plan names none: the refine is asked to add it. */
+export function situationIssues(plan: LetterPlan, required: boolean): VerifyIssue[] {
+  if (!required || plan.situation?.trim()) return []
+  return [
+    {
+      kind: 'form',
+      sentence: null,
+      detail:
+        'The candidate asked to explain something or the dates show an unfilled gap, but the plan names no situation. Name it in the plan and, unless the letter already does, add one sentence about it, woven into the argument for fit.',
+    },
+  ]
 }
 
 /** The model's closing word, then the CV name exactly as written. */
@@ -149,13 +162,16 @@ export async function writeCoverLetter(
   const greeting = greetingFor(posting, opts.notes)
   const gaps = detectGaps(data, today)
   const allowed = situationAllowed(gaps, opts.notes)
+  const required = allowed && situationRequired(gaps, opts.notes)
   const settle = (w: WrittenLetter): WrittenLetter => ({
     ...w,
     plan: gateSituation(w.plan, allowed),
     letter: { ...w.letter, greeting, signOff: signOffFor(w.letter.signOff, name) },
   })
-  const check = (w: WrittenLetter) =>
-    verifyLetter({ letter: w.letter, sheet, jobText: posting.text, company: posting.company, role: input.role, today, sparse: w.plan.sparse })
+  const check = (w: WrittenLetter) => [
+    ...verifyLetter({ letter: w.letter, sheet, jobText: posting.text, company: posting.company, role: input.role, today, sparse: w.plan.sparse }),
+    ...situationIssues(w.plan, required),
+  ]
 
   progress('writing')
   const prompt = buildWritePrompt({

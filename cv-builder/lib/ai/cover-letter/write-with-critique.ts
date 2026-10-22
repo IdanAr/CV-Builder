@@ -20,13 +20,14 @@ import {
   gateSituation,
   greetingFor,
   signOffFor,
+  situationIssues,
   worthARefine,
   type CoverLetterRun,
   type ProgressStep,
   type WriteOptions,
 } from './pipeline'
 import { preparePosting } from './posting'
-import { buildCritiquePrompt, buildRefinePrompt, buildWritePrompt, situationAllowed } from './prompt'
+import { buildCritiquePrompt, buildRefinePrompt, buildWritePrompt, situationAllowed, situationRequired } from './prompt'
 import { LetterPlanSchema, StructuredLetterSchema, WrittenLetterSchema, type WrittenLetter } from './schema'
 import { verifyLetter, type VerifyIssue } from './verify'
 
@@ -67,10 +68,13 @@ export async function writeCoverLetterWithCritique(
   const greeting = greetingFor(posting, opts.notes)
   const gaps = detectGaps(data, today)
   const allowed = situationAllowed(gaps, opts.notes)
+  const required = allowed && situationRequired(gaps, opts.notes)
   const base = buildWritePrompt({ factSheet, posting, role: input.role, greeting, candidateName: name, notes: opts.notes, gaps, situationAllowed: allowed, today })
   const settle = (w: WrittenLetter): WrittenLetter => ({ ...w, plan: gateSituation(w.plan, allowed), letter: { ...w.letter, greeting, signOff: signOffFor(w.letter.signOff, name) } })
-  const check = (w: WrittenLetter) =>
-    verifyLetter({ letter: w.letter, sheet, jobText: posting.text, company: posting.company, role: input.role, today, sparse: w.plan.sparse })
+  const check = (w: WrittenLetter) => [
+    ...verifyLetter({ letter: w.letter, sheet, jobText: posting.text, company: posting.company, role: input.role, today, sparse: w.plan.sparse }),
+    ...situationIssues(w.plan, required),
+  ]
 
   let calls = 0
   /**

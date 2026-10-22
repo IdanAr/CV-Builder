@@ -69,6 +69,20 @@ describe('writeCoverLetterWithCritique', () => {
     expect(JSON.stringify(mockParse.mock.calls[1][0].messages)).not.toContain('"situation":"career change"')
   })
 
+  it('refines when the candidate asked to explain something and the plan names no situation', async () => {
+    mockParse
+      .mockResolvedValueOnce(planReply)
+      .mockResolvedValueOnce(letterReply(clean))
+      .mockResolvedValueOnce(critiqueReply())
+      .mockResolvedValueOnce(reply({ ...clean, plan: { ...PLAN, situation: 'a move from nursing' } }))
+    const result = await run({ notes: { explain: 'I moved from nursing to analytics' } })
+    expect(mockParse).toHaveBeenCalledTimes(4)
+    expect(JSON.stringify(mockParse.mock.calls[3][0].messages)).toContain('the plan names no situation')
+    expect(JSON.stringify(mockParse.mock.calls[0][0].messages)).toContain('the plan must name it')
+    expect(result.refined).toBe(true)
+    expect(result.issues).toEqual([])
+  })
+
   it('keeps a situation the candidate asked to explain', async () => {
     const model: LetterPlan = { ...PLAN, situation: 'a move from nursing' }
     mockParse.mockResolvedValueOnce(reply(model)).mockResolvedValueOnce(letterReply(clean)).mockResolvedValueOnce(critiqueReply())

@@ -54,6 +54,9 @@ export const BANNED_PHRASES = [
   'thank you for your time and consideration',
 ] as const
 
+/** A list item's text without a "-", bullet glyph or "*" the model (or a user typing in the editor) put in front of it. */
+export const stripBulletMarker = (text: string) => text.trim().replace(/^[-•*]\s+/, '')
+
 /**
  * One paragraph as text: prose sentences join with a space, a run of bullets
  * becomes "- " lines, and a prose lead-in (or a sentence after the list) sits
@@ -62,7 +65,7 @@ export const BANNED_PHRASES = [
 function renderParagraph(sentences: LetterSentence[]): string {
   const runs: { bullet: boolean; lines: string[] }[] = []
   for (const s of sentences) {
-    const text = s.bullet ? s.text.trim().replace(/^[-•*]\s+/, '') : s.text.trim()
+    const text = s.bullet ? stripBulletMarker(s.text) : s.text.trim()
     if (!text) continue
     const last = runs.at(-1)
     if (last && last.bullet === s.bullet) last.lines.push(text)

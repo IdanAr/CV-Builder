@@ -8,7 +8,7 @@ vi.mock('@/lib/ai/models', () => ({
 }))
 
 import { BANNED_PHRASES, renderLetter, type LetterSentence } from '../letter'
-import { writeCoverLetter } from '../pipeline'
+import { gateSituation, situationIssues, writeCoverLetter } from '../pipeline'
 import { buildWritePrompt } from '../prompt'
 import { buildFactSheet, renderFactSheet } from '../fact-sheet'
 import { preparePosting } from '../posting'
@@ -149,6 +149,46 @@ describe('writeCoverLetter', () => {
   it('throws on a refusal instead of returning an empty letter', async () => {
     mockParse.mockResolvedValueOnce({ parsed_output: null, stop_reason: 'refusal', content: [], usage: {} })
     await expect(writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10' })).rejects.toThrow(/refus/i)
+  })
+})
+
+describe('situation gate', () => {
+  const plan = { ...clean.plan, situation: 'a career change' }
+
+  it('gateSituation nulls an unallowed situation and leaves the rest of the plan alone', () => {
+    expect(gateSituation(plan, false)).toEqual({ ...plan, situation: null })
+    expect(gateSituation(plan, true)).toBe(plan)
+    expect(gateSituation(clean.plan, false)).toBe(clean.plan)
+  })
+
+  it('situationIssues raises a form issue only when a situation is required and the plan names none', () => {
+    expect(situationIssues(clean.plan, true)).toEqual([expect.objectContaining({ kind: 'form', sentence: null })])
+    expect(situationIssues({ ...plan, situation: '  ' }, true)).toHaveLength(1)
+    expect(situationIssues(plan, true)).toEqual([])
+    expect(situationIssues(clean.plan, false)).toEqual([])
+  })
+
+  it('variant A ends with a null plan situation when there is no gap and no notes', async () => {
+    mockParse.mockResolvedValueOnce(reply({ ...clean, plan }))
+    const run = await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10' })
+    expect(run.plan.situation).toBeNull()
+    expect(JSON.stringify(mockParse.mock.calls[0][0].messages)).toContain('Situation: null.')
+  })
+
+  it('variant A keeps the situation when the candidate asked to explain it', async () => {
+    mockParse.mockResolvedValueOnce(reply({ ...clean, plan }))
+    const run = await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10', notes: { explain: 'I changed field' } })
+    expect(run.plan.situation).toBe('a career change')
+    expect(run.refined).toBe(false)
+  })
+
+  it('variant A refines when a required situation is missing from the plan', async () => {
+    mockParse.mockResolvedValueOnce(reply(clean)).mockResolvedValueOnce(reply({ ...clean, plan }))
+    const run = await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10', notes: { explain: 'I changed field' } })
+    expect(mockParse).toHaveBeenCalledTimes(2)
+    expect(JSON.stringify(mockParse.mock.calls[1][0].messages)).toContain('the plan names no situation')
+    expect(run.refined).toBe(true)
+    expect(run.issues).toEqual([])
   })
 })
 

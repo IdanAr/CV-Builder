@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderLetter, type LetterSentence } from '../letter'
+import { renderLetter, stripBulletMarker, type LetterSentence } from '../letter'
 
 const prose = (text: string): LetterSentence => ({ text, facts: [], quotes: [], bullet: false })
 const bullet = (text: string): LetterSentence => ({ text, facts: [], quotes: [], bullet: true })
@@ -27,5 +27,14 @@ describe('renderLetter', () => {
   it('separates two paragraphs with a blank line even when one is a list', () => {
     const text = renderLetter(letter([prose('Intro.')], [bullet('one'), bullet('two')]))
     expect(text).toContain('Intro.\n\n- one\n- two')
+  })
+})
+
+describe('stripBulletMarker', () => {
+  it('removes one leading dash, bullet glyph or star with its space, and nothing else', () => {
+    expect(stripBulletMarker('- one two')).toBe('one two')
+    expect(stripBulletMarker('  • one two')).toBe('one two')
+    expect(stripBulletMarker('* one two')).toBe('one two')
+    expect(stripBulletMarker('-5 degrees')).toBe('-5 degrees')
   })
 })
