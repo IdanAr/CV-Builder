@@ -76,6 +76,7 @@ export function letterFileTitle(input: { company: string; role: string }): strin
     .map((part) => part.replace(UNSAFE_FILE_CHARS, ' ').replace(/\s+/g, ' ').trim())
     .filter(Boolean)
     .join(' - ')
+  // Cut by code point so an emoji's surrogate pair is never split (encodeURIComponent throws on a lone half).
   // Cutting can leave a dangling separator; trim it off.
-  return title.slice(0, MAX_FILE_TITLE).replace(/[\s-]+$/, '')
+  return Array.from(title).slice(0, MAX_FILE_TITLE).join('').replace(/[\s-]+$/, '')
 }

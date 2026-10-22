@@ -135,4 +135,10 @@ describe('letterFileTitle', () => {
     const cut = letterFileTitle({ company: 'b', role: `${'a'.repeat(100)} - x` })
     expect(cut).not.toMatch(/[\s-]$/)
   })
+
+  it('never splits a surrogate pair when it cuts', () => {
+    const t = letterFileTitle({ company: 'Acme', role: '😀'.repeat(100) })
+    expect(Array.from(t).length).toBeLessThanOrEqual(120)
+    expect(() => encodeURIComponent(t)).not.toThrow()
+  })
 })
