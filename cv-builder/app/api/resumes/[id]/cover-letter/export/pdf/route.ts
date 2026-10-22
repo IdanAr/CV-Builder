@@ -6,6 +6,7 @@ import { apiError, handleRouteError } from '@/lib/api/route-errors'
 import { checkRateLimit, EXPORT_RATE_LIMIT } from '@/lib/rate-limit'
 import { CoverLetterPdfTemplate } from '@/lib/pdf/templates/CoverLetterPdfTemplate'
 import { letterHeader, parseLetterLanguage } from '@/lib/coverletter/header'
+import { resolveDesign } from '@/lib/coverletter/design'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 
 export const POST = auth(async (req, ctx) => {
@@ -42,7 +43,14 @@ export const POST = auth(async (req, ctx) => {
       contact: header.contact || undefined,
       date: header.date,
       language,
+      design: resolveDesign(undefined, meta?.templateId),
+      recipient: [],
+      subject: null,
+      title: 'Cover Letter',
       font: meta?.fontFamily,
+      headerFont: meta?.headerFontFamily,
+      accentColor: meta?.accentColor,
+      fontScale: meta?.fontScale,
     })
     const buffer = await renderToBuffer(element as React.ReactElement<never>)
 
