@@ -65,6 +65,7 @@ describe('buildCoverLetterDocx', () => {
     expect(nameP).toContain('<w:jc w:val="center"/>')
     expect(contactP).toContain('<w:jc w:val="center"/>')
     expect(contactP).toMatch(/<w:pBdr>[\s\S]*<w:bottom [^>]*w:color="1a7f4b"/)
+    expect(contactP).toMatch(/<w:bottom [^>]*w:sz="8"/)
     expect(contactP).not.toContain('<w:left ')
     expect(nameP).not.toContain('<w:pBdr>')
     expect(xml.match(/<w:pBdr>/g)).toHaveLength(1)
@@ -82,7 +83,7 @@ describe('buildCoverLetterDocx', () => {
     expect(bordered).toHaveLength(1)
     const p = bordered[0]
     expect(p).toMatch(/<w:pBdr>[\s\S]*<w:left [^>]*w:color="1a7f4b"[^>]*>/)
-    expect(p).toMatch(/<w:left [^>]*w:sz="24"/)
+    expect(p).toMatch(/<w:left [^>]*w:sz="32"/)
     expect(p).not.toContain('<w:bottom')
     expect(p).toContain('<w:ind ')
     expect(p).not.toContain('<w:jc w:val="center"/>')
@@ -106,6 +107,9 @@ describe('buildCoverLetterDocx', () => {
     expect(bad.xml).toMatch(/w:color="0066cc"/i)
     const short = await parts({ accentColor: '#0af' })
     expect(short.xml).toMatch(/w:color="00aaff"/i)
+    // The PDF needs the "#" too, so a bare hex falls back in both formats.
+    const bare = await parts({ accentColor: '1a7f4b' })
+    expect(bare.xml).toMatch(/w:color="0066cc"/i)
     const none = await parts({ accentColor: undefined })
     expect(none.xml).toMatch(/w:color="0066cc"/i)
   })

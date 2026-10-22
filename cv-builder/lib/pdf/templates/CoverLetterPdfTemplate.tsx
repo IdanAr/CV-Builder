@@ -2,18 +2,12 @@ import React from 'react'
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer'
 import { letterLocale } from '@/lib/coverletter/header'
 import { letterBlocks } from '@/lib/coverletter/body'
+import { resolveAccent } from '@/lib/coverletter/accent'
 import type { CoverLetterRenderInput } from '@/lib/coverletter/render-input'
 import { PARAGRAPH_GAP_PT } from '@/lib/design/tokens'
 import { scalePt } from '@/lib/design/font-scale'
 import { withFontScale } from '../font-scale'
 import { mapToPdfFont, inToPt, renderPdfRichText } from './pdf-utils'
-
-// The CV templates' default accent (ResumeMetaSchema), used when the colour is not a valid hex.
-const DEFAULT_ACCENT = '#0066cc'
-const HEX_COLOUR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i
-
-const accentOf = (value: string | undefined): string =>
-  value !== undefined && HEX_COLOUR.test(value.trim()) ? value.trim() : DEFAULT_ACCENT
 
 /**
  * Single-column PDF for a cover letter, in one of two designs: "classic"
@@ -40,7 +34,7 @@ export function CoverLetterPdfTemplate({
   const bodyFont = mapToPdfFont(font ?? 'Helvetica')
   // pdfFontFamily falls back to the default family for a name it does not know, so this never throws.
   const nameFont = headerFont ? mapToPdfFont(headerFont) : bodyFont
-  const accent = accentOf(accentColor)
+  const accent = resolveAccent(accentColor)
   const accentEdge = design === 'accent-edge'
 
   const styles = StyleSheet.create(

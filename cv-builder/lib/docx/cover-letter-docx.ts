@@ -4,20 +4,9 @@ import {
 import { parseRichText } from '@/lib/rich-text'
 import { letterBlocks } from '@/lib/coverletter/body'
 import { letterLocale } from '@/lib/coverletter/header'
+import { resolveAccent } from '@/lib/coverletter/accent'
 import type { CoverLetterRenderInput } from '@/lib/coverletter/render-input'
 import { mapFont } from './fonts'
-
-// The CV templates' default accent (ResumeMetaSchema), used when the colour is not a valid hex.
-const DEFAULT_ACCENT = '0066cc'
-const HEX_COLOUR = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i
-
-/** A six-digit hex without the "#", which is how Word wants colours. */
-function accentOf(value: string | undefined): string {
-  const match = value === undefined ? null : HEX_COLOUR.exec(value.trim())
-  if (!match) return DEFAULT_ACCENT
-  const hex = match[1].toLowerCase()
-  return hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex
-}
 
 const BODY_SIZE = 22 // half-points: 11pt
 const NAME_SIZE = 32 // 16pt
@@ -57,7 +46,8 @@ export function buildCoverLetterDocx(input: CoverLetterRenderInput): Document {
   const { content, design, language, name, contact, date, recipient, subject, title } = input
   const bodyFont = mapFont(input.font ?? 'Arial')
   const nameFont = input.headerFont ? mapFont(input.headerFont) : bodyFont
-  const accent = accentOf(input.accentColor)
+  // docx wants bare hex, without the "#".
+  const accent = resolveAccent(input.accentColor).slice(1)
 
   const header: Paragraph[] = []
   if (design === 'accent-edge') {
@@ -68,12 +58,12 @@ export function buildCoverLetterDocx(input: CoverLetterRenderInput): Document {
       header.push(new Paragraph({
         children,
         indent: { left: 240 },
-        border: { left: { style: BorderStyle.SINGLE, size: 24, color: accent, space: 8 } },
+        border: { left: { style: BorderStyle.SINGLE, size: 32, color: accent, space: 8 } },
         spacing: { after: 360 },
       }))
     }
   } else {
-    const rule = { bottom: { style: BorderStyle.SINGLE, size: 6, color: accent, space: 6 } }
+    const rule = { bottom: { style: BorderStyle.SINGLE, size: 8, color: accent, space: 6 } }
     if (name) {
       header.push(new Paragraph({
         children: [new TextRun({ text: name, font: nameFont, size: NAME_SIZE, bold: true })],
