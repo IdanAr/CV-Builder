@@ -43,7 +43,7 @@ const uncited = written([{ text: 'At Acme I cut report time by 45%.', facts: ['F
 const reply = (parsed: unknown) => ({ parsed_output: parsed, stop_reason: 'end_turn', content: [], usage: { input_tokens: 1, output_tokens: 1 } })
 const planReply = reply(PLAN)
 const letterReply = (w: WrittenLetter) => reply(w.letter)
-const critiqueReply = (problems: { sentence: string; problem: string; check?: string }[] = []) => reply({ problems: problems.map((p) => ({ check: 'opening', ...p })) })
+const critiqueReply = (problems: { sentence: string; problem: string }[] = []) => reply({ problems })
 
 const run = (over: Parameters<typeof writeCoverLetterWithCritique>[2] = {}, posting = POSTING) =>
   writeCoverLetterWithCritique(FIXTURE_CV, posting, { today: '2026-10', ...over })
@@ -96,37 +96,6 @@ describe('writeCoverLetterWithCritique', () => {
     const critiquePrompt = JSON.stringify(mockParse.mock.calls[2][0].messages)
     expect(critiquePrompt).toContain('Why this company or role: Years of manual reports made me want to fix reporting for good.')
     expect(critiquePrompt).toContain('one exception')
-  })
-
-  it('does not spend a refine on critique problems that are wording only, and does not hold them for approval', async () => {
-    mockParse
-      .mockResolvedValueOnce(planReply)
-      .mockResolvedValueOnce(letterReply(clean))
-      .mockResolvedValueOnce(critiqueReply([{ sentence: 'A sentence only the critique quotes.', problem: 'Could be punchier.', check: 'style' }]))
-    const result = await run()
-    expect(mockParse).toHaveBeenCalledTimes(3)
-    expect(result.refined).toBe(false)
-    expect(result.pendingApprovals).toEqual([])
-    expect(result.critique).toEqual([{ sentence: 'A sentence only the critique quotes.', problem: 'Could be punchier.', check: 'style' }])
-  })
-
-  it('passes wording problems to a refine that runs for another reason', async () => {
-    mockParse
-      .mockResolvedValueOnce(planReply)
-      .mockResolvedValueOnce(letterReply(clean))
-      .mockResolvedValueOnce(
-        critiqueReply([
-          { sentence: 'Since 2021 I have worked as an analyst at Acme.', problem: 'States a role and dates with no claim.', check: 'history' },
-          { sentence: 'A sentence only the critique quotes.', problem: 'Could be punchier.', check: 'style' },
-        ]),
-      )
-      .mockResolvedValueOnce(reply(clean))
-    const result = await run()
-    expect(mockParse).toHaveBeenCalledTimes(4)
-    const refinePrompt = JSON.stringify(mockParse.mock.calls[3][0].messages)
-    expect(refinePrompt).toContain('States a role and dates with no claim.')
-    expect(refinePrompt).toContain('Could be punchier.')
-    expect(result.refined).toBe(true)
   })
 
   it('keeps a situation the candidate asked to explain', async () => {
@@ -190,27 +159,6 @@ describe('writeCoverLetterWithCritique', () => {
     expect(mockParse).toHaveBeenCalledTimes(3)
     expect(result.refined).toBe(false)
     expect(result.reviewed).toBe(true)
-    expect(result.pendingApprovals).toEqual(['A sentence only the critique quotes.: Reads like a stock opening.'])
-  })
-
-  it('holds only the rule problems for approval when the refine is skipped for time, not the wording ones', async () => {
-    mockParse
-      .mockResolvedValueOnce(planReply)
-      .mockResolvedValueOnce(letterReply(clean))
-      .mockResolvedValueOnce(
-        critiqueReply([
-          { sentence: 'A sentence only the critique quotes.', problem: 'Reads like a stock opening.' },
-          { sentence: 'Another sentence.', problem: 'Could be punchier.', check: 'style' },
-        ]),
-      )
-    let t = 0
-    const result = await run({
-      now: () => t,
-      onProgress: (step) => {
-        if (step === 'checking') t = 41_000
-      },
-    })
-    expect(result.refined).toBe(false)
     expect(result.pendingApprovals).toEqual(['A sentence only the critique quotes.: Reads like a stock opening.'])
   })
 

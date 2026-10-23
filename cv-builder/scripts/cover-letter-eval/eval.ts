@@ -128,8 +128,6 @@ interface Generated {
   refined?: boolean
   /** Variant B only: false when the critique was skipped for time or failed. */
   reviewed?: boolean
-  /** Variant B only: the critique's problems with the check each fails, null when it did not run. */
-  critique?: { sentence: string; problem: string; check: string }[] | null
   notices?: string[]
 }
 
@@ -349,7 +347,6 @@ async function generate(label: string, samples: number, opts: GenerateOptions = 
           firstIssues: run.firstIssues,
           refined: run.refined,
           reviewed: 'reviewed' in run ? (run.reviewed as boolean) : undefined,
-          critique: 'critique' in run ? (run.critique as Generated['critique']) : undefined,
           notices: run.notices,
         }
       }
