@@ -267,10 +267,13 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
 
   const flush = useCallback(async (): Promise<boolean> => {
     flushPending()
-    // Text a save left behind earlier is sent again, unless a newer edit has taken its place.
+    // Text a save left behind earlier is sent again. A newer edit has already
+    // dropped its entry (see save), so what remains is the letter's latest text.
     for (const [id, unsaved] of [...unsavedRef.current]) {
       if (resumeRef.current !== unsaved.resumeId) continue
-      void track(unsaved.resumeId, id, { content: unsaved.content }, editSeqRef.current.get(id) ?? 0)
+      const current = lettersRef.current.find((l) => l.id === id)
+      if (!current) continue
+      void track(unsaved.resumeId, id, { content: current.content }, editSeqRef.current.get(id) ?? 0)
     }
     const results = await Promise.all([...inflightRef.current])
     return results.every(Boolean) && unsavedRef.current.size === 0
@@ -286,6 +289,8 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
 
       const seq = (editSeqRef.current.get(id) ?? 0) + 1
       editSeqRef.current.set(id, seq)
+      // New text supersedes whatever an earlier save of this letter left behind.
+      if (patch.content !== undefined) unsavedRef.current.delete(id)
       setError(null)
       const current = lettersRef.current.find((l) => l.id === id)
       const previous: Previous | undefined = current

@@ -405,6 +405,43 @@ describe('useCoverLetters', () => {
     expect(bodyOf(patches[1])).toEqual({ content: 'typed' })
   })
 
+  it('typing after a failed content save replaces the retry, so flush sends only the newest text', async () => {
+    let n = 0
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      const key = `${init?.method ?? 'GET'} ${url}`
+      if (key === `GET ${BASE}`) return json(listBody([letter('l1')]))
+      if (key === `PATCH ${BASE}/l1`) {
+        if (n++ === 0) return json({ error: 'nope', code: 'INTERNAL_ERROR' }, 500)
+        // The server echoes what it was sent, so a stale PATCH would show up as stale text.
+        return json({ letter: letter('l1', { content: JSON.parse(init!.body as string).content }) })
+      }
+      return json({ error: `unrouted ${key}` }, 500)
+    })
+    const { result } = await mount()
+    act(() => {
+      result.current.save('l1', { content: 'a' })
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900)
+    })
+    expect(calls('PATCH', `${BASE}/l1`)).toHaveLength(1)
+
+    // The user types again; the new text is still held for the debounce when Export flushes.
+    act(() => {
+      result.current.save('l1', { content: 'ab' })
+    })
+    await act(async () => {
+      await expect(result.current.flush()).resolves.toBe(true)
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+
+    const patches = calls('PATCH', `${BASE}/l1`)
+    expect(patches.map(bodyOf)).toEqual([{ content: 'a' }, { content: 'ab' }])
+    expect(result.current.letters[0].content).toBe('ab')
+  })
+
   it('a failed Keep this letter puts the approvals back and reports the error', async () => {
     route({
       [`GET ${BASE}`]: () => json(listBody([letter('l1', { pendingApprovals: ['10 years'] })])),
