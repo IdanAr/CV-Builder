@@ -8,7 +8,7 @@ vi.mock('@/lib/ai/models', () => ({
 }))
 
 import { BANNED_PHRASES, renderLetter, type LetterSentence } from '../letter'
-import { gateSituation, situationIssues, writeCoverLetter } from '../pipeline'
+import { assembleRun, gateSituation, situationIssues, SITUATION_EXPLAIN_NOTICE, SITUATION_GAP_NOTICE, writeCoverLetter } from '../pipeline'
 import { buildWritePrompt } from '../prompt'
 import { buildFactSheet, renderFactSheet } from '../fact-sheet'
 import { preparePosting } from '../posting'
@@ -166,6 +166,22 @@ describe('situation gate', () => {
     expect(situationIssues({ ...plan, situation: '  ' }, true)).toHaveLength(1)
     expect(situationIssues(plan, true)).toEqual([])
     expect(situationIssues(clean.plan, false)).toEqual([])
+  })
+
+  it('situationIssues speaks to the user, in plain words, about what they asked to explain or about the gap', () => {
+    expect(SITUATION_EXPLAIN_NOTICE).toBe('The letter may not address what you asked to explain. Check it before sending.')
+    for (const notice of [SITUATION_EXPLAIN_NOTICE, SITUATION_GAP_NOTICE]) {
+      expect(notice).not.toMatch(/plan|—/)
+      expect(notice).toMatch(/Check it before sending\.$/)
+    }
+    expect(situationIssues(clean.plan, true, true)).toEqual([{ kind: 'form', sentence: null, detail: SITUATION_EXPLAIN_NOTICE, code: 'situation-missing' }])
+    expect(situationIssues(clean.plan, true, false)).toEqual([{ kind: 'form', sentence: null, detail: SITUATION_GAP_NOTICE, code: 'situation-missing' }])
+  })
+
+  it('assembleRun shows the user the plain notice, never the instruction meant for the model', () => {
+    const run = assembleRun({ written: clean, issues: situationIssues(clean.plan, true, true), firstIssues: [], sheetFacts: 10, name: 'Dana Levi', refined: true, calls: 2 })
+    expect(run.notices).toEqual([SITUATION_EXPLAIN_NOTICE])
+    expect(run.notices.join(' ')).not.toMatch(/the plan/i)
   })
 
   it('variant A ends with a null plan situation when there is no gap and no notes', async () => {

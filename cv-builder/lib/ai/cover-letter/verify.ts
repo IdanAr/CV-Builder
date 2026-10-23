@@ -22,6 +22,8 @@ export interface VerifyIssue {
   sentence: string | null
   /** User-facing explanation. */
   detail: string
+  /** Set when the refine needs a different, model-facing instruction than the user-facing detail (see buildRefinePrompt). */
+  code?: 'situation-missing'
 }
 
 export interface VerifyInput {

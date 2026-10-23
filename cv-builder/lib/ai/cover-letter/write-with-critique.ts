@@ -5,6 +5,9 @@
 // what an in-call self-review misses (spec 6.3, 9). Whatever still fails
 // becomes a pending approval, as in variant A: that includes critique
 // problems no refine got to fix, and a letter the critique never reviewed.
+// Critique problems of wording only ("style") do not start a refine on their
+// own and are not held for approval: a refine costs 10 to 15 seconds, and the
+// verifier already catches the stock phrases and em-dashes deterministically.
 import { z } from 'zod'
 import { COVER_LETTER_MODEL, COVER_LETTER_THINKING } from '@/lib/ai/models'
 import type { ResumeData } from '@/lib/schemas/resume.zod'
@@ -17,6 +20,7 @@ import {
   assembleRun,
   callStructured,
   CutOffError,
+  explainedIn,
   gateSituation,
   greetingFor,
   signOffFor,
@@ -27,13 +31,17 @@ import {
   type WriteOptions,
 } from './pipeline'
 import { preparePosting } from './posting'
-import { buildCritiquePrompt, buildRefinePrompt, buildWritePrompt, situationAllowed, situationRequired } from './prompt'
+import { buildCritiquePrompt, buildRefinePrompt, buildWritePrompt, CRITIQUE_CHECKS, situationAllowed, situationRequired } from './prompt'
 import { LetterPlanSchema, StructuredLetterSchema, WrittenLetterSchema, type WrittenLetter } from './schema'
 import { verifyLetter, type VerifyIssue } from './verify'
 
 const CritiqueSchema = z.object({
-  problems: z.array(z.object({ sentence: z.string(), problem: z.string() })),
+  problems: z.array(z.object({ sentence: z.string(), problem: z.string(), check: z.enum(CRITIQUE_CHECKS) })),
 })
+export type CritiqueProblem = z.infer<typeof CritiqueSchema>['problems'][number]
+
+/** A critique problem that breaks one of the writer's rules, as opposed to wording only. */
+const breaksARule = (p: CritiqueProblem) => p.check !== 'style'
 
 /** A refine is only started with at least this much of the budget left. */
 const REFINE_FLOOR_MS = 20_000
@@ -51,7 +59,7 @@ export async function writeCoverLetterWithCritique(
   data: ResumeData,
   input: { company: string; role: string; jobText: string },
   opts: WriteOptions = {},
-): Promise<CoverLetterRun & { language: 'en' | 'he'; reviewed: boolean }> {
+): Promise<CoverLetterRun & { language: 'en' | 'he'; reviewed: boolean; critique: CritiqueProblem[] | null }> {
   const now = opts.now ?? Date.now
   const deadline = opts.deadlineAt ?? now() + (opts.deadlineMs ?? 60_000)
   const left = () => deadline - now()
@@ -73,7 +81,7 @@ export async function writeCoverLetterWithCritique(
   const settle = (w: WrittenLetter): WrittenLetter => ({ ...w, plan: gateSituation(w.plan, allowed), letter: { ...w.letter, greeting, signOff: signOffFor(w.letter.signOff, name) } })
   const check = (w: WrittenLetter) => [
     ...verifyLetter({ letter: w.letter, sheet, jobText: posting.text, company: posting.company, role: input.role, today, sparse: w.plan.sparse }),
-    ...situationIssues(w.plan, required),
+    ...situationIssues(w.plan, required, explainedIn(opts.notes)),
   ]
 
   let calls = 0
@@ -110,22 +118,24 @@ export async function writeCoverLetterWithCritique(
 
   // The letter is written; from here a call that fails or runs out of time
   // costs the review, never the letter.
-  let critiqued: VerifyIssue[] | null = null
+  let critique: CritiqueProblem[] | null = null
   if (left() >= CRITIQUE_FLOOR_MS) {
     progress('critiquing')
     try {
-      const critique = await call(buildCritiquePrompt(written, factSheet, posting.text, allowed), CritiqueSchema)
-      critiqued = critique.problems.map((p) => ({ kind: 'form', sentence: p.sentence, detail: p.problem }))
+      critique = (await call(buildCritiquePrompt({ letter: written, factSheet, postingText: posting.text, situationAllowed: allowed, notes: opts.notes }), CritiqueSchema)).problems
     } catch {
-      critiqued = null
+      critique = null
     }
   }
+  const asIssue = (p: CritiqueProblem): VerifyIssue => ({ kind: 'form', sentence: p.sentence, detail: p.problem })
+  const critiqued = critique?.map(asIssue) ?? null
+  const ruleProblems = critique?.filter(breaksARule).map(asIssue) ?? []
 
   progress('checking')
   let issues = check(written)
   const firstIssues = issues
   let refined = false
-  if ((issues.some(worthARefine) || (critiqued?.length ?? 0) > 0) && left() >= REFINE_FLOOR_MS) {
+  if ((issues.some(worthARefine) || ruleProblems.length > 0) && left() >= REFINE_FLOOR_MS) {
     progress('refining')
     try {
       written = settle(await call(buildRefinePrompt({ previous: written, issues: [...issues, ...(critiqued ?? [])], factSheet, posting }), WrittenLetterSchema))
@@ -136,12 +146,12 @@ export async function writeCoverLetterWithCritique(
     }
   }
   const run = assembleRun({ written, issues, firstIssues, sheetFacts: sheet.facts.length, name, refined, calls })
-  // Critique problems no refine fixed are not verified facts either: the user keeps the letter knowingly.
-  if (critiqued && !refined) run.pendingApprovals.push(...critiqued.map(approvalText))
+  // Critique problems no refine fixed are not verified facts either: the user keeps the letter knowingly. Wording-only ones are not held.
+  if (!refined) run.pendingApprovals.push(...ruleProblems.map(approvalText))
   if (!critiqued) {
     run.notices.push(NOT_REVIEWED_NOTICE)
     run.pendingApprovals.push(NOT_REVIEWED_APPROVAL)
   }
   progress('done')
-  return { ...run, language: detectLanguage(posting.text), reviewed: critiqued !== null }
+  return { ...run, language: detectLanguage(posting.text), reviewed: critique !== null, critique }
 }

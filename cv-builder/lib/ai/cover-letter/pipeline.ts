@@ -78,18 +78,21 @@ export function gateSituation(plan: LetterPlan, allowed: boolean): LetterPlan {
   return allowed || plan.situation === null ? plan : { ...plan, situation: null }
 }
 
-/** The code requires a sentence about the situation, but the model's plan names none: the refine is asked to add it. */
-export function situationIssues(plan: LetterPlan, required: boolean): VerifyIssue[] {
+export const SITUATION_EXPLAIN_NOTICE = 'The letter may not address what you asked to explain. Check it before sending.'
+export const SITUATION_GAP_NOTICE = 'The letter may not address the gap in your work history. Check it before sending.'
+
+/**
+ * The code requires a sentence about the situation, but the model's plan names
+ * none. The detail is what the user sees if it is still missing at the end;
+ * the refine gets its own instruction through the code (buildRefinePrompt).
+ */
+export function situationIssues(plan: LetterPlan, required: boolean, explained = false): VerifyIssue[] {
   if (!required || plan.situation?.trim()) return []
-  return [
-    {
-      kind: 'form',
-      sentence: null,
-      detail:
-        'The candidate asked to explain something or the dates show an unfilled gap, but the plan names no situation. Name it in the plan and, unless the letter already does, add one sentence about it, woven into the argument for fit.',
-    },
-  ]
+  return [{ kind: 'form', sentence: null, detail: explained ? SITUATION_EXPLAIN_NOTICE : SITUATION_GAP_NOTICE, code: 'situation-missing' }]
 }
+
+/** Whether the candidate wrote something under "Anything to explain". */
+export const explainedIn = (notes?: LetterNotes) => Boolean(notes?.explain?.trim())
 
 /** The model's closing word, then the CV name exactly as written. */
 export function signOffFor(modelSignOff: string, name: string): string {
@@ -170,7 +173,7 @@ export async function writeCoverLetter(
   })
   const check = (w: WrittenLetter) => [
     ...verifyLetter({ letter: w.letter, sheet, jobText: posting.text, company: posting.company, role: input.role, today, sparse: w.plan.sparse }),
-    ...situationIssues(w.plan, required),
+    ...situationIssues(w.plan, required, explainedIn(opts.notes)),
   ]
 
   progress('writing')
