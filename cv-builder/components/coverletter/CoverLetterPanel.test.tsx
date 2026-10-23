@@ -12,6 +12,12 @@ import { Toaster } from '@/components/ui/Toaster'
 const hook = vi.hoisted(() => ({ current: null as unknown }))
 vi.mock('./use-cover-letters', () => ({ useCoverLetters: () => hook.current }))
 
+const flushSaveMock = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock('@/lib/stores/resume-editor.store', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/stores/resume-editor.store')>()),
+  flushSave: flushSaveMock,
+}))
+
 const defaultMeta: ResumeMeta = {
   templateId: 'classic', fontFamily: 'Calibri', headerFontFamily: 'Calibri',
   primaryColor: '#000000', accentColor: '#0066cc',
@@ -57,7 +63,7 @@ function mockHook(over: Partial<UseCoverLetters> = {}): UseCoverLetters {
     }),
     save: vi.fn(),
     remove: vi.fn(async () => {}),
-    flush: vi.fn(async () => {}),
+    flush: vi.fn(async () => true),
     postingFor: vi.fn(async () => null),
     ...over,
   }
@@ -81,6 +87,8 @@ function fillForm() {
 
 beforeEach(() => {
   seq = 0
+  flushSaveMock.mockReset()
+  flushSaveMock.mockResolvedValue(undefined)
   useToastStore.setState({ toasts: [] })
   useResumeEditorStore.setState({
     resumeId: 'r1',
@@ -597,9 +605,9 @@ describe('CoverLetterPanel: copy and export act on the open letter', () => {
       save: vi.fn(() => { order.push('save') }),
       flush: vi.fn(
         () =>
-          new Promise<void>((resolve) => {
+          new Promise<boolean>((resolve) => {
             order.push('flush')
-            release = resolve
+            release = () => resolve(true)
           })
       ),
     })
@@ -618,6 +626,60 @@ describe('CoverLetterPanel: copy and export act on the open letter', () => {
     expect(order).toEqual(['save', 'flush', 'fetch'])
     expect(fetchMock.mock.calls[0][0]).toBe('/api/resumes/r1/cover-letters/l1/export/pdf')
     clickSpy.mockRestore()
+  })
+
+  it('a failed letter save stops the export: no request, and the message says nothing was exported', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const { clickSpy } = stubDownload()
+    const hookValue = mockHook({
+      letters: [letter({ content: 'Open letter text.' })],
+      flush: vi.fn(async () => false),
+    })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^pdf$/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "Couldn't save your last edit, so nothing was exported. Please try again."
+    )
+    expect(hookValue.flush).toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(clickSpy).not.toHaveBeenCalled()
+    // The button is usable again for the retry.
+    await waitFor(() => expect(screen.getByRole('button', { name: /^pdf$/i })).toBeEnabled())
+    clickSpy.mockRestore()
+  })
+
+  it('the CV autosave is flushed before the letter flush, so the file and the picker agree', async () => {
+    const order: string[] = []
+    flushSaveMock.mockImplementation(async () => { order.push('cv') })
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => { order.push('fetch'); return exportResponse() }))
+    const { clickSpy } = stubDownload()
+    mockHook({
+      letters: [letter({ content: 'Open letter text.' })],
+      flush: vi.fn(async () => { order.push('letter'); return true }),
+    })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^docx$/i }))
+    await waitFor(() => expect(clickSpy).toHaveBeenCalled())
+    expect(order).toEqual(['cv', 'letter', 'fetch'])
+    clickSpy.mockRestore()
+  })
+
+  it('a failed CV save stops the export before the letter flush and any request', async () => {
+    flushSaveMock.mockRejectedValue(new Error('offline'))
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const hookValue = mockHook({ letters: [letter({ content: 'Open letter text.' })] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^pdf$/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "Couldn't save your latest changes before exporting. Please try again."
+    )
+    expect(hookValue.flush).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('a Hebrew letter exports the same way: the server reads the language, the client sends nothing', async () => {

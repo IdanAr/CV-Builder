@@ -387,8 +387,20 @@ function OpenLetter({
     setExporting(format)
     setExportError(null)
     try {
-      // The server exports the saved letter, so the last keystrokes must land first.
-      await onFlush()
+      // The route reads the saved CV (template, accent, fonts, name), so its pending autosave lands first,
+      // like every other export in the editor.
+      try {
+        await flushSave()
+      } catch {
+        setExportError("Couldn't save your latest changes before exporting. Please try again.")
+        return
+      }
+      // The route also exports the saved letter, so the last keystrokes must land too. A save that failed
+      // means the file would hold older text, so nothing is exported.
+      if (!(await onFlush())) {
+        setExportError("Couldn't save your last edit, so nothing was exported. Please try again.")
+        return
+      }
       const res = await fetch(`/api/resumes/${resumeId}/cover-letters/${letter.id}/export/${format}`, { method: 'POST' })
       if (!res.ok) throw new Error(await apiErrorMessage(res, 'Export failed. Please try again.'))
       const blob = await res.blob()

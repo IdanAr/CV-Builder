@@ -101,7 +101,7 @@ cv-builder/
 │   ├── templates/     # HTML/CSS live-preview templates (5)
 │   ├── ats/            # AtsScorePanel, AtsFixReviewPanel
 │   ├── ai/              # AiSuggestButton
-│   ├── coverletter/      # CoverLetterPanel, LetterList, LetterNotes, LetterProgress, DesignPicker, use-cover-letters
+│   ├── coverletter/      # CoverLetterPanel, LetterList, LetterNotes, LetterProgress, DesignPicker, use-cover-letters, use-letter-deletion
 │   ├── applications/      # ApplicationsView, Board, Table, Filters, ActivityLog, ColumnForm
 │   ├── jobsearch/           # ProfileList, ProfileFormDialog (+ profile-form/ steps), ProfileSettings, RuleBuilder (Sources and rules)
 │   ├── pipeline/            # PipelineInbox, StageTabs, PipelineList, JobDetail, hooks (usePipelineJobs, usePipelineActions)

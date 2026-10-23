@@ -327,9 +327,131 @@ describe('useCoverLetters', () => {
       result.current.save('l1', { content: 'x' })
     })
     await act(async () => {
-      await expect(result.current.flush()).resolves.toBeUndefined()
+      await expect(result.current.flush()).resolves.toBe(false)
     })
     expect(result.current.error).toBe('Internal server error')
+  })
+
+  it('flush resolves true when nothing is held and when every save it waited on worked', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () => json({ letter: letter('l1', { content: 'x' }) }),
+    })
+    const { result } = await mount()
+    await act(async () => {
+      await expect(result.current.flush()).resolves.toBe(true)
+    })
+    act(() => {
+      result.current.save('l1', { content: 'x' })
+    })
+    await act(async () => {
+      await expect(result.current.flush()).resolves.toBe(true)
+    })
+  })
+
+  it('flush resolves false when a design save it waited on failed', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () => json({ error: 'nope', code: 'INTERNAL_ERROR' }, 500),
+    })
+    const { result } = await mount()
+    act(() => {
+      result.current.save('l1', { design: 'accent-edge' })
+    })
+    await act(async () => {
+      await expect(result.current.flush()).resolves.toBe(false)
+    })
+  })
+
+  it('flush resolves false for a network failure too', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () => Promise.reject(new TypeError('Failed to fetch')),
+    })
+    const { result } = await mount()
+    act(() => {
+      result.current.save('l1', { content: 'x' })
+    })
+    await act(async () => {
+      await expect(result.current.flush()).resolves.toBe(false)
+    })
+  })
+
+  it('a content save that failed on its own is sent again by the next flush, which then resolves true', async () => {
+    let n = 0
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () =>
+        n++ === 0
+          ? json({ error: 'nope', code: 'INTERNAL_ERROR' }, 500)
+          : json({ letter: letter('l1', { content: 'typed' }) }),
+    })
+    const { result } = await mount()
+    act(() => {
+      result.current.save('l1', { content: 'typed' })
+    })
+    // The debounce fires and the save fails with nobody waiting on it.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900)
+    })
+    expect(calls('PATCH', `${BASE}/l1`)).toHaveLength(1)
+    expect(result.current.error).toBe('nope')
+
+    await act(async () => {
+      await expect(result.current.flush()).resolves.toBe(true)
+    })
+    const patches = calls('PATCH', `${BASE}/l1`)
+    expect(patches).toHaveLength(2)
+    expect(bodyOf(patches[1])).toEqual({ content: 'typed' })
+  })
+
+  it('a failed Keep this letter puts the approvals back and reports the error', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1', { pendingApprovals: ['10 years'] })])),
+      [`PATCH ${BASE}/l1`]: () => json({ error: 'nope', code: 'INTERNAL_ERROR' }, 500),
+    })
+    const { result } = await mount()
+    await act(async () => {
+      result.current.save('l1', { pendingApprovals: [] })
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.letters[0].pendingApprovals).toEqual(['10 years'])
+    expect(result.current.error).toBe('nope')
+  })
+
+  it('a failed Keep this letter after a network error puts the approvals back too', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1', { pendingApprovals: ['10 years'] })])),
+      [`PATCH ${BASE}/l1`]: () => Promise.reject(new TypeError('Failed to fetch')),
+    })
+    const { result } = await mount()
+    await act(async () => {
+      result.current.save('l1', { pendingApprovals: [] })
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.letters[0].pendingApprovals).toEqual(['10 years'])
+  })
+
+  it('a failed Keep this letter does not undo approvals the screen has since moved on from', async () => {
+    const releases: Array<() => void> = []
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1', { pendingApprovals: ['10 years'] })])),
+      [`PATCH ${BASE}/l1`]: () =>
+        new Promise<Response>((resolve) => {
+          releases.push(() => resolve(json({ error: 'nope', code: 'INTERNAL_ERROR' }, 500)))
+        }),
+    })
+    const { result } = await mount()
+    act(() => {
+      result.current.save('l1', { pendingApprovals: [] })
+      result.current.save('l1', { pendingApprovals: [] })
+    })
+    // The first save fails while the second (a newer Keep) is still out: the screen keeps the newer value.
+    await act(async () => {
+      releases[0]()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.letters[0].pendingApprovals).toEqual([])
   })
 
   it('two quick design saves answered in reverse order leave the last choice in place', async () => {
