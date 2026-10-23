@@ -1,5 +1,6 @@
 import {
   AlignmentType, BorderStyle, Document, LevelFormat, Paragraph, TextRun, convertInchesToTwip,
+  type IParagraphStyleOptions, type IParagraphStylePropertiesOptions,
 } from 'docx'
 import { parseRichText } from '@/lib/rich-text'
 import { letterBlocks } from '@/lib/coverletter/body'
@@ -12,6 +13,27 @@ const BODY_SIZE = 22 // half-points: 11pt
 const NAME_SIZE = 32 // 16pt
 const SMALL_SIZE = 20 // 10pt
 const BULLET_REF = 'letter-bullets'
+
+const EDGE_INDENT = 240
+const EDGE_BAR_SIZE = 32
+const RULE_SIZE = 8
+
+/**
+ * Named paragraph styles, one per kind of paragraph. Each paragraph also carries
+ * the same spacing, alignment and border as direct formatting, which Word uses;
+ * Pages drops direct paragraph formatting from a paragraph that has no named
+ * style, so the style is what keeps the layout there.
+ */
+const STYLE = {
+  centered: 'LetterCentered',
+  centeredRule: 'LetterCenteredRule',
+  edge: 'LetterEdge',
+  line: 'LetterLine',
+  block: 'LetterBlock',
+  body: 'LetterBody',
+  bullet: 'LetterBullet',
+  bulletEnd: 'LetterBulletEnd',
+} as const
 
 function richTextRuns(text: string, font: string): TextRun[] {
   const lines = text.replace(/\r\n?/g, '\n').split('\n')
@@ -32,6 +54,10 @@ function richTextRuns(text: string, font: string): TextRun[] {
   return out
 }
 
+function letterStyle(id: string, name: string, paragraph: IParagraphStylePropertiesOptions): IParagraphStyleOptions {
+  return { id, name, basedOn: 'Normal', next: 'Normal', quickFormat: true, paragraph }
+}
+
 /**
  * Single-column DOCX for a cover letter, in one of two designs: "classic"
  * (centred header over a thin accent rule) or "accent-edge" (left-aligned header
@@ -48,6 +74,8 @@ export function buildCoverLetterDocx(input: CoverLetterRenderInput): Document {
   const nameFont = input.headerFont ? mapFont(input.headerFont) : bodyFont
   // docx wants bare hex, without the "#".
   const accent = resolveAccent(input.accentColor).slice(1)
+  const rule = { bottom: { style: BorderStyle.SINGLE, size: RULE_SIZE, color: accent, space: 6 } }
+  const edgeBar = { left: { style: BorderStyle.SINGLE, size: EDGE_BAR_SIZE, color: accent, space: 8 } }
 
   const header: Paragraph[] = []
   if (design === 'accent-edge') {
@@ -57,16 +85,17 @@ export function buildCoverLetterDocx(input: CoverLetterRenderInput): Document {
       if (contact) children.push(new TextRun({ text: contact, font: bodyFont, size: SMALL_SIZE, break: name ? 1 : undefined }))
       header.push(new Paragraph({
         children,
-        indent: { left: 240 },
-        border: { left: { style: BorderStyle.SINGLE, size: 32, color: accent, space: 8 } },
+        style: STYLE.edge,
+        indent: { left: EDGE_INDENT },
+        border: edgeBar,
         spacing: { after: 360 },
       }))
     }
   } else {
-    const rule = { bottom: { style: BorderStyle.SINGLE, size: 8, color: accent, space: 6 } }
     if (name) {
       header.push(new Paragraph({
         children: [new TextRun({ text: name, font: nameFont, size: NAME_SIZE, bold: true })],
+        style: contact ? STYLE.centered : STYLE.centeredRule,
         alignment: AlignmentType.CENTER,
         spacing: { after: contact ? 40 : 360 },
         ...(contact ? {} : { border: rule }),
@@ -75,6 +104,7 @@ export function buildCoverLetterDocx(input: CoverLetterRenderInput): Document {
     if (contact) {
       header.push(new Paragraph({
         children: [new TextRun({ text: contact, font: bodyFont, size: SMALL_SIZE })],
+        style: STYLE.centeredRule,
         alignment: AlignmentType.CENTER,
         spacing: { after: 360 },
         border: rule,
@@ -86,18 +116,22 @@ export function buildCoverLetterDocx(input: CoverLetterRenderInput): Document {
   if (date) {
     preamble.push(new Paragraph({
       children: [new TextRun({ text: date, font: bodyFont, size: SMALL_SIZE })],
+      style: STYLE.block,
       spacing: { after: 240 },
     }))
   }
   recipient.forEach((line, i) => {
+    const last = i === recipient.length - 1
     preamble.push(new Paragraph({
       children: [new TextRun({ text: line, font: bodyFont, size: BODY_SIZE })],
-      spacing: { after: i === recipient.length - 1 ? 240 : 0 },
+      style: last ? STYLE.block : STYLE.line,
+      spacing: { after: last ? 240 : 0 },
     }))
   })
   if (subject) {
     preamble.push(new Paragraph({
       children: [new TextRun({ text: subject, font: bodyFont, size: BODY_SIZE, bold: true })],
+      style: STYLE.block,
       spacing: { after: 240 },
     }))
   }
@@ -105,13 +139,15 @@ export function buildCoverLetterDocx(input: CoverLetterRenderInput): Document {
   const body: Paragraph[] = []
   for (const block of letterBlocks(content)) {
     if (block.kind === 'text') {
-      body.push(new Paragraph({ children: richTextRuns(block.text, bodyFont), spacing: { after: 200 } }))
+      body.push(new Paragraph({ children: richTextRuns(block.text, bodyFont), style: STYLE.body, spacing: { after: 200 } }))
     } else {
       block.items.forEach((item, i) => {
+        const last = i === block.items.length - 1
         body.push(new Paragraph({
           children: richTextRuns(item, bodyFont),
+          style: last ? STYLE.bulletEnd : STYLE.bullet,
           numbering: { reference: BULLET_REF, level: 0 },
-          spacing: { after: i === block.items.length - 1 ? 200 : 40 },
+          spacing: { after: last ? 200 : 40 },
         }))
       })
     }
@@ -139,6 +175,17 @@ export function buildCoverLetterDocx(input: CoverLetterRenderInput): Document {
       default: {
         document: { run: { language: language === 'he' ? { value: locale, bidirectional: locale } : { value: locale } } },
       },
+      paragraphStyles: [
+        { id: 'Normal', name: 'Normal', quickFormat: true, run: { font: bodyFont, size: BODY_SIZE }, paragraph: { spacing: { after: 0 } } },
+        letterStyle(STYLE.centered, 'Letter Centered', { alignment: AlignmentType.CENTER, spacing: { after: 40 } }),
+        letterStyle(STYLE.centeredRule, 'Letter Centered Rule', { alignment: AlignmentType.CENTER, spacing: { after: 360 }, border: rule }),
+        letterStyle(STYLE.edge, 'Letter Edge', { indent: { left: EDGE_INDENT }, spacing: { after: 360 }, border: edgeBar }),
+        letterStyle(STYLE.line, 'Letter Line', { spacing: { after: 0 } }),
+        letterStyle(STYLE.block, 'Letter Block', { spacing: { after: 240 } }),
+        letterStyle(STYLE.body, 'Letter Body', { spacing: { after: 200 } }),
+        letterStyle(STYLE.bullet, 'Letter Bullet', { spacing: { after: 40 } }),
+        letterStyle(STYLE.bulletEnd, 'Letter Bullet End', { spacing: { after: 200 } }),
+      ],
     },
     sections: [{
       properties: {

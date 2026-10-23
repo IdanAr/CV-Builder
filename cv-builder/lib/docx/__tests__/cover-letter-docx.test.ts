@@ -42,6 +42,30 @@ describe('buildCoverLetterDocx', () => {
     expect(xml).not.toMatch(/<w:tbl[ >]|<w:txbxContent|<wp:anchor|<w:drawing|<w:pict|<w:cols w:num="[2-9]"/)
   })
 
+  // Pages drops direct paragraph formatting from a paragraph without a named style,
+  // which flattened both designs (no centring, rule, bar or spacing).
+  it.each(['classic', 'accent-edge'] as const)('%s: gives every paragraph a named style that carries its layout', async (design) => {
+    const { xml, styles } = await parts({ design, content: 'Dear Ms Rivera,\n\n- First result with enough words\n- Second result with enough words\n\nBest regards,\nJordan Example' })
+    const used = new Set<string>()
+    for (const p of paragraphs(xml)) {
+      const id = /<w:pStyle w:val="([^"]+)"\/>/.exec(p)?.[1]
+      expect(id, p).toBeDefined()
+      used.add(id!)
+    }
+    for (const id of used) expect(styles).toContain(`w:styleId="${id}"`)
+    expect(styles).toContain('w:styleId="Normal"')
+    const style = (id: string) => new RegExp(`<w:style [^>]*w:styleId="${id}"[\\s\\S]*?</w:style>`).exec(styles)?.[0] ?? ''
+    if (design === 'classic') {
+      expect(style('LetterCentered')).toContain('<w:jc w:val="center"/>')
+      expect(style('LetterCenteredRule')).toMatch(/<w:bottom w:val="single" w:color="1a7f4b" w:sz="8"/)
+    } else {
+      expect(style('LetterEdge')).toMatch(/<w:left w:val="single" w:color="1a7f4b" w:sz="32"/)
+      expect(style('LetterEdge')).toContain('<w:ind w:left="240"/>')
+    }
+    expect(style('LetterBody')).toContain('<w:spacing w:after="200"/>')
+    expect(style('LetterBullet')).toContain('<w:spacing w:after="40"/>')
+  })
+
   it('renders blank-line separated text as separate Word paragraphs', async () => {
     const { xml } = await parts({ content: 'ALPHAPARA about the role.\n\nBETAPARA about my background.' })
     const ps = paragraphs(xml)
