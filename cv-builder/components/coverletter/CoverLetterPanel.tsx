@@ -16,6 +16,8 @@ import type { CoverLetterView } from '@/lib/api/cover-letters'
 import type { CoverLetterNotes, CreateCoverLetterInput } from '@/lib/schemas/cover-letter.zod'
 import { useCoverLetters } from './use-cover-letters'
 import { useLetterDeletion } from './use-letter-deletion'
+import { resolveDesign, type LetterDesign } from '@/lib/coverletter/design'
+import { DesignPicker } from './DesignPicker'
 import { LetterList, letterCompany, letterDate, letterTitle } from './LetterList'
 import { LetterNotes } from './LetterNotes'
 import { LetterProgress } from './LetterProgress'
@@ -65,6 +67,22 @@ function wordCount(text: string): number {
 
 function fileSafe(s: string): string {
   return s.trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 40)
+}
+
+/** The download name the export route put in Content-Disposition: the UTF-8 `filename*` when there is one, else the ASCII `filename`. */
+function dispositionFilename(header: string | null): string | null {
+  if (!header) return null
+  const encoded = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(header)?.[1]
+  if (encoded) {
+    try {
+      const name = decodeURIComponent(encoded.trim())
+      if (name) return name
+    } catch {
+      // A malformed escape: fall through to the plain filename.
+    }
+  }
+  const plain = /filename\s*=\s*"([^"]+)"/i.exec(header)?.[1] ?? /filename\s*=\s*([^;]+)/i.exec(header)?.[1]
+  return plain?.trim() || null
 }
 
 /** Notes with blank fields left out, so an untouched field is not sent as an empty string. */
@@ -323,13 +341,16 @@ function OpenLetter({
   letter,
   resumeId,
   onSave,
+  onFlush,
   onBack,
   onRetry,
 }: {
   letter: CoverLetterView
   resumeId: string | null
   onSave: ReturnType<typeof useCoverLetters>['save']
+  onFlush: ReturnType<typeof useCoverLetters>['flush']
   onBack: () => void
+  /** Opens the new-letter form from this letter's job; Try again and Write a new version both use it. */
   onRetry: (letter: CoverLetterView) => void
 }) {
   const id = useId()
@@ -337,10 +358,18 @@ function OpenLetter({
   const [copied, setCopied] = useState(false)
   const [exporting, setExporting] = useState<'docx' | 'pdf' | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
+  const templateId = useResumeEditorStore((s) => s.meta.templateId)
+  const design = resolveDesign(letter.design, templateId)
 
   const approvals = letter.pendingApprovals
   const hasLetter = letter.content.trim().length > 0
   const canExport = hasLetter && approvals.length === 0
+
+  function writeAgain() {
+    saveNotes()
+    // The notes as they stand in the form, including an edit that has not been blurred yet.
+    onRetry({ ...letter, notes: { ...(letter.notes ?? {}), ...notes } })
+  }
 
   function saveNotes() {
     const saved = letter.notes ?? {}
@@ -365,18 +394,28 @@ function OpenLetter({
     setExporting(format)
     setExportError(null)
     try {
-      const res = await fetch(`/api/resumes/${resumeId}/cover-letter/export/${format}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: letter.content, language: letter.language }),
-      })
+      // The route reads the saved CV (template, accent, fonts, name), so its pending autosave lands first,
+      // like every other export in the editor.
+      try {
+        await flushSave()
+      } catch {
+        setExportError("Couldn't save your latest changes before exporting. Please try again.")
+        return
+      }
+      // The route also exports the saved letter, so the last keystrokes must land too. A save that failed
+      // means the file would hold older text, so nothing is exported.
+      if (!(await onFlush())) {
+        setExportError("Couldn't save your last edit, so nothing was exported. Please try again.")
+        return
+      }
+      const res = await fetch(`/api/resumes/${resumeId}/cover-letters/${letter.id}/export/${format}`, { method: 'POST' })
       if (!res.ok) throw new Error(await apiErrorMessage(res, 'Export failed. Please try again.'))
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       const suffix = fileSafe(letterCompany(letter))
-      a.download = `Cover-Letter${suffix ? `-${suffix}` : ''}.${format}`
+      a.download = dispositionFilename(res.headers.get('Content-Disposition')) ?? `Cover-Letter${suffix ? `-${suffix}` : ''}.${format}`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -434,6 +473,17 @@ function OpenLetter({
             </div>
           </div>
           {exportError && <p role="alert" className="text-xs text-fg-danger">{exportError}</p>}
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <span id={`${id}-design`} className="text-xs text-fg-muted">Design for PDF and DOCX</span>
+              <DesignPicker
+                value={design}
+                labelledBy={`${id}-design`}
+                onChange={(d: LetterDesign) => onSave(letter.id, { design: d })}
+              />
+            </div>
+            <p className="text-xs text-fg-muted">Uses your CV&apos;s colours and fonts.</p>
+          </div>
 
           {approvals.length > 0 && (
             <div role="region" aria-label="Unverified details" className="rounded-card border border-border-attention bg-surface-attention p-3">
@@ -477,6 +527,17 @@ function OpenLetter({
           </div>
         </details>
       )}
+
+      {/* Kept quiet on purpose: every new version is a full AI run. */}
+      {letter.status === 'ready' && (
+        <div className="space-y-1 pt-1">
+          <Button size="xs" variant="ghost" onClick={writeAgain} className="-ml-2.5">
+            <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+            Write a new version
+          </Button>
+          <p className="text-xs text-fg-muted">Opens the form with this job and your notes. This letter stays as it is.</p>
+        </div>
+      )}
     </section>
   )
 }
@@ -490,7 +551,7 @@ function OpenLetter({
 export function CoverLetterPanel() {
   const resumeId = useResumeEditorStore((s) => s.resumeId)
   const data = useResumeEditorStore((s) => s.data)
-  const { letters, prefillNotes, suggestedPosting, loading, error, create, save, remove, postingFor } = useCoverLetters(resumeId)
+  const { letters, suggestedPosting, loading, error, create, save, remove, flush, postingFor } = useCoverLetters(resumeId)
 
   const [view, setView] = useState<View>({ kind: 'auto' })
   // Deletes wait out an undo window, like deleting a CV.
@@ -510,14 +571,12 @@ export function CoverLetterPanel() {
   const requestDelete = (letter: CoverLetterView) =>
     requestLetterDelete(letter.id, `Deleted letter for ${letterTitle(letter)}`)
 
-  const blankNotes = (): CoverLetterNotes => (prefillNotes.explain ? { explain: prefillNotes.explain } : {})
-
   function openForm(draft: Partial<Draft> = {}) {
     formKey.current += 1
     setView({
       kind: 'new',
       key: formKey.current,
-      draft: { jobText: '', company: '', role: '', notes: blankNotes(), ...draft },
+      draft: { jobText: '', company: '', role: '', notes: {}, ...draft },
     })
   }
 
@@ -566,10 +625,10 @@ export function CoverLetterPanel() {
     const openLetter = view.kind === 'open' ? visible.find((l) => l.id === view.id) : undefined
     if (openLetter) {
       body = (
-        <OpenLetter key={openLetter.id} letter={openLetter} resumeId={resumeId} onSave={save} onBack={toList} onRetry={retry} />
+        <OpenLetter key={openLetter.id} letter={openLetter} resumeId={resumeId} onSave={save} onFlush={flush} onBack={toList} onRetry={retry} />
       )
     } else if (view.kind === 'new' || (view.kind === 'auto' && !hasSomething)) {
-      const draft = view.kind === 'new' ? view.draft : { jobText: '', company: '', role: '', notes: blankNotes() }
+      const draft = view.kind === 'new' ? view.draft : { jobText: '', company: '', role: '', notes: {} }
       body = (
         <NewLetterForm
           key={view.kind === 'new' ? view.key : 0}

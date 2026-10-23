@@ -65,7 +65,7 @@ describe('listCoverLetters', () => {
 })
 
 describe('ordering', () => {
-  it('keeps creation order when an older letter is edited, and latestNotes follows it', async () => {
+  it('keeps creation order when an older letter is edited', async () => {
     const cv = await makeResume()
     const older = await api.createCoverLetter('u1', cv, { ...input, notes: { explain: 'older' } })
     await new Promise((r) => setTimeout(r, 5))
@@ -73,7 +73,6 @@ describe('ordering', () => {
     await CoverLetter.updateOne({ _id: older.id }, { $set: { status: 'ready' } })
     await api.updateCoverLetter('u1', cv, older.id, { content: 'Edited later' })
     expect((await api.listCoverLetters('u1', cv)).map((l) => l.id)).toEqual([newer.id, older.id])
-    expect(await api.latestNotes('u1', cv)).toEqual({ explain: 'newer' })
   })
 })
 
@@ -318,6 +317,17 @@ describe('updateCoverLetter', () => {
     })
   })
 
+  it('persists the chosen design and returns it in the view', async () => {
+    const cv = await makeResume()
+    const created = await api.createCoverLetter('u1', cv, input)
+    expect(created.design).toBeUndefined()
+    await CoverLetter.updateOne({ _id: created.id }, { $set: { status: 'ready' } })
+    const updated = await api.updateCoverLetter('u1', cv, created.id, { design: 'accent-edge' })
+    expect(updated).toMatchObject({ design: 'accent-edge' })
+    expect((await CoverLetter.findById(created.id).lean())?.design).toBe('accent-edge')
+    expect(await api.getCoverLetter('u1', cv, created.id)).toMatchObject({ design: 'accent-edge' })
+  })
+
   it('returns null for an unknown letter or another user', async () => {
     const cv = await makeResume()
     const created = await api.createCoverLetter('u1', cv, input)
@@ -332,20 +342,6 @@ describe('deleteCoverLetter', () => {
     expect(await api.deleteCoverLetter('u2', cv, created.id)).toBe(false)
     expect(await api.deleteCoverLetter('u1', cv, created.id)).toBe(true)
     expect(await api.deleteCoverLetter('u1', cv, created.id)).toBe(false)
-  })
-})
-
-describe('latestNotes', () => {
-  it('returns the explain note of the newest letter', async () => {
-    const cv = await makeResume()
-    await api.createCoverLetter('u1', cv, { ...input, notes: { explain: 'Old gap' } })
-    await new Promise((r) => setTimeout(r, 5))
-    await api.createCoverLetter('u1', cv, { ...input, notes: { explain: 'New gap', motivation: 'x' } })
-    expect(await api.latestNotes('u1', cv)).toEqual({ explain: 'New gap' })
-  })
-
-  it('returns an empty object when there is nothing', async () => {
-    expect(await api.latestNotes('u1', await makeResume())).toEqual({})
   })
 })
 
@@ -447,15 +443,24 @@ describe('getCoverLetter posting text', () => {
     expect((await api.getCoverLetter('u1', cv, created.id))?.jobText).toBe(input.jobText)
   })
 
-  it('leaves it out for writing and ready letters, and from every list', async () => {
+  it('returns it for a written letter, so Write a new version can reuse it', async () => {
+    const cv = await makeResume()
+    const created = await api.createCoverLetter('u1', cv, input)
+    await CoverLetter.updateOne({ _id: created.id }, { $set: { status: 'ready' } })
+    expect((await api.getCoverLetter('u1', cv, created.id))?.jobText).toBe(input.jobText)
+  })
+
+  it('leaves it out for writing and legacy letters, and from every list', async () => {
     const cv = await makeResume()
     const writing = await api.createCoverLetter('u1', cv, input)
     const ready = await api.createCoverLetter('u1', cv, input)
     const failed = await api.createCoverLetter('u1', cv, input)
+    const legacy = await api.createCoverLetter('u1', cv, input)
     await CoverLetter.updateOne({ _id: ready.id }, { $set: { status: 'ready' } })
     await CoverLetter.updateOne({ _id: failed.id }, { $set: { status: 'failed', error: 'x' } })
+    await CoverLetter.updateOne({ _id: legacy.id }, { $set: { status: 'ready', legacy: true } })
     expect((await api.getCoverLetter('u1', cv, writing.id))?.jobText).toBeUndefined()
-    expect((await api.getCoverLetter('u1', cv, ready.id))?.jobText).toBeUndefined()
+    expect((await api.getCoverLetter('u1', cv, legacy.id))?.jobText).toBeUndefined()
     for (const l of await api.listCoverLetters('u1', cv)) expect((l as Record<string, unknown>).jobText).toBeUndefined()
   })
 })

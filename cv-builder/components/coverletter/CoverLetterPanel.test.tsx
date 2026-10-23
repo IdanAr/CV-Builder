@@ -12,6 +12,12 @@ import { Toaster } from '@/components/ui/Toaster'
 const hook = vi.hoisted(() => ({ current: null as unknown }))
 vi.mock('./use-cover-letters', () => ({ useCoverLetters: () => hook.current }))
 
+const flushSaveMock = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock('@/lib/stores/resume-editor.store', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/stores/resume-editor.store')>()),
+  flushSave: flushSaveMock,
+}))
+
 const defaultMeta: ResumeMeta = {
   templateId: 'classic', fontFamily: 'Calibri', headerFontFamily: 'Calibri',
   primaryColor: '#000000', accentColor: '#0066cc',
@@ -44,7 +50,6 @@ function letter(over: Partial<CoverLetterView> = {}): CoverLetterView {
 function mockHook(over: Partial<UseCoverLetters> = {}): UseCoverLetters {
   const value: UseCoverLetters = {
     letters: [],
-    prefillNotes: {},
     suggestedPosting: null,
     loading: false,
     error: null,
@@ -57,6 +62,7 @@ function mockHook(over: Partial<UseCoverLetters> = {}): UseCoverLetters {
     }),
     save: vi.fn(),
     remove: vi.fn(async () => {}),
+    flush: vi.fn(async () => true),
     postingFor: vi.fn(async () => null),
     ...over,
   }
@@ -80,6 +86,8 @@ function fillForm() {
 
 beforeEach(() => {
   seq = 0
+  flushSaveMock.mockReset()
+  flushSaveMock.mockResolvedValue(undefined)
   useToastStore.setState({ toasts: [] })
   useResumeEditorStore.setState({
     resumeId: 'r1',
@@ -183,10 +191,13 @@ describe('CoverLetterPanel: new letter', () => {
     })
   })
 
-  it('prefills "Anything to explain" from the previous letter', () => {
-    mockHook({ prefillNotes: { explain: 'I moved country in 2024.' } })
+  it("starts a new letter's notes blank, whatever an earlier letter's notes say", () => {
+    mockHook({ letters: [letter({ notes: { motivation: 'Old reason.', explain: 'I moved country in 2024.', hiringManager: 'Dana' } })] })
     render(<CoverLetterPanel />)
-    expect(screen.getByLabelText(/anything to explain/i)).toHaveValue('I moved country in 2024.')
+    fireEvent.click(screen.getByRole('button', { name: 'New letter' }))
+    expect(screen.getByLabelText(/why this company or role/i)).toHaveValue('')
+    expect(screen.getByLabelText(/anything to explain/i)).toHaveValue('')
+    expect(screen.getByLabelText(/hiring manager's name/i)).toHaveValue('')
   })
 
   it('keeps the form and its text when create fails', async () => {
@@ -422,6 +433,38 @@ describe('CoverLetterPanel: Try again', () => {
   })
 })
 
+describe('CoverLetterPanel: Write a new version', () => {
+  it('opens the form from a written letter, with its posting and its current notes, and writes nothing yet', async () => {
+    const l = letter({ company: 'Initech', role: 'Analyst', notes: { motivation: 'Saved reason.' }, scrapedJobId: 'sj4' })
+    const h = mockHook({ letters: [l], postingFor: vi.fn(async () => 'Initech needs an analyst.') })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Analyst at Initech/ }))
+    // An edit to the notes that has not been blurred still counts.
+    fireEvent.change(screen.getByLabelText(/anything to explain/i), { target: { value: 'Moved city in 2025.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Write a new version' }))
+    await waitFor(() => expect(jdBox()).toHaveValue('Initech needs an analyst.'))
+    expect(screen.getByLabelText('Company')).toHaveValue('Initech')
+    expect(screen.getByLabelText('Role')).toHaveValue('Analyst')
+    expect(screen.getByLabelText(/why this company or role/i)).toHaveValue('Saved reason.')
+    expect(screen.getByLabelText(/anything to explain/i)).toHaveValue('Moved city in 2025.')
+    expect(h.create).not.toHaveBeenCalled()
+
+    fireEvent.click(writeButton())
+    await waitFor(() => expect(h.create).toHaveBeenCalledTimes(1))
+    expect(h.create).toHaveBeenCalledWith({
+      company: 'Initech', role: 'Analyst', jobText: 'Initech needs an analyst.',
+      notes: { motivation: 'Saved reason.', explain: 'Moved city in 2025.' }, scrapedJobId: 'sj4',
+    })
+  })
+
+  it('is only offered once a letter is written', () => {
+    mockHook({ letters: [letter({ status: 'writing', progress: 'writing', content: '' })] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    expect(screen.queryByRole('button', { name: 'Write a new version' })).toBeNull()
+  })
+})
+
 describe('CoverLetterPanel: delete', () => {
   it('hides the letter at once with an Undo toast, and deletes it after the undo window', async () => {
     vi.useFakeTimers()
@@ -499,7 +542,7 @@ describe('CoverLetterPanel: suggested posting', () => {
   it('the suggestion fills the form and makes no request; Write calls create with scrapedJobId', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
-    const h = mockHook({ suggestedPosting: posting, prefillNotes: { explain: 'Career break in 2023.' } })
+    const h = mockHook({ suggestedPosting: posting })
     render(<CoverLetterPanel />)
     fireEvent.click(screen.getByRole('button', { name: 'Write a letter for Data Engineer at Umbrella' }))
     expect(jdBox()).toHaveValue('Umbrella needs a data engineer.')
@@ -512,7 +555,7 @@ describe('CoverLetterPanel: suggested posting', () => {
     await waitFor(() => expect(h.create).toHaveBeenCalledTimes(1))
     expect(h.create).toHaveBeenCalledWith({
       company: 'Umbrella', role: 'Data Engineer', jobText: 'Umbrella needs a data engineer.',
-      notes: { explain: 'Career break in 2023.' }, scrapedJobId: 'sj1',
+      notes: {}, scrapedJobId: 'sj1',
     })
   })
 })
@@ -533,38 +576,172 @@ describe('CoverLetterPanel: copy and export act on the open letter', () => {
     expect(await screen.findByText('Copied!')).toBeInTheDocument()
   })
 
-  it('DOCX export posts the open letter and names the file after its company', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, blob: async () => new Blob(['docx-bytes']) })
-    vi.stubGlobal('fetch', fetchMock)
+  function stubDownload() {
     vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:fake'), revokeObjectURL: vi.fn() })
-    let downloaded = ''
+    const downloads: string[] = []
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
-      downloaded = this.download
+      downloads.push(this.download)
     })
+    return { downloads, clickSpy }
+  }
+
+  const exportResponse = (disposition?: string) => ({
+    ok: true,
+    headers: new Headers(disposition ? { 'Content-Disposition': disposition } : {}),
+    blob: async () => new Blob(['bytes']),
+  })
+
+  it('DOCX export posts to the letter route with no body and saves under the name from the response', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      exportResponse(`attachment; filename="Cover-Letter-Acme.docx"; filename*=UTF-8''Cover%20Letter%20-%20Acme%20Corp.docx`)
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const { downloads, clickSpy } = stubDownload()
     openReady()
     fireEvent.click(screen.getByRole('button', { name: /^docx$/i }))
     await waitFor(() => expect(clickSpy).toHaveBeenCalled())
     const [url, opts] = fetchMock.mock.calls[0]
-    expect(url).toBe('/api/resumes/r1/cover-letter/export/docx')
-    expect(JSON.parse(opts.body)).toEqual({ content: 'Open letter text.', language: 'en' })
-    expect(downloaded).toBe('Cover-Letter-Acme-Corp.docx')
+    expect(url).toBe('/api/resumes/r1/cover-letters/l1/export/docx')
+    expect(opts.method).toBe('POST')
+    expect(opts.body).toBeUndefined()
+    expect(downloads).toEqual(['Cover Letter - Acme Corp.docx'])
     clickSpy.mockRestore()
   })
 
-  it('PDF export sends a Hebrew letter\'s language so the file is dated and tagged in Hebrew', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, blob: async () => new Blob(['pdf-bytes']) })
+  it('falls back to the ASCII filename, then to a name built from the company', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(exportResponse('attachment; filename="Cover-Letter-Acme.pdf"'))
+      .mockResolvedValueOnce(exportResponse())
     vi.stubGlobal('fetch', fetchMock)
-    vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:fake'), revokeObjectURL: vi.fn() })
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const { downloads, clickSpy } = stubDownload()
+    openReady()
+    fireEvent.click(screen.getByRole('button', { name: /^pdf$/i }))
+    await waitFor(() => expect(downloads).toHaveLength(1))
+    await waitFor(() => expect(screen.getByRole('button', { name: /^pdf$/i })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: /^pdf$/i }))
+    await waitFor(() => expect(downloads).toHaveLength(2))
+    expect(downloads).toEqual(['Cover-Letter-Acme.pdf', 'Cover-Letter-Acme-Corp.pdf'])
+    clickSpy.mockRestore()
+  })
+
+  it('typing in the editor and clicking PDF sends no export request until the flush resolves', async () => {
+    const order: string[] = []
+    let release: () => void = () => {}
+    const fetchMock = vi.fn().mockImplementation(async () => {
+      order.push('fetch')
+      return exportResponse()
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const { clickSpy } = stubDownload()
+    const hookValue = mockHook({
+      letters: [letter({ content: 'Open letter text.' })],
+      save: vi.fn(() => { order.push('save') }),
+      flush: vi.fn(
+        () =>
+          new Promise<boolean>((resolve) => {
+            order.push('flush')
+            release = () => resolve(true)
+          })
+      ),
+    })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    fireEvent.change(letterBox(), { target: { value: 'Edited text.' } })
+    fireEvent.click(screen.getByRole('button', { name: /^pdf$/i }))
+    await waitFor(() => expect(hookValue.flush).toHaveBeenCalled())
+    // Give a missing await every chance to fire the request early.
+    await act(async () => { await new Promise((r) => setTimeout(r, 20)) })
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    await act(async () => { release() })
+    await waitFor(() => expect(clickSpy).toHaveBeenCalled())
+    expect(hookValue.save).toHaveBeenCalledWith('l1', { content: 'Edited text.' })
+    expect(order).toEqual(['save', 'flush', 'fetch'])
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/resumes/r1/cover-letters/l1/export/pdf')
+    clickSpy.mockRestore()
+  })
+
+  it('a failed letter save stops the export: no request, and the message says nothing was exported', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const { clickSpy } = stubDownload()
+    const hookValue = mockHook({
+      letters: [letter({ content: 'Open letter text.' })],
+      flush: vi.fn(async () => false),
+    })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^pdf$/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "Couldn't save your last edit, so nothing was exported. Please try again."
+    )
+    expect(hookValue.flush).toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(clickSpy).not.toHaveBeenCalled()
+    // The button is usable again for the retry.
+    await waitFor(() => expect(screen.getByRole('button', { name: /^pdf$/i })).toBeEnabled())
+    clickSpy.mockRestore()
+  })
+
+  it('the CV autosave is flushed before the letter flush, so the file and the picker agree', async () => {
+    const order: string[] = []
+    flushSaveMock.mockImplementation(async () => { order.push('cv') })
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => { order.push('fetch'); return exportResponse() }))
+    const { clickSpy } = stubDownload()
+    mockHook({
+      letters: [letter({ content: 'Open letter text.' })],
+      flush: vi.fn(async () => { order.push('letter'); return true }),
+    })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^docx$/i }))
+    await waitFor(() => expect(clickSpy).toHaveBeenCalled())
+    expect(order).toEqual(['cv', 'letter', 'fetch'])
+    clickSpy.mockRestore()
+  })
+
+  it('a failed CV save stops the export before the letter flush and any request', async () => {
+    flushSaveMock.mockRejectedValue(new Error('offline'))
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const hookValue = mockHook({ letters: [letter({ content: 'Open letter text.' })] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^pdf$/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "Couldn't save your latest changes before exporting. Please try again."
+    )
+    expect(hookValue.flush).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('a Hebrew letter exports the same way: the server reads the language, the client sends nothing', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(exportResponse())
+    vi.stubGlobal('fetch', fetchMock)
+    const { clickSpy } = stubDownload()
     mockHook({ letters: [letter({ content: 'שלום רב', language: 'he' })] })
     render(<CoverLetterPanel />)
     fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
     fireEvent.click(screen.getByRole('button', { name: /^pdf$/i }))
     await waitFor(() => expect(clickSpy).toHaveBeenCalled())
-    const [url, opts] = fetchMock.mock.calls[0]
-    expect(url).toBe('/api/resumes/r1/cover-letter/export/pdf')
-    expect(JSON.parse(opts.body)).toEqual({ content: 'שלום רב', language: 'he' })
+    expect(fetchMock.mock.calls[0][1].body).toBeUndefined()
     clickSpy.mockRestore()
+  })
+
+  it('a 409 from the export shows its message in the export error line', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        json: async () => ({ error: 'This letter has details waiting for your review.', code: 'CONFLICT' }),
+      })
+    )
+    openReady()
+    fireEvent.click(screen.getByRole('button', { name: /^pdf$/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('This letter has details waiting for your review.')
   })
 
   it('a failed export shows an inline error', async () => {
@@ -572,5 +749,69 @@ describe('CoverLetterPanel: copy and export act on the open letter', () => {
     openReady()
     fireEvent.click(screen.getByRole('button', { name: /^pdf$/i }))
     expect(await screen.findByText(/export failed/i)).toBeInTheDocument()
+  })
+})
+
+describe('CoverLetterPanel: design picker', () => {
+  function openReady(over: Partial<CoverLetterView> = {}, hookOver: Partial<UseCoverLetters> = {}) {
+    const value = mockHook({ letters: [letter(over)], ...hookOver })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    return value
+  }
+  const radio = (name: string) => screen.getByRole('radio', { name })
+
+  it('shows Accent edge selected for a Modern CV when the letter has no design', () => {
+    useResumeEditorStore.setState({ meta: { ...defaultMeta, templateId: 'modern' } })
+    openReady()
+    expect(screen.getByRole('radiogroup', { name: /design/i })).toBeInTheDocument()
+    expect(radio('Accent edge')).toBeChecked()
+    expect(radio('Classic')).not.toBeChecked()
+  })
+
+  it('shows Classic selected for a Classic CV when the letter has no design', () => {
+    openReady()
+    expect(radio('Classic')).toBeChecked()
+  })
+
+  it("the letter's own design wins over the CV's template", () => {
+    useResumeEditorStore.setState({ meta: { ...defaultMeta, templateId: 'modern' } })
+    openReady({ design: 'classic' })
+    expect(radio('Classic')).toBeChecked()
+  })
+
+  it('clicking Classic saves the design on the open letter', () => {
+    useResumeEditorStore.setState({ meta: { ...defaultMeta, templateId: 'modern' } })
+    const value = openReady()
+    fireEvent.click(radio('Classic'))
+    expect(value.save).toHaveBeenCalledWith('l1', { design: 'classic' })
+  })
+
+  it('arrow keys move the choice', () => {
+    const value = openReady()
+    fireEvent.keyDown(radio('Classic'), { key: 'ArrowRight' })
+    expect(value.save).toHaveBeenCalledWith('l1', { design: 'accent-edge' })
+  })
+
+  it('is not shown for a letter that is still writing', () => {
+    mockHook({ letters: [letter({ status: 'writing', progress: 'reading', content: '' })] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    expect(screen.queryByRole('radiogroup')).toBeNull()
+  })
+
+  it('is not shown for a letter that failed', () => {
+    mockHook({ letters: [letter({ status: 'failed', error: 'Could not write it.', content: '' })] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    expect(screen.getByText('Could not write it.')).toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup')).toBeNull()
+  })
+
+  it('the group is named by the visible label, and a helper line says the CV styles it', () => {
+    openReady()
+    const group = screen.getByRole('radiogroup', { name: 'Design for PDF and DOCX' })
+    expect(group).toBeInTheDocument()
+    expect(screen.getByText("Uses your CV's colours and fonts.")).toBeInTheDocument()
   })
 })

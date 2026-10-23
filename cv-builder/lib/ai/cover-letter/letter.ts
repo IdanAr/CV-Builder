@@ -9,6 +9,8 @@ export interface LetterSentence {
   facts: string[]
   /** Exact snippets of the posting this sentence relies on. */
   quotes: string[]
+  /** An item of the letter's one short list; renders as a "- " line. */
+  bullet: boolean
 }
 
 export interface StructuredLetter {
@@ -52,8 +54,28 @@ export const BANNED_PHRASES = [
   'thank you for your time and consideration',
 ] as const
 
+/** A list item's text without a "-", bullet glyph or "*" the model (or a user typing in the editor) put in front of it. */
+export const stripBulletMarker = (text: string) => text.trim().replace(/^[-•*]\s+/, '')
+
+/**
+ * One paragraph as text: prose sentences join with a space, a run of bullets
+ * becomes "- " lines, and a prose lead-in (or a sentence after the list) sits
+ * on its own line next to the list, with no blank line between them.
+ */
+function renderParagraph(sentences: LetterSentence[]): string {
+  const runs: { bullet: boolean; lines: string[] }[] = []
+  for (const s of sentences) {
+    const text = s.bullet ? stripBulletMarker(s.text) : s.text.trim()
+    if (!text) continue
+    const last = runs.at(-1)
+    if (last && last.bullet === s.bullet) last.lines.push(text)
+    else runs.push({ bullet: s.bullet, lines: [text] })
+  }
+  return runs.map((r) => (r.bullet ? r.lines.map((l) => `- ${l}`).join('\n') : r.lines.join(' '))).join('\n')
+}
+
 export function renderLetter(letter: StructuredLetter): string {
-  const body = letter.paragraphs.map((p) => p.map((s) => s.text.trim()).join(' ')).filter(Boolean)
+  const body = letter.paragraphs.map(renderParagraph).filter(Boolean)
   return [letter.greeting.trim(), ...body, letter.signOff.trim()].filter(Boolean).join('\n\n')
 }
 

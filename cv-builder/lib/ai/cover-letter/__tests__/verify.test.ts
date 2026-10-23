@@ -8,7 +8,7 @@ import { FIXTURE_CV } from './fixture-cv'
 // F5 "Led a team of 4 analysts", F6 Analyst at Acme (2019-06 to 2021-02), F13 Tableau certificate, F16 skills.
 const sheet = buildFactSheet(FIXTURE_CV)
 
-const s = (text: string, facts: string[] = [], quotes: string[] = []): LetterSentence => ({ text, facts, quotes })
+const s = (text: string, facts: string[] = [], quotes: string[] = []): LetterSentence => ({ text, facts, quotes, bullet: false })
 
 function letter(sentences: LetterSentence[], extra: Partial<StructuredLetter> = {}): StructuredLetter {
   return { greeting: 'Dear Globex Hiring Team,', paragraphs: [sentences], signOff: 'Best regards,\nDana Levi', ...extra }
@@ -132,6 +132,52 @@ describe('verifyLetter: form', () => {
 
   it('flags a missing greeting', () => {
     expect(of('form', verify(letter([s(words(260))], { greeting: '' }))).some((i) => i.detail.includes('greeting'))).toBe(true)
+  })
+})
+
+describe('verifyLetter: lists', () => {
+  const b = (text: string): LetterSentence => ({ text, facts: [], quotes: [], bullet: true })
+  const lead = s('Several results matter for this team.')
+  const NAMES = ['alpha', 'beta', 'gamma', 'delta', 'epsilon']
+  const item = (n: number) => b(`The ${NAMES[n - 1]} result shows steady careful analytical work.`)
+  const lists = (issues: ReturnType<typeof verify>) => of('form', issues).filter((i) => /list|bullet/i.test(i.detail))
+
+  it('accepts one list of three full sentences', () => {
+    expect(lists(verify(letter([lead, item(1), item(2), item(3)])))).toEqual([])
+  })
+
+  it('flags a one-item list', () => {
+    expect(lists(verify(letter([lead, item(1)])))).toHaveLength(1)
+  })
+
+  it('flags a five-item list', () => {
+    expect(lists(verify(letter([lead, item(1), item(2), item(3), item(4), item(5)])))).toHaveLength(1)
+  })
+
+  it('flags a second list, in another paragraph or after prose', () => {
+    expect(lists(verify({ ...letter([lead, item(1), item(2)]), paragraphs: [[lead, item(1), item(2)], [item(3), item(4)]] }))).toHaveLength(1)
+    expect(lists(verify(letter([item(1), item(2), s('Then more prose follows.'), item(3), item(4)])))).toHaveLength(1)
+  })
+
+  it('flags a bullet under six words, naming the sentence', () => {
+    const issues = lists(verify(letter([lead, item(1), item(2), b('Cut report time by 40%.')])))
+    expect(issues).toHaveLength(1)
+    expect(issues[0].sentence).toBe('Cut report time by 40%.')
+  })
+
+  it('does not count the "- " marker as a word, in the length floor or the 6-word floor', () => {
+    const words = (n: number) => Array.from({ length: n }, () => 'steady').join(' ') + '.'
+    // 4 (greeting) + 4 (sign-off) + 221 + 3 x 6 = 247 real words; counting the three markers would make 250.
+    const l = letter([s(words(221)), b(words(6)), b(words(6)), b(words(6))])
+    expect(of('form', verify(l)).some((i) => /^The letter has 247 words/.test(i.detail))).toBe(true)
+    // "- five word item here" is five words once the marker is gone.
+    const typed = lists(verify(letter([lead, item(1), item(2), b('- five word item here')])))
+    expect(typed).toHaveLength(1)
+    expect(typed[0].sentence).toBe('- five word item here')
+  })
+
+  it('still checks a bullet like any sentence', () => {
+    expect(of('number', verify(letter([lead, item(1), item(2), { ...b('At Acme I cut report time by 45% with the finance team.'), facts: ['F4'] }])))).toHaveLength(1)
   })
 })
 

@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?logo=mongodb)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38bdf8?logo=tailwindcss)
-![Vitest](https://img.shields.io/badge/tests-304%20suites-brightgreen?logo=vitest)
+![Vitest](https://img.shields.io/badge/tests-339%20suites-brightgreen?logo=vitest)
 ![Vercel](https://img.shields.io/badge/deployed-Vercel-black?logo=vercel)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -78,7 +78,7 @@ Key differentiators:
 ### AI Copilot
 - One-click bullet-point writer from rough notes, and a professional summary generator - each run through the Generate → Critique → Refine pipeline.
 - **ATS Fix**: analyzes the score gap against a job description and proposes targeted rewrites (or a brand-new summary) that weave in missing keywords, shown inline with the added words highlighted over the original.
-- **Cover letters**: each CV keeps a list of letters, one per job. A new letter starts from a pasted posting or a posting link (company and role fill themselves from the posting when empty), plus optional notes in your own words: why this company, anything to explain, the hiring manager's name. The letter is written in the background (plan, write, an editor critique, at most one refine) from a fact sheet of the CV, and the panel shows its progress step by step. Every number, name and quote is checked against the CV and the posting; whatever cannot be traced, and any critique point no refine fixed, is listed for you to check before **Keep this letter** unlocks Copy / PDF / DOCX. A letter for a job-search draft starts from that posting, and a failed letter can be tried again from the same posting and notes.
+- **Cover letters**: each CV keeps a list of letters, one per job. A new letter starts from a pasted posting or a posting link (company and role fill themselves from the posting when empty), plus optional notes in your own words: why this company, anything to explain, the hiring manager's name. Notes belong to their letter; a new letter starts with blank notes. The letter is written in the background (plan, write, an editor critique, at most one refine) from a fact sheet of the CV, and the panel shows its progress step by step. Every number, name and quote is checked against the CV and the posting; whatever cannot be traced, and any critique point no refine fixed, is listed for you to check before **Keep this letter** unlocks Copy / PDF / DOCX. The writer mentions your situation only when the CV's dates show a gap or you wrote something under "Anything to explain", and then in one sentence at most; it may use one bullet list of two to four items. Each letter exports in one of two designs, **Classic** (centred header over a rule) or **Accent edge** (name and contact line beside an accent bar), picked per letter in the panel; until you pick, it follows the CV's template (Accent edge for Modern and Sidebar, Classic for the rest). Both put the date and the body on the page, plus the recipient and a "Re:" subject line when the letter names them (an older letter without a company or role has neither), with real bullet lists in PDF and DOCX. Export is read from the saved letter and is refused while the letter is still being written or still has flagged sentences to keep or edit. A letter for a job-search draft starts from that posting, a failed letter can be tried again from the same posting and notes, and **Write a new version**, at the bottom of a written letter, opens the same form from that letter's posting and notes (the old letter is kept).
 - Hallucination guard: any metric or skill in AI output not traceable to the user's original input is highlighted for explicit approval before it's committed to the schema.
 - Per-user rate limiting on all AI and upload endpoints.
 
@@ -253,7 +253,7 @@ cv-builder/
 │   │   ├── resumes/[id]/ats-fix/            # AI-proposed ATS rewrites
 │   │   ├── resumes/[id]/ats-semantic-match/ # AI synonym check for missing keywords
 │   │   ├── resumes/[id]/cover-letters/      # A CV's letters: list, start (202, written in the background), read, edit, delete
-│   │   ├── resumes/[id]/cover-letter/export/ # Letter export {pdf,docx}
+│   │   ├── resumes/[id]/cover-letters/[letterId]/export/ # Letter export {pdf,docx}, read from the stored letter
 │   │   ├── cover-letters/worker/            # QStash worker that writes one letter (signature-verified)
 │   │   ├── resumes/[id]/job-description/    # Import a job description from a posting link
 │   │   ├── resumes/[id]/export/{pdf,docx}/  # Export (pdf supports mode: ats | designed)
@@ -278,7 +278,7 @@ cv-builder/
 │   ├── templates/                           # HTML/CSS live-preview templates (5 templates) + RichText
 │   ├── ats/                                 # AtsScorePanel, AtsFixReviewPanel
 │   ├── ai/                                  # AiSuggestButton
-│   ├── coverletter/                         # CoverLetterPanel, LetterList, LetterNotes, LetterProgress, use-cover-letters
+│   ├── coverletter/                         # CoverLetterPanel, LetterList, LetterNotes, LetterProgress, DesignPicker, use-cover-letters, use-letter-deletion
 │   ├── applications/                        # ApplicationsView, Board, Table, Filters, ActivityLog, ColumnForm
 │   ├── jobsearch/                           # ProfileList, ProfileFormDialog (+ profile-form/ steps), ProfileSettings, RuleBuilder
 │   ├── pipeline/                            # PipelineInbox, StageTabs, PipelineList, PipelineRow, JobDetail, keyboard shortcuts
@@ -288,6 +288,7 @@ cv-builder/
 ├── lib/
 │   ├── ai/                                  # pipeline.ts, ats-fix-pipeline.ts, cover-letter/ (fact sheet, writer, verifier, background job and queue), hallucination-guard.ts, models.ts
 │   ├── api/                                 # Shared route handler logic: resumes.ts, applications.ts, board-config.ts, jobsearch-profiles.ts, jobsearch-rules.ts, scraped-jobs.ts, cover-letters.ts, ai-cache.ts, route-errors.ts
+│   ├── coverletter/                         # design.ts (the two letter designs), header.ts, body.ts (text and list blocks), accent.ts, render-input.ts, export-input.ts (what the PDF and DOCX renderers are handed)
 │   ├── ats/                                 # scorer.ts, keywords.ts, stem.ts (conservative word-root matching)
 │   ├── applications/                        # cells.ts, filter.ts, order.ts, sort.ts, types.ts
 │   ├── jobsearch/                           # scan.ts, apply.ts, rules.ts, queue.ts, countries.ts, stages.ts, pipeline-url.ts, job-actions.ts, sources/ (freehire.ts, comeet.ts)
@@ -661,10 +662,10 @@ All routes below are session-authenticated via Auth.js (`auth()` wrapper) and sc
 | `POST` | `/api/resumes/:id/ats-score` | Score against a pasted job description; returns `keywordSource` and, on fallback, `keywordFallbackReason` |
 | `POST` | `/api/resumes/:id/ats-semantic-match` | AI synonym check of missing keywords against the resume; each match carries a verified CV quote (cached per user) |
 | `POST` | `/api/resumes/:id/ats-fix` | Propose AI rewrites targeting missing keywords (and `synonymKeywords`, added next to the user's wording) |
-| `GET` / `POST` | `/api/resumes/:id/cover-letters` | List the CV's letters (with the notes to prefill and the job-search posting to suggest) / start a letter: stored as `writing`, `202`, written in the background (AI rate limit) |
-| `GET` / `PATCH` / `DELETE` | `/api/resumes/:id/cover-letters/:letterId` | Read one letter (polled while it is written; a failed letter also returns its posting for Try again) / edit its text, notes or approvals / delete it |
-| `POST` | `/api/resumes/:id/cover-letter/export/pdf` | Export a letter as PDF, headed with the CV's contact line and the date in the letter's language |
-| `POST` | `/api/resumes/:id/cover-letter/export/docx` | Export a letter as DOCX, with the same header |
+| `GET` / `POST` | `/api/resumes/:id/cover-letters` | List the CV's letters (with the job-search posting to suggest; a new letter's notes always start blank) / start a letter: stored as `writing`, `202`, written in the background (AI rate limit) |
+| `GET` / `PATCH` / `DELETE` | `/api/resumes/:id/cover-letters/:letterId` | Read one letter (polled while it is written; a failed or written letter also returns its posting, for Try again and Write a new version) / edit its text, notes or approvals / delete it |
+| `POST` | `/api/resumes/:id/cover-letters/:letterId/export/pdf` | Export a stored letter as PDF in its design (Classic or Accent edge): the CV's name and contact line, the date in the letter's language, the recipient, a "Re:" subject line and the body with native bullet lists. `409` while the letter is still being written, has flagged sentences nobody has kept or edited, or has no text |
+| `POST` | `/api/resumes/:id/cover-letters/:letterId/export/docx` | Export a stored letter as DOCX with the same layout and the same `409` refusals |
 | `POST` | `/api/cover-letters/worker` | QStash callback target - signature-verified, writes one cover letter (`{ userId, letterId }`) |
 | `POST` | `/api/resumes/:id/job-description` | `{ url }` → `{ text, title?, company?, source, host }`: import a job description from a public posting link (SSRF-guarded, 2 MB / 10 s cap, 422 when the page has no readable posting) |
 | `POST` | `/api/resumes/:id/export/pdf` | Export PDF (`mode: 'designed' \| 'ats'`) |
@@ -717,7 +718,7 @@ All routes below are session-authenticated via Auth.js (`auth()` wrapper) and sc
 
 ## Testing
 
-The project has **304 Vitest test suites (3,195 tests)** covering schemas, API routes, AI pipelines (including hallucination detection), the ATS scorer, DOCX/PDF template rendering, pagination math, the application-tracking sort/filter/order logic, the job-search scan/rules/apply pipeline, and editor components, run via `@testing-library/react` + `jsdom`.
+The project has **339 Vitest test suites (3,777 tests)** covering schemas, API routes, AI pipelines (including hallucination detection), the ATS scorer, DOCX/PDF template rendering, pagination math, the application-tracking sort/filter/order logic, the job-search scan/rules/apply pipeline, and editor components, run via `@testing-library/react` + `jsdom`.
 
 ```bash
 npm run test        # watch mode

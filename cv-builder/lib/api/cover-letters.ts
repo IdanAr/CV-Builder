@@ -8,11 +8,8 @@ import CoverLetter, { type ICoverLetter } from '@/models/CoverLetter'
 import Resume from '@/models/Resume'
 import ScrapedJob from '@/models/ScrapedJob'
 import { preparePosting } from '@/lib/ai/cover-letter/posting'
-import type {
-  CoverLetterNotes,
-  CreateCoverLetterInput,
-  UpdateCoverLetterInput,
-} from '@/lib/schemas/cover-letter.zod'
+import { LEGACY_PLACEHOLDER } from '@/lib/coverletter/header'
+import type { CreateCoverLetterInput, UpdateCoverLetterInput } from '@/lib/schemas/cover-letter.zod'
 
 /** A letter still "writing" this long after it started (or was created) has been lost. */
 export const STALE_WRITING_MS = 90_000
@@ -21,14 +18,13 @@ export const START_FAILED_MESSAGE = 'Could not start this letter. Please try aga
 
 // A migrated letter has no posting; the schema requires some job text.
 const LEGACY_JOB_TEXT = 'Imported from the cover letter saved with this CV.'
-const LEGACY_FALLBACK = 'Unspecified'
 const DUPLICATE_KEY = 11000
 // CoverLetter.content's maxlength; a longer legacy text is cut rather than failing every list.
 const MAX_CONTENT_LENGTH = 20_000
 
 /** What the API returns: the stored letter without the posting text or Mongo internals. */
 export type CoverLetterView = Omit<ICoverLetter, 'jobText'> & { id: string }
-/** One letter read on its own: a failed letter also carries its posting, so Try again can start from it. */
+/** One letter read on its own: a failed or written letter also carries its posting, so Try again and Write a new version can start from it. */
 export type CoverLetterDetail = CoverLetterView & { jobText?: string }
 
 type StoredLetter = ICoverLetter & { _id: unknown; __v?: number }
@@ -40,7 +36,8 @@ function toView(doc: StoredLetter): CoverLetterView {
 }
 
 function toDetail(doc: StoredLetter): CoverLetterDetail {
-  return doc.status === 'failed' ? { ...toView(doc), jobText: doc.jobText } : toView(doc)
+  // A legacy letter's posting is only a placeholder; a writing letter needs none.
+  return doc.status !== 'writing' && !doc.legacy ? { ...toView(doc), jobText: doc.jobText } : toView(doc)
 }
 
 function isStale(doc: StoredLetter, now = Date.now()): boolean {
@@ -83,8 +80,8 @@ export async function migrateLegacyCoverLetter(userId: string, resumeId: string)
     await CoverLetter.create({
       userId,
       resumeId,
-      company: resume.targetCompany || LEGACY_FALLBACK,
-      role: resume.targetRole || LEGACY_FALLBACK,
+      company: resume.targetCompany || LEGACY_PLACEHOLDER,
+      role: resume.targetRole || LEGACY_PLACEHOLDER,
       jobText: LEGACY_JOB_TEXT,
       content: text.slice(0, MAX_CONTENT_LENGTH),
       status: 'ready',
@@ -144,6 +141,7 @@ export async function updateCoverLetter(
   await dbConnect()
   const $set: Record<string, unknown> = {}
   if (patch.content !== undefined) $set.content = patch.content
+  if (patch.design !== undefined) $set.design = patch.design
   if (patch.pendingApprovals !== undefined) $set.pendingApprovals = patch.pendingApprovals
   if (patch.notes !== undefined) {
     for (const [key, value] of Object.entries(patch.notes)) {
@@ -172,16 +170,6 @@ export async function deleteCoverLetter(userId: string, resumeId: string, id: st
   await dbConnect()
   const result = await CoverLetter.deleteOne({ _id: id, userId, resumeId })
   return result.deletedCount > 0
-}
-
-/** The "explain" note from the newest letter of this CV, to prefill the next one. */
-export async function latestNotes(userId: string, resumeId: string): Promise<CoverLetterNotes> {
-  await dbConnect()
-  const latest = await CoverLetter.findOne({ userId, resumeId }, 'notes')
-    .sort({ createdAt: -1, _id: -1 })
-    .lean<Pick<StoredLetter, 'notes'>>()
-  const explain = latest?.notes?.explain
-  return explain ? { explain } : {}
 }
 
 export type SuggestedPosting = { company: string; role: string; jobText: string; scrapedJobId: string }

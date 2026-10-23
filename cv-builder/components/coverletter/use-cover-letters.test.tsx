@@ -30,7 +30,6 @@ const json = (body: unknown, status = 200) =>
 
 const listBody = (letters: CoverLetterView[] = [], over: Record<string, unknown> = {}) => ({
   letters,
-  notes: {},
   suggestedPosting: null,
   ...over,
 })
@@ -73,16 +72,15 @@ async function mount(resumeId: string | null = 'r1') {
 }
 
 describe('useCoverLetters', () => {
-  it('loads the list, prefill notes and suggested posting on mount', async () => {
+  it('loads the list and suggested posting on mount', async () => {
     const posting = { company: 'Beta', role: 'Dev', jobText: 'text', scrapedJobId: 's1' }
     route({
       [`GET ${BASE}`]: () =>
-        json(listBody([letter('l1')], { notes: { motivation: 'Loves it' }, suggestedPosting: posting })),
+        json(listBody([letter('l1')], { suggestedPosting: posting })),
     })
     const { result } = await mount()
     expect(result.current.loading).toBe(false)
     expect(result.current.letters.map((l) => l.id)).toEqual(['l1'])
-    expect(result.current.prefillNotes).toEqual({ motivation: 'Loves it' })
     expect(result.current.suggestedPosting).toEqual(posting)
     expect(result.current.error).toBeNull()
   })
@@ -270,6 +268,343 @@ describe('useCoverLetters', () => {
       await vi.advanceTimersByTimeAsync(10_000)
     })
     expect(polls).toBe(1)
+  })
+
+  it('flush sends the held content edit at once and resolves after that PATCH settles', async () => {
+    let settled = false
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: async () => {
+        await new Promise((r) => setTimeout(r, 300))
+        settled = true
+        return json({ letter: letter('l1', { content: 'typed' }) })
+      },
+    })
+    const { result } = await mount()
+
+    act(() => {
+      result.current.save('l1', { content: 'typed' })
+    })
+    expect(calls('PATCH', `${BASE}/l1`)).toHaveLength(0)
+
+    let flushed = false
+    await act(async () => {
+      const p = result.current.flush().then(() => {
+        flushed = true
+      })
+      // Well short of the 800 ms debounce: flush must not wait for it.
+      await vi.advanceTimersByTimeAsync(100)
+      expect(calls('PATCH', `${BASE}/l1`)).toHaveLength(1)
+      expect(flushed).toBe(false)
+      await vi.advanceTimersByTimeAsync(300)
+      await p
+    })
+    expect(settled).toBe(true)
+    expect(flushed).toBe(true)
+    expect(bodyOf(calls('PATCH', `${BASE}/l1`)[0])).toEqual({ content: 'typed' })
+
+    // The debounce timer was cancelled: no second PATCH later.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    expect(calls('PATCH', `${BASE}/l1`)).toHaveLength(1)
+  })
+
+  it('flush resolves at once when nothing is waiting, and does not throw on a failed PATCH', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () => json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, 500),
+    })
+    const { result } = await mount()
+    await act(async () => {
+      await result.current.flush()
+    })
+    expect(fetchMock.mock.calls.filter((c) => (c[1] as RequestInit | undefined)?.method === 'PATCH')).toHaveLength(0)
+
+    act(() => {
+      result.current.save('l1', { content: 'x' })
+    })
+    await act(async () => {
+      await expect(result.current.flush()).resolves.toBe(false)
+    })
+    expect(result.current.error).toBe('Internal server error')
+  })
+
+  it('flush resolves true when nothing is held and when every save it waited on worked', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () => json({ letter: letter('l1', { content: 'x' }) }),
+    })
+    const { result } = await mount()
+    await act(async () => {
+      await expect(result.current.flush()).resolves.toBe(true)
+    })
+    act(() => {
+      result.current.save('l1', { content: 'x' })
+    })
+    await act(async () => {
+      await expect(result.current.flush()).resolves.toBe(true)
+    })
+  })
+
+  it('flush resolves false when a design save it waited on failed', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () => json({ error: 'nope', code: 'INTERNAL_ERROR' }, 500),
+    })
+    const { result } = await mount()
+    act(() => {
+      result.current.save('l1', { design: 'accent-edge' })
+    })
+    await act(async () => {
+      await expect(result.current.flush()).resolves.toBe(false)
+    })
+  })
+
+  it('flush resolves false for a network failure too', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () => Promise.reject(new TypeError('Failed to fetch')),
+    })
+    const { result } = await mount()
+    act(() => {
+      result.current.save('l1', { content: 'x' })
+    })
+    await act(async () => {
+      await expect(result.current.flush()).resolves.toBe(false)
+    })
+  })
+
+  it('a content save that failed on its own is sent again by the next flush, which then resolves true', async () => {
+    let n = 0
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () =>
+        n++ === 0
+          ? json({ error: 'nope', code: 'INTERNAL_ERROR' }, 500)
+          : json({ letter: letter('l1', { content: 'typed' }) }),
+    })
+    const { result } = await mount()
+    act(() => {
+      result.current.save('l1', { content: 'typed' })
+    })
+    // The debounce fires and the save fails with nobody waiting on it.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900)
+    })
+    expect(calls('PATCH', `${BASE}/l1`)).toHaveLength(1)
+    expect(result.current.error).toBe('nope')
+
+    await act(async () => {
+      await expect(result.current.flush()).resolves.toBe(true)
+    })
+    const patches = calls('PATCH', `${BASE}/l1`)
+    expect(patches).toHaveLength(2)
+    expect(bodyOf(patches[1])).toEqual({ content: 'typed' })
+  })
+
+  it('typing after a failed content save replaces the retry, so flush sends only the newest text', async () => {
+    let n = 0
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      const key = `${init?.method ?? 'GET'} ${url}`
+      if (key === `GET ${BASE}`) return json(listBody([letter('l1')]))
+      if (key === `PATCH ${BASE}/l1`) {
+        if (n++ === 0) return json({ error: 'nope', code: 'INTERNAL_ERROR' }, 500)
+        // The server echoes what it was sent, so a stale PATCH would show up as stale text.
+        return json({ letter: letter('l1', { content: JSON.parse(init!.body as string).content }) })
+      }
+      return json({ error: `unrouted ${key}` }, 500)
+    })
+    const { result } = await mount()
+    act(() => {
+      result.current.save('l1', { content: 'a' })
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900)
+    })
+    expect(calls('PATCH', `${BASE}/l1`)).toHaveLength(1)
+
+    // The user types again; the new text is still held for the debounce when Export flushes.
+    act(() => {
+      result.current.save('l1', { content: 'ab' })
+    })
+    await act(async () => {
+      await expect(result.current.flush()).resolves.toBe(true)
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+
+    const patches = calls('PATCH', `${BASE}/l1`)
+    expect(patches.map(bodyOf)).toEqual([{ content: 'a' }, { content: 'ab' }])
+    expect(result.current.letters[0].content).toBe('ab')
+  })
+
+  it('a failed Keep this letter puts the approvals back and reports the error', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1', { pendingApprovals: ['10 years'] })])),
+      [`PATCH ${BASE}/l1`]: () => json({ error: 'nope', code: 'INTERNAL_ERROR' }, 500),
+    })
+    const { result } = await mount()
+    await act(async () => {
+      result.current.save('l1', { pendingApprovals: [] })
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.letters[0].pendingApprovals).toEqual(['10 years'])
+    expect(result.current.error).toBe('nope')
+  })
+
+  it('a failed Keep this letter after a network error puts the approvals back too', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1', { pendingApprovals: ['10 years'] })])),
+      [`PATCH ${BASE}/l1`]: () => Promise.reject(new TypeError('Failed to fetch')),
+    })
+    const { result } = await mount()
+    await act(async () => {
+      result.current.save('l1', { pendingApprovals: [] })
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.letters[0].pendingApprovals).toEqual(['10 years'])
+  })
+
+  it('a failed Keep this letter does not undo approvals the screen has since moved on from', async () => {
+    const releases: Array<() => void> = []
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1', { pendingApprovals: ['10 years'] })])),
+      [`PATCH ${BASE}/l1`]: () =>
+        new Promise<Response>((resolve) => {
+          releases.push(() => resolve(json({ error: 'nope', code: 'INTERNAL_ERROR' }, 500)))
+        }),
+    })
+    const { result } = await mount()
+    act(() => {
+      result.current.save('l1', { pendingApprovals: [] })
+      result.current.save('l1', { pendingApprovals: [] })
+    })
+    // The first save fails while the second (a newer Keep) is still out: the screen keeps the newer value.
+    await act(async () => {
+      releases[0]()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.letters[0].pendingApprovals).toEqual([])
+  })
+
+  it('two quick design saves answered in reverse order leave the last choice in place', async () => {
+    const resolvers: Array<() => void> = []
+    let n = 0
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () => {
+        const design = n++ === 0 ? 'accent-edge' : 'classic'
+        return new Promise<Response>((resolve) => {
+          resolvers.push(() => resolve(json({ letter: letter('l1', { design }) })))
+        })
+      },
+    })
+    const { result } = await mount()
+
+    act(() => {
+      result.current.save('l1', { design: 'accent-edge' })
+      result.current.save('l1', { design: 'classic' })
+    })
+    expect(result.current.letters[0].design).toBe('classic')
+    expect(resolvers).toHaveLength(2)
+
+    // The second answer lands first, then the stale first one.
+    await act(async () => {
+      resolvers[1]()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    await act(async () => {
+      resolvers[0]()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.letters[0].design).toBe('classic')
+  })
+
+  it('a stale answer to an earlier design save does not undo a newer choice', async () => {
+    const resolvers: Array<() => void> = []
+    let n = 0
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () => {
+        const design = n++ === 0 ? 'accent-edge' : 'classic'
+        return new Promise<Response>((resolve) => {
+          resolvers.push(() => resolve(json({ letter: letter('l1', { design }) })))
+        })
+      },
+    })
+    const { result } = await mount()
+    act(() => {
+      result.current.save('l1', { design: 'accent-edge' })
+      result.current.save('l1', { design: 'classic' })
+    })
+    // The first answer arrives while the second is still out.
+    await act(async () => {
+      resolvers[0]()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.letters[0].design).toBe('classic')
+  })
+
+  it('a failed design save puts the previous design back and reports the error', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1', { design: 'classic' })])),
+      [`PATCH ${BASE}/l1`]: () => json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, 500),
+    })
+    const { result } = await mount()
+    await act(async () => {
+      result.current.save('l1', { design: 'accent-edge' })
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.letters[0].design).toBe('classic')
+    expect(result.current.error).toBe('Internal server error')
+  })
+
+  it('a failed design save on a letter with no stored design goes back to none', async () => {
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () => json({ error: 'nope', code: 'INTERNAL_ERROR' }, 500),
+    })
+    const { result } = await mount()
+    await act(async () => {
+      result.current.save('l1', { design: 'accent-edge' })
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.letters[0].design).toBeUndefined()
+  })
+
+  it('flush waits for a design save that is already in flight', async () => {
+    let release: () => void = () => {}
+    route({
+      [`GET ${BASE}`]: () => json(listBody([letter('l1')])),
+      [`PATCH ${BASE}/l1`]: () =>
+        new Promise<Response>((resolve) => {
+          release = () => resolve(json({ letter: letter('l1', { design: 'accent-edge' }) }))
+        }),
+    })
+    const { result } = await mount()
+    act(() => {
+      result.current.save('l1', { design: 'accent-edge' })
+    })
+    expect(calls('PATCH', `${BASE}/l1`)).toHaveLength(1)
+
+    let flushed = false
+    await act(async () => {
+      void result.current.flush().then(() => {
+        flushed = true
+      })
+      await vi.advanceTimersByTimeAsync(50)
+    })
+    expect(flushed).toBe(false)
+    // No second request: there was no held content to send.
+    expect(calls('PATCH', `${BASE}/l1`)).toHaveLength(1)
+
+    await act(async () => {
+      release()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(flushed).toBe(true)
   })
 
   it('three quick content saves send one PATCH with the last content after 800 ms', async () => {

@@ -14,7 +14,7 @@ import { buildFactSheet, renderFactSheet } from './fact-sheet'
 import { detectGaps } from './gaps'
 import { renderLetter, type StructuredLetter } from './letter'
 import { preparePosting, type PostingInfo } from './posting'
-import { buildRefinePrompt, buildWritePrompt, type LetterNotes } from './prompt'
+import { buildRefinePrompt, buildWritePrompt, situationAllowed, situationRequired, type LetterNotes } from './prompt'
 import { WrittenLetterSchema, type LetterPlan, type WrittenLetter } from './schema'
 import { verifyLetter, type VerifyIssue } from './verify'
 
@@ -72,6 +72,27 @@ export function greetingFor(posting: PostingInfo, notes?: LetterNotes): string {
   if (manager) return `Dear ${manager},`
   return posting.employerNamed ? `Dear ${posting.company} Hiring Team,` : 'Dear Hiring Team,'
 }
+
+/** The plan's situation is the code's decision, not the model's: without a gap or an explanation in the notes it is null. */
+export function gateSituation(plan: LetterPlan, allowed: boolean): LetterPlan {
+  return allowed || plan.situation === null ? plan : { ...plan, situation: null }
+}
+
+export const SITUATION_EXPLAIN_NOTICE = 'The letter may not address what you asked to explain. Check it before sending.'
+export const SITUATION_GAP_NOTICE = 'The letter may not address the gap in your work history. Check it before sending.'
+
+/**
+ * The code requires a sentence about the situation, but the model's plan names
+ * none. The detail is what the user sees if it is still missing at the end;
+ * the refine gets its own instruction through the code (buildRefinePrompt).
+ */
+export function situationIssues(plan: LetterPlan, required: boolean, explained = false): VerifyIssue[] {
+  if (!required || plan.situation?.trim()) return []
+  return [{ kind: 'form', sentence: null, detail: explained ? SITUATION_EXPLAIN_NOTICE : SITUATION_GAP_NOTICE, code: 'situation-missing' }]
+}
+
+/** Whether the candidate wrote something under "Anything to explain". */
+export const explainedIn = (notes?: LetterNotes) => Boolean(notes?.explain?.trim())
 
 /** The model's closing word, then the CV name exactly as written. */
 export function signOffFor(modelSignOff: string, name: string): string {
@@ -142,12 +163,18 @@ export async function writeCoverLetter(
   const factSheet = renderFactSheet(sheet)
   const name = sheet.candidateName ?? ''
   const greeting = greetingFor(posting, opts.notes)
+  const gaps = detectGaps(data, today)
+  const allowed = situationAllowed(gaps, opts.notes)
+  const required = allowed && situationRequired(gaps, opts.notes)
   const settle = (w: WrittenLetter): WrittenLetter => ({
     ...w,
+    plan: gateSituation(w.plan, allowed),
     letter: { ...w.letter, greeting, signOff: signOffFor(w.letter.signOff, name) },
   })
-  const check = (w: WrittenLetter) =>
-    verifyLetter({ letter: w.letter, sheet, jobText: posting.text, company: posting.company, role: input.role, today, sparse: w.plan.sparse })
+  const check = (w: WrittenLetter) => [
+    ...verifyLetter({ letter: w.letter, sheet, jobText: posting.text, company: posting.company, role: input.role, today, sparse: w.plan.sparse }),
+    ...situationIssues(w.plan, required, explainedIn(opts.notes)),
+  ]
 
   progress('writing')
   const prompt = buildWritePrompt({
@@ -157,7 +184,8 @@ export async function writeCoverLetter(
     greeting,
     candidateName: name,
     notes: opts.notes,
-    gaps: detectGaps(data, today),
+    gaps,
+    situationAllowed: allowed,
     today,
   })
   let calls = 1

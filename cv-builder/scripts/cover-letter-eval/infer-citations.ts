@@ -7,7 +7,7 @@
 // the new pipeline gets real citations from the writer.
 import { renderFactSheet, type FactSheet } from '@/lib/ai/cover-letter/fact-sheet'
 import { extractTechTerms } from '@/lib/ats/keywords'
-import type { LetterSentence, StructuredLetter } from '@/lib/ai/cover-letter/letter'
+import { stripBulletMarker, type LetterSentence, type StructuredLetter } from '@/lib/ai/cover-letter/letter'
 import { foldName, mentionsName } from '@/lib/ai/cover-letter/names'
 import { extractNumbers, sameNumber } from '@/lib/ai/cover-letter/numbers'
 
@@ -15,7 +15,28 @@ const SENTENCE_SPLIT = /(?<=[.!?])\s+(?=[\p{Lu}"“])/u
 const GREETING = /^(dear|hello|hi|to)\b/i
 const SIGN_OFF = /^(sincerely|best|kind regards|warm regards|regards|thank you|thanks|respectfully|yours|with appreciation)\b/i
 
-const sentence = (text: string): LetterSentence => ({ text, facts: [], quotes: [] })
+const sentence = (text: string, bullet = false): LetterSentence => ({ text, facts: [], quotes: [], bullet })
+
+const LIST_LINE = /^\s*[-•*]\s+/
+
+/** One stored paragraph: each "- " line is a list item of its own, and the lines between are prose split into sentences. */
+function parseParagraph(block: string): LetterSentence[] {
+  const out: LetterSentence[] = []
+  let prose: string[] = []
+  const flush = () => {
+    const text = prose.join(' ').replace(/\s+/g, ' ')
+    out.push(...text.split(SENTENCE_SPLIT).map((s) => s.trim()).filter(Boolean).map((s) => sentence(s)))
+    prose = []
+  }
+  for (const line of block.split('\n')) {
+    if (LIST_LINE.test(line)) {
+      flush()
+      out.push(sentence(stripBulletMarker(line), true))
+    } else prose.push(line)
+  }
+  flush()
+  return out
+}
 
 export function parsePlainLetter(text: string): StructuredLetter {
   const blocks = text.replace(/\r\n/g, '\n').split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean)
@@ -32,7 +53,7 @@ export function parsePlainLetter(text: string): StructuredLetter {
     return SIGN_OFF.test(first) && first.split(/\s+/).length <= 6
   })
   if (signAt >= 0) signOff = blocks.splice(signAt).join('\n\n')
-  const paragraphs = blocks.map((b) => b.replace(/\s+/g, ' ').split(SENTENCE_SPLIT).map((s) => s.trim()).filter(Boolean).map(sentence))
+  const paragraphs = blocks.map(parseParagraph)
   return { greeting, paragraphs, signOff }
 }
 

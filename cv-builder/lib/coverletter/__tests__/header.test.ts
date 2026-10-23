@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { letterHeader } from '../header'
+import { letterFileTitle, letterHeader, letterRecipient, letterSubject } from '../header'
 
 const DATE = new Date('2026-10-21')
 
@@ -61,5 +61,84 @@ describe('letterHeader', () => {
   it('is not shifted by the server time zone near midnight UTC', () => {
     expect(letterHeader({}, new Date('2026-10-21T23:30:00Z'), 'en').date).toBe('21 October 2026')
     expect(letterHeader({}, new Date('2026-10-21T00:30:00Z'), 'en').date).toBe('21 October 2026')
+  })
+})
+
+describe('letterSubject', () => {
+  it('builds an English subject from role and company', () => {
+    expect(letterSubject({ company: 'Acme', role: 'Data Analyst', language: 'en' })).toBe('Re: Data Analyst, Acme')
+  })
+
+  it('uses the Hebrew prefix', () => {
+    expect(letterSubject({ company: 'Acme', role: 'Data Analyst', language: 'he' })).toBe('הנדון: Data Analyst, Acme')
+  })
+
+  it('drops a placeholder role', () => {
+    expect(letterSubject({ company: 'Acme', role: 'Unspecified', language: 'en' })).toBe('Re: Acme')
+  })
+
+  it('drops a placeholder company', () => {
+    expect(letterSubject({ company: 'Unspecified', role: 'Data Analyst', language: 'en' })).toBe('Re: Data Analyst')
+  })
+
+  it('is null when both are placeholders or empty', () => {
+    expect(letterSubject({ company: 'Unspecified', role: 'Unspecified', language: 'en' })).toBeNull()
+    expect(letterSubject({ company: ' ', role: '', language: 'he' })).toBeNull()
+  })
+})
+
+describe('letterRecipient', () => {
+  it('lists the hiring manager, then the company', () => {
+    expect(letterRecipient({ company: 'Acme', hiringManager: 'Noa Cohen' })).toEqual(['Noa Cohen', 'Acme'])
+  })
+
+  it('trims values and drops empty ones', () => {
+    expect(letterRecipient({ company: '  Acme  ', hiringManager: '   ' })).toEqual(['Acme'])
+  })
+
+  it('drops a placeholder company', () => {
+    expect(letterRecipient({ company: 'Unspecified' })).toEqual([])
+  })
+
+  it('keeps the manager when the company is a placeholder', () => {
+    expect(letterRecipient({ company: 'Unspecified', hiringManager: 'Noa Cohen' })).toEqual(['Noa Cohen'])
+  })
+})
+
+describe('letterFileTitle', () => {
+  it('builds the title from role and company', () => {
+    expect(letterFileTitle({ company: 'Acme', role: 'Data Analyst' })).toBe('Cover Letter - Data Analyst - Acme')
+  })
+
+  it('removes characters unsafe in file names', () => {
+    const t = letterFileTitle({ company: 'Acme/Labs\\Co', role: 'Data: Analyst*?"<>|' })
+    expect(t).not.toMatch(/[/\\:*?"<>|]/)
+    expect(t.startsWith('Cover Letter - ')).toBe(true)
+  })
+
+  it('removes control characters and collapses whitespace', () => {
+    expect(letterFileTitle({ company: 'Acme\u0000\n  Labs', role: 'Analyst' })).toBe('Cover Letter - Analyst - Acme Labs')
+  })
+
+  it('keeps Hebrew letters', () => {
+    expect(letterFileTitle({ company: 'אקמי', role: 'אנליסט' })).toBe('Cover Letter - אנליסט - אקמי')
+  })
+
+  it('drops placeholders', () => {
+    expect(letterFileTitle({ company: 'Acme', role: 'Unspecified' })).toBe('Cover Letter - Acme')
+    expect(letterFileTitle({ company: 'Unspecified', role: 'Unspecified' })).toBe('Cover Letter')
+  })
+
+  it('cuts to 120 characters without a trailing separator', () => {
+    const t = letterFileTitle({ company: 'Acme', role: 'a'.repeat(200) })
+    expect(t.length).toBeLessThanOrEqual(120)
+    const cut = letterFileTitle({ company: 'b', role: `${'a'.repeat(100)} - x` })
+    expect(cut).not.toMatch(/[\s-]$/)
+  })
+
+  it('never splits a surrogate pair when it cuts', () => {
+    const t = letterFileTitle({ company: 'Acme', role: '😀'.repeat(100) })
+    expect(Array.from(t).length).toBeLessThanOrEqual(120)
+    expect(() => encodeURIComponent(t)).not.toThrow()
   })
 })

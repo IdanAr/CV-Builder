@@ -11,6 +11,8 @@ export const LetterSentenceSchema = z.object({
   facts: z.array(z.string()),
   /** Exact posting snippets this sentence relies on. */
   quotes: z.array(z.string()),
+  /** True for an item of the letter's one short list; every other sentence is prose. */
+  bullet: z.boolean(),
 })
 
 export const StructuredLetterSchema = z.object({
@@ -28,7 +30,7 @@ export const LetterPlanSchema = z.object({
       facts: z.array(z.string()),
     }),
   ),
-  /** The gap, career change, stretch or overqualification to address, or null for a straight fit. */
+  /** The gap or explained circumstance to address in one sentence, or null: the code, not the model, decides when one is allowed. */
   situation: z.string().nullable(),
   openingAngle: z.string(),
   whyCompany: z.object({ source: z.enum(['notes', 'posting']), text: z.string() }),

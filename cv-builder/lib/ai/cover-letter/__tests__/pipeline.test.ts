@@ -8,7 +8,7 @@ vi.mock('@/lib/ai/models', () => ({
 }))
 
 import { BANNED_PHRASES, renderLetter, type LetterSentence } from '../letter'
-import { writeCoverLetter } from '../pipeline'
+import { assembleRun, gateSituation, situationIssues, SITUATION_EXPLAIN_NOTICE, SITUATION_GAP_NOTICE, writeCoverLetter } from '../pipeline'
 import { buildWritePrompt } from '../prompt'
 import { buildFactSheet, renderFactSheet } from '../fact-sheet'
 import { preparePosting } from '../posting'
@@ -22,6 +22,7 @@ const FILLER: LetterSentence = {
   text: Array.from({ length: 30 }, () => 'Clear reporting helps people decide quickly and calmly.').join(' '),
   facts: [],
   quotes: [],
+  bullet: false,
 }
 
 function written(sentences: LetterSentence[]): WrittenLetter {
@@ -37,8 +38,8 @@ function written(sentences: LetterSentence[]): WrittenLetter {
   }
 }
 
-const clean = written([{ text: 'At Acme I cut report time by 40%, which is the speed Globex asks for.', facts: ['F4'], quotes: ['speed up reporting'] }])
-const uncited = written([{ text: 'At Acme I cut report time by 45%.', facts: ['F4'], quotes: [] }])
+const clean = written([{ text: 'At Acme I cut report time by 40%, which is the speed Globex asks for.', facts: ['F4'], quotes: ['speed up reporting'], bullet: false }])
+const uncited = written([{ text: 'At Acme I cut report time by 45%.', facts: ['F4'], quotes: [], bullet: false }])
 
 const reply = (w: WrittenLetter) => ({ parsed_output: w, stop_reason: 'end_turn', content: [], usage: { input_tokens: 1, output_tokens: 1 } })
 
@@ -65,7 +66,7 @@ describe('writeCoverLetter', () => {
   })
 
   it('does not spend a second call on length alone; a short letter gets a notice', async () => {
-    const short = written([{ text: 'At Acme I cut report time by 40%, which is the speed Globex asks for.', facts: ['F4'], quotes: ['speed up reporting'] }])
+    const short = written([{ text: 'At Acme I cut report time by 40%, which is the speed Globex asks for.', facts: ['F4'], quotes: ['speed up reporting'], bullet: false }])
     short.letter.paragraphs = [short.letter.paragraphs[0]]
     mockParse.mockResolvedValueOnce(reply(short))
     const run = await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10' })
@@ -151,6 +152,62 @@ describe('writeCoverLetter', () => {
   })
 })
 
+describe('situation gate', () => {
+  const plan = { ...clean.plan, situation: 'a career change' }
+
+  it('gateSituation nulls an unallowed situation and leaves the rest of the plan alone', () => {
+    expect(gateSituation(plan, false)).toEqual({ ...plan, situation: null })
+    expect(gateSituation(plan, true)).toBe(plan)
+    expect(gateSituation(clean.plan, false)).toBe(clean.plan)
+  })
+
+  it('situationIssues raises a form issue only when a situation is required and the plan names none', () => {
+    expect(situationIssues(clean.plan, true)).toEqual([expect.objectContaining({ kind: 'form', sentence: null })])
+    expect(situationIssues({ ...plan, situation: '  ' }, true)).toHaveLength(1)
+    expect(situationIssues(plan, true)).toEqual([])
+    expect(situationIssues(clean.plan, false)).toEqual([])
+  })
+
+  it('situationIssues speaks to the user, in plain words, about what they asked to explain or about the gap', () => {
+    expect(SITUATION_EXPLAIN_NOTICE).toBe('The letter may not address what you asked to explain. Check it before sending.')
+    for (const notice of [SITUATION_EXPLAIN_NOTICE, SITUATION_GAP_NOTICE]) {
+      expect(notice).not.toMatch(/plan|—/)
+      expect(notice).toMatch(/Check it before sending\.$/)
+    }
+    expect(situationIssues(clean.plan, true, true)).toEqual([{ kind: 'form', sentence: null, detail: SITUATION_EXPLAIN_NOTICE, code: 'situation-missing' }])
+    expect(situationIssues(clean.plan, true, false)).toEqual([{ kind: 'form', sentence: null, detail: SITUATION_GAP_NOTICE, code: 'situation-missing' }])
+  })
+
+  it('assembleRun shows the user the plain notice, never the instruction meant for the model', () => {
+    const run = assembleRun({ written: clean, issues: situationIssues(clean.plan, true, true), firstIssues: [], sheetFacts: 10, name: 'Dana Levi', refined: true, calls: 2 })
+    expect(run.notices).toEqual([SITUATION_EXPLAIN_NOTICE])
+    expect(run.notices.join(' ')).not.toMatch(/the plan/i)
+  })
+
+  it('variant A ends with a null plan situation when there is no gap and no notes', async () => {
+    mockParse.mockResolvedValueOnce(reply({ ...clean, plan }))
+    const run = await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10' })
+    expect(run.plan.situation).toBeNull()
+    expect(JSON.stringify(mockParse.mock.calls[0][0].messages)).toContain('Situation: null.')
+  })
+
+  it('variant A keeps the situation when the candidate asked to explain it', async () => {
+    mockParse.mockResolvedValueOnce(reply({ ...clean, plan }))
+    const run = await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10', notes: { explain: 'I changed field' } })
+    expect(run.plan.situation).toBe('a career change')
+    expect(run.refined).toBe(false)
+  })
+
+  it('variant A refines when a required situation is missing from the plan', async () => {
+    mockParse.mockResolvedValueOnce(reply(clean)).mockResolvedValueOnce(reply({ ...clean, plan }))
+    const run = await writeCoverLetter(FIXTURE_CV, POSTING, { today: '2026-10', notes: { explain: 'I changed field' } })
+    expect(mockParse).toHaveBeenCalledTimes(2)
+    expect(JSON.stringify(mockParse.mock.calls[1][0].messages)).toContain('the plan names no situation')
+    expect(run.refined).toBe(true)
+    expect(run.issues).toEqual([])
+  })
+})
+
 describe('buildWritePrompt', () => {
   const prompt = buildWritePrompt({
     factSheet: renderFactSheet(buildFactSheet(FIXTURE_CV)),
@@ -163,6 +220,7 @@ describe('buildWritePrompt', () => {
       { from: '2026-01', to: '2026-10', months: 10, coveredBy: [], filled: [], after: '2025', exactStart: false },
       { from: '2024-10', to: '2026-10', months: 25, coveredBy: ['education'], filled: [{ kind: 'education', from: '2025-12', to: '2026-07' }], after: '2024-09', exactStart: true },
     ],
+    situationAllowed: true,
     today: '2026-10',
   })
 
