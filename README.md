@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?logo=mongodb)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38bdf8?logo=tailwindcss)
-![Vitest](https://img.shields.io/badge/tests-304%20suites-brightgreen?logo=vitest)
+![Vitest](https://img.shields.io/badge/tests-339%20suites-brightgreen?logo=vitest)
 ![Vercel](https://img.shields.io/badge/deployed-Vercel-black?logo=vercel)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -718,7 +718,7 @@ All routes below are session-authenticated via Auth.js (`auth()` wrapper) and sc
 
 ## Testing
 
-The project has **304 Vitest test suites (3,195 tests)** covering schemas, API routes, AI pipelines (including hallucination detection), the ATS scorer, DOCX/PDF template rendering, pagination math, the application-tracking sort/filter/order logic, the job-search scan/rules/apply pipeline, and editor components, run via `@testing-library/react` + `jsdom`.
+The project has **339 Vitest test suites (3,770 tests)** covering schemas, API routes, AI pipelines (including hallucination detection), the ATS scorer, DOCX/PDF template rendering, pagination math, the application-tracking sort/filter/order logic, the job-search scan/rules/apply pipeline, and editor components, run via `@testing-library/react` + `jsdom`.
 
 ```bash
 npm run test        # watch mode
