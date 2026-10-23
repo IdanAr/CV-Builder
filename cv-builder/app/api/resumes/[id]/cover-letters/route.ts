@@ -4,7 +4,6 @@ import { getResume } from '@/lib/api/resumes'
 import {
   listCoverLetters,
   createCoverLetter,
-  latestNotes,
   suggestedPostingFor,
   failWritingLetter,
   START_FAILED_MESSAGE,
@@ -31,12 +30,11 @@ export const GET = auth(async (req, ctx) => {
     }
 
     // Read-only: nothing here creates a letter or starts the writer.
-    const [letters, notes, suggestedPosting] = await Promise.all([
+    const [letters, suggestedPosting] = await Promise.all([
       listCoverLetters(userId, id),
-      latestNotes(userId, id),
       suggestedPostingFor(userId, id),
     ])
-    return NextResponse.json({ letters, notes, suggestedPosting })
+    return NextResponse.json({ letters, suggestedPosting })
   } catch (err) {
     return handleRouteError(err, 'GET /api/resumes/[id]/cover-letters')
   }

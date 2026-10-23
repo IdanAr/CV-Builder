@@ -5,16 +5,10 @@ import { apiErrorMessage } from '@/lib/api/client-errors'
 import type { LetterDesign } from '@/lib/coverletter/design'
 // Types only: importing the values would drag mongoose into the client bundle.
 import type { CoverLetterDetail, CoverLetterView, SuggestedPosting } from '@/lib/api/cover-letters'
-import type {
-  CoverLetterNotes,
-  CreateCoverLetterInput,
-  UpdateCoverLetterInput,
-} from '@/lib/schemas/cover-letter.zod'
+import type { CreateCoverLetterInput, UpdateCoverLetterInput } from '@/lib/schemas/cover-letter.zod'
 
 export interface UseCoverLetters {
   letters: CoverLetterView[]
-  /** Notes from the most recent letter, to prefill the next one. */
-  prefillNotes: CoverLetterNotes
   suggestedPosting: SuggestedPosting | null
   loading: boolean
   error: string | null
@@ -64,7 +58,6 @@ interface PendingContent {
  */
 export function useCoverLetters(resumeId: string | null): UseCoverLetters {
   const [letters, setLetters] = useState<CoverLetterView[]>([])
-  const [prefillNotes, setPrefillNotes] = useState<CoverLetterNotes>({})
   const [suggestedPosting, setSuggestedPosting] = useState<SuggestedPosting | null>(null)
   const [loading, setLoading] = useState(resumeId !== null)
   const [error, setError] = useState<string | null>(null)
@@ -103,7 +96,6 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
     update(() => [])
     // Switching CV resets everything that belonged to the previous one.
     /* eslint-disable react-hooks/set-state-in-effect */
-    setPrefillNotes({})
     setSuggestedPosting(null)
     setError(null)
     if (!resumeId) {
@@ -123,12 +115,10 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
         }
         const body = (await res.json()) as {
           letters: CoverLetterView[]
-          notes: CoverLetterNotes
           suggestedPosting: SuggestedPosting | null
         }
         if (cancelled) return
         update(() => body.letters)
-        setPrefillNotes(body.notes ?? {})
         setSuggestedPosting(body.suggestedPosting ?? null)
       } catch {
         if (!cancelled) setError(LOAD_ERROR)
@@ -383,5 +373,5 @@ export function useCoverLetters(resumeId: string | null): UseCoverLetters {
     [resumeId]
   )
 
-  return { letters, prefillNotes, suggestedPosting, loading, error, create, save, remove, flush, postingFor }
+  return { letters, suggestedPosting, loading, error, create, save, remove, flush, postingFor }
 }

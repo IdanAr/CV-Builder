@@ -350,6 +350,7 @@ function OpenLetter({
   onSave: ReturnType<typeof useCoverLetters>['save']
   onFlush: ReturnType<typeof useCoverLetters>['flush']
   onBack: () => void
+  /** Opens the new-letter form from this letter's job; Try again and Write a new version both use it. */
   onRetry: (letter: CoverLetterView) => void
 }) {
   const id = useId()
@@ -363,6 +364,12 @@ function OpenLetter({
   const approvals = letter.pendingApprovals
   const hasLetter = letter.content.trim().length > 0
   const canExport = hasLetter && approvals.length === 0
+
+  function writeAgain() {
+    saveNotes()
+    // The notes as they stand in the form, including an edit that has not been blurred yet.
+    onRetry({ ...letter, notes: { ...(letter.notes ?? {}), ...notes } })
+  }
 
   function saveNotes() {
     const saved = letter.notes ?? {}
@@ -520,6 +527,17 @@ function OpenLetter({
           </div>
         </details>
       )}
+
+      {/* Kept quiet on purpose: every new version is a full AI run. */}
+      {letter.status === 'ready' && (
+        <div className="space-y-1 pt-1">
+          <Button size="xs" variant="ghost" onClick={writeAgain} className="-ml-2.5">
+            <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+            Write a new version
+          </Button>
+          <p className="text-xs text-fg-muted">Opens the form with this job and your notes. This letter stays as it is.</p>
+        </div>
+      )}
     </section>
   )
 }
@@ -533,7 +551,7 @@ function OpenLetter({
 export function CoverLetterPanel() {
   const resumeId = useResumeEditorStore((s) => s.resumeId)
   const data = useResumeEditorStore((s) => s.data)
-  const { letters, prefillNotes, suggestedPosting, loading, error, create, save, remove, flush, postingFor } = useCoverLetters(resumeId)
+  const { letters, suggestedPosting, loading, error, create, save, remove, flush, postingFor } = useCoverLetters(resumeId)
 
   const [view, setView] = useState<View>({ kind: 'auto' })
   // Deletes wait out an undo window, like deleting a CV.
@@ -553,14 +571,12 @@ export function CoverLetterPanel() {
   const requestDelete = (letter: CoverLetterView) =>
     requestLetterDelete(letter.id, `Deleted letter for ${letterTitle(letter)}`)
 
-  const blankNotes = (): CoverLetterNotes => (prefillNotes.explain ? { explain: prefillNotes.explain } : {})
-
   function openForm(draft: Partial<Draft> = {}) {
     formKey.current += 1
     setView({
       kind: 'new',
       key: formKey.current,
-      draft: { jobText: '', company: '', role: '', notes: blankNotes(), ...draft },
+      draft: { jobText: '', company: '', role: '', notes: {}, ...draft },
     })
   }
 
@@ -612,7 +628,7 @@ export function CoverLetterPanel() {
         <OpenLetter key={openLetter.id} letter={openLetter} resumeId={resumeId} onSave={save} onFlush={flush} onBack={toList} onRetry={retry} />
       )
     } else if (view.kind === 'new' || (view.kind === 'auto' && !hasSomething)) {
-      const draft = view.kind === 'new' ? view.draft : { jobText: '', company: '', role: '', notes: blankNotes() }
+      const draft = view.kind === 'new' ? view.draft : { jobText: '', company: '', role: '', notes: {} }
       body = (
         <NewLetterForm
           key={view.kind === 'new' ? view.key : 0}

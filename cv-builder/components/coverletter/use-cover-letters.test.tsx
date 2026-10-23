@@ -30,7 +30,6 @@ const json = (body: unknown, status = 200) =>
 
 const listBody = (letters: CoverLetterView[] = [], over: Record<string, unknown> = {}) => ({
   letters,
-  notes: {},
   suggestedPosting: null,
   ...over,
 })
@@ -73,16 +72,15 @@ async function mount(resumeId: string | null = 'r1') {
 }
 
 describe('useCoverLetters', () => {
-  it('loads the list, prefill notes and suggested posting on mount', async () => {
+  it('loads the list and suggested posting on mount', async () => {
     const posting = { company: 'Beta', role: 'Dev', jobText: 'text', scrapedJobId: 's1' }
     route({
       [`GET ${BASE}`]: () =>
-        json(listBody([letter('l1')], { notes: { motivation: 'Loves it' }, suggestedPosting: posting })),
+        json(listBody([letter('l1')], { suggestedPosting: posting })),
     })
     const { result } = await mount()
     expect(result.current.loading).toBe(false)
     expect(result.current.letters.map((l) => l.id)).toEqual(['l1'])
-    expect(result.current.prefillNotes).toEqual({ motivation: 'Loves it' })
     expect(result.current.suggestedPosting).toEqual(posting)
     expect(result.current.error).toBeNull()
   })

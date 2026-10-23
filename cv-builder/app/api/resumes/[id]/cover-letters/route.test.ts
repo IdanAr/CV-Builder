@@ -17,7 +17,6 @@ vi.mock('@/lib/api/resumes', () => ({
 vi.mock('@/lib/api/cover-letters', () => ({
   listCoverLetters: vi.fn(),
   createCoverLetter: vi.fn(),
-  latestNotes: vi.fn(),
   suggestedPostingFor: vi.fn(),
   failWritingLetter: vi.fn(),
   START_FAILED_MESSAGE: 'Could not start this letter. Please try again.',
@@ -78,14 +77,13 @@ describe('/api/resumes/[id]/cover-letters', () => {
       expect(listCoverLetters).not.toHaveBeenCalled()
     })
 
-    it('returns the letters, the prefill notes and the suggested posting', async () => {
+    it('returns the letters and the suggested posting, and no notes from earlier letters', async () => {
       signIn()
       const { getResume } = await import('@/lib/api/resumes')
       vi.mocked(getResume).mockResolvedValueOnce({ title: 'My CV' } as never)
       const api = await import('@/lib/api/cover-letters')
       const letter = { id: 'l1', company: 'Globex', role: 'Frontend Engineer', status: 'ready', content: 'Hello' }
       vi.mocked(api.listCoverLetters).mockResolvedValueOnce([letter] as never)
-      vi.mocked(api.latestNotes).mockResolvedValueOnce({ explain: 'Career change' })
       const posting = { company: 'Globex', role: 'Frontend Engineer', jobText: 'Cleaned text', scrapedJobId: 'job-1' }
       vi.mocked(api.suggestedPostingFor).mockResolvedValueOnce(posting)
 
@@ -93,7 +91,7 @@ describe('/api/resumes/[id]/cover-letters', () => {
       const res = (await GET(new Request('http://localhost/x') as never, ctx)) as Response
       expect(res.status).toBe(200)
       const json = await res.json()
-      expect(json).toEqual({ letters: [letter], notes: { explain: 'Career change' }, suggestedPosting: posting })
+      expect(json).toEqual({ letters: [letter], suggestedPosting: posting })
       expect(JSON.stringify(json.letters)).not.toContain('jobText')
       expect(api.listCoverLetters).toHaveBeenCalledWith('user-1', 'cv-1')
       expect(api.suggestedPostingFor).toHaveBeenCalledWith('user-1', 'cv-1')
@@ -105,12 +103,11 @@ describe('/api/resumes/[id]/cover-letters', () => {
       vi.mocked(getResume).mockResolvedValueOnce({ title: 'My CV' } as never)
       const api = await import('@/lib/api/cover-letters')
       vi.mocked(api.listCoverLetters).mockResolvedValueOnce([])
-      vi.mocked(api.latestNotes).mockResolvedValueOnce({})
       vi.mocked(api.suggestedPostingFor).mockResolvedValueOnce(null)
 
       const { GET } = await import('./route')
       const res = (await GET(new Request('http://localhost/x') as never, ctx)) as Response
-      expect(await res.json()).toEqual({ letters: [], notes: {}, suggestedPosting: null })
+      expect(await res.json()).toEqual({ letters: [], suggestedPosting: null })
     })
 
     it('never creates a letter or calls the writer', async () => {
@@ -119,7 +116,6 @@ describe('/api/resumes/[id]/cover-letters', () => {
       vi.mocked(getResume).mockResolvedValueOnce({ title: 'My CV' } as never)
       const api = await import('@/lib/api/cover-letters')
       vi.mocked(api.listCoverLetters).mockResolvedValueOnce([])
-      vi.mocked(api.latestNotes).mockResolvedValueOnce({})
       vi.mocked(api.suggestedPostingFor).mockResolvedValueOnce(null)
       const { enqueueCoverLetter } = await import('@/lib/ai/cover-letter/queue')
       const { checkAiRateLimit } = await import('@/lib/rate-limit')

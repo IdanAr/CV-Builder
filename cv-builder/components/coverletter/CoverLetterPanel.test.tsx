@@ -50,7 +50,6 @@ function letter(over: Partial<CoverLetterView> = {}): CoverLetterView {
 function mockHook(over: Partial<UseCoverLetters> = {}): UseCoverLetters {
   const value: UseCoverLetters = {
     letters: [],
-    prefillNotes: {},
     suggestedPosting: null,
     loading: false,
     error: null,
@@ -192,10 +191,13 @@ describe('CoverLetterPanel: new letter', () => {
     })
   })
 
-  it('prefills "Anything to explain" from the previous letter', () => {
-    mockHook({ prefillNotes: { explain: 'I moved country in 2024.' } })
+  it("starts a new letter's notes blank, whatever an earlier letter's notes say", () => {
+    mockHook({ letters: [letter({ notes: { motivation: 'Old reason.', explain: 'I moved country in 2024.', hiringManager: 'Dana' } })] })
     render(<CoverLetterPanel />)
-    expect(screen.getByLabelText(/anything to explain/i)).toHaveValue('I moved country in 2024.')
+    fireEvent.click(screen.getByRole('button', { name: 'New letter' }))
+    expect(screen.getByLabelText(/why this company or role/i)).toHaveValue('')
+    expect(screen.getByLabelText(/anything to explain/i)).toHaveValue('')
+    expect(screen.getByLabelText(/hiring manager's name/i)).toHaveValue('')
   })
 
   it('keeps the form and its text when create fails', async () => {
@@ -431,6 +433,38 @@ describe('CoverLetterPanel: Try again', () => {
   })
 })
 
+describe('CoverLetterPanel: Write a new version', () => {
+  it('opens the form from a written letter, with its posting and its current notes, and writes nothing yet', async () => {
+    const l = letter({ company: 'Initech', role: 'Analyst', notes: { motivation: 'Saved reason.' }, scrapedJobId: 'sj4' })
+    const h = mockHook({ letters: [l], postingFor: vi.fn(async () => 'Initech needs an analyst.') })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Analyst at Initech/ }))
+    // An edit to the notes that has not been blurred still counts.
+    fireEvent.change(screen.getByLabelText(/anything to explain/i), { target: { value: 'Moved city in 2025.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Write a new version' }))
+    await waitFor(() => expect(jdBox()).toHaveValue('Initech needs an analyst.'))
+    expect(screen.getByLabelText('Company')).toHaveValue('Initech')
+    expect(screen.getByLabelText('Role')).toHaveValue('Analyst')
+    expect(screen.getByLabelText(/why this company or role/i)).toHaveValue('Saved reason.')
+    expect(screen.getByLabelText(/anything to explain/i)).toHaveValue('Moved city in 2025.')
+    expect(h.create).not.toHaveBeenCalled()
+
+    fireEvent.click(writeButton())
+    await waitFor(() => expect(h.create).toHaveBeenCalledTimes(1))
+    expect(h.create).toHaveBeenCalledWith({
+      company: 'Initech', role: 'Analyst', jobText: 'Initech needs an analyst.',
+      notes: { motivation: 'Saved reason.', explain: 'Moved city in 2025.' }, scrapedJobId: 'sj4',
+    })
+  })
+
+  it('is only offered once a letter is written', () => {
+    mockHook({ letters: [letter({ status: 'writing', progress: 'writing', content: '' })] })
+    render(<CoverLetterPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /^Engineer at Acme Corp/ }))
+    expect(screen.queryByRole('button', { name: 'Write a new version' })).toBeNull()
+  })
+})
+
 describe('CoverLetterPanel: delete', () => {
   it('hides the letter at once with an Undo toast, and deletes it after the undo window', async () => {
     vi.useFakeTimers()
@@ -508,7 +542,7 @@ describe('CoverLetterPanel: suggested posting', () => {
   it('the suggestion fills the form and makes no request; Write calls create with scrapedJobId', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
-    const h = mockHook({ suggestedPosting: posting, prefillNotes: { explain: 'Career break in 2023.' } })
+    const h = mockHook({ suggestedPosting: posting })
     render(<CoverLetterPanel />)
     fireEvent.click(screen.getByRole('button', { name: 'Write a letter for Data Engineer at Umbrella' }))
     expect(jdBox()).toHaveValue('Umbrella needs a data engineer.')
@@ -521,7 +555,7 @@ describe('CoverLetterPanel: suggested posting', () => {
     await waitFor(() => expect(h.create).toHaveBeenCalledTimes(1))
     expect(h.create).toHaveBeenCalledWith({
       company: 'Umbrella', role: 'Data Engineer', jobText: 'Umbrella needs a data engineer.',
-      notes: { explain: 'Career break in 2023.' }, scrapedJobId: 'sj1',
+      notes: {}, scrapedJobId: 'sj1',
     })
   })
 })
