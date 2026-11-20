@@ -1,11 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { LayoutGrid, Rows3 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { LayoutGrid, Rows3, Search } from 'lucide-react'
 import { EmptyDashboardState } from '@/components/EmptyDashboardState'
+import { Button } from '@/components/ui/Button'
 import { CVS_VIEW_COOKIE, writePreference, type CvsView } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
-import { sortRows, type CvRow, type CvSortKey } from './cv-row'
+import { filterRows, sortRows, type CvRow, type CvSortKey } from './cv-row'
 import { CvTable, type CvSort } from './CvTable'
 import { CvCards } from './CvCards'
 import { useCvDeletion } from './use-cv-deletion'
@@ -29,14 +30,41 @@ const VIEWS: Array<{ id: CvsView; label: string; Icon: typeof Rows3 }> = [
   { id: 'cards', label: 'Cards', Icon: LayoutGrid },
 ]
 
+/** True when a keystroke is meant for a field the user is already typing in. */
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+}
+
+function countLabel(shown: number, total: number, filtering: boolean): string {
+  const noun = total === 1 ? 'CV' : 'CVs'
+  return filtering ? `${shown} of ${total} ${noun}` : `${total} ${noun}`
+}
+
 export function CvLibrary({ rows, initialView }: { rows: CvRow[]; initialView: CvsView }) {
   const [view, setView] = useState<CvsView>(initialView)
   const [sort, setSort] = useState<CvSort>(DEFAULT_SORT)
+  const [query, setQuery] = useState('')
+  const searchRef = useRef<HTMLInputElement>(null)
   // Owned here, not by a row, so a pending delete survives view switches and
   // re-sorts (see use-cv-deletion.ts).
   const { isHidden, requestDelete } = useCvDeletion()
   const visible = useMemo(() => rows.filter((r) => !isHidden(r.id)), [rows, isHidden])
-  const sorted = useMemo(() => sortRows(visible, sort.key, sort.dir), [visible, sort])
+  const matching = useMemo(() => filterRows(visible, query), [visible, query])
+  const sorted = useMemo(() => sortRows(matching, sort.key, sort.dir), [matching, sort])
+  const filtering = query.trim().length > 0
+
+  // "/" jumps to the search box from anywhere on the page, the way most list
+  // UIs do, unless the user is already typing somewhere.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return
+      e.preventDefault()
+      searchRef.current?.focus()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   if (rows.length === 0) return <EmptyDashboardState />
 
@@ -47,13 +75,49 @@ export function CvLibrary({ rows, initialView }: { rows: CvRow[]; initialView: C
     writePreference(CVS_VIEW_COOKIE, next)
   }
 
+  function clearSearch() {
+    setQuery('')
+    searchRef.current?.focus()
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-fg-muted">
-          {visible.length} {visible.length === 1 ? 'CV' : 'CVs'}
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="relative min-w-48 flex-1 sm:max-w-sm">
+          <span className="sr-only">Search CVs</span>
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+          />
+          <input
+            ref={searchRef}
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && query) {
+                e.preventDefault()
+                setQuery('')
+              }
+            }}
+            placeholder="Search CVs"
+            title="Search by name, company, role, template or status"
+            autoComplete="off"
+            spellCheck={false}
+            className={cn(
+              'min-h-10 w-full rounded-control border border-border bg-surface pl-8 pr-3 text-sm text-fg-body sm:min-h-8',
+              'placeholder:text-fg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            )}
+          />
+        </label>
+        <p className="text-sm text-fg-muted" aria-live="polite">
+          {countLabel(sorted.length, visible.length, filtering)}
         </p>
-        <div role="group" aria-label="View" className="inline-flex rounded-control border border-border bg-surface p-0.5">
+        <div
+          role="group"
+          aria-label="View"
+          className="ml-auto inline-flex rounded-control border border-border bg-surface p-0.5"
+        >
           {VIEWS.map(({ id, label, Icon }) => {
             const pressed = view === id
             return (
@@ -75,7 +139,15 @@ export function CvLibrary({ rows, initialView }: { rows: CvRow[]; initialView: C
           })}
         </div>
       </div>
-      {view === 'table' ? (
+      {sorted.length === 0 && filtering ? (
+        <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-border px-4 py-10 text-center">
+          <p className="text-sm text-fg-body">No CVs match “{query.trim()}”</p>
+          <p className="text-sm text-fg-muted">Try fewer words, or search by company, role or template.</p>
+          <Button variant="secondary" size="sm" onClick={clearSearch}>
+            Clear search
+          </Button>
+        </div>
+      ) : view === 'table' ? (
         <CvTable
           rows={sorted}
           sort={sort}

@@ -103,6 +103,33 @@ export function sortRows(rows: readonly CvRow[], key: CvSortKey, dir: CvSortDir)
     .map(({ row }) => row)
 }
 
+/** Lower-cased with accents stripped, so "cafe" finds "Café" and back. */
+function fold(text: string): string {
+  return text.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
+}
+
+/** Everything a person might type to find a CV, as one folded string. */
+function searchableText(row: CvRow): string {
+  const status = row.badge.kind === 'single' ? row.badge.label : ''
+  const role = row.roleLabel === NO_ROLE ? '' : row.roleLabel
+  return fold([row.title, role, row.templateLabel, status, row.parentResumeTitle ?? ''].join('\n'))
+}
+
+/**
+ * Rows whose title, role, template, application status or source CV contain
+ * every word of `query` (case- and accent-insensitive, any order). A blank
+ * query keeps every row. Order is preserved, so filtering composes with
+ * `sortRows` either way round.
+ */
+export function filterRows(rows: readonly CvRow[], query: string): CvRow[] {
+  const terms = fold(query).split(/\s+/).filter(Boolean)
+  if (terms.length === 0) return [...rows]
+  return rows.filter((row) => {
+    const text = searchableText(row)
+    return terms.every((term) => text.includes(term))
+  })
+}
+
 /**
  * Colour for an ATS format score out of 25. Callers always render the
  * `N/25` text alongside it: colour is never the only signal.
