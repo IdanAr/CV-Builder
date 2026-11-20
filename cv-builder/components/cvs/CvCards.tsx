@@ -65,7 +65,10 @@ function CvCard({ row, onDelete }: { row: CvRow; onDelete: (id: string, title: s
 
 export function CvCards({ rows, onDelete }: { rows: CvRow[]; onDelete: (id: string, title: string) => void }) {
   return (
-    <ul role="list" aria-label="CVs" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    // grid-cols-1, not the implicit column: an implicit track sizes to the
+    // longest unbreakable title, so one long CV name pushed every card (and
+    // the page) wider than a phone screen.
+    <ul role="list" aria-label="CVs" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {rows.map((row) => (
         <CvCard key={row.id} row={row} onDelete={onDelete} />
       ))}

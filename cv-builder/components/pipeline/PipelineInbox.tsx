@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
@@ -137,6 +137,44 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
 
   const detailRef = useRef<HTMLDivElement>(null)
   const listWrapRef = useRef<HTMLDivElement>(null)
+
+  // The pinned detail pane scrolls on its own; a newly picked job starts at
+  // its title, not wherever the previous job's details were left.
+  useEffect(() => {
+    if (detailRef.current) detailRef.current.scrollTop = 0
+  }, [view.job])
+
+  // Below lg the list is hidden while a job is open, and the page shrinks to
+  // the detail, so the browser loses how far down the list the user was.
+  // Remember it when a row is clicked; Back to list returns there and puts
+  // focus on that job's row. A job opened from a link has no list position,
+  // so Back scrolls its row into view instead.
+  const listScrollRef = useRef<number | null>(null)
+  const returnToRef = useRef<string | null>(null)
+  const openJob = useCallback(
+    (id: string) => {
+      listScrollRef.current = window.scrollY
+      setView({ job: id })
+    },
+    [setView]
+  )
+  const backToList = useCallback(() => {
+    returnToRef.current = view.job
+    setView({ job: null })
+  }, [view.job, setView])
+  // Layout effect: runs once the list is shown again but before paint, so the
+  // list never flashes at the wrong position.
+  useLayoutEffect(() => {
+    const id = returnToRef.current
+    if (view.job !== null || id === null) return
+    returnToRef.current = null
+    const y = listScrollRef.current
+    listScrollRef.current = null
+    const row = listWrapRef.current?.querySelector<HTMLElement>(`[data-job-id="${CSS.escape(id)}"]`)
+    row?.focus({ preventScroll: true })
+    if (y !== null) window.scrollTo(0, y)
+    else row?.scrollIntoView({ block: 'center' })
+  }, [view.job])
   const itemsRef = useRef(jobs.items)
   const selectedRef = useRef(selected)
   useEffect(() => {
@@ -347,17 +385,31 @@ export function PipelineInbox({ initial, profiles }: PipelineInboxProps) {
             loadingMore={jobs.loadingMore}
             hasFilters={hasFilters}
             error={jobs.error}
-            onSelect={(id) => setView({ job: id })}
+            onSelect={openJob}
             onLoadMore={() => void jobs.loadMore()}
             onRetry={() => void jobs.reload()}
           />
         </div>
-        <div ref={detailRef} data-pipeline-detail="" className={view.job ? 'block min-w-0' : 'hidden min-w-0 lg:block'}>
+        {/* From lg the list and the detail sit side by side and the window
+            scrolls, so the detail is pinned below the top of the viewport:
+            otherwise picking a job far down the list showed its details at
+            the top of the page, scrolled out of sight. self-start stops the
+            grid stretching the cell to the list's height (sticky needs room
+            to move), and max-h plus overflow give a long detail its own
+            scrollbar instead of running off the bottom. */}
+        <div
+          ref={detailRef}
+          data-pipeline-detail=""
+          className={cn(
+            view.job ? 'block min-w-0' : 'hidden min-w-0 lg:block',
+            'lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:rounded-card'
+          )}
+        >
           <JobDetail
             job={selected}
             busy={actions.busyId !== null}
             onAction={runAction}
-            onBack={() => setView({ job: null })}
+            onBack={backToList}
           />
         </div>
       </div>

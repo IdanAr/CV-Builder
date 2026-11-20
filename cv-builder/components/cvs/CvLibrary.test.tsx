@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, within, fireEvent, cleanup, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toCvRow, sortRows, type CvRow } from './cv-row'
+import { toCvRow, sortRows, filterRows, type CvRow } from './cv-row'
 import { CvLibrary } from './CvLibrary'
 import { useToastStore } from '@/lib/stores/toast.store'
 
@@ -180,6 +180,53 @@ function rowTitles(): string[] {
 function columnHeader(name: string) {
   return screen.getAllByRole('columnheader').find((h) => h.textContent?.startsWith(name))!
 }
+
+describe('filterRows', () => {
+  const rows = [
+    libraryRow({ id: 'wiz', title: 'Main | Sidebar - Wiz CTO Data Analyst', roleLabel: 'Data Analyst' }),
+    libraryRow({ id: 'monday', title: 'monday.com Product Analyst', templateLabel: 'Modern', badge: { kind: 'single', label: 'Interviewing', color: '#000' } }),
+    libraryRow({ id: 'cafe', title: 'Café BI Lead', parentResumeTitle: 'Main | Sidebar - Wiz CTO Data Analyst' }),
+    libraryRow({ id: 'none', title: 'Untitled', roleLabel: 'No role set' }),
+  ]
+  const ids = (q: string) => filterRows(rows, q).map((r) => r.id)
+
+  it('returns every row, in order, for an empty or blank query', () => {
+    expect(ids('')).toEqual(['wiz', 'monday', 'cafe', 'none'])
+    expect(ids('   ')).toEqual(['wiz', 'monday', 'cafe', 'none'])
+  })
+
+  it('matches the title case-insensitively and by substring', () => {
+    expect(ids('WIZ')).toEqual(['wiz', 'cafe'])
+    expect(ids('monday')).toEqual(['monday'])
+  })
+
+  it('requires every word to match, in any field and any order', () => {
+    expect(ids('analyst wiz')).toEqual(['wiz', 'cafe'])
+    expect(ids('product analyst')).toEqual(['monday'])
+    expect(ids('product wiz')).toEqual([])
+  })
+
+  it('searches the role, template, status and source CV as well as the title', () => {
+    expect(ids('modern')).toEqual(['monday'])
+    expect(ids('interviewing')).toEqual(['monday'])
+    expect(ids('data analyst')).toEqual(['wiz', 'cafe'])
+  })
+
+  it('ignores accents both ways', () => {
+    expect(ids('cafe')).toEqual(['cafe'])
+    expect(ids('CAFÉ')).toEqual(['cafe'])
+  })
+
+  it('does not match the "No role set" placeholder', () => {
+    expect(ids('role')).toEqual([])
+  })
+
+  it('does not mutate its input', () => {
+    const before = rows.map((r) => r.id)
+    filterRows(rows, 'wiz')
+    expect(rows.map((r) => r.id)).toEqual(before)
+  })
+})
 
 describe('CvLibrary', () => {
   beforeEach(() => {
@@ -458,10 +505,81 @@ describe('CvLibrary', () => {
     })
   })
 
+  describe('search', () => {
+    function search() {
+      return screen.getByRole('searchbox', { name: 'Search CVs' })
+    }
+
+    it('narrows the table to matching CVs and reports the count', async () => {
+      const user = userEvent.setup()
+      render(<CvLibrary rows={ROWS} initialView="table" />)
+      await user.type(search(), 'beta')
+      expect(rowTitles()).toEqual(['Beta CV'])
+      expect(screen.getByText('1 of 3 CVs')).toBeInTheDocument()
+    })
+
+    it('keeps the chosen sort order among the matches', async () => {
+      const user = userEvent.setup()
+      render(<CvLibrary rows={ROWS} initialView="table" />)
+      await user.click(within(columnHeader('Name')).getByRole('button'))
+      await user.type(search(), 'cv')
+      expect(rowTitles()).toEqual(['Alpha CV', 'Beta CV', 'Gamma CV'])
+    })
+
+    it('filters the cards view too', async () => {
+      const user = userEvent.setup()
+      render(<CvLibrary rows={ROWS} initialView="cards" />)
+      await user.type(search(), 'gamma')
+      expect(screen.getAllByTestId('thumb')).toHaveLength(1)
+      expect(screen.getByText('Gamma CV')).toBeInTheDocument()
+      expect(screen.queryByText('Alpha CV')).not.toBeInTheDocument()
+    })
+
+    it('keeps the query across a view switch', async () => {
+      const user = userEvent.setup()
+      render(<CvLibrary rows={ROWS} initialView="table" />)
+      await user.type(search(), 'gamma')
+      await user.click(screen.getByRole('button', { name: 'Cards' }))
+      expect(search()).toHaveValue('gamma')
+      expect(screen.getAllByTestId('thumb')).toHaveLength(1)
+    })
+
+    it('shows a no-match message with a way back to the full list', async () => {
+      const user = userEvent.setup()
+      render(<CvLibrary rows={ROWS} initialView="table" />)
+      await user.type(search(), 'zebra')
+      expect(screen.queryByRole('table')).not.toBeInTheDocument()
+      expect(screen.getByText('No CVs match “zebra”')).toBeInTheDocument()
+      expect(screen.getByText('0 of 3 CVs')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Clear search' }))
+      expect(search()).toHaveValue('')
+      expect(search()).toHaveFocus()
+      expect(rowTitles()).toHaveLength(3)
+    })
+
+    it('clears the query on Escape', async () => {
+      const user = userEvent.setup()
+      render(<CvLibrary rows={ROWS} initialView="table" />)
+      await user.type(search(), 'beta{Escape}')
+      expect(search()).toHaveValue('')
+      expect(rowTitles()).toHaveLength(3)
+      expect(screen.getByText('3 CVs')).toBeInTheDocument()
+    })
+
+    it('focuses the search box when "/" is pressed outside a text field', async () => {
+      const user = userEvent.setup()
+      render(<CvLibrary rows={ROWS} initialView="table" />)
+      await user.keyboard('/')
+      expect(search()).toHaveFocus()
+      expect(search()).toHaveValue('')
+    })
+  })
+
   it('invites the user to build a first CV when there are none', () => {
     render(<CvLibrary rows={[]} initialView="table" />)
     expect(screen.getByText("Let's build your first CV")).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.queryByRole('group', { name: 'View' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
   })
 })
