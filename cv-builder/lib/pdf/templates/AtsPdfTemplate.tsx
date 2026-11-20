@@ -1,11 +1,11 @@
 import React from 'react'
-import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, View, Text, Link, StyleSheet } from '@react-pdf/renderer'
 import { withFontScale } from '../font-scale'
 import { resolveFontScale, scalePt } from '@/lib/design/font-scale'
 import type { ResumeData, ResumeMeta } from '@/lib/schemas/resume.zod'
 import {
   mapToPdfFont, inToPt, resolveSectionOrder, pdfDocumentProps,
-  renderPdfRichText, renderPdfRichTextRuns,
+  renderPdfRichText, renderPdfRichTextRuns, ensureHttps,
 } from './pdf-utils'
 import { renderPdfCustomSection } from './renderPdfCustomSection'
 import { formatDate, formatDateRange } from '@/lib/format-date'
@@ -53,11 +53,20 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
     small: { fontSize: 10, color: '#333333' },
   }), lineHeight), scale)
 
-  const contactLine = [
-    basics.email, basics.phone,
-    ...resolveProfiles(basics).filter((p) => p.url).map((p) => (p.label ? `${p.label}: ${p.url}` : p.url)),
-    [basics.location?.city, basics.location?.region].filter(Boolean).join(', '),
-  ].filter(Boolean).join(' | ')
+  // One plain line of text, exactly as before, but with the email and every
+  // profile URL wrapped in a link annotation. Without one, whether a URL is
+  // clickable is left to each PDF viewer's guess at URL-looking text.
+  const location = [basics.location?.city, basics.location?.region].filter(Boolean).join(', ')
+  const contactParts: Array<{ prefix?: string; text: string; href?: string }> = [
+    ...(basics.email ? [{ text: basics.email, href: `mailto:${basics.email}` }] : []),
+    ...(basics.phone ? [{ text: basics.phone }] : []),
+    ...resolveProfiles(basics).filter((p) => p.url).map((p) => ({
+      prefix: p.label ? `${p.label}: ` : undefined,
+      text: p.url!,
+      href: ensureHttps(p.url!),
+    })),
+    ...(location ? [{ text: location }] : []),
+  ]
 
   // Single text line per entry head — never a flex row, so Y-order parsers
   // can't split name and dates across columns.
@@ -295,7 +304,17 @@ export function AtsPdfTemplate({ data, meta, title }: { data: ResumeData; meta: 
         <View>
           <Text style={styles.name}>{basics.name ?? ''}</Text>
           {basics.label ? <Text style={styles.label}>{basics.label}</Text> : null}
-          {contactLine ? <Text style={styles.contact}>{contactLine}</Text> : null}
+          {contactParts.length > 0 ? (
+            <Text style={styles.contact}>
+              {contactParts.map((part, i) => (
+                <React.Fragment key={i}>
+                  {i > 0 ? ' | ' : null}
+                  {part.prefix ?? null}
+                  {part.href ? <Link src={part.href} style={{ color: '#333333', textDecoration: 'none' }}>{part.text}</Link> : part.text}
+                </React.Fragment>
+              ))}
+            </Text>
+          ) : null}
           {renderPdfRichText(basics.summary, styles.body)}
           {sectionOrder.map(renderSection)}
         </View>

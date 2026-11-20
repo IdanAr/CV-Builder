@@ -69,3 +69,50 @@ describe('multi-URL contact row (PDF, ats mode)', () => {
     expect(text).toContain('janesmith.dev')
   })
 })
+
+/**
+ * Link annotations, not just glyphs: a URL that is only text is clickable in
+ * some PDF viewers (which guess at URL-looking text) and dead in others, so
+ * every profile must carry a real /URI annotation in every export mode.
+ */
+describe('profile links are real link annotations', () => {
+  const linked: ResumeData = {
+    basics: {
+      name: 'Jane Smith',
+      email: 'jane@example.com',
+      phone: '054-0000000',
+      profiles: [
+        { id: 'p1', label: '', url: 'https://janesmith.dev' },
+        { id: 'p2', label: 'Linkedin', url: 'linkedin.com/in/janesmith' },
+      ],
+      location: { city: '' },
+    },
+  }
+
+  async function uris(templateId: string, mode: 'designed' | 'ats'): Promise<string[]> {
+    const buf = await renderToBuffer(
+      selectPdfTemplate(linked, { ...meta, templateId }, mode, 'CV') as React.ReactElement<never>
+    )
+    return [...Buffer.from(buf).toString('latin1').matchAll(/\/URI \(([^)]*)\)/g)].map((m) => m[1])
+  }
+
+  for (const templateId of ['classic', 'modern', 'minimal', 'executive', 'sidebar']) {
+    it(`links every profile, including the last one (${templateId}, designed)`, async () => {
+      const found = await uris(templateId, 'designed')
+      expect(found).toContain('https://janesmith.dev')
+      expect(found).toContain('https://linkedin.com/in/janesmith')
+    })
+  }
+
+  it('links every profile and the email in ats mode without changing the contact text', async () => {
+    const found = await uris('classic', 'ats')
+    expect(found).toContain('https://janesmith.dev')
+    expect(found).toContain('https://linkedin.com/in/janesmith')
+    expect(found).toContain('mailto:jane@example.com')
+
+    const runs = await renderToGlyphRuns(selectPdfTemplate(linked, meta, 'ats', 'CV') as React.ReactElement)
+    // Glyph runs carry no spaces, so compare the visible characters only.
+    const text = runs.map((r) => r.str).join('')
+    expect(text).toContain('jane@example.com|054-0000000|https://janesmith.dev|Linkedin:linkedin.com/in/janesmith')
+  })
+})
