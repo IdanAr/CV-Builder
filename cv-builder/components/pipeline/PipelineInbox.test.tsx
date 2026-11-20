@@ -93,10 +93,13 @@ beforeEach(() => {
   fetchMock.mockImplementation(() => ok())
   vi.stubGlobal('fetch', fetchMock)
   useToastStore.setState({ toasts: [] })
+  // jsdom has no scrollIntoView; Back to list calls it for a job opened from a link.
+  Element.prototype.scrollIntoView = vi.fn()
 })
 
 afterEach(() => {
   cleanup()
+  Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
   vi.restoreAllMocks()
   vi.useRealTimers()
   vi.unstubAllGlobals()
@@ -255,6 +258,56 @@ describe('PipelineInbox', () => {
     expect(list.parentElement?.className).toContain('grid-cols-[minmax(0,1fr)]')
     expect(list.className).toContain('min-w-0')
     expect(detail.className).toContain('min-w-0')
+  })
+
+  it('pins the detail pane in view on wide screens so a job far down the list still shows its details', () => {
+    const { container } = setup(initial('found', [mk('a')]))
+    const detail = container.querySelector('[data-pipeline-detail]') as HTMLElement
+    // Sticky only works if the cell does not stretch to the list's full height.
+    for (const cls of ['lg:sticky', 'lg:top-6', 'lg:self-start', 'lg:overflow-y-auto', 'lg:max-h-[calc(100dvh-3rem)]']) {
+      expect(detail.className).toContain(cls)
+    }
+  })
+
+  it('scrolls the pinned detail pane back to its top when another job is selected', () => {
+    const { container } = setup(initial('found', [mk('a'), mk('b')]), { params: 'stage=found&job=a' })
+    const detail = container.querySelector('[data-pipeline-detail]') as HTMLElement
+    detail.scrollTop = 240
+    fireEvent.click(screen.getByRole('button', { name: /Job b/ }))
+    expect(detail.scrollTop).toBe(0)
+  })
+
+  describe('Back to list on narrow screens', () => {
+    // jsdom has no layout or scrolling: stand in for the window's scroll
+    // position and record where the inbox asks to go.
+    let y = 0
+    beforeEach(() => {
+      y = 0
+      Object.defineProperty(window, 'scrollY', { configurable: true, get: () => y })
+      vi.spyOn(window, 'scrollTo').mockImplementation(((x: number, top: number) => { y = top }) as typeof window.scrollTo)
+    })
+    afterEach(() => {
+      Reflect.deleteProperty(window, 'scrollY')
+    })
+
+    it('returns to where the user was in the list and focuses the job they opened', () => {
+      setup(initial('found', [mk('a'), mk('b')]))
+      y = 1427
+      fireEvent.click(screen.getByRole('button', { name: /Job b/ }))
+      y = 0 // the user scrolled up while reading the details
+      fireEvent.click(screen.getByRole('button', { name: 'Back to list' }))
+      expect(window.scrollTo).toHaveBeenLastCalledWith(0, 1427)
+      expect(document.activeElement?.getAttribute('data-job-id')).toBe('b')
+    })
+
+    it('brings the row into view when the job was opened from a link, with no list position to return to', () => {
+      setup(initial('found', [mk('a'), mk('b')]), { params: 'stage=found&job=b' })
+      fireEvent.click(screen.getByRole('button', { name: 'Back to list' }))
+      expect(window.scrollTo).not.toHaveBeenCalled()
+      const row = document.querySelector('[data-job-id="b"]') as HTMLElement
+      expect(row.scrollIntoView).toHaveBeenCalledWith({ block: 'center' })
+      expect(document.activeElement).toBe(row)
+    })
   })
 
   it('wraps both the inbox and the first-run card in the page frame', () => {
